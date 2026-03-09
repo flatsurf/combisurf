@@ -2065,6 +2065,73 @@ class OrientedMap:
         remove_trailing_minus_ones(self._vp)
         remove_trailing_minus_ones(self._fp)
 
+    # TODO: should we make it possible to choose the triangulation? Right now
+    # we just pick the dual to a path.
+    def triangulate(self, h=None):
+        r"""
+        Triangulate the faces of degree more than 3.
+
+        If a half-edge ``h`` is specified as input, only triangulate the face
+        adjacent to it.
+
+        EXAMPLES::
+
+            sage: from topsurf import OrientedMap
+
+        We start from a 5-gon and triangulate first one of its faces and then
+        the other one::
+
+            sage: m = OrientedMap(fp="(0,1,2,3,4)(~0,~4,~3,~2,~1)", mutable=True)
+            sage: m.triangulate(0)
+            sage: m
+            OrientedMap("(0,~4)(~0,1,6)(~1,2,5)(~2,3)(~3,4,~6,~5)", "(0,6,4)(~0,~4,~3,~2,~1)(1,5,~6)(2,3,~5)")
+            sage: m.triangulate(1)
+            sage: m
+            OrientedMap("(0,~4,8)(~0,1,6)(~1,~8,~7,2,5)(~2,3)(~3,7,4,~6,~5)", "(0,6,4)(~0,8,~1)(1,5,~6)(2,3,~5)(~2,~7,~3)(~4,7,~8)")
+
+        Trying to triangulate a monogon or a bigon generates a ValueError::
+
+            sage: m = OrientedMap(fp="(0)(~0)", mutable=True)
+            sage: m.triangulate(0)
+            Traceback (most recent call last):
+            ...
+            ValueError: can not triangulate a monogon or a bigon
+            sage: m = OrientedMap(fp="(0,1)(~0,~1)", mutable=True)
+            sage: m.triangulate(0)
+            Traceback (most recent call last):
+            ...
+            ValueError: can not triangulate a monogon or a bigon
+
+        Immutable maps can not be triangulated::
+
+            sage: m = OrientedMap("(0,1,2)(~0,~2,~1)")
+            sage: m.triangulate(0)
+            Traceback (most recent call last):
+            ...
+            ValueError: immutable graph; make a mutable copy first
+        """
+        if not self._mutable:
+            raise ValueError("immutable graph; make a mutable copy first")
+
+        if h is None:
+            for f in self.faces():
+                if len(f) > 3:
+                    self.triangulate(f[0])
+
+        f = perm_orbit(self._fp, h)
+        if len(f) == 1 or len(f) == 2:
+            raise ValueError("can not triangulate a monogon or a bigon")
+
+        i = 1
+        j = len(f) - 1
+        while i < j:
+            if i + 2 < j:
+                self.add_edge(f[i + 1], f[j])
+            if i + 1 < j:
+                self.add_edge(f[i], f[j])
+            i += 1
+            j -= 1
+
     # TODO: consider listing all quotients by looking at blocks under the monodromy group
     def automorphism_quotient(self, mapping=False, mutable=False, check=True):
         r"""
