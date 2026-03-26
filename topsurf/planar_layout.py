@@ -1,9 +1,14 @@
-r"""
+"""
 Layout of planar maps
 
+We use a form a force-directed graph drawing taking care of the
+underlying planar embedding.
+
 Coordinates are handled as numpy array of floating points.
+
 """
 
+import math
 import numpy as np
 
 from sage.rings.real_double import RDF
@@ -131,6 +136,42 @@ def are_segments_intersecting(x, y, i0, i1, j0, j1, tol=1e-9):
     return 0
 
 
+def angle(x, y, i, j, k, tol=1e-9):
+    r"""
+    Return the angle between (z[i], z[j]) and (z[i], z[k]) as a multiple of 2pi (ie a number between 0 and 1)
+
+    EXAMPLES::
+
+        sage: from topsurf.planar_layout import angle
+        sage: angle([0, 1, 1], [0, 0, 1], 0, 1, 2)
+        0.125
+        sage: angle([0, 1, 0], [0, 0, 1], 0, 1, 2)
+        0.25
+        sage: angle([0, 1, -1], [0, 0, 1], 0, 1, 2)
+        0.375
+        sage: angle([0, 1, -1], [0, 0, 0], 0, 1, 2)
+        0.5
+        sage: angle([0, 1, -1], [0, 0, -1], 0, 1, 2)
+        0.625
+        sage: angle([0, 1, 0], [0, 0, -1], 0, 1, 2)
+        0.75
+        sage: angle([0, 1, 1], [0, 0, -1], 0, 1, 2)
+        0.875
+    """
+    x1 = x[j] - x[i]
+    y1 = y[j] - y[i]
+    x2 = x[k] - x[i]
+    y2 = y[k] - y[i]
+    if ((-tol <= x1 <= tol and -tol <= y1 <= tol) or
+        (-tol <= x2 <= tol and -tol <= y2 <= tol)):
+        raise ValueError("degenerate vector")
+
+    dot = x1 * x2 + y1 * y2
+    det = x1 * y2 - y1 * x2
+    angle = math.atan2(det, dot) / math.pi / 2
+    return angle if angle >= 0 else angle + 1
+
+
 class PlanarLayout:
     r"""
     Layout of planar maps.
@@ -169,6 +210,10 @@ class PlanarLayout:
         self._num_nodes = m.num_vertices()
         self._num_subdivisions = len(pos) - self._num_nodes
         self._embedding = embedding
+        # NOTE: sage embeddings is specified by clockwise ordering. We make it counter-clockiwse
+        # below
+        for neighbors in self._embedding.values():
+            neighbors.reverse()
         for i, (xi, yi) in pos.items():
             self._pos[0][i] = xi
             self._pos[1][i] = yi
@@ -261,7 +306,7 @@ class PlanarLayout:
 
             self._pos += f
 
-    def is_valid(self, pos=None, verbose=False):
+    def is_valid(self, pos=None, tol=1e-9, verbose=False):
         r"""
         Test whether the embedding does make sense, that is
 
@@ -275,32 +320,51 @@ class PlanarLayout:
         if pos is None:
             pos = self._pos
 
-        edges = list(self._graph.edges(labels=False))
-        for i1 in range(len(edges)):
-            u1, v1 = edges[i1]
-            for i2 in range(i1):
-                u2, v2 = edges[i2]
-                x = (pos[0][u1], pos[0][v1], pos[0][u2], pos[0][v2])
-                y = (pos[1][u1], pos[1][v1], pos[1][u2], pos[1][v2])
-                ans = are_segments_intersecting(pos[0], pos[1], u1, v1, u2, v2)
-                if ans == -1:
+        for u in range(self._pos.shape[1]):
+            for v in range(u):
+                if (-tol <= self._pos[0,v] - self._pos[0,u] <= tol and
+                    -tol <= self._pos[1,v] - self._pos[1,u] <= tol):
                     if verbose:
-                        print(f"degenerate edge ({u1} ({pos[:,u1]}), {v1} ({pos[:,v1]})) or ({u2} ({pos[:,u2]}) ,{v2} ({pos[:,v2]}))")
+                        print(f"vertices u={u} and v={v} are too close")
                     return False
-                elif ans >= 2:
-                    if verbose:
-                        print(f"big intersection between ({u1} ({pos[:,u1]}), {v1} ({pos[:,v1]})) and ({u2} ({pos[:,u2]}) ,{v2} ({pos[:,v2]}))")
-                    return False
-                if u1 == u2 or u1 == v2 or v1 == u2 or v1 == v2:
-                    if ans != 1:
+
+        # check vertex ordering
+        for u in self.vertices(internal=True, subdivisions=False):
+            edges = self._embedding[u]
+            a = sum(angle(self._pos[0], self._pos[1], u, edges[i], edges[(i+1) % len(edges)]) for i in range(len(edges)))
+            a_round = round(a)
+            if abs(a_round - a) > tol:
+                raise RuntimeError
+            if a_round != 1.0:
+                if verbose:
+                    print(f"wrong embedding at u={u}, got total angle={a}")
+                return False
+
+        # check face embedding
+        for face in self.internal_faces():
+            for i1 in range(len(face)):
+                u1 = face[i1]
+                v1 = face[(i1 + 1) % len(face)]
+                for i2 in range(i1):
+                    u2 = face[i2]
+                    v2 = face[(i2 + 1) % len(face)]
+                    ans = are_segments_intersecting(pos[0], pos[1], u1, v1, u2, v2)
+                    if ans == -1:
+                        raise RuntimeError
+                    elif ans >= 2:
                         if verbose:
-                            print(f"adjacent edges ({u1} ({pos[:,u1]}), {v1} ({pos[:,v1]})) and ({u2} ({pos[:,u2]}) ,{v2} ({pos[:,v2]}))")
+                            print(f"big intersection between ({u1} ({pos[:,u1]}), {v1} ({pos[:,v1]})) and ({u2} ({pos[:,u2]}) ,{v2} ({pos[:,v2]}))")
                         return False
-                else:
-                    if ans != 0:
-                        if verbose:
-                            print(f"disjoint edges ({u1} ({pos[:,u1]}), {v1} ({pos[:,v1]})) and ({u2} ({pos[:,u2]}) ,{v2} ({pos[:,v2]}))")
-                        return False
+                    if u1 == u2 or u1 == v2 or v1 == u2 or v1 == v2:
+                        if ans != 1:
+                            if verbose:
+                                print(f"adjacent edges ({u1} ({pos[:,u1]}), {v1} ({pos[:,v1]})) and ({u2} ({pos[:,u2]}) ,{v2} ({pos[:,v2]}))")
+                            return False
+                    else:
+                        if ans != 0:
+                            if verbose:
+                                print(f"disjoint edges ({u1} ({pos[:,u1]}), {v1} ({pos[:,v1]})) and ({u2} ({pos[:,u2]}) ,{v2} ({pos[:,v2]}))")
+                            return False
         return True
 
     def plot(self):
