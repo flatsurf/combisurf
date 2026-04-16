@@ -1,5 +1,6 @@
 [project]
 name = "combisurf"
+license = "GPL-2.0-or-later"
 version = "0.1.0"
 authors = [
   {name = "Vincent Delecroix"},
@@ -13,7 +14,6 @@ keywords = ["surface", "topology", "cell", "cell decomposition", "cell complex",
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Topic :: Scientific/Engineering :: Mathematics",
@@ -22,6 +22,9 @@ classifiers = [
 [build-system]
 requires = ["hatchling", "hatch-cython", "Cython", "setuptools"]
 build-backend = "hatchling.build"
+
+[tool.setuptools]
+py-modules = []
 
 [tool.hatch.build.targets.wheel.hooks.cython]
 dependencies = ["hatch-cython"]
