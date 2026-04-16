@@ -6,9 +6,9 @@ from sage_docbuild.conf import skip_TESTS_block
 
 BUILDDIR = Path(os.environ.get('ABS_BUILDDIR', '.')).absolute()
 
-project = "topsurf"
-copyright = "2026, the topsurf authors"
-author = 'the topsurf authors'
+project = "combisurf"
+copyright = "2026, the combisurf authors"
+author = 'the combisurf authors'
 
 release = '0.1.0'
 
@@ -42,7 +42,7 @@ html_logo = 'static/logo.svg'
 html_static_path = ["static"]
 
 html_theme_options = {
-    "repository_url": "https://github.com/flatsurf/topsurf",
+    "repository_url": "https://github.com/flatsurf/combisurf",
     "icon_links": [{
         "name": "flatsurf",
         "url": "https://flatsurf.github.io",
@@ -75,7 +75,7 @@ html_css_files = [
     "jupyter_execute.css",
 ]
 
-htmlhelp_basename = "topsurfdoc"
+htmlhelp_basename = "combisurfdoc"
 
 jupyter_execute_default_kernel = "sagemath"
 

@@ -1,7 +1,7 @@
 import pytest
 
 def test_constructor():
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
     OrientedMap([2, 1, 3, 0], None)
     OrientedMap(None, [2, 1, 3, 0])
@@ -22,7 +22,7 @@ def test_constructor():
 
 
 def test_check_half_edge():
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
     assert OrientedMap(vp="(0,~0)")._check_half_edge(0) == 0
 
@@ -42,7 +42,7 @@ def test_check_half_edge():
 
 
 def test_check_edge():
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
     assert OrientedMap(fp="(0,1,~1)")._check_edge(0) == 0
     assert OrientedMap(fp="(0,1,~1)")._check_edge(1) == 1
@@ -58,7 +58,7 @@ def test_check_edge():
 
 
 def test_cmp():
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
     assert OrientedMap("(0,1,2)(~0,~1,~2)", None) == OrientedMap("(0,1,2)(~0,~1,~2)", None)
     assert not (OrientedMap("(0,1,2)(~0,~1,~2)", None) == OrientedMap("(0,~0,1)(~1,2,~2)", None))
@@ -72,7 +72,7 @@ def test_cmp():
 
 
 def test_pickling():
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
     from pickle import loads, dumps
 
     t = OrientedMap(fp="(0,1,2)")
@@ -92,7 +92,7 @@ def test_pickling():
 
 def test_hash():
     from itertools import permutations, combinations
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
 
     m0 = OrientedMap(vp="(0,~0)")
@@ -151,7 +151,7 @@ def test_hash():
     assert len(hashes1) == len(hashes2) == len(maps)
 
 def test_copy():
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
     for mutable in [True, False]:
         m = OrientedMap(fp="(0,1,2)(~0,~1,~2)", mutable=mutable)
@@ -167,7 +167,7 @@ def test_copy():
 
 
 def small_maps(folded=True):
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
     if folded:
         yield OrientedMap("(0)")
@@ -204,11 +204,11 @@ def small_maps(folded=True):
 def test_reverse_orientation():
     for m0 in small_maps(folded=False):
         m1 = m0.copy(mutable=True)
-        for e in m1.edges():
+        for e in m1.edge_indices():
             m1.reverse_orientation(e)
             m1._check()
-            assert m0.vertex_profile() == m1.vertex_profile(), m0
-            assert m1.face_profile() == m1.face_profile(), m0
+            assert m0.vertex_profile(sort=True) == m1.vertex_profile(sort=True), m0
+            assert m1.face_profile(sort=True) == m1.face_profile(sort=True), m0
             assert m0.euler_characteristic() == m1.euler_characteristic(), m0
             m1.reverse_orientation(e)
             m1._check()
@@ -216,10 +216,10 @@ def test_reverse_orientation():
 
 
 def test_insert_edge_contract_edge():
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
     for m in small_maps():
-        for e in m.edges():
+        for e in m.edge_indices():
             mm = m.copy(mutable=True)
             mm.contract_edge(e)
             mm._check()
@@ -254,7 +254,7 @@ def test_insert_edge_contract_edge():
 
 
 def test_add_edge_delete_edge():
-    from topsurf import OrientedMap
+    from combisurf import OrientedMap
 
     m = OrientedMap("", "", mutable=True)
 
@@ -308,8 +308,8 @@ def test_add_edge_delete_edge():
 
 
 def test_relabel():
-    from topsurf import OrientedMap
-    from topsurf.permutation import perm_compose, perm_random_centralizer
+    from combisurf import OrientedMap
+    from combisurf.permutation import perm_compose, perm_random_centralizer
 
     m = OrientedMap(fp="(0,1,2)(~0,~1,~2)", mutable=True)
     for _ in range(10):

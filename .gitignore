@@ -1,4 +1,4 @@
-topsurf/*.c
-topsurf/*.so
+combisurf/*.c
+combisurf/*.so
 __pycache__
 doc/_build

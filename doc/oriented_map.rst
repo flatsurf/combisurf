@@ -1,6 +1,6 @@
 ``oriented_map``
 ================
 
-.. automodule:: topsurf.oriented_map
+.. automodule:: combisurf.oriented_map
    :members:
    :undoc-members:

@@ -1,7 +1,7 @@
-topsurf: surface topology in SageMath
+combisurf: surface topology in SageMath
 =====================================
 
-topsurf is a Python package for working with flat surfaces in `SageMath
+combisurf is a Python package for working with flat surfaces in `SageMath
 <https://sagemath.org>`_.
 
 Module Reference
