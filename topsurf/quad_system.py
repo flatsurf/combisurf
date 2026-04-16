@@ -1136,6 +1136,30 @@ class Walk:
         return test_KMP(other._geodesic._geodesic, c)
 
 
+    def simplicity(self, oriented_map, edge_to_vertex=None, quadsystem=None):
+        if not self._walk:
+            return True
+        if quadsystem == None:
+            quadsystem = QuadSystem(oriented_map)
+        if edge_to_vertex == None:
+            edge_to_vertex = oriented_map.edge_to_vertex()
+
+        star = StarShapedSpace(quadsystem, 1)
+        seen_value = {}
+        previous_vertex = 0
+
+        for edge in self._walk:
+            for elt in quadsystem._proj[edge]:
+                previous_vertex = star.insert_edge(previous_vertex, elt)
+
+            map_vertex = edge_to_vertex[quadsystem._quad._ep(elt)]
+            if seen_value.get((previous_vertex, map_vertex)) == None:
+                seen_value[(previous_vertex, map_vertex)]
+            else:
+                return False
+        return True
+
+
 
 
 class LazyGeodesic:
@@ -1452,30 +1476,6 @@ class StarShapedSpace:
             self.add_edge(new_vertex, square_vertex, self._quadsystem._ep(square_edge))
         self.add_edge(vertex, new_vertex, edge)
         return new_vertex
-
-
-def simplicity(oriented_map, walk, edge_to_vertex=None, quadsystem=None):
-    if not walk:
-        return True
-    if quadsystem == None:
-        quadsystem = QuadSystem(oriented_map)
-    if edge_to_vertex == None:
-        edge_to_vertex = oriented_map.edge_to_vertex()
-
-    star = StarShapedSpace(quadsystem, 1)
-    seen_value = {}
-    previous_vertex = 0
-
-    for edge in walk:
-        for elt in quadsystem._proj[edge]:
-            previous_vertex = star.insert_edge(previous_vertex, elt)
-
-        map_vertex = edge_to_vertex[quadsystem._quad._ep(elt)]
-        if seen_value.get((previous_vertex, map_vertex)) == None:
-            seen_value[(previous_vertex, map_vertex)]
-        else:
-            return False
-    return True
     
 
     
