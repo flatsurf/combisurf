@@ -3002,6 +3002,26 @@ class OrientedMap:
             raise ValueError("The half-edge {} is not on the same vertex as the half-edge {}.".format(f,e))
         return turn
 
+
+
+    def half_edges_to_vertices(self):
+
+        res = [-1 for _ in self.half_edges()]
+        for index, vertex in enumerate(self.vertices()):
+            for h in vertex:
+                res[h] = index
+        return res
+
+
+    def half_edges_to_faces(self):
+        
+        res = [-1 for _ in self.half_edges()]
+        for index, face in enumerate(self.faces()):
+            for h in face:
+                res[h] = index
+        return res
+            
+
 # - relabel: keep combinatorics but change labellings
 # - slide or half_edge_slide (possibly flip as a shortcut)
 # - contract_edge, delete_edge

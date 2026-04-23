@@ -364,7 +364,7 @@ class QuadSystem:
             _origin_map: the original OrientedMap
             _genus: the genus of the underlying surface
             _quad: the quad system
-            _proj: the projection from _origin_map half-edges to path of length 2 of _quad
+            _proj: the projection from _origin_map half-edges to path of length 0 or 2 of _quad
             _turn: a list of edges that gives a coefficient to each half-edge around each vertex corresponding at the turn
         """
 
@@ -460,6 +460,19 @@ class QuadSystem:
             return nl2 - nl1
         else:
             return 4 * self._genus + nl2 - nl1
+
+
+    def rotate_list(self):
+        res = []
+        d = 4 * self._genus
+        for h in self._quad.half_edges():
+            res.append([])
+            current = h
+            for _ in range(d):
+                res[h].append(current)
+                current = self._quad._vp[current]
+        return res
+            
 
 
 
@@ -1010,6 +1023,8 @@ class Geodesic:
                                 turn_add(s, d - 1, 1)
                             turn_add(s, d - 2, n1 - 1)
                             l = deque([])
+                            e = geo[1]
+                            e1 = Q._ep(e)
                             for j in range(n2):
                                 e = geo[1 + j]
                                 e1 = Q._ep(e)
@@ -1071,7 +1086,7 @@ class Walk:
         r"""
         Methods:
             _quadsystem: the underlying quad system
-            _walk: the walk in the original OrientedMap
+            _walk: the walk in the original OrientedMap (as a list)
             _geodesic: the canonical geodesic representative of walk
         """
 
@@ -1121,6 +1136,43 @@ class Walk:
         c = self._geodesic._geodesic.copy()
         c.extend(c)
         return test_KMP(other._geodesic._geodesic, c)
+
+
+    def simplicity(self, oriented_map, edge_to_vertex=None, quadsystem=None):
+
+        r"""
+        Return whether self lift into a simple walk in the universal covering.
+        """
+        
+        if not self._walk:
+            return True
+        elif len(self._walk)==2 and oriented_map._ep(self._walk[0]) == self._walk[1]:
+            return False
+        if quadsystem is None:
+            quadsystem = QuadSystem(oriented_map)
+        if edge_to_vertex is None:
+            edge_to_vertex = oriented_map.half_edges_to_vertices()
+
+        star = StarShapedSpace(quadsystem, edge_to_vertex[self._walk[0]])
+        seen_value = {} 
+        previous_vertex = 0
+        first_values = (0, edge_to_vertex[self._walk[0]])
+        seen_value[first_values] = True
+
+        for i in range(len(self._walk)):
+            edge = self._walk[i]
+            for elt in quadsystem._proj[edge]:
+                previous_vertex = star.insert_edge(previous_vertex, elt)
+            map_vertex = edge_to_vertex[oriented_map._ep(edge)]
+            if seen_value.get((previous_vertex, map_vertex)) is None:
+                seen_value[(previous_vertex, map_vertex)] = True
+                #print(seen_value)
+            elif i == len(self._walk) - 1 and (previous_vertex, map_vertex) == first_values:
+                return True
+            else:
+                #print(seen_value)
+                return False
+        return True
 
 
 
@@ -1350,3 +1402,92 @@ class LazyGeodesic:
             else:
                 self._first = e
                 turn_add_left(self._turn_sequence, newturn, 1)
+
+
+class StarShapedSpace:
+
+    # TODO
+
+    def __init__(self, Q, root):
+
+        self._vertices = [root] #??
+        self._quadsystem = Q # the underlying quadsystem
+        self._inedges = [{}] # for each vertex a dictionnary containing the entering edges
+        self._outedges = [[]] # for each vertex the list of (at most 2) outedges
+        self._rotate_list = Q.rotate_list() 
+
+    
+    def add_vertex(self, vertex):
+        
+        self._vertices.append(vertex)
+        self._inedges.append({})
+        self._outedges.append([])
+        return len(self._vertices) - 1
+
+    
+    def add_edge(self, vertex1, vertex2, edge):
+        r"""
+        Add an edge from vertex1 to vertex2 that project to edge
+        """
+        Q = self._quadsystem
+        if not self.contains_edge(vertex1, edge):
+            self._outedges[vertex1].append((edge, vertex2))
+        if not self.contains_edge(vertex2, Q._quad._ep(edge)):
+            self._inedges[vertex2][Q._quad._ep(edge)] = vertex1
+
+
+    def contains_edge(self, vertex, edge):
+        
+        result = False
+        for elt in self._outedges[vertex]:
+            if elt[0] == edge:
+                result = True
+        return result or (not self._inedges[vertex].get(edge) is None)
+            
+
+    def opposite_vertex(self, vertex, edge):
+        for elt in self._outedges[vertex]:
+            if elt[0] == edge:
+                return elt[1]
+        for elt in self._inedges[vertex]:
+            if elt == edge:
+                return self._inedges[vertex][elt]
+        raise ValueError("There is no such edge")
+
+        
+    def rotate(self, vertex, edge, turn):
+        if self.contains_edge(vertex, edge):
+            return self._rotate_list[edge][turn]
+        else:
+            raise ValueError("There is no such edge")
+
+    def turn(self, vertex, edge):
+        turn = None
+        out_edge = None
+        Q = self._quadsystem
+        d = 4 * Q._genus
+        for elt in self._outedges[vertex]:
+            newturn = Q.turn(edge, elt[0])
+            if newturn > d//2:
+                newturn = newturn - d
+            if turn == None or (abs(turn) > abs(newturn)):
+                turn = newturn
+                out_edge = elt[0]
+        return turn, out_edge
+
+
+    def insert_edge(self, vertex, edge):  
+        if self.contains_edge(vertex, edge):
+            return self.opposite_vertex(vertex, edge)
+        turn, out_edge = self.turn(vertex, edge)
+        opposite_edge = self._quadsystem._quad._ep(edge)
+        new_vertex = self.add_vertex(opposite_edge%2)
+        if turn != None and abs(turn) == 1:
+            old_vertex = self.opposite_vertex(vertex, out_edge)
+            new_edge = self._rotate_list[out_edge][-turn]
+            self.insert_edge(old_vertex, new_edge)
+            square_vertex = self.opposite_vertex(old_vertex, new_edge)
+            square_edge = self.rotate(square_vertex, self._quadsystem._quad._ep(new_edge), -turn)
+            self.add_edge(new_vertex, square_vertex, self._quadsystem._quad._ep(square_edge))
+        self.add_edge(vertex, new_vertex, edge)
+        return new_vertex
