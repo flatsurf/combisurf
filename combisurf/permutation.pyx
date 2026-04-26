@@ -16,9 +16,7 @@ TODO:
 # ****************************************************************************
 #  This file is part of combisurf
 #
-#       Copyright (C) 2018 Mark Bell
-#                     2018-2026 Vincent Delecroix
-#                     2018 Saul Schleimer
+#       Copyright (C) 2026 Vincent Delecroix
 #
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -428,7 +426,11 @@ def str_to_cycles(s):
     if not isinstance(s, str):
         raise TypeError(f"s must be a string (got {type(s).__name__})")
     r = []
-    for c_str in s[1:-1].split(')('):
+    if not s:
+        return r
+    if not s.startswith("(") or not s.endswith(")"):
+        raise ValueError("invalid string to initialize a permutation")
+    for c_str in s[1:-1].split(")("):
         if not c_str:
             continue
         r.append([str_to_int(c) for c in c_str.replace(' ', '').split(',')])
@@ -1025,6 +1027,33 @@ def perm_orbit(array.array p, int i):
         res.append(j)
         j = p.data.as_ints[j]
     return res
+
+
+def perm_are_in_same_orbit(array.array p, int i, int j):
+    r"""
+    Return whether ``i`` and ``j`` belong to the same orbit of the permutation ``p``.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.permutation import perm_are_in_same_orbit
+
+
+        sage: p = array('i', [5, 3, 0, 4, 6, 2, 1])
+        sage: perm_are_in_same_orbit(p, 0, 0)
+        True
+        sage: perm_are_in_same_orbit(p, 0, 1)
+        False
+    """
+    if i < 0 or j < 0 or i >= len(p) or j >= len(p):
+        raise ValueError("permutation indices out of range")
+
+    if i == j:
+        return True
+    k = p.data.as_ints[i]
+    while k !=i and k != j:
+        k = p.data.as_ints[k]
+    return k == j
 
 
 def perm_orbit_size(array.array p, int i):
