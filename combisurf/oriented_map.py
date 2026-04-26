@@ -1003,8 +1003,15 @@ class OrientedMap:
             return [[]]
         return perm_cycles(self._vp, True)
 
-    def vertex_profile(self):
+    # TODO: to follow sage Graph convention, we may want to use
+    # def vertex_degree(self, h=None)
+    # def face_degree(self, h=None)
+    def vertex_profile(self, sort=False, reverse=True):
         r"""
+        Return the vertex profile of this map.
+
+        The vertex profile is the list of vertex degrees.
+
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
@@ -1013,8 +1020,16 @@ class OrientedMap:
             [2, 4]
             sage: OrientedMap("","").vertex_profile()
             [0]
+
+            sage: OrientedMap("(0,3)(~0,1,~3,~1)").vertex_profile(sort=True, reverse=True)
+            [4, 2]
+            sage: OrientedMap("(0,3)(~0,1,~3,~1)").vertex_profile(sort=True, reverse=False)
+            [2, 4]
         """
-        return [len(v) for v in self.vertices()]
+        profile = [len(v) for v in self.vertices()]
+        if sort:
+            profile.sort(reverse=reverse)
+        return profile
 
     def num_vertices(self):
         r"""
@@ -1055,7 +1070,7 @@ class OrientedMap:
             return [[]]
         return perm_cycles(self._fp, True)
 
-    def face_profile(self):
+    def face_profile(self, sort=False, reverse=True):
         r"""
         Return the face degrees.
 
@@ -1067,8 +1082,21 @@ class OrientedMap:
             [6]
             sage: OrientedMap("").face_profile()
             [0]
+
+        The output is not sorted unless you set ``sort=True``:
+
+            sage: m = OrientedMap(fp="(0,1,2,~0,3)(~1,4,5)(~2,~3,~4,~5)")
+            sage: m.face_profile()
+            [5, 3, 4]
+            sage: m.face_profile(sort=True, reverse=False)
+            [3, 4, 5]
+            sage: m.face_profile(sort=True, reverse=True)
+            [5, 4, 3]
         """
-        return [len(f) for f in self.faces()]
+        profile = [len(f) for f in self.faces()]
+        if sort:
+            profile.sort(reverse=reverse)
+        return profile
 
     def num_faces(self):
         r"""
