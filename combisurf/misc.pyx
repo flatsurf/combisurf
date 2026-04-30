@@ -44,3 +44,27 @@ cpdef Py_hash_t array_hash(int[:] a):
     return acc
 
 
+cpdef str_to_int(c):
+    r"""
+    Return a Python integer corresponding to the string ``c`` possibly starting with ``"~"``
+
+    EXAMPLES::
+
+        sage: from combisurf.misc import str_to_int
+        sage: str_to_int("3")
+        3
+        sage: str_to_int("~2")
+        -3
+    """
+    if not isinstance(c, str):
+        raise TypeError(f"c must be a string (got {type(c).__name__})")
+    if not c:
+        raise ValueError("empty string")
+    if c[0] == "~":
+        c1 = c[1:]
+        if not c1:
+            raise ValueError(f"invalid string c (={c}) to initialize a half-edge")
+        return ~int(c1)
+    elif not c:
+        raise ValueError(f"invalid string c (={c}) to initialize a half-edge")
+    return int(c)

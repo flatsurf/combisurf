@@ -40,6 +40,8 @@ import sage.all
 from sage.misc.prandom import shuffle, randint
 from sage.arith.functions import lcm
 
+from combisurf.misc cimport str_to_int
+
 
 def argmin(l):
     r"""
@@ -265,7 +267,7 @@ def perm_init(data, int n=-1, edge_like=False, partial=False):
                 return array.array('i', [])
         elif isinstance(data[0], (tuple, list)):
             return perm_from_cycles(data, n=n, edge_like=False, partial=partial)
-        elif n == -1 or (len(data) == n):
+        elif n == -1 or len(data) == n:
             return array.array('i', data)
         else:
             raise ValueError("invalid arguments (data={} n={})".format(data, n))
@@ -356,32 +358,6 @@ def perm_from_cycles(t, int n=-1, edge_like=False, partial=False):
     return res
 
 
-def str_to_int(c):
-    r"""
-    Return a Python integer corresponding to the string ``c`` possibly starting with ``"~"``
-
-    EXAMPLES::
-
-        sage: from combisurf.permutation import str_to_int
-        sage: str_to_int("3")
-        3
-        sage: str_to_int("~2")
-        -3
-    """
-    if not isinstance(c, str):
-        raise TypeError(f"c must be a string (got {type(c).__name__})")
-    if not c:
-        raise ValueError("empty string")
-    if c[0] == "~":
-        c1 = c[1:]
-        if not c1:
-            raise ValueError(f"invalid string c (={c}) to initialize a half-edge")
-        return ~int(c1)
-    elif not c:
-        raise ValueError(f"invalid string c (={c}) to initialize a half-edge")
-    return int(c)
-
-
 def str_to_cycles(s):
     """
     Return a list of cycles from a string.
@@ -404,7 +380,7 @@ def str_to_cycles(s):
         return r
     if not s.startswith("(") or not s.endswith(")"):
         raise ValueError("invalid string to initialize a permutation")
-    for c_str in s[1:-1].split(")("):
+    for c_str in s[1:len(s)-1].split(")("):
         if not c_str:
             continue
         r.append([str_to_int(c) for c in c_str.replace(' ', '').split(',')])

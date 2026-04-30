@@ -1,5 +1,9 @@
 r"""
 Word on non-negative integers and free group elements
+
+The alphabet is always the non-negative integers. For words seen
+as free group element, the letter `i ^ 1` is the inverse of `i`
+(that is `2i` and `2i+1` are inverses of each other).
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -23,12 +27,68 @@ Word on non-negative integers and free group elements
 
 from cpython cimport array
 
+from combisurf.misc cimport str_to_int
 
-def word_init(w):
-    pass
 
-def fg_word_init(w):
-    pass
+def word_init(data):
+    r"""
+    Initialize a word from ``data``.
+
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init
+        sage: word_init([0, 1, 3, 2, 1])
+        array('i', [0, 1, 3, 2, 1])
+        sage: word_init("0,1,~2,~0")
+        array('i', [0, 2, 5, 1])
+    """
+    if isinstance(data, str):
+        data = data.replace(' ', '')
+        if data.startswith('(') or data.startswith('['):
+            data = data[1:]
+        if data.endswith(')') or data.endswith(')'):
+            data = data[:len(data)-1]
+        data = [str_to_int(x) for x in data.split(',')]
+        data = [2 * x if x >= 0 else (2 * ~x + 1) for x in data]
+
+    if isinstance(data, (array.array, tuple, list)):
+        return array.array('i', data)
+    else:
+        raise TypeError("invalid argument")
+
+
+def word_string(array.array w, edge_like=False, separator=', ', opening='[', closing=']'):
+    r"""
+    Return a string representing ``w``.
+
+    INPUT:
+
+    - ``edge_like`` -- (boolean, default ``False``) whether to print as
+      half-edges and inverses
+
+    - ``separator`` -- (str, default ``', '``) the string used to separate the elements
+      in ``w``
+
+    - ``opening`` -- (str, default ``'['``) the string used at the start
+
+    - ``closing`` -- (str, default ``']'``) the string used at the end
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.word import word_init, word_string
+        sage: w = word_init([0, 3, 1, 2])
+        sage: word_string(w)
+        '[0, 3, 1, 2]'
+        sage: word_string(w, edge_like=True, separator=':', opening='', closing='')
+        '0:~1:~0:1'
+    """
+    if edge_like:
+        elt = lambda e: ('~%d' % (e // 2)) if e % 2 else '%d' % (e // 2)
+    else:
+        elt = str
+
+    return opening + separator.join(map(elt, w)) + closing
 
 
 def fg_word_is_reduced(array.array w):
@@ -37,9 +97,12 @@ def fg_word_is_reduced(array.array w):
 
     EXAMPLES::
 
-        sage: word_is_reduced([0])
+        sage: from array import array
+        sage: from combisurf.word import fg_word_is_reduced
+
+        sage: fg_word_is_reduced(array('i', [0]))
         True
-        sage: word_is_reduced([0, 1])
+        sage: fg_word_is_reduced(array('i', [0, 1]))
         False
     """
     if len(w) <= 1:
@@ -59,7 +122,8 @@ def fg_word_is_cyclically_reduced(array.array w):
 
     EXAMPLES::
 
-        sage: from combisurf.free_group import word_is_cyclically_reduced
+        sage: from array import array
+        sage: from combisurf.word import fg_word_is_cyclically_reduced
     """
     if len(w) <= 1:
         return True
