@@ -128,21 +128,20 @@ class Walk:
         
             sage: from combisurf import OrientedMap, QuadSystem, Geodesic, Walk
             sage: m = OrientedMap(vp=[[0, 2, 4, 6],[7, 8, 5], [9, 10, 12, 11], [3, 15, 1, 13, 14]])
-            sage: Q = QuadSystem(m)
-            sage: w1 = Walk(Q, [])
-            sage: w2 = Walk(Q, [4, 8, 11, 9, 7])
-            sage: w3 = Walk(Q, [6, 5])
+            sage: w1 = Walk(m, [])
+            sage: w2 = Walk(m, [4, 8, 11, 9, 7])
+            sage: w3 = Walk(m, [6, 5])
             sage: w1.is_homotopic(w2)
             True
             sage: w1.is_homotopic(w3)
             False
-            sage: w4 = Walk(Q, [6, 8, 11, 9, 7])
-            sage: w5 = Walk(Q, [2, 15])
+            sage: w4 = Walk(m, [6, 8, 11, 9, 7])
+            sage: w5 = Walk(m, [2, 15])
             sage: w3.is_homotopic(w4)
             True
             sage: w3.is_homotopic(w5)
             False
-            sage: w6 = Walk(Q, [11])
+            sage: w6 = Walk(m, [11])
             sage: w3.is_homotopic(w6)
             True
 
@@ -169,7 +168,7 @@ class Walk:
         
         if not self._walk:
             return True
-        elif len(self._walk)==2 and oriented_map._ep(self._walk[0]) == self._walk[1]:
+        elif len(self._walk)==2 and self._oriented_map._ep(self._walk[0]) == self._walk[1]:
             return False
         if quad_system is None:
             quad_system = QuadSystem(self._oriented_map)
