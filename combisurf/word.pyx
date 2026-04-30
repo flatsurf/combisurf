@@ -92,7 +92,7 @@ def fg_word_mul(array.array u, array.array v):
     """
     cdef int i = len(u) - 1
     cdef int j = 0
-    while i >= 0 and j < len(v) and (u.data.as_ints[i] % 2 == v.data.as_ints[j] % 2 and u.data.as_ints[i] != v.data.as_ints[j]):
+    while i >= 0 and j < len(v) and (u.data.as_ints[i] ^ 1 == v.data.as_ints[j]):
         i -= 1
         j += 1
     return u[:i+1] + v[j:]
