@@ -4,7 +4,7 @@ Geometric intersection of arcs and geodesics on punctured and closed surfaces
 
 from array import array
 
-from combisurf.free_group import word_is_cyclically_reduced, word_inverse
+from combisurf.word import fg_word_is_cyclically_reduced, fg_word_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
 
@@ -81,7 +81,7 @@ class GeometricIntersection:
         for i, w in enumerate(words):
             if not isinstance(w, array):
                 w = array('i', w)
-            if check and not word_is_cyclically_reduced(w):
+            if check and not fg_word_is_cyclically_reduced(w):
                 raise ValueError
             ans = T.process(list(w))
             if ans <= 0:
@@ -119,7 +119,7 @@ class GeometricIntersection:
 
         n = len(words)
         words = [array('i', w) for w in words]
-        words_with_inverse = list(words) + [word_inverse(w) for w in words]
+        words_with_inverse = list(words) + [fg_word_inverse(w) for w in words]
         l = sum(len(w) for w in words_with_inverse)
         print(f"words_with_inverse={words_with_inverse}")
         colors = rainbow(n, 'rgbtuple')
@@ -177,12 +177,12 @@ class GeometricIntersection:
         """
         if not isinstance(u, array):
             u = array('i', u)
-        U = word_inverse(u)
+        U = fg_word_inverse(u)
         words = [u, U]
         if v is not None:
             if not isinstance(v, array):
                 v = array('i', v)
-            V = word_inverse(v)
+            V = fg_word_inverse(v)
             words.append(v)
             words.append(V)
         word_indices, word_shifts = self.conjugate_sort(words)

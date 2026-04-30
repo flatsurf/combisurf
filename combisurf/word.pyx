@@ -1,12 +1,10 @@
 r"""
-Free group
+Word on non-negative integers and free group elements
 """
 # ****************************************************************************
 #  This file is part of combisurf
 #
-#       Copyright (C) 2018 Mark Bell
-#                     2018-2026 Vincent Delecroix
-#                     2018 Saul Schleimer
+#       Copyright (C) 2026 Vincent Delecroix
 #
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -23,13 +21,19 @@ Free group
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
-
-
 from cpython cimport array
 
-def word_is_reduced(w):
+
+def word_init(w):
+    pass
+
+def fg_word_init(w):
+    pass
+
+
+def fg_word_is_reduced(array.array w):
     r"""
-    Return whether the word ``w`` is reduced.
+    Return whether the free group word ``w`` is reduced.
 
     EXAMPLES::
 
@@ -49,8 +53,10 @@ def word_is_reduced(w):
     return True
 
 
-def word_is_cyclically_reduced(array.array w):
+def fg_word_is_cyclically_reduced(array.array w):
     r"""
+    Return whether the free group word ``w`` is cyclically reduced.
+
     EXAMPLES::
 
         sage: from combisurf.free_group import word_is_cyclically_reduced
@@ -66,7 +72,7 @@ def word_is_cyclically_reduced(array.array w):
     return w.data.as_ints[0] ^ 1 != w.data.as_ints[len(w) - 1]
 
 
-def word_reduce(array.array w):
+def fg_word_reduce(array.array w):
     if len(w) <= 1:
         return w
     cdef int i = 1
@@ -80,19 +86,19 @@ def word_reduce(array.array w):
     return ans
 
 
-def word_mul(array.array u, array.array v):
+def fg_word_mul(array.array u, array.array v):
     r"""
     Return the multiplication of the reduced words ``u`` and ``v``.
     """
     cdef int i = len(u) - 1
     cdef int j = 0
-    while i >= 0 and j < len(v) and (u.data_as_ints[i] % 2 == v.data_as_ints[j] % 2 and u.data.as_ints[i] != v.data_as_ints[j]):
+    while i >= 0 and j < len(v) and (u.data.as_ints[i] % 2 == v.data.as_ints[j] % 2 and u.data.as_ints[i] != v.data.as_ints[j]):
         i -= 1
         j += 1
     return u[:i+1] + v[j:]
 
 
-def word_inverse(array.array w):
+def fg_word_inverse(array.array w):
     ans = array.clone(w, len(w), False)
     cdef int i
     for i in range(len(w)):

@@ -36,13 +36,14 @@ from array import array
 
 from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
 
+from combisurf.misc import array_hash
 from combisurf.permutation import (perm_init, perm_check, perm_cycles, perm_on_array, perm_on_edge_array,
                           perm_invert, perm_conjugate, perm_conjugate_transposition_inplace, perm_cycle_string, perm_cycles_lengths,
                           perm_cycles_to_string, perm_on_list, perm_on_edge_list, perm_cycle_type,
                           perm_num_cycles, str_to_cycles, str_to_cycles_and_data, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
                           perm_orbit, perm_orbit_size,
-                          perms_are_transitive, perms_orbits, perm_edge_orbits, edge_relabelling_from, array_hash)
+                          perms_are_transitive, perms_orbits, perm_edge_orbits, edge_relabelling_from)
 
 
 def check_relabelling(arg, ne):

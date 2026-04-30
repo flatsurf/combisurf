@@ -41,32 +41,6 @@ from sage.misc.prandom import shuffle, randint
 from sage.arith.functions import lcm
 
 
-cpdef Py_hash_t array_hash(int[:] a):
-    cdef Py_hash_t acc
-
-    cdef Py_hash_t _PyTuple_HASH_XXPRIME_1 = <Py_hash_t>11400714785074694791ULL
-    cdef Py_hash_t _PyTuple_HASH_XXPRIME_2 = <Py_hash_t>14029467366897019727ULL
-    cdef Py_hash_t _PyTuple_HASH_XXPRIME_5 = <Py_hash_t>2870177450012600261ULL
-
-    cdef Py_ssize_t lane
-    cdef Py_ssize_t l = len(a)
-    cdef Py_ssize_t i
-
-    acc = _PyTuple_HASH_XXPRIME_5;
-    for i in range(l):
-        lane = a[i]
-        acc += lane * _PyTuple_HASH_XXPRIME_2
-        acc = ((acc << 31) | (acc >> 33))
-        acc *= _PyTuple_HASH_XXPRIME_1
-
-    acc += l ^ (_PyTuple_HASH_XXPRIME_5 ^ 3527539UL)
-
-    if acc == <Py_hash_t> - 1:
-        acc = 1546275796
-
-    return acc
-
-
 def argmin(l):
     r"""
     Return the position of the minimal element in the list ``l``.
