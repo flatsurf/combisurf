@@ -1,7 +1,7 @@
 r"""
 Homotopy test on maps
 
-This module introduced three classes: :class:`QuadSystems`, :class:`Geodesic` and :class:`Walk`.
+This module introduced two classes: :class:`QuadSystem` and :class:`Geodesic`.
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -316,44 +316,6 @@ def bracket_removal_left(Q, geo, s, positive, length, d):
         turn_add_left(s, 2, length)
 
 
-def test_KMP(u, v):
-    r"""
-    Test if u is a subword of v in O(|u|+|v|).
-    """
-    if len(u) == 0:
-        return True
-    elif len(v) == 0:
-        return False
-    cnd = 0
-    T = [-1]
-    for i in range(1, len(u)):
-        if u[i] == u[cnd]:
-            T.append(u[cnd])
-        else:
-            T.append(cnd)
-            while cnd>=0 and u[i] == u[cnd]:
-                cnd = T[cnd]
-            cnd += 1
-    j = 0
-    k = 0
-    res = False
-    while j < len(v) and not res:
-        if u[k] == v[j]:
-            j += 1
-            k += 1
-            if k == len(u):
-                res = True
-        else:
-            k = T[k]
-            if k == -1:
-                k += 1
-                j += 1
-    return res
-
-
-
-
-
 class QuadSystem:
 
     #TODO : Documentation
@@ -364,7 +326,7 @@ class QuadSystem:
             _origin_map: the original OrientedMap
             _genus: the genus of the underlying surface
             _quad: the quad system
-            _proj: the projection from _origin_map half-edges to path of length 2 of _quad
+            _proj: the projection from _origin_map half-edges to path of length 0 or 2 of _quad
             _turn: a list of edges that gives a coefficient to each half-edge around each vertex corresponding at the turn
         """
 
@@ -460,6 +422,19 @@ class QuadSystem:
             return nl2 - nl1
         else:
             return 4 * self._genus + nl2 - nl1
+
+
+    def rotate_list(self):
+        res = []
+        d = 4 * self._genus
+        for h in self._quad.half_edges():
+            res.append([])
+            current = h
+            for _ in range(d):
+                res[h].append(current)
+                current = self._quad._vp[current]
+        return res
+            
 
 
 
@@ -1010,6 +985,8 @@ class Geodesic:
                                 turn_add(s, d - 1, 1)
                             turn_add(s, d - 2, n1 - 1)
                             l = deque([])
+                            e = geo[1]
+                            e1 = Q._ep(e)
                             for j in range(n2):
                                 e = geo[1 + j]
                                 e1 = Q._ep(e)
@@ -1059,68 +1036,6 @@ class Geodesic:
                 first_turn = t1
                 if n1 != 1:
                     s.append((t1, n1 - 1))
-
-
-
-
-class Walk:
-
-    # TODO : Documentation + Change name ?
-
-    def __init__(self, Q, walk):
-        r"""
-        Methods:
-            _quadsystem: the underlying quad system
-            _walk: the walk in the original OrientedMap
-            _geodesic: the canonical geodesic representative of walk
-        """
-
-        self._quadsystem = Q
-        self._walk = walk
-        self._geodesic = Geodesic(Q)
-        for e in self._walk:
-            for f in Q._proj[e]:
-                self._geodesic.add_edge(f)
-        self._geodesic.canonical()
-
-    def __eq__(self, other):
-        return (self._quadsystem == other._quadsystem) and (self._walk == other._walk)
-
-    def is_homotopic(self, other):
-        r"""
-        Return whether self and other are freely homotopic.
-        
-        EXAMPLES::
-        
-            sage: from combisurf import OrientedMap, QuadSystem, Geodesic, Walk
-            sage: m = OrientedMap(vp=[[0, 2, 4, 6],[7, 8, 5], [9, 10, 12, 11], [3, 15, 1, 13, 14]])
-            sage: Q = QuadSystem(m)
-            sage: w1 = Walk(Q, [])
-            sage: w2 = Walk(Q, [4, 8, 11, 9, 7])
-            sage: w3 = Walk(Q, [6, 5])
-            sage: w1.is_homotopic(w2)
-            True
-            sage: w1.is_homotopic(w3)
-            False
-            sage: w4 = Walk(Q, [6, 8, 11, 9, 7])
-            sage: w5 = Walk(Q, [2, 15])
-            sage: w3.is_homotopic(w4)
-            True
-            sage: w3.is_homotopic(w5)
-            False
-            sage: w6 = Walk(Q, [11])
-            sage: w3.is_homotopic(w6)
-            True
-
-        """
-        if self._quadsystem != other._quadsystem:
-            raise ValueError("The quadsystems are different")
-        if len(self._geodesic) != len(other._geodesic):
-            return False
-
-        c = self._geodesic._geodesic.copy()
-        c.extend(c)
-        return test_KMP(other._geodesic._geodesic, c)
 
 
 
@@ -1350,3 +1265,92 @@ class LazyGeodesic:
             else:
                 self._first = e
                 turn_add_left(self._turn_sequence, newturn, 1)
+
+
+class StarShapedSpace:
+
+    # TODO
+
+    def __init__(self, Q, root):
+
+        self._vertices = [root] # the projection of each vertex of the StarShapedSpace into the quadsystem
+        self._quadsystem = Q # the underlying quadsystem
+        self._inedges = [{}] # for each vertex a dictionnary containing the entering edges
+        self._outedges = [[]] # for each vertex the list of (at most 2) outedges
+        self._rotate_list = Q.rotate_list() 
+
+    
+    def add_vertex(self, vertex):
+        
+        self._vertices.append(vertex)
+        self._inedges.append({})
+        self._outedges.append([])
+        return len(self._vertices) - 1
+
+    
+    def add_edge(self, vertex1, vertex2, edge):
+        r"""
+        Add an edge from vertex1 to vertex2 that project to edge
+        """
+        Q = self._quadsystem
+        if not self.contains_edge(vertex1, edge):
+            self._outedges[vertex1].append((edge, vertex2))
+        if not self.contains_edge(vertex2, Q._quad._ep(edge)):
+            self._inedges[vertex2][Q._quad._ep(edge)] = vertex1
+
+
+    def contains_edge(self, vertex, edge):
+        
+        result = False
+        for elt in self._outedges[vertex]:
+            if elt[0] == edge:
+                result = True
+        return result or (not self._inedges[vertex].get(edge) is None)
+            
+
+    def opposite_vertex(self, vertex, edge):
+        for elt in self._outedges[vertex]:
+            if elt[0] == edge:
+                return elt[1]
+        for elt in self._inedges[vertex]:
+            if elt == edge:
+                return self._inedges[vertex][elt]
+        raise ValueError("There is no such edge")
+
+        
+    def rotate(self, vertex, edge, turn):
+        if self.contains_edge(vertex, edge):
+            return self._rotate_list[edge][turn]
+        else:
+            raise ValueError("There is no such edge")
+
+    def turn(self, vertex, edge):
+        turn = None
+        out_edge = None
+        Q = self._quadsystem
+        d = 4 * Q._genus
+        for elt in self._outedges[vertex]:
+            newturn = Q.turn(edge, elt[0])
+            if newturn > d//2:
+                newturn = newturn - d
+            if turn == None or (abs(turn) > abs(newturn)):
+                turn = newturn
+                out_edge = elt[0]
+        return turn, out_edge
+
+
+    def insert_edge(self, vertex, edge):  
+        if self.contains_edge(vertex, edge):
+            return self.opposite_vertex(vertex, edge)
+        turn, out_edge = self.turn(vertex, edge)
+        opposite_edge = self._quadsystem._quad._ep(edge)
+        new_vertex = self.add_vertex(opposite_edge%2)
+        if turn != None and abs(turn) == 1:
+            old_vertex = self.opposite_vertex(vertex, out_edge)
+            new_edge = self._rotate_list[out_edge][-turn]
+            self.insert_edge(old_vertex, new_edge)
+            square_vertex = self.opposite_vertex(old_vertex, new_edge)
+            square_edge = self.rotate(square_vertex, self._quadsystem._quad._ep(new_edge), -turn)
+            self.add_edge(new_vertex, square_vertex, self._quadsystem._quad._ep(square_edge))
+        self.add_edge(vertex, new_vertex, edge)
+        return new_vertex
