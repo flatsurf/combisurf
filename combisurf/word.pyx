@@ -30,7 +30,7 @@ from cpython cimport array
 from combisurf.misc cimport str_to_int
 
 
-def word_init(data):
+def word_init(data=None):
     r"""
     Initialize a word from ``data``.
 
@@ -41,7 +41,15 @@ def word_init(data):
         array('i', [0, 1, 3, 2, 1])
         sage: word_init("0,1,~2,~0")
         array('i', [0, 2, 5, 1])
+
+    With no argument, returns the empty word::
+
+        sage: word_init()
+        array('i')
     """
+    if data is None:
+        return array.array('i')
+
     if isinstance(data, str):
         data = data.replace(' ', '')
         if data.startswith('(') or data.startswith('['):
@@ -75,7 +83,6 @@ def word_string(array.array w, edge_like=False, separator=', ', opening='[', clo
 
     EXAMPLES::
 
-        sage: from array import array
         sage: from combisurf.word import word_init, word_string
         sage: w = word_init([0, 3, 1, 2])
         sage: word_string(w)
@@ -97,13 +104,14 @@ def fg_word_is_reduced(array.array w):
 
     EXAMPLES::
 
-        sage: from array import array
-        sage: from combisurf.word import fg_word_is_reduced
+        sage: from combisurf.word import word_init, fg_word_is_reduced
 
-        sage: fg_word_is_reduced(array('i', [0]))
+        sage: fg_word_is_reduced(word_init([0]))
         True
-        sage: fg_word_is_reduced(array('i', [0, 1]))
+        sage: fg_word_is_reduced(word_init([0, 1]))
         False
+        sage: fg_word_is_reduced(word_init([0, 2, 1]))
+        True
     """
     if len(w) <= 1:
         return True
@@ -122,8 +130,14 @@ def fg_word_is_cyclically_reduced(array.array w):
 
     EXAMPLES::
 
-        sage: from array import array
-        sage: from combisurf.word import fg_word_is_cyclically_reduced
+        sage: from combisurf.word import word_init, fg_word_is_cyclically_reduced
+
+        sage: fg_word_is_cyclically_reduced(word_init([0]))
+        True
+        sage: fg_word_is_cyclically_reduced(word_init([0, 2, 3, 0]))
+        False
+        sage: fg_word_is_cyclically_reduced(word_init([0, 2, 1]))
+        False
     """
     if len(w) <= 1:
         return True
@@ -137,6 +151,23 @@ def fg_word_is_cyclically_reduced(array.array w):
 
 
 def fg_word_reduce(array.array w):
+    r"""
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init, fg_word_reduce
+        sage: w = word_init([0, 0, 2, 1, 1])
+        sage: fg_word_reduce(w)
+        array('i', [0, 0, 2, 1, 1])
+        sage: w = word_init([0, 0, 2, 3, 1, 1])
+        sage: fg_word_reduce(w)
+        array('i')
+        sage: w = word_init([0, 0, 1])
+        sage: fg_word_reduce(w)
+        array('i', [0])
+        sage: w = word_init([0, 2, 1, 0, 3, 1])
+        sage: fg_word_reduce(w)
+        array('i')
+    """
     if len(w) <= 1:
         return w
     cdef int i = 1
@@ -150,9 +181,46 @@ def fg_word_reduce(array.array w):
     return ans
 
 
+def fg_word_cyclically_reduce(array.array w):
+    r"""
+    Return a cyclic reduction of ``w`` in the free group.
+
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init, fg_word_cyclically_reduce
+        sage: w = word_init([0, 0, 2, 1, 1])
+        sage: fg_word_cyclically_reduce(w)
+        array('i', [2])
+        sage: w = word_init([0, 0, 1])
+        sage: fg_word_cyclically_reduce(w)
+        array('i', [0])
+        sage: w = word_init([0, 2, 0, 1, 0, 3, 1])
+        sage: fg_word_cyclically_reduce(w)
+        array('i', [0])
+    """
+    if len(w) <= 1:
+        return w
+    ans = fg_word_reduce(w)
+    i = 0
+    while i < len(w) and ans[i] ^ 1 == ans[len(ans) - i - 1]:
+        i += 1
+    return ans[i:len(ans) - i]
+
+
 def fg_word_mul(array.array u, array.array v):
     r"""
-    Return the multiplication of the reduced words ``u`` and ``v``.
+    Return the multiplication of the words ``u`` and ``v`` in the free group.
+
+    This is an enhanced version of concatenation where the output is reduced
+    whenever both inputs ``u`` and ``v`` are.
+
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init, fg_word_mul
+        sage: u = word_init([0, 2, 1])
+        sage: v = word_init([0, 0])
+        sage: fg_word_mul(u, v)
+        array('i', [0, 2, 0])
     """
     cdef int i = len(u) - 1
     cdef int j = 0
@@ -163,10 +231,20 @@ def fg_word_mul(array.array u, array.array v):
 
 
 def fg_word_inverse(array.array w):
+    r"""
+    Return the inverse of ``w`` in the free group.
+
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init, fg_word_inverse
+        sage: u = word_init([0, 2, 1, 3])
+        sage: fg_word_inverse(u)
+        array('i', [2, 0, 3, 1])
+        sage: fg_word_inverse(word_init())
+        array('i')
+    """
     ans = array.clone(w, len(w), False)
     cdef int i
     for i in range(len(w)):
         ans[i] = w[len(w) - i - 1] ^ 1
     return ans
-
-
