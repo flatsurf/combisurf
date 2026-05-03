@@ -16,9 +16,7 @@ TODO:
 # ****************************************************************************
 #  This file is part of combisurf
 #
-#       Copyright (C) 2018 Mark Bell
-#                     2018-2026 Vincent Delecroix
-#                     2018 Saul Schleimer
+#       Copyright (C) 2026 Vincent Delecroix
 #
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -42,31 +40,7 @@ import sage.all
 from sage.misc.prandom import shuffle, randint
 from sage.arith.functions import lcm
 
-
-cpdef Py_hash_t array_hash(int[:] a):
-    cdef Py_hash_t acc
-
-    cdef Py_hash_t _PyTuple_HASH_XXPRIME_1 = <Py_hash_t>11400714785074694791ULL
-    cdef Py_hash_t _PyTuple_HASH_XXPRIME_2 = <Py_hash_t>14029467366897019727ULL
-    cdef Py_hash_t _PyTuple_HASH_XXPRIME_5 = <Py_hash_t>2870177450012600261ULL
-
-    cdef Py_ssize_t lane
-    cdef Py_ssize_t l = len(a)
-    cdef Py_ssize_t i
-
-    acc = _PyTuple_HASH_XXPRIME_5;
-    for i in range(l):
-        lane = a[i]
-        acc += lane * _PyTuple_HASH_XXPRIME_2
-        acc = ((acc << 31) | (acc >> 33))
-        acc *= _PyTuple_HASH_XXPRIME_1
-
-    acc += l ^ (_PyTuple_HASH_XXPRIME_5 ^ 3527539UL)
-
-    if acc == <Py_hash_t> - 1:
-        acc = 1546275796
-
-    return acc
+from combisurf.misc cimport str_to_int
 
 
 def argmin(l):
@@ -293,7 +267,7 @@ def perm_init(data, int n=-1, edge_like=False, partial=False):
                 return array.array('i', [])
         elif isinstance(data[0], (tuple, list)):
             return perm_from_cycles(data, n=n, edge_like=False, partial=partial)
-        elif n == -1 or (len(data) == n):
+        elif n == -1 or len(data) == n:
             return array.array('i', data)
         else:
             raise ValueError("invalid arguments (data={} n={})".format(data, n))
@@ -384,32 +358,6 @@ def perm_from_cycles(t, int n=-1, edge_like=False, partial=False):
     return res
 
 
-def str_to_int(c):
-    r"""
-    Return a Python integer corresponding to the string ``c`` possibly starting with ``"~"``
-
-    EXAMPLES::
-
-        sage: from combisurf.permutation import str_to_int
-        sage: str_to_int("3")
-        3
-        sage: str_to_int("~2")
-        -3
-    """
-    if not isinstance(c, str):
-        raise TypeError(f"c must be a string (got {type(c).__name__})")
-    if not c:
-        raise ValueError("empty string")
-    if c[0] == "~":
-        c1 = c[1:]
-        if not c1:
-            raise ValueError(f"invalid string c (={c}) to initialize a half-edge")
-        return ~int(c1)
-    elif not c:
-        raise ValueError(f"invalid string c (={c}) to initialize a half-edge")
-    return int(c)
-
-
 def str_to_cycles(s):
     """
     Return a list of cycles from a string.
@@ -428,7 +376,11 @@ def str_to_cycles(s):
     if not isinstance(s, str):
         raise TypeError(f"s must be a string (got {type(s).__name__})")
     r = []
-    for c_str in s[1:-1].split(')('):
+    if not s:
+        return r
+    if not s.startswith("(") or not s.endswith(")"):
+        raise ValueError("invalid string to initialize a permutation")
+    for c_str in s[1:len(s)-1].split(")("):
         if not c_str:
             continue
         r.append([str_to_int(c) for c in c_str.replace(' ', '').split(',')])
@@ -1025,6 +977,33 @@ def perm_orbit(array.array p, int i):
         res.append(j)
         j = p.data.as_ints[j]
     return res
+
+
+def perm_are_in_same_orbit(array.array p, int i, int j):
+    r"""
+    Return whether ``i`` and ``j`` belong to the same orbit of the permutation ``p``.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.permutation import perm_are_in_same_orbit
+
+
+        sage: p = array('i', [5, 3, 0, 4, 6, 2, 1])
+        sage: perm_are_in_same_orbit(p, 0, 0)
+        True
+        sage: perm_are_in_same_orbit(p, 0, 1)
+        False
+    """
+    if i < 0 or j < 0 or i >= len(p) or j >= len(p):
+        raise ValueError("permutation indices out of range")
+
+    if i == j:
+        return True
+    k = p.data.as_ints[i]
+    while k !=i and k != j:
+        k = p.data.as_ints[k]
+    return k == j
 
 
 def perm_orbit_size(array.array p, int i):
