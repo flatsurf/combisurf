@@ -30,6 +30,35 @@ from cpython cimport array
 from combisurf.misc cimport str_to_int
 
 
+def word_check(w):
+    r"""
+    Check that ``w`` is a valid word.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.word import word_check
+
+        sage: word_check(array('i', []))
+        True
+        sage: word_check(array('u', []))
+        False
+        sage: word_check(array('i', [0]))
+        True
+        sage: word_check(array('i', [-1]))
+        False
+        sage: word_check("")
+        False
+    """
+    if not isinstance(w, array.array):
+        return False
+    if w.typecode != 'i':
+        return False
+    if any(x < 0 for x in w):
+        return False
+    return True
+
+
 def word_init(data=None):
     r"""
     Initialize a word from ``data``.
@@ -197,12 +226,14 @@ def fg_word_cyclically_reduce(array.array w):
         sage: w = word_init([0, 2, 0, 1, 0, 3, 1])
         sage: fg_word_cyclically_reduce(w)
         array('i', [0])
+        sage: fg_word_cyclically_reduce(word_init())
+        array('i')
     """
     if len(w) <= 1:
         return w
     ans = fg_word_reduce(w)
     i = 0
-    while i < len(w) and ans[i] ^ 1 == ans[len(ans) - i - 1]:
+    while i < len(ans) and ans[i] ^ 1 == ans[len(ans) - i - 1]:
         i += 1
     return ans[i:len(ans) - i]
 
