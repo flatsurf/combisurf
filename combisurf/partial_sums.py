@@ -1,13 +1,15 @@
 r"""
 Data structure for efficient consecutive partial sums
 
-We have a vector v of size 2^n on which we consider two kinds of operations
+We consider a vector v of fixed size n on which we allow two operations
 - updates of the form v[i] += x
-- computation of the partial sums sum(v[:i])
+- computation of the partial sum sum(v[i:j])
 
-Doing it the naive way, the first operation costs O(1) arithmetic step and the
-second O(2^n) arithmetic steps. We implement a data structure that do both in
-O(n) time.
+Taking a plain array for implenting the above leads to O(1) arithmetic cost
+for updates and O(n) for partial sums. This direct approach is in
+:class:`PartialSumsNaive`. The :class:`PartialSumsBinarySplitting`
+implement a data structure that do both updates and partial sums in O(\log(n))
+time.
 """
 
 from sage.rings.integer_ring import ZZ
@@ -15,10 +17,13 @@ from sage.rings.integer_ring import ZZ
 
 class PartialSumsNaive:
     r"""
-    Update in O(1) and partial sum in O(n)
+    Update in O(1) and partial sum in O(n).
     """
     def __init__(self, n):
         self._values = [0] * n
+
+    def __repr__(self):
+        return f"PartialSumsNaive({self._values})"
 
     def reset(self):
         r"""
@@ -42,7 +47,7 @@ class PartialSumsNaive:
 
 class PartialSumsBinarySplitting:
     r"""
-    Update and partial sums in O(log(n))
+    Update and partial sums in O(log(n)).
 
     Given n=2^b, we store the 2^{b+1} - 1 partial sums [a2^l, (a+1)2^l) for l in {0,1,\ldots,b-1}.
     We store these partial sums on a plain list and the tree structure is implicit.
@@ -53,6 +58,10 @@ class PartialSumsBinarySplitting:
             raise ValueError("n must be a positive integer")
         self._b = ZZ(n - 1).nbits()
         self._values = [0] * (2 ** (self._b + 1))
+
+    def __repr__(self):
+        m = 1 << self._b
+        return f"PartialSumsBinarySplitting({[self._values[m + i] for i in range(m)]})"
 
     def reset(self):
         r"""
