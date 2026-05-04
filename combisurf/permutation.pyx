@@ -165,7 +165,7 @@ def perm_check(l, int n=-1, involution=None):
         sage: perm_check(array('i', [1,0,2]), involution=array('i', [2,1,0]))
         False
     """
-    if not isinstance(l, array.array):
+    if not isinstance(l, array.array) or l.typecode != 'i':
         return False
     if n == -1:
         n = len(l)
