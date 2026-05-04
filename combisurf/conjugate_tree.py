@@ -54,7 +54,9 @@ Which means that the leaf index ``6`` coressponds to the word number ``1``
 (ie ``[0, 1, 0, 0, 1]``) shifted twice.
 """
 
-# TODO: leaves should never be modified
+from combisurf.word import word_check, word_init
+
+
 VERBOSE = False
 INDENT = 0
 class ConjugateTree:
@@ -72,13 +74,18 @@ class ConjugateTree:
     - ``_words`` -- the list of (non-pairwise conjugate) primitive words that
       define this conjugate tree. This list might be updated when
       :meth:`process` is called
+
     - ``_depth`` -- list of depths of states
+
     - ``_transitions`` -- list of dictionaries that store children of each
       node. The keys are the first letter of the transition label and values are
       the target nodes.
+
     - ``_suffix_link`` -- pointer from internal states different from the root
       to their suffix obtained by removing the first letter
+
     - ``_ancestor`` -- list of ancestors
+
     - ``_transition_word``, ``_transition_start``, ``_transition_end`` -- lists
       that encode the information on a transition to a node ``s``. The
       associated variables are often denoted ``i``, ``k`` and ``p`` in the
@@ -114,7 +121,7 @@ class ConjugateTree:
             sage: T.process([0,1,0,1,1])
             1
             sage: T.words()
-            [[0, 1], [0, 1, 0, 0, 1], [0, 1, 0, 1, 1]]
+            [array('i', [0, 1]), array('i', [0, 1, 0, 0, 1]), array('i', [0, 1, 0, 1, 1])]
         """
         return [w[:] for w in self._words]
 
@@ -318,7 +325,7 @@ class ConjugateTree:
 
         Note that any further call to :meth:`process` might change the
         structure of the tree but not the word encoded by a given state. In
-        particular, leaves remain leaves.
+        particular, leaves remain leaves after an update.
 
         TESTS::
 
@@ -333,6 +340,38 @@ class ConjugateTree:
             5
         """
         return [s for s in range(1, self.num_states()) if not self._transitions[s]]
+
+    def cyclically_sorted_leaves(self, angles):
+        r"""
+        Return the leaves sorted using a cyclic ordering of the alphabet given by ``angles``.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree import ConjugateTree
+
+            sage: T = ConjugateTree()
+            sage: T.process([0,1,1])
+            1
+            sage: T.process([0,1])
+            1
+            sage: T.cyclically_sorted_leaves([0, 1])
+            [6, 1, 8, 4, 2]
+        """
+        n = len(angles)
+        leaves = []
+        queue = [self._transitions[0][letter] for letter in sorted(self._transitions[0], key = lambda letter: angles[letter], reverse=True)]
+        while queue:
+            s = queue.pop()
+            if self._transition_end[s] == -1:
+                leaves.append(s)
+            else:
+                i = self._transition_word[s]
+                p = self._transition_end[s]
+                last_letter = self._letter(i, p - 1) ^ 1
+                transitions = sorted(self._transitions[s], key = lambda letter: (angles[letter] - angles[last_letter]) %  n, reverse=True)
+                queue.extend(self._transitions[s][letter] for letter in transitions)
+
+        return leaves
 
     def graph(self):
         G = DiGraph(self.num_states(), loops=False, multiedges=False)
@@ -364,6 +403,8 @@ class ConjugateTree:
         return n
 
     def _check(self):
+        for w in self._words:
+            assert word_check(w)
         n = len(self._transitions)
         assert len(self._suffix_link) == n
         assert len(self._ancestor) == n
@@ -643,7 +684,7 @@ class ConjugateTree:
         self._max_read[i] = max(self._max_read[i], k)
         return self._words[i][k % len(self._words[i])]
 
-    def process(self, w, check=False):
+    def process(self, w, check=True, hard_check=False):
         r"""
         Add the word ``w`` in this conjugate tree.
 
@@ -660,7 +701,10 @@ class ConjugateTree:
           ``index`` is the index of the leaf corresponding to ``w`` in this
           conjugate tree
         """
-        w = list(map(int, w))
+        if not w:
+            raise ValueError("empty word in input")
+        if check:
+            w = word_init(w)
         for letter in w:
             if letter < 0:
                 raise ValueError("invalid word: must be made of non-negative integers")
@@ -694,7 +738,7 @@ class ConjugateTree:
             num_leaves += len(created_leaves)
             if VERBOSE:
                 print(f"[process] {len(created_leaves)} new leaves, total={num_leaves}")
-            if check:
+            if hard_check:
                 self._check()
             s, k = self.canonize(s, i, k, p + 1)
             if VERBOSE:
