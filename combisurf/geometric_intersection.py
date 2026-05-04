@@ -4,16 +4,13 @@ Geometric intersection of arcs and geodesics on punctured and closed surfaces
 
 from array import array
 
-from combisurf.word import word_init, fg_word_is_cyclically_reduced, fg_word_inverse
+from combisurf.word import word_init, fg_word_is_cyclically_reduced, fg_word_cyclically_reduce, fg_word_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
 from combisurf.partial_sums import PartialSums
 
 class GeometricIntersection:
     def __init__(self, m):
-        r"""
-
-        """
         if not isinstance(m, OrientedMap):
             raise ValueError("m must be an oriented map")
 
@@ -42,6 +39,9 @@ class GeometricIntersection:
         if w.typecode != "i":
             raise ValueError
 
+    def __repr__(self):
+        return f"GeometricIntersection({self._cm})"
+
     def __call__(self, w1, w2=None):
         r"""
         Return the self-intersection of ``w1`` or the intersection between
@@ -49,6 +49,9 @@ class GeometricIntersection:
         """
         raise NotImplementedError
 
+    # could return
+    # [not a permutation]
+    # [periods]
     def conjugate_sort(self, words, check=True):
         r"""
         Given a list of distinct words return their cyclic ordering on the
@@ -89,24 +92,12 @@ class GeometricIntersection:
                 # was already given in T
                 raise ValueError(f"conjugate words at position {-ans} and {i}")
 
-        n = len(self._cm._vp)
         word_indices = []
         word_shifts = []
-
-        queue = [T._transitions[0][letter] for letter in sorted(T._transitions[0], key = lambda letter: self._angles[letter], reverse=True)]
-        while queue:
-            s = queue.pop()
-            if T._transition_end[s] == -1:
-                # leaf
-                i, k = T.leaf_as_conjugate(s)
-                word_indices.append(i)
-                word_shifts.append(k)
-            else:
-                i = T._transition_word[s]
-                p = T._transition_end[s]
-                last_letter = T._letter(i, p - 1) ^ 1
-                transitions = sorted(T._transitions[s], key = lambda letter: (self._angles[letter] - self._angles[last_letter]) %  n, reverse=True)
-                queue.extend(T._transitions[s][letter] for letter in transitions)
+        for s in T.cyclically_sorted_leaves(self._angles):
+            i, k = T.leaf_as_conjugate(s)
+            word_indices.append(i)
+            word_shifts.append(k)
 
         return word_indices, word_shifts
 
@@ -122,11 +113,11 @@ class GeometricIntersection:
         words = [array('i', w) for w in words]
         words_with_inverse = list(words) + [fg_word_inverse(w) for w in words]
         l = sum(len(w) for w in words_with_inverse)
-        print(f"words_with_inverse={words_with_inverse}")
+        # print(f"words_with_inverse={words_with_inverse}")
         colors = rainbow(n, 'rgbtuple')
         word_indices, word_shifts = self.conjugate_sort(words_with_inverse)
         assert len(word_indices) == len(word_shifts) == l
-        print(f"word_indices={word_indices} word_shifts={word_shifts}")
+        # print(f"word_indices={word_indices} word_shifts={word_shifts}")
         conj_to_pos = [[None] * len(w) for w in words_with_inverse]
         for pos, (i, k) in enumerate(zip(word_indices, word_shifts)):
             conj_to_pos[i][k] = pos
@@ -148,17 +139,14 @@ class GeometricIntersection:
         G.axes(False)
         return G
 
-    # TODO: generalize to make the input a list of (possibly non-primitive) walks
-    # TODO: some more simple checks
-    # - pick unicellular maps with non-trivial automorphisms and check automorphism invariance
-    def primitive_curve_geometric_intersection(self, u, v=None, check=True):
+    def geometric_intersection(self, ulist, vlist=None, check=True):
         r"""
-        Return the geometric intersection between the primitive curves ``u``
-        and ``v`` given as cyclically reduced words on the half-edges of the
-        underlying map. If ``v`` is not provided, return the self-intersection
-        of ``u``.
+        Return the geometric intersection between the multicurves ``ulist``
+        and ``vlist`` given as a list of walks on the half-edges of the
+        underlying map.
 
-        If both ``u`` and ``v`` are provided, they must be different.
+        If ``vlist`` is not provided, return the self-intersection of
+        ``ulist``.
 
         EXAMPLES::
 
@@ -168,8 +156,46 @@ class GeometricIntersection:
 
             sage: torus = OrientedMap(fp="(0,1,~0,~1)")
             sage: gi = GeometricIntersection(torus)
-            sage: gi.primitive_curve_geometric_intersection([0], [2])
+
+            sage: gi.geometric_intersection([[0]], [[2]])
             1
+            sage: gi.geometric_intersection([[0, 0, 2, 2]])
+            1
+
+            sage: gi.geometric_intersection([[0]], [[0, 2]])
+            1
+            sage: gi.geometric_intersection([[0, 2]], [[0, 2, 0]])
+            1
+            sage: gi.geometric_intersection([[0, 2, 0]], [[0, 2, 0, 0, 2]])
+            1
+
+        Two examples in genus 2 following Birman-Series p336-337::
+
+            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: gi = GeometricIntersection(octagon)
+            sage: w = word_init("0,~1,3")
+            sage: gi.primitive_curve_geometric_intersection([w])
+            0
+            sage: w = word_init("0,1,1,~2,1,1,~2")
+            sage: gi.primitive_curve_geometric_intersection([w])
+            4
+
+        Testing the simplicity criterion of Lapointe on positive words::
+
+            sage: W = Words([0, 2, 4, 6])
+            sage: for l in range(2, 7):
+            ....:     for w in W.iterate_by_length(l):
+            ....:         if not w.is_primitive():
+            ....:             continue
+            ....:         bwt = w.BWT()
+            ....:         ans1 = all(bwt[i + 1] <= bwt[i] for i in range(l - 1))
+            ....:         ans2 = gi.primitive_curve_geometric_intersection([list(w)]) == 0
+            ....:         assert ans1 == ans2
+
+            sage: ulist = [[0], [0, 2], [0, 0, 2]]
+            sage: vlist = [[0, 2, 2, 0, 2], [2]]
+            sage: gi.geometric_intersection(ulist, vlist)
+            12
             sage: gi.primitive_curve_geometric_intersection([0, 0, 2, 2])
             1
 
@@ -201,7 +227,7 @@ class GeometricIntersection:
         Testing the simplicity criterion of Lapointe on positive words::
 
             sage: W = Words([0, 2, 4, 6])
-            sage: for l in range(2, 7):
+            sage: for l in range(3, 6):
             ....:     for w in W.iterate_by_length(l):
             ....:         if not w.is_primitive():
             ....:             continue
@@ -209,57 +235,156 @@ class GeometricIntersection:
             ....:         ans1 = all(bwt[i + 1] <= bwt[i] for i in range(l - 1))
             ....:         ans2 = gi.primitive_curve_geometric_intersection(list(w)) == 0
             ....:         assert ans1 == ans2
-        """
-        if check:
-            u = word_init(u)
-        U = fg_word_inverse(u)
-        words = [u, U]
-        if v is None:
-            self_intersection = True
-            v = u
-            V = U
-        else:
-            self_intersection = False
-            if check:
-                v = word_init(v)
-            V = fg_word_inverse(v)
-            words.append(v)
-            words.append(V)
-        word_indices, word_shifts = self.conjugate_sort(words)
-        if len(word_indices) != sum(len(w) for w in words):
-            raise ValueError(f"non primitive or identical curves u={u} v={v}")
 
+        Intersection is multilinear::
+
+            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: gi = GeometricIntersection(torus)
+            sage: ulist = [[0], [0, 2], [0, 0, 2]]
+            sage: vlist = [[0, 2, 2, 0, 2], [2]]
+            sage: gi.geometric_intersection(ulist, vlist)
+            12
+            sage: gi.geometric_intersection(ulist * 2, vlist)
+            24
+            sage: gi.geometric_intersection(ulist, vlist * 3)
+            36
+            sage: gi.geometric_intersection(ulist * 5, vlist * 3)
+            180
+
+        For intersection of two multicurves, non-primitivity plays the same role as multiplicity::
+
+            sage: u0 = [0, 0, 2, 0, 3]
+            sage: u1 = [0, 0, 2, 2, 1, 1, 3, 3]
+            sage: gi.geometric_intersection([u0, u0, u1], [u1, u1, u1])
+            108
+            sage: gi.geometric_intersection([u0 * 2, u1], [u1, u1 * 2])
+            108
+            sage: gi.geometric_intersection([u0 * 2, u1], [u1 * 3])
+            108
+
+        For self-intersection, non-primitivty adds a factor equal to the exponent minus one::
+
+            sage: u = [0, 0, 2, 2]
+            sage: gi.geometric_intersection([u])
+            1
+            sage: gi.geometric_intersection([u * 2])
+            5
+            sage: gi.geometric_intersection([u * 3])
+            11
+        """
+        # For general multicurves where u and v might have common components, each primitive
+        # word (and hence each arc) has an associated u-multiplicity and v-multiplicity.
+        intersections = 0  # result
+        T = ConjugateTree()
+        u_multiplicities = []
+        v_multiplicities = []
+        for u in ulist:
+            if check:
+                u = word_init(u)
+                u = fg_word_cyclically_reduce(u)
+            if not u:
+                continue
+            status = T.process(u)
+            if status <= 0:
+                # u (or conjugate) already present
+                i = -status
+                assert len(u) % len(T._words[i]) == 0
+                exponent = len(u) // len(T._words[i])
+            else:
+                # u added to T
+                u_multiplicities.append(0)
+                if vlist is not None:
+                    v_multiplicities.append(0)
+                i = len(T._words) - 1
+                exponent = status
+                ans = T.process(fg_word_inverse(T._words[i]))
+                assert ans == 1
+            u_multiplicities[i >> 1] += exponent
+            if vlist is None:
+                # NOTE: non-primitive contribution to self-intersection
+                intersections += 2 * (exponent - 1)
+
+        if vlist is not None:
+            self_intersection = False
+            for v in vlist:
+                if check:
+                    v = word_init(v)
+                    v = fg_word_cyclically_reduce(v)
+                if not v:
+                    continue
+                status = T.process(v)
+                if status <= 0:
+                    # v (or conjugate) already present
+                    i = -status
+                    assert len(v) % len(T._words[i])== 0
+                    exponent = len(v) // len(T._words[i])
+                else:
+                    # v added to T
+                    u_multiplicities.append(0)
+                    v_multiplicities.append(0)
+                    i = len(T._words) - 1
+                    exponent = status
+                    ans = T.process(fg_word_inverse(T._words[i]))
+                    assert ans == 1
+                v_multiplicities[i >> 1] += exponent
+        else:
+            self_intersection = True
+            v_multiplicities = u_multiplicities
+
+        # print(f"u_multiplicities={u_multiplicities} v_multiplicities={v_multiplicities}")
         n = len(self._cm._vp)
 
         # Essential intersection coming from pairs of conjugates with four
         # distinct 1-order intervals associated to their startpoints and endpoints
         # NOTE: O(n^2 + len(u) + len(v)) cost
         Nu = [[0] * n for _ in range(n)]
-        for i in range(len(u)):
-            first = self._angles[u[i]]
-            last = self._angles[u[(i - 1) % len(u)] ^ 1]
-            assert first != last
-            if last < first:
-                first, last = last, first
-            Nu[first][last] += 1
         Nv = [[0] * n for _ in range(n)]
-        for i in range(len(v)):
-            first = self._angles[v[i]]
-            last = self._angles[v[(i - 1) % len(v)] ^ 1]
-            assert first != last
-            if last < first:
-                first, last = last, first
-            Nv[first][last] += 1
+        for i in range(0, len(T._words), 2):
+            w = T._words[i]
+            for p in range(len(w)):
+                first = self._angles[w[p]]
+                last = self._angles[w[(p - 1) % len(w)] ^ 1]
+                assert first != last
+                if last < first:
+                    first, last = last, first
+                Nu[first][last] += u_multiplicities[i >> 1]
+                Nv[first][last] += v_multiplicities[i >> 1]
 
-        # NOTE: below is a O(n^2) time version of the following O(n^4) time sum
-        #     sum(Nu[i0][j0] * Nv[i1][j1] + Nu[i1][j1] * Nv[i0][j0]
+        # NOTE: below is a O(n^2) time version of the two following O(n^4) time sums
+        #     sum(Nu[i0][j0] * Nv[i1][j1]
         #         for i0 in range(n)
         #         for j0 in range(i0 + 1, n)
         #         for i1 in range(i0 + 1, j0)
         #         for j1 in range(j0 + 1, n))
-        # We optimize the computation by transforming Nu and Nv to contain
-        # partial sums in respectively i0 and j1 respectively (O(n^2) time).
-        # Then we do a double sum in i1, j0 (O(n^2) time).
+        #
+        #     sum(Nu[i1][j1] * Nv[i0][j0]
+        #         for i0 in range(n)
+        #         for j0 in range(i0 + 1, n)
+        #         for i1 in range(i0 + 1, j0)
+        #         for j1 in range(j0 + 1, n))
+        #
+        # We optimize the computation of the first sum by transforming Nu and
+        # Nv to contain partial sums in respectively i0 and j1 respectively
+        # (O(n^2) time).  Then we do a double sum in i1, j0 (O(n^2) time). We
+        # reverse the role of Nu and Nv to handle the second sum.
+        Nu1 = [l[:] for l in Nu]
+        for j in range(n):
+            for i in range(j - 1):
+                Nu1[i + 1][j] += Nu1[i][j]
+        Nv1 = [l[:] for l in Nv]
+        for i in range(n):
+            for j in range(n - 1, i + 1, -1):
+                Nv1[i][j - 1] += Nv1[i][j]
+
+        Nv2 = [l[:] for l in Nv]
+        for j in range(n):
+            for i in range(j - 1):
+                Nv2[i + 1][j] += Nv2[i][j]
+        Nu2 = [l[:] for l in Nu]
+        for i in range(n):
+            for j in range(n - 1, i + 1, -1):
+                Nu2[i][j - 1] += Nu2[i][j]
+
         for j in range(n):
             for i in range(j - 1):
                 Nu[i + 1][j] += Nu[i][j]
@@ -267,29 +392,34 @@ class GeometricIntersection:
             for j in range(n - 1, i + 1, -1):
                 Nv[i][j - 1] += Nv[i][j]
 
-        intersections = sum(Nu[i1 - 1][j0] * Nv[i1][j0 + 1] for i1 in range(n - 2) for j0 in range(i1 + 1, n - 1))
-
-        if v is not None:
+        intersections += sum(Nu1[i1 - 1][j0] * Nv1[i1][j0 + 1] + Nv2[i1 - 1][j0] * Nu2[i1][j0 + 1]
+                             for i1 in range(1, n - 2) for j0 in range(i1 + 1, n - 1))
+        if not self_intersection:
             intersections *= 2
 
         # Essential intersections coming from pairs of conjugates with identical
         # start. Total cost is (len(u) + len(v)) * log(n)
         # where the log(n) factor comes from partial sums
+        word_indices = []
+        word_shifts = []
+        for s in T.cyclically_sorted_leaves(self._angles):
+            i, k = T.leaf_as_conjugate(s)
+            word_indices.append(i)
+            word_shifts.append(k)
+
         letter = 0  # current letter that is looked at
         pos = 0     # pointer in the list cs
         Nu = PartialSums(n - 1)
-        if self_intersection:
-            Nv = Nu
-        else:
-            Nv = PartialSums(n - 1)
+        Nv = PartialSums(n - 1)
         while pos < len(word_indices):
             Nu.reset()
             Nv.reset()
-            startpoint = words[word_indices[pos]][word_shifts[pos]]
+            startpoint = T._words[word_indices[pos]][word_shifts[pos]]
             startangle = self._angles[startpoint]
-            while pos < len(word_indices) and words[word_indices[pos]][word_shifts[pos]] == startpoint:
+            while pos < len(word_indices) and T._words[word_indices[pos]][word_shifts[pos]] == startpoint:
+                # print(f"pos={pos} intersections={intersections} Nu={Nu} Nv={Nv}")
                 i = word_indices[pos]
-                w = words[i]
+                w = T._words[i]
                 k = word_shifts[pos]
                 endpoint = w[(k - 1) % len(w)] ^ 1
                 assert startpoint != endpoint
@@ -297,19 +427,14 @@ class GeometricIntersection:
                 angle = (endangle - startangle) % n
                 assert angle >= 1
                 angle -= 1
-                # print(f"pos={pos} i={i} arc ({startpoint},{endpoint}) angle={angle}")
-                if i == 0 or i == 1:
-                    # print(f"add intersection from Nv={Nv} and update Nu={Nu}")
-                    intersections += Nv.partial_sum(0, angle)
-                    Nu.update(angle, 1)
-                    # print(f"after update Nu={Nu}")
-                elif i == 2 or i == 3:
-                    # print(f"add intersection from Nu={Nu} and update Nv={Nv}")
-                    intersections += Nu.partial_sum(0, angle)
-                    Nv.update(angle, 1)
-                    # print(f"after update Nv={Nv}")
+                intersections += u_multiplicities[i >> 1] * Nv.partial_sum(0, angle)
+                if not self_intersection:
+                    intersections += v_multiplicities[i >> 1] * Nu.partial_sum(0, angle)
+                Nu.update(angle, u_multiplicities[i >> 1])
+                Nv.update(angle, v_multiplicities[i >> 1])
                 pos += 1
 
+        # we got twice the geometric intersection because we register all arcs and their inverses
         assert pos == len(word_indices), (pos, len(word_indices))
         assert intersections % 2 == 0
         return intersections // 2
