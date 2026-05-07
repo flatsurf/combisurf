@@ -261,6 +261,27 @@ def word_free_group_mul(array.array u, array.array v):
     return u[:i+1] + v[j:]
 
 
+def word_free_group_mul_inplace(array.array u, array.array v):
+    r"""
+    Update ``u`` by adding ``v`` to it and reducing.
+
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init, word_free_group_mul_inplace
+        sage: u = word_init([0, 2, 1])
+        sage: v = word_init([0, 0])
+        sage: word_free_group_mul_inplace(u, v)
+        sage: u
+        array('i', [0, 2, 0])
+    """
+    cdef int i = 0
+    while i < len(u) and i < len(v) and u[len(u) - i - 1] ^ 1 == v[i]:
+        i += 1
+    del u[len(u) - i:]
+    # TODO: useless copy!
+    u.extend(v[i:])
+
+
 def word_free_group_inverse(array.array w):
     r"""
     Return the inverse of ``w`` in the free group.
