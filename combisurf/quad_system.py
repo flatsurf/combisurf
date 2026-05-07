@@ -29,15 +29,15 @@ from collections import deque
 
 
 
-def labels(G):
+def labels(m):
     r"""
-    Assign a label (an integer) to each vertex and each face of G.
+    Assign a label (an integer) to each vertex and each face of m.
     Compute for each half-edge the vertex and the face it belongs. 
     """
-    vertices = G.vertices()
-    faces = G.faces()
-    hedge_to_vertex = [None for _ in G.half_edges()]
-    hedge_to_face = [None for _ in G.half_edges()]
+    vertices = m.vertices()
+    faces = m.faces()
+    hedge_to_vertex = [None for _ in m.half_edges()]
+    hedge_to_face = [None for _ in m.half_edges()]
     for i in range(len(vertices)):
         for e in vertices[i]:
             hedge_to_vertex[e] = i
@@ -47,17 +47,17 @@ def labels(G):
     return hedge_to_vertex, hedge_to_face
 
 
-def tree_co_tree(G):
+def tree_co_tree(m):
     r"""
-    Compute a tree/co-tree decomposition of G.
-    Return a list res of length the number of edges of G.
+    Compute a tree/co-tree decomposition of m.
+    Return a list res of length the number of edges of m.
     res[e] is 0 if the edge e is in the tree, 1 if e is in the co-tree and 2 otherwise.
     """
-    hedge_to_vertex, hedge_to_face = labels(G)
-    vp = G.vertex_permutation(copy=False)
-    T_found = [False for _ in G.vertices()]
+    hedge_to_vertex, hedge_to_face = labels(m)
+    vp = m.vertex_permutation(copy=False)
+    T_found = [False for _ in m.vertices()]
     T_found[0] = True
-    res = [2 for _ in G.edge_indices()]
+    res = [2 for _ in m.edge_indices()]
     e = 0
     path = [e]
 
@@ -70,7 +70,7 @@ def tree_co_tree(G):
         e=vp[0]
     
     while len(path) > 0:
-        e1 = G._ep(e)
+        e1 = m._ep(e)
         if e == path[-1]:
             path.pop()
             e = vp[e1]
@@ -82,14 +82,14 @@ def tree_co_tree(G):
         else:
             e = vp[e]
 
-    fp = G.face_permutation(copy=False)
-    C_found = [False for _ in G.faces()]
+    fp = m.face_permutation(copy=False)
+    C_found = [False for _ in m.faces()]
     C_found[0] = True
     e = fp[0]
     path = [0]
     
     while len(path) > 0:
-        e1 = G._ep(e)
+        e1 = m._ep(e)
         if e == path[-1]:
             path.pop()
             e = fp[e1]
@@ -106,16 +106,16 @@ def tree_co_tree(G):
     return res
 
 
-def tree_contraction(G, treecotree):
+def tree_contraction(m, treecotree):
     r"""
-    Compute the OrientedMap F obtained from G by:
+    Compute the OrientedMap F obtained from m by:
         - contracting all the edges in the tree of treecotree
         - removing all the edges in the co-tree of treecotree
-    Compute a list correspondence of length the number of half-edges of G such that correspondence[e] is:
+    Compute a list correspondence of length the number of half-edges of m such that correspondence[e] is:
         - None if e is an edge of the tree of treecotree
-        - d such that fp[d]=e in G after contracting the edge of the tree if e is an edge of the cotree
+        - d such that fp[d]=e in m after contracting the edge of the tree if e is an edge of the cotree
         - the corresponding edge of F otherwise
-    Compute a list recor such that recor[f] for f an half-edge in F is the corresponding half_edge in G
+    Compute a list recor such that recor[f] for f an half-edge in F is the corresponding half_edge in m
     Compute a list rank such that rank[e] is:
         - None if e is an edge of the tree of treecotree
         - the index of e around the vertex if e is an edge of the cotree
@@ -123,16 +123,16 @@ def tree_contraction(G, treecotree):
 
     INPUT:
 
-    treecotree should be a list of lenght the number of edges in G where G[e] is:
+    treecotree should be a list of length the number of edges in m where treecotree[e] is:
         - 0 if e is in the tree
         - 1 if e is in the co-tree
         - 2 otherwise
     """
-    fp = G.face_permutation(copy=False)
-    correspondence = [None for _ in G.half_edges()]
-    rank = [None for _ in G.half_edges()]
-    nfp = [None for _ in range(4*G.genus())]
-    recor = [None for _ in range(4*G.genus())]
+    fp = m.face_permutation(copy=False)
+    correspondence = [None for _ in m.half_edges()]
+    rank = [None for _ in m.half_edges()]
+    nfp = [None for _ in range(4*m.genus())]
+    recor = [None for _ in range(4*m.genus())]
     i = 0
     while treecotree[i] != 2:
         i += 1
@@ -146,7 +146,7 @@ def tree_contraction(G, treecotree):
     r = 0
     
     while e != 2 * i:
-        e1 = G._ep(e)
+        e1 = m._ep(e)
         if treecotree[e // 2] == 1:
             correspondence[e] = last
             rank[e] = r
@@ -224,6 +224,9 @@ def turn_add_left(s, turn, num):
     
 
 def turn_modif(s, mod, d):
+    r"""
+    Modify the last turn of s by mod.
+    """
     if len(s) == 0:
         return
     (t, n) = s.pop()
@@ -235,6 +238,9 @@ def turn_modif(s, mod, d):
         turn_add(s, r, 1)
 
 def turn_modif_left(s, mod, d):
+    r"""
+    Modify the first turn of s by mod.
+    """
     if len(s) == 0:
         return
     (t, n) = s.popleft()
@@ -318,38 +324,45 @@ def bracket_removal_left(Q, geo, s, positive, length, d):
 
 class QuadSystem:
 
-    #TODO : Documentation
+    r"""
+    A quadsystem associated to an oriented map.
 
-    def __init__(self, G, treecotree=None, check=True):
+    A quadsystem is a reduced form of a map with two vertices and such that all faces have degree 4. The quadsystem is given as the corresponding map and the projection from the original map to the quadsystem.
+
+    """
+
+    def __init__(self, m, treecotree=None, check=True):
         r"""
-        Methods:
-            _origin_map: the original OrientedMap
-            _genus: the genus of the underlying surface
-            _quad: the quad system
-            _proj: the projection from _origin_map half-edges to path of length 0 or 2 of _quad
-            _turn: a list of edges that gives a coefficient to each half-edge around each vertex corresponding at the turn
+        INPUT:
+
+        - ``m`` -- the original oriented map
+
+        - ``treecotree`` -- ``None`` or the tree-cotree decomposition used to construct the quadsystem
+
+        - ``check`` (boolean, default ``True``) -- whether to perform consistency checks of
+          the data
         """
 
         if check:
-            G._check()
-            G._assert_connected()
-            if G.has_folded_edge():
+            m._check()
+            m._assert_connected()
+            if m.has_folded_edge():
                 raise NotImplementedError
-            if G.genus() == 0:
+            if m.genus() == 0:
                 raise ValueError("Cannot look for homotopy in genus 0")
-            elif G.genus() == 1:
+            elif m.genus() == 1:
                 raise ValueError("Quad systems and homotopy are not effective in genus 1")
 
-        if G.is_mutable():
-            G = G.copy(mutable=False)
+        if m.is_mutable():
+            m = m.copy(mutable=False)
 
-        self._origin_map = G
-        self._genus = G.genus()
+        self._origin_map = m
+        self._genus = m.genus()
 
         if treecotree == None:
-            treecotree = tree_co_tree(G)
+            treecotree = tree_co_tree(m)
         
-        F,cor, _, _ = tree_contraction(G,treecotree)
+        F,cor, _, _ = tree_contraction(m,treecotree)
         vp = F.vertex_permutation(copy=False)
         fp = F.face_permutation(copy=False)
         qvp = [None for _ in range(8 * self._genus)]
@@ -375,12 +388,12 @@ class QuadSystem:
         
         qfp = self._quad.face_permutation(copy=False)
         cor2 = []
-        for e in G.half_edges():
+        for e in m.half_edges():
             if treecotree[e//2] == 0:
                 cor2.append([])
             elif treecotree[e//2] == 1:
                 start = fp[cor[e]]
-                e1 = G._ep(e)
+                e1 = m._ep(e)
                 end = fp[cor[e1]]
                 das = 2 * remember2[start] + 1
                 dae = 2 * remember2[end]
@@ -412,10 +425,13 @@ class QuadSystem:
         return self._quad.__repr__(*args, **kwds)
 
     def turn(self, h1, h2):
+        r"""
+            Compute the number of turns from ``h1`` to ``h2`` around a vertex. Raise an error if ``h1`` and ``h2``do not belong to the same vertex. 
+        """
         l1 = self._turn[h1]
         l2 = self._turn[h2]
         if l1 // (4 * self._genus) != l2 // (4 * self._genus):
-            raise ValueError("The two half_edges does not belong to the same vertex")
+            raise ValueError("The two half_edges do not belong to the same vertex")
         nl1 = l1 % (4 * self._genus)
         nl2 = l2 % (4 * self._genus)
         if nl1 <= nl2:
@@ -425,6 +441,9 @@ class QuadSystem:
 
 
     def rotate_list(self):
+        r"""
+            Compute the rotate_list of the quadsystem, i.e. the list ``rotate`` such that ``rotate[e][t]`` is the half-edge obtained in the quadsystem by turning ``t`` time around a vertex starting from the half-edge ``e``.
+        """
         res = []
         d = 4 * self._genus
         for h in self._quad.half_edges():
@@ -439,19 +458,25 @@ class QuadSystem:
 
 
 class Geodesic:
+    r"""
+        A geodesic in a quadsystem
 
-    # TODO : Documentation + Change name ?
+        A geodesic is a shortest walk in its free homotopy class. A geodesic is seen as a walk encoded by a deque with a given turn sequence.
+    """
 
     def __init__(self, Q, geo=None, turn=None, check=False):
         r"""
-        Methods:
-            _quadsystem: the underlying quad system
-            _geodesic: the canonical geodesic representative in the quad system (as a deque !)
-            _turn_sequence: the turn sequence associated to _geodesic
+        INPUT:
+            
+            - ``Q`` -- the underlying quadsystem
+            - ``geo`` -- ``None`` or the walk corresponding to the geodesic
+            - ``turn`` -- ``None`` or the turn sequence corresponding to ``geo``
+            - ``check`` (boolean, default ``False``) -- whether to perform consistency checks of
+          the data
 
         EXAMPLES::
 
-            sage: from combisurf import OrientedMap, QuadSystem, Geodesic
+            sage: from combisurf import OrientedMap, QuadSystem, meodesic
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
@@ -488,6 +513,8 @@ class Geodesic:
 
     def __len__(self):
         r"""
+            Return the length of the geodesic.
+        
         EXAMPLES::
 
             sage: from combisurf import OrientedMap, QuadSystem, Geodesic
@@ -1041,16 +1068,21 @@ class Geodesic:
 
 
 class LazyGeodesic:
+    r"""
+        A geodesic in a quadsystem
 
-    # TODO : Documentation. Class of geodesic that contains only the first and the last edge and the sequence of turn. Should not be used to test homotopy ! Only contractibility.
+        A lazy geodesic is a geodesic but only the first and the last edge of the geodesic is maintained together with the turn sequence. It cannot be used to test homotopy but it can be used for contractibility.
+    """
     
     def __init__(self, Q, geo=None, turn=None, check=False):
         r"""
-        Methods:
-            _quadsystem: the underlying quad system
-            _first: the first edge
-            _last: the last edge
-            _turn_sequence: the turn sequence associated to _geodesic
+        INPUT:
+            
+            - ``Q`` -- the underlying quadsystem
+            - ``geo`` -- ``None`` or the walk corresponding to the geodesic
+            - ``turn`` -- ``None`` or the turn sequence corresponding to ``geo``
+            - ``check`` (boolean, default ``False``) -- whether to perform consistency checks of
+          the data
 
         EXAMPLES::
 
@@ -1268,10 +1300,21 @@ class LazyGeodesic:
 
 
 class StarShapedSpace:
+    r"""
+        A star shaped space in the universal covering of a quadsystem.
 
-    # TODO
+        A star shaped space is a pointed convex set in the universal covering of a quadsystem. It thus contains all geodesics from a point in it to the root. Thus all edges are oriented towards the root.
+
+    """
 
     def __init__(self, Q, root):
+        r"""
+        INPUT:
+
+            - ``Q`` -- the quadsystem
+            - ``root`` -- the vertex in ``Q`` whose lift is the root of the star shaped space
+
+        """
 
         self._vertices = [root] # the projection of each vertex of the StarShapedSpace into the quadsystem
         self._quadsystem = Q # the underlying quadsystem
@@ -1281,6 +1324,9 @@ class StarShapedSpace:
 
     
     def add_vertex(self, vertex):
+        r"""
+            Add a vertex to the star shaped space with no edges.
+        """
         
         self._vertices.append(vertex)
         self._inedges.append({})
@@ -1290,7 +1336,7 @@ class StarShapedSpace:
     
     def add_edge(self, vertex1, vertex2, edge):
         r"""
-        Add an edge from vertex1 to vertex2 that project to edge
+            Add an edge from vertex1 to vertex2 that project to ``edge``
         """
         Q = self._quadsystem
         if not self.contains_edge(vertex1, edge):
@@ -1300,6 +1346,9 @@ class StarShapedSpace:
 
 
     def contains_edge(self, vertex, edge):
+        r"""
+            Test whether the star shaped space contains the edge ``edge`` at vertex ``vertex``.
+        """
         
         result = False
         for elt in self._outedges[vertex]:
@@ -1309,6 +1358,9 @@ class StarShapedSpace:
             
 
     def opposite_vertex(self, vertex, edge):
+        r"""
+            Return the vertex opposite to ``edge`` starting at ``vertex``.
+        """
         for elt in self._outedges[vertex]:
             if elt[0] == edge:
                 return elt[1]
@@ -1319,12 +1371,18 @@ class StarShapedSpace:
 
         
     def rotate(self, vertex, edge, turn):
+        r"""
+            Rotate around ``vertex`` starting from ``edge`` and starting from ``edge``
+        """
         if self.contains_edge(vertex, edge):
             return self._rotate_list[edge][turn]
         else:
             raise ValueError("There is no such edge")
 
     def turn(self, vertex, edge):
+        r"""
+            Return the smallest turn from ``edge`` to an outedge of ``vertex``
+        """
         turn = None
         out_edge = None
         Q = self._quadsystem
@@ -1339,7 +1397,11 @@ class StarShapedSpace:
         return turn, out_edge
 
 
-    def insert_edge(self, vertex, edge):  
+    def insert_edge(self, vertex, edge):
+        r"""
+            Insert an edge in the star shaped space and add vertices and edges to maintain it star shaped.
+        """
+        
         if self.contains_edge(vertex, edge):
             return self.opposite_vertex(vertex, edge)
         turn, out_edge = self.turn(vertex, edge)
