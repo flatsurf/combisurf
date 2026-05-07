@@ -3005,7 +3005,6 @@ class OrientedMap:
         self._fp[self._ep(self._vp[h])] = h 
         self._fp[self._ep(self._vp[pre_h])] = pre_h
 
-
     def turn_around_vertex(self, h0, h1):
         r"""
         Compute the number of turn from dart h0 to dart h1 around a vertex.
@@ -3030,6 +3029,22 @@ class OrientedMap:
         if current == h0:
             raise ValueError("The half-edge {} is not on the same vertex as the half-edge {}.".format(f,e))
         return turn
+
+    def hom(self, images, codomain=None):
+        r"""
+        Return a morphism defined by the given ``images``.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,~0,~1)")
+            sage: m.hom([[0,1,2],[2],[0,0],[3,2,1]])
+            OrientedMapMorphism(OrientedMap("(0,1,~0,~1)", "(0,1,~0,~1)"), OrientedMap("(0,1,~0,~1)", "(0,1,~0,~1)"), [array('i', [0, 1, 2]), array('i', [2]), array('i', [0, 0]), array('i', [3, 2, 1])])
+        """
+        from combisurf.morphism import OrientedMapMorphism_list
+        if codomain is None:
+            codomain = self
+        return OrientedMapMorphism_list(self, codomain, images)
 
 # - relabel: keep combinatorics but change labellings
 # - slide or half_edge_slide (possibly flip as a shortcut)
