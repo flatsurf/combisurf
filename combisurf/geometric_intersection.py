@@ -4,7 +4,7 @@ Geometric intersection of arcs and geodesics on punctured and closed surfaces
 
 from array import array
 
-from combisurf.word import word_init, fg_word_is_cyclically_reduced, fg_word_cyclically_reduce, fg_word_inverse
+from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclically_reduce, word_free_group_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
 from combisurf.partial_sums import PartialSums
@@ -85,7 +85,7 @@ class GeometricIntersection:
         for i, w in enumerate(words):
             if not isinstance(w, array):
                 w = array('i', w)
-            if check and not fg_word_is_cyclically_reduced(w):
+            if check and not word_is_cyclically_reduced(w):
                 raise ValueError
             ans = T.process(list(w))
             if ans <= 0:
@@ -111,7 +111,7 @@ class GeometricIntersection:
 
         n = len(words)
         words = [array('i', w) for w in words]
-        words_with_inverse = list(words) + [fg_word_inverse(w) for w in words]
+        words_with_inverse = list(words) + [word_free_group_inverse(w) for w in words]
         l = sum(len(w) for w in words_with_inverse)
         # print(f"words_with_inverse={words_with_inverse}")
         colors = rainbow(n, 'rgbtuple')
@@ -174,10 +174,10 @@ class GeometricIntersection:
             sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
             sage: gi = GeometricIntersection(octagon)
             sage: w = word_init("0,~1,3")
-            sage: gi.primitive_curve_geometric_intersection([w])
+            sage: gi.geometric_intersection([w])
             0
             sage: w = word_init("0,1,1,~2,1,1,~2")
-            sage: gi.primitive_curve_geometric_intersection([w])
+            sage: gi.geometric_intersection([w])
             4
 
         Testing the simplicity criterion of Lapointe on positive words::
@@ -189,39 +189,39 @@ class GeometricIntersection:
             ....:             continue
             ....:         bwt = w.BWT()
             ....:         ans1 = all(bwt[i + 1] <= bwt[i] for i in range(l - 1))
-            ....:         ans2 = gi.primitive_curve_geometric_intersection([list(w)]) == 0
+            ....:         ans2 = gi.geometric_intersection([list(w)]) == 0
             ....:         assert ans1 == ans2
 
             sage: ulist = [[0], [0, 2], [0, 0, 2]]
             sage: vlist = [[0, 2, 2, 0, 2], [2]]
             sage: gi.geometric_intersection(ulist, vlist)
             12
-            sage: gi.primitive_curve_geometric_intersection([0, 0, 2, 2])
+            sage: gi.geometric_intersection([[0, 0, 2, 2]])
             1
 
-            sage: gi.primitive_curve_geometric_intersection([0], [0, 2])
+            sage: gi.geometric_intersection([[0]], [[0, 2]])
             1
-            sage: gi.primitive_curve_geometric_intersection([0, 2], [0, 2, 0])
+            sage: gi.geometric_intersection([[0, 2]], [[0, 2, 0]])
             1
-            sage: gi.primitive_curve_geometric_intersection([0, 2, 0], [0, 2, 0, 0, 2])
+            sage: gi.geometric_intersection([[0, 2, 0]], [[0, 2, 0, 0, 2]])
             1
 
             sage: for u in [[0], [0, 2], [0, 2, 0], [0, 2, 0, 0, 2],  [0, 2, 0, 0, 2, 0, 2, 0]]:
-            ....:     assert gi.primitive_curve_geometric_intersection(u) == 0
+            ....:     assert gi.geometric_intersection([u]) == 0
             sage: for u in [[0, 0, 2, 2], [0, 2, 0, 2, 0, 0], [0, 2, 0, 0, 2, 0, 0, 2, 0, 2],
             ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0],
             ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2]]:
-            ....:     assert gi.primitive_curve_geometric_intersection(u) == 1
+            ....:     assert gi.geometric_intersection([u]) == 1
 
         Two examples in genus 2 following Birman-Series p336-337::
 
             sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
             sage: gi = GeometricIntersection(octagon)
             sage: w = word_init("0,~1,3")
-            sage: gi.primitive_curve_geometric_intersection(w)
+            sage: gi.geometric_intersection([w])
             0
             sage: w = word_init("0,1,1,~2,1,1,~2")
-            sage: gi.primitive_curve_geometric_intersection(w)
+            sage: gi.geometric_intersection([w])
             4
 
         Testing the simplicity criterion of Lapointe on positive words::
@@ -233,7 +233,7 @@ class GeometricIntersection:
             ....:             continue
             ....:         bwt = w.BWT()
             ....:         ans1 = all(bwt[i + 1] <= bwt[i] for i in range(l - 1))
-            ....:         ans2 = gi.primitive_curve_geometric_intersection(list(w)) == 0
+            ....:         ans2 = gi.geometric_intersection([list(w)]) == 0
             ....:         assert ans1 == ans2
 
         Intersection is multilinear::
@@ -281,7 +281,7 @@ class GeometricIntersection:
         for u in ulist:
             if check:
                 u = word_init(u)
-                u = fg_word_cyclically_reduce(u)
+                u = word_cyclically_reduce(u)
             if not u:
                 continue
             status = T.process(u)
@@ -297,7 +297,7 @@ class GeometricIntersection:
                     v_multiplicities.append(0)
                 i = len(T._words) - 1
                 exponent = status
-                ans = T.process(fg_word_inverse(T._words[i]))
+                ans = T.process(word_free_group_inverse(T._words[i]))
                 assert ans == 1
             u_multiplicities[i >> 1] += exponent
             if vlist is None:
@@ -309,7 +309,7 @@ class GeometricIntersection:
             for v in vlist:
                 if check:
                     v = word_init(v)
-                    v = fg_word_cyclically_reduce(v)
+                    v = word_cyclically_reduce(v)
                 if not v:
                     continue
                 status = T.process(v)
@@ -324,7 +324,7 @@ class GeometricIntersection:
                     v_multiplicities.append(0)
                     i = len(T._words) - 1
                     exponent = status
-                    ans = T.process(fg_word_inverse(T._words[i]))
+                    ans = T.process(word_free_group_inverse(T._words[i]))
                     assert ans == 1
                 v_multiplicities[i >> 1] += exponent
         else:

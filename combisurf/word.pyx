@@ -127,19 +127,19 @@ def word_string(array.array w, edge_like=False, separator=', ', opening='[', clo
     return opening + separator.join(map(elt, w)) + closing
 
 
-def fg_word_is_reduced(array.array w):
+def word_is_reduced(array.array w):
     r"""
     Return whether the free group word ``w`` is reduced.
 
     EXAMPLES::
 
-        sage: from combisurf.word import word_init, fg_word_is_reduced
+        sage: from combisurf.word import word_init, word_is_reduced
 
-        sage: fg_word_is_reduced(word_init([0]))
+        sage: word_is_reduced(word_init([0]))
         True
-        sage: fg_word_is_reduced(word_init([0, 1]))
+        sage: word_is_reduced(word_init([0, 1]))
         False
-        sage: fg_word_is_reduced(word_init([0, 2, 1]))
+        sage: word_is_reduced(word_init([0, 2, 1]))
         True
     """
     if len(w) <= 1:
@@ -153,19 +153,19 @@ def fg_word_is_reduced(array.array w):
     return True
 
 
-def fg_word_is_cyclically_reduced(array.array w):
+def word_is_cyclically_reduced(array.array w):
     r"""
     Return whether the free group word ``w`` is cyclically reduced.
 
     EXAMPLES::
 
-        sage: from combisurf.word import word_init, fg_word_is_cyclically_reduced
+        sage: from combisurf.word import word_init, word_is_cyclically_reduced
 
-        sage: fg_word_is_cyclically_reduced(word_init([0]))
+        sage: word_is_cyclically_reduced(word_init([0]))
         True
-        sage: fg_word_is_cyclically_reduced(word_init([0, 2, 3, 0]))
+        sage: word_is_cyclically_reduced(word_init([0, 2, 3, 0]))
         False
-        sage: fg_word_is_cyclically_reduced(word_init([0, 2, 1]))
+        sage: word_is_cyclically_reduced(word_init([0, 2, 1]))
         False
     """
     if len(w) <= 1:
@@ -179,22 +179,22 @@ def fg_word_is_cyclically_reduced(array.array w):
     return w.data.as_ints[0] ^ 1 != w.data.as_ints[len(w) - 1]
 
 
-def fg_word_reduce(array.array w):
+def word_reduce(array.array w):
     r"""
     EXAMPLES::
 
-        sage: from combisurf.word import word_init, fg_word_reduce
+        sage: from combisurf.word import word_init, word_reduce
         sage: w = word_init([0, 0, 2, 1, 1])
-        sage: fg_word_reduce(w)
+        sage: word_reduce(w)
         array('i', [0, 0, 2, 1, 1])
         sage: w = word_init([0, 0, 2, 3, 1, 1])
-        sage: fg_word_reduce(w)
+        sage: word_reduce(w)
         array('i')
         sage: w = word_init([0, 0, 1])
-        sage: fg_word_reduce(w)
+        sage: word_reduce(w)
         array('i', [0])
         sage: w = word_init([0, 2, 1, 0, 3, 1])
-        sage: fg_word_reduce(w)
+        sage: word_reduce(w)
         array('i')
     """
     if len(w) <= 1:
@@ -210,35 +210,35 @@ def fg_word_reduce(array.array w):
     return ans
 
 
-def fg_word_cyclically_reduce(array.array w):
+def word_cyclically_reduce(array.array w):
     r"""
     Return a cyclic reduction of ``w`` in the free group.
 
     EXAMPLES::
 
-        sage: from combisurf.word import word_init, fg_word_cyclically_reduce
+        sage: from combisurf.word import word_init, word_cyclically_reduce
         sage: w = word_init([0, 0, 2, 1, 1])
-        sage: fg_word_cyclically_reduce(w)
+        sage: word_cyclically_reduce(w)
         array('i', [2])
         sage: w = word_init([0, 0, 1])
-        sage: fg_word_cyclically_reduce(w)
+        sage: word_cyclically_reduce(w)
         array('i', [0])
         sage: w = word_init([0, 2, 0, 1, 0, 3, 1])
-        sage: fg_word_cyclically_reduce(w)
+        sage: word_cyclically_reduce(w)
         array('i', [0])
-        sage: fg_word_cyclically_reduce(word_init())
+        sage: word_cyclically_reduce(word_init())
         array('i')
     """
     if len(w) <= 1:
         return w
-    ans = fg_word_reduce(w)
+    ans = word_reduce(w)
     i = 0
     while i < len(ans) and ans[i] ^ 1 == ans[len(ans) - i - 1]:
         i += 1
     return ans[i:len(ans) - i]
 
 
-def fg_word_mul(array.array u, array.array v):
+def word_free_group_mul(array.array u, array.array v):
     r"""
     Return the multiplication of the words ``u`` and ``v`` in the free group.
 
@@ -247,10 +247,10 @@ def fg_word_mul(array.array u, array.array v):
 
     EXAMPLES::
 
-        sage: from combisurf.word import word_init, fg_word_mul
+        sage: from combisurf.word import word_init, word_free_group_mul
         sage: u = word_init([0, 2, 1])
         sage: v = word_init([0, 0])
-        sage: fg_word_mul(u, v)
+        sage: word_free_group_mul(u, v)
         array('i', [0, 2, 0])
     """
     cdef int i = len(u) - 1
@@ -261,17 +261,17 @@ def fg_word_mul(array.array u, array.array v):
     return u[:i+1] + v[j:]
 
 
-def fg_word_inverse(array.array w):
+def word_free_group_inverse(array.array w):
     r"""
     Return the inverse of ``w`` in the free group.
 
     EXAMPLES::
 
-        sage: from combisurf.word import word_init, fg_word_inverse
+        sage: from combisurf.word import word_init, word_free_group_inverse
         sage: u = word_init([0, 2, 1, 3])
-        sage: fg_word_inverse(u)
+        sage: word_free_group_inverse(u)
         array('i', [2, 0, 3, 1])
-        sage: fg_word_inverse(word_init())
+        sage: word_free_group_inverse(word_init())
         array('i')
     """
     ans = array.clone(w, len(w), False)
