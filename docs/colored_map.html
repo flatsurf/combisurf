@@ -1,0 +1,756 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>colored_map &#8212; combisurf 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=a1637f0b"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'colored_map';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="colored_map_builder" href="colored_map_builder.html" />
+    <link rel="prev" title="misc" href="misc.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">combisurf 0.1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://flatsurf.github.io" title="flatsurf" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://flatsurf.github.io/assets/logo.svg" class="icon-link-image" alt="flatsurf"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/flatsurf/combisurf" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://sagemath.zulipchat.com/#narrow/channel/271193-flatsurf" title="Zulip" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-regular fa-comments fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Zulip</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="oriented_map.html"><code class="docutils literal notranslate"><span class="pre">oriented_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/flatsurf/combisurf/edit/master/doc/colored_map.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button"
+   title="Suggest edit"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/colored_map.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>colored_map</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.add_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.add_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.contract_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.contract_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.copy"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.copy()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.delete_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.delete_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.disjoint_union"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.disjoint_union()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.dual"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.dual()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.edge_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.edge_color()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.insert_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.insert_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.merge_vertices"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.merge_vertices()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.move_half_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.move_half_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.plot"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.plot()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.relabel"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.relabel()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.reverse_orientation"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.reverse_orientation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.set_edge_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.set_edge_color()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.set_vertex_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.set_vertex_color()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.smoothing"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.smoothing()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.submap"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.submap()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.swap_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.swap_color()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.vertex_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.vertex_color()</span></code></a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-combisurf.colored_map">
+<span id="colored-map"></span><h1><code class="docutils literal notranslate"><span class="pre">colored_map</span></code><a class="headerlink" href="#module-combisurf.colored_map" title="Link to this heading">#</a></h1>
+<p>Vertex colored combinatorial maps</p>
+<p>The main class in this module is <a class="reference internal" href="#combisurf.colored_map.ColoredOrientedMap" title="combisurf.colored_map.ColoredOrientedMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColoredOrientedMap</span></code></a>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.colored_map.</span></span><span class="sig-name descname"><span class="pre">ColoredOrientedMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vcolors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ecolors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap" title="Link to this definition">#</a></dt>
+<dd><dl class="simple">
+<dt>INPUT:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ecolors</span></code> – <code class="docutils literal notranslate"><span class="pre">None</span></code> or a list or dictionary of data so that ecolors[i] is the data associated to the edge (2i,2i+1).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vcolors</span></code> – a dictionary of data so that vcolors[h] is the data associated to the vertex incident to half edge h, and only one half edge incident to a given vertex is present. If the map is atomic (no edges), the color of the vertex can be specified in entry <code class="docutils literal notranslate"><span class="pre">-1</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.add_edge">
+<span class="sig-name descname"><span class="pre">add_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v0_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v1_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.add_edge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.add_edge" title="Link to this definition">#</a></dt>
+<dd><p>Add an edge between the corners of <code class="docutils literal notranslate"><span class="pre">h0</span></code> and <code class="docutils literal notranslate"><span class="pre">h1</span></code> with color <code class="docutils literal notranslate"><span class="pre">col</span></code>.
+If <code class="docutils literal notranslate"><span class="pre">h0</span></code> or <code class="docutils literal notranslate"><span class="pre">h1</span></code> is negative, then new vertices are created and their color can be specified in <code class="docutils literal notranslate"><span class="pre">v0_color</span></code> and <code class="docutils literal notranslate"><span class="pre">v1_color</span></code>.
+If self is atomic and <code class="docutils literal notranslate"><span class="pre">v0_color</span></code> is not provided, the vertex keeps its color.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="kc">None</span><span class="p">},</span> <span class="n">ecolors</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">],</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">e_color</span> <span class="o">=</span> <span class="mi">42</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,3,~1)(~0,2)(1,~3,~2)"</span><span class="p">,</span> <span class="s2">"(0,2,~3)(~0,~1,~2)(1,3)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="mi">42</span><span class="p">],</span>
+ <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">E</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="p">[],</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="s1">'a'</span><span class="p">},</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">E</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">v1_color</span><span class="o">=</span><span class="s1">'b'</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">E</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0)(~0)"</span><span class="p">,</span> <span class="s2">"(0,~0)"</span><span class="p">,</span> <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s1">'a'</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">'b'</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.contract_edge">
+<span class="sig-name descname"><span class="pre">contract_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.contract_edge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.contract_edge" title="Link to this definition">#</a></dt>
+<dd><p>Contract the edge <code class="docutils literal notranslate"><span class="pre">e</span></code>.
+If both end point have the same color they keep it, if one is <code class="docutils literal notranslate"><span class="pre">None``the</span> <span class="pre">new</span> <span class="pre">vertex</span> <span class="pre">gets</span> <span class="pre">the</span> <span class="pre">others</span> <span class="pre">color,</span> <span class="pre">otherwise</span> <span class="pre">it</span> <span class="pre">becomes</span> <span class="pre">``None</span></code>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0, 1, 2)(~0, 3, ~3)(~1,~2)"</span><span class="p">,</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="kc">None</span><span class="p">},</span> <span class="n">ecolors</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">contract_edge</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,~1,1)(~0,2,~2)"</span><span class="p">,</span> <span class="s2">"(0,~2,~0,1)(~1)(2)"</span><span class="p">,</span>  <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span>  <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">})</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">contract_edge</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,~1,~0)"</span><span class="p">,</span> <span class="s2">"(0,~1)(~0)(1)"</span><span class="p">,</span> <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mutable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.copy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.copy" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of this oriented map.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">mutable</span></code> is set to <code class="docutils literal notranslate"><span class="pre">True</span></code> or <code class="docutils literal notranslate"><span class="pre">False</span></code> return respectively an immutable or mutable version of the map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.delete_edge">
+<span class="sig-name descname"><span class="pre">delete_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.delete_edge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.delete_edge" title="Link to this definition">#</a></dt>
+<dd><p>Delete the edge <code class="docutils literal notranslate"><span class="pre">e</span></code>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0, 1, ~2)(~0, 3, ~3)(~1,2)"</span><span class="p">,</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="kc">None</span><span class="p">},</span> <span class="n">ecolors</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">delete_edge</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>  <span class="c1"># not tested</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,~1)(~0,2,~2)(1)"</span><span class="p">,</span> <span class="s2">"(0,~2,~0,~1,1)(2)"</span><span class="p">,</span> <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.disjoint_union">
+<span class="sig-name descname"><span class="pre">disjoint_union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">check</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">others</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.disjoint_union"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.disjoint_union" title="Link to this definition">#</a></dt>
+<dd><p>Add a copy of others in self. The labels of the half edges of others will be shifted by the sizes of the previous maps.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M1</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0, 1, 2)(~0, 3, ~3)(~1,~2)"</span><span class="p">,</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="kc">None</span><span class="p">},</span> <span class="n">ecolors</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M2</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0, 1)(~0, ~1)"</span><span class="p">,</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="kc">True</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="kc">False</span><span class="p">},</span> <span class="n">ecolors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M1</span><span class="o">.</span><span class="n">disjoint_union</span><span class="p">(</span><span class="n">M2</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M1</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,3,~3)(~1,~2)(4,5)(~4,~5)"</span><span class="p">,</span> <span class="s2">"(0,~3,~0,2,~1)(1,~2)(3)(4,~5)(~4,5)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">8</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="mi">9</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.dual">
+<span class="sig-name descname"><span class="pre">dual</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mutable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.dual"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.dual" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.edge_color">
+<span class="sig-name descname"><span class="pre">edge_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.edge_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.edge_color" title="Link to this definition">#</a></dt>
+<dd><p>Return the color of the edge e.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.insert_edge">
+<span class="sig-name descname"><span class="pre">insert_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.insert_edge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.insert_edge" title="Link to this definition">#</a></dt>
+<dd><p>Add an edge by splitting the vertex of <code class="docutils literal notranslate"><span class="pre">h0</span></code> and <code class="docutils literal notranslate"><span class="pre">h1</span></code> between them with color col. The two new vertices will have the same color as the original one.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0, 1, 2)(~0, 3, ~3)(~1,~2)"</span><span class="p">,</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="kc">None</span><span class="p">},</span> <span class="n">ecolors</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">insert_edge</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">e_color</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,3,~3,~4,~1,~2,4)"</span><span class="p">,</span> <span class="s2">"(0,4,~3,~0,2,~1)(1,~4,~2)(3)"</span><span class="p">,</span>
+<span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">42</span><span class="p">],</span>
+<span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">insert_edge</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">e_color</span><span class="o">=</span><span class="s1">'loop'</span><span class="p">,</span> <span class="n">v_color</span><span class="o">=</span><span class="s1">'n'</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,3,~3,~4,~1,~2,4)(5,~5)"</span><span class="p">,</span> <span class="s2">"(0,4,~3,~0,2,~1)(1,~4,~2)(3)(5)(~5)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="s1">'loop'</span><span class="p">],</span>
+ <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">10</span><span class="p">:</span> <span class="s1">'n'</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.merge_vertices">
+<span class="sig-name descname"><span class="pre">merge_vertices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">corners</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.merge_vertices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.merge_vertices" title="Link to this definition">#</a></dt>
+<dd><p>Merges the corners in corners. If color is given then the new vertex takes this color. Otherwise if exactly one color is present among the corners then it keeps it.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,3,~3)(~1,~2)(4,5)(~4,~5)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">],</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="mi">8</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="mi">9</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span> <span class="n">mutable</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">merge_vertices</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,3,~3)(~1,5,4,~2)(~4,~5)"</span><span class="p">,</span> <span class="s2">"(0,~3,~0,2,4,~5,~1)(1,~2)(3)(~4,5)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">9</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">merge_vertices</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,3,~3,~0,1,2)(~1,5,4,~2)(~4,~5)"</span><span class="p">,</span> <span class="s2">"(0,~3)(~0,2,4,~5,~1)(1,~2)(3)(~4,5)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">9</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span> <span class="mi">42</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.move_half_edge">
+<span class="sig-name descname"><span class="pre">move_half_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.move_half_edge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.move_half_edge" title="Link to this definition">#</a></dt>
+<dd><p>Move the half_edge h to the corner after c.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,3,4,~4)(~1,~3,5)(~2,~5,6)(~7,~6,7)"</span><span class="p">,</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="mi">13</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="mi">2</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">)],</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">move_half_edge</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,3,4)(~1,~3,~4,5)(~2,~5,6)(~6,7,~7)"</span><span class="p">,</span> <span class="s2">"(0,4,~3,~0,2,6,~7,~6,~5,~4,3,~1)(1,5,~2)(7)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">13</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">move_half_edge</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+<span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,~1,~3,~4,5)(~2,~5,6)(3,4)(~6,7,~7)"</span><span class="p">,</span> <span class="s2">"(0,5,~2,1,~0,2,6,~7,~6,~5,~4,3,~1)(~3,4)(7)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">13</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">move_half_edge</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">v_color</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
+ <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,~1,~3,~4,5)(~2,~5)(3,4)(6)(~6,7,~7)"</span><span class="p">,</span> <span class="s2">"(0,5,~2,1,~0,2,~5,~4,3,~1)(~3,4)(6,~7,~6)(7)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">13</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12</span><span class="p">:</span> <span class="mi">42</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oriented</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subdivide</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vertex_colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.plot" title="Link to this definition">#</a></dt>
+<dd><p>Plot the map.</p>
+<dl class="simple">
+<dt>INPUT:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">oriented</span></code>: boolean specifying whether edge should be oriented.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">subdivide</span></code>: boolean specifying whether multiple edges and loop should be subdivided for pretty plotting.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">edge_labels</span></code>: boolean specifying whether to plot the labels of the edges.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">edge_colors</span></code>: dictionary specifying the color to assign to each edge color.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vertex_colors</span></code>: dictionary specifying the color to assign to each vertex color.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.relabel">
+<span class="sig-name descname"><span class="pre">relabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.relabel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.relabel" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.reverse_orientation">
+<span class="sig-name descname"><span class="pre">reverse_orientation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.reverse_orientation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.reverse_orientation" title="Link to this definition">#</a></dt>
+<dd><p>Change the orientation of the edge <code class="docutils literal notranslate"><span class="pre">e</span></code>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0, 1, 2)(~0, 3, ~3)(~1,~2)"</span><span class="p">,</span> <span class="n">vcolors</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="kc">None</span><span class="p">},</span> <span class="n">ecolors</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">M</span><span class="o">.</span><span class="n">reverse_orientation</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># not tested</span>
+ <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,~1,2)(~0,3,~3)(1,~2)"</span><span class="p">,</span> <span class="s2">"(0,~3,~0,2,1)(~1,~2)(3)"</span><span class="p">,</span>
+ <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.set_edge_color">
+<span class="sig-name descname"><span class="pre">set_edge_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.set_edge_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.set_edge_color" title="Link to this definition">#</a></dt>
+<dd><p>Change the color of the half edge h to col</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.set_vertex_color">
+<span class="sig-name descname"><span class="pre">set_vertex_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.set_vertex_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.set_vertex_color" title="Link to this definition">#</a></dt>
+<dd><p>Change the color of the vertex incident to half edge h to col</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.smoothing">
+<span class="sig-name descname"><span class="pre">smoothing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.smoothing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.smoothing" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.submap">
+<span class="sig-name descname"><span class="pre">submap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">edges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.submap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.submap" title="Link to this definition">#</a></dt>
+<dd><p>Return the submap of this constellation induced on <code class="docutils literal notranslate"><span class="pre">edges</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.swap_color">
+<span class="sig-name descname"><span class="pre">swap_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">c0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.swap_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.swap_color" title="Link to this definition">#</a></dt>
+<dd><p>Swap colors c0 and c1 in m.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.vertex_color">
+<span class="sig-name descname"><span class="pre">vertex_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.vertex_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.vertex_color" title="Link to this definition">#</a></dt>
+<dd><p>Return the color of the vertex incident to h.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="misc.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">misc</span></code></p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="colored_map_builder.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.add_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.add_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.contract_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.contract_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.copy"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.copy()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.delete_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.delete_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.disjoint_union"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.disjoint_union()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.dual"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.dual()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.edge_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.edge_color()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.insert_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.insert_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.merge_vertices"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.merge_vertices()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.move_half_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.move_half_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.plot"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.plot()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.relabel"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.relabel()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.reverse_orientation"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.reverse_orientation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.set_edge_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.set_edge_color()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.set_vertex_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.set_vertex_color()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.smoothing"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.smoothing()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.submap"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.submap()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.swap_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.swap_color()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.vertex_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.vertex_color()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the combisurf authors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, the combisurf authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
