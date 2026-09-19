@@ -38,9 +38,6 @@ exclude_patterns = ["_build", "news"]
 
 html_theme = 'sphinx_book_theme'
 
-html_logo = 'static/logo.svg'
-html_static_path = ["static"]
-
 html_theme_options = {
     "repository_url": "https://github.com/flatsurf/combisurf",
     "icon_links": [{
@@ -50,7 +47,7 @@ html_theme_options = {
         "type": "url",
     }, {
         "name": "GitHub",
-        "url": "https://github.com/flatsurf/sage-flatsurf",
+        "url": "https://github.com/flatsurf/combisurf",
         "icon": "fa-brands fa-square-github",
         "type": "fontawesome",
     }, {
@@ -65,15 +62,7 @@ html_theme_options = {
     "path_to_docs": "doc",
 }
 
-html_static_path = ["static"]
-
-html_css_files = ["extra.css"]
-
 intersphinx_mapping = {"sage": ("https://doc.sagemath.org/html/en/reference", None)}
-
-html_css_files = [
-    "jupyter_execute.css",
-]
 
 htmlhelp_basename = "combisurfdoc"
 

@@ -2,3 +2,6 @@ combisurf/*.c
 combisurf/*.so
 __pycache__
 doc/_build
+.pixi
+build
+*.egg-info

@@ -47,3 +47,151 @@ directives = { boundscheck = false, nonecheck = false, wraparound = false, overf
 
 # Additional keyword arguments passed to setuptools.Extension()
 compile_kwargs = { }
+
+###############
+# PIXI CONFIG #
+###############
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64"]
+
+[tool.pixi.environments]
+sagemath-109 = ["sagemath-109"]
+dev = ["dev", "lint", "doc", "sagemath-109"]
+
+#########
+# TASKS #
+#########
+[tool.pixi.tasks.build]
+cmd = "pip install --ignore-installed --no-build-isolation -ve ."
+inputs = [
+    "pyproject.toml",
+    "combisurf/misc.pxd",
+    "combisurf/misc.pyx",
+    "combisurf/permutation.pyx",
+    "combisurf/word.pyx",
+]
+
+# Since sagelib 10.8, the conda package no longer ships the bin/sage* scripts,
+# so "sage -t" is not available. sage-runtests was only a thin wrapper around
+# sage.doctest.__main__, which the library still provides, hence we run the
+# doctester as a module. It takes exactly the same options as "sage -t".
+#
+# The doctested files are enumerated with "git ls-files" rather than handed to
+# "sage -t" as directories: that keeps untracked scratch files out of the run
+# (so a local run matches a CI checkout) and it is the only way to leave a file
+# out, as "sage -t" has no --exclude.
+#
+# combisurf/quad_systems.py is excluded while it is being rewritten in a
+# separate pull request. Drop it from the "grep -v" once its doctests pass.
+[tool.pixi.tasks.test-doctest]
+cmd = '''python -m sage.doctest -p 0 --force-lib --initial --optional=sage $(git ls-files 'combisurf/*.py' 'combisurf/*.pyx' 'combisurf/*.pxd' 'doc/*.rst' | grep -v '^combisurf/quad_systems.py$')'''
+depends-on = ["build"]
+
+[tool.pixi.tasks.test-doctest-long]
+cmd = '''python -m sage.doctest -p 0 --force-lib --initial --long --optional=sage $(git ls-files 'combisurf/*.py' 'combisurf/*.pyx' 'combisurf/*.pxd' 'doc/*.rst' | grep -v '^combisurf/quad_systems.py$')'''
+depends-on = ["build"]
+
+[tool.pixi.tasks.test-pytest]
+cmd = "pytest -n auto test/"
+depends-on = ["build"]
+
+[tool.pixi.feature.dev.tasks]
+# "sage" and "test" are shortcuts that should (together with their
+# dependencies) run in the "dev" environment. To achieve this, we need to split
+# them into two tasks each (otherwise, pixi is going to ask which environment
+# the dependencies should run in.)
+sage = { cmd = "pixi run dev-sage" }
+dev-sage = { cmd = "sage", depends-on = ["build"] }
+test = { cmd = "pixi run dev-test" }
+dev-test = { depends-on = ["test-doctest-long", "test-pytest"] }
+
+[tool.pixi.feature.dev.tasks.sdist]
+cmd = "python -m build --sdist --no-isolation"
+
+# combisurf/quad_systems.py is excluded from the linters for the same reason as
+# above; drop the exclusions together with the one in test-doctest.
+[tool.pixi.feature.lint.tasks]
+codespell = '''codespell $(git ls-files '*.py' '*.pyx' '*.pxd' '*.md' '*.rst')'''
+# We only check for whitespace problems, the rules that are incompatible with
+# black's formatting are of no interest to us.
+pycodestyle = '''pycodestyle --select W2,W3 --max-line-length=256 $(git ls-files 'combisurf/*.py' 'test/*.py' | grep -v '^combisurf/quad_systems.py$')'''
+ruff = "ruff check --select D207,D208 combisurf/ test/"
+cython-lint = "cython-lint --ignore=E128,E231,E261,E265,E302,E303,E305,E501,E703,E731,E741 combisurf"
+lint = { depends-on = ["codespell", "pycodestyle", "ruff", "cython-lint"] }
+
+[tool.pixi.feature.doc.tasks.doc-build]
+cwd = "doc"
+cmd = "make html SPHINXOPTS='-W --keep-going'"
+depends-on = ["build"]
+
+[tool.pixi.feature.doc.tasks.doc-linkcheck]
+cwd = "doc"
+cmd = "make linkcheck"
+depends-on = ["doc-build"]
+
+[tool.pixi.feature.doc.tasks.doc]
+cmd = "pixi run dev-doc"
+
+[tool.pixi.feature.doc.tasks.dev-doc]
+cwd = "doc"
+env = { PORT = "8880" }
+depends-on = ["doc-build"]
+cmd = """
+sh -c '
+python -m http.server $PORT --bind localhost --directory _build/html &
+SERVER_PID=$!
+trap "kill $SERVER_PID" EXIT
+
+sleep 1
+
+echo "Preview the documentation at http://localhost:$PORT/"
+echo "Press Ctrl-C to continue"
+
+wait $SERVER_PID
+'
+"""
+
+################
+# DEPENDENCIES #
+################
+[tool.pixi.dependencies]
+pip = "*"
+hatchling = "*"
+hatch-cython = "*"
+cython = "*"
+c-compiler = "*"
+numpy = "*"
+
+sagelib = "*"
+# matplotlib is needed to render the plots produced by the .plot() methods
+matplotlib-base = "*"
+pytest = "*"
+pytest-xdist = "*"
+# ipywidgets is needed by SageMath doctesting
+ipywidgets = "*"
+sympy = "*"
+gap-defaults = "*"
+sagemath-db-conway-polynomials = "*"
+
+[tool.pixi.feature.sagemath-109.dependencies]
+sagelib = "==10.9"
+
+[tool.pixi.feature.dev.dependencies]
+python-build = "*"
+
+[tool.pixi.feature.lint.dependencies]
+codespell = "*"
+ruff = "*"
+pycodestyle = "*"
+cython-lint = "*"
+
+[tool.pixi.feature.doc.dependencies]
+myst-nb = "*"
+sphinx = ">=7.4,<8"
+jupyter_sphinx = "*"
+sphinx-book-theme = "*"
+linkchecker = "*"
+
+[tool.pixi.feature.doc.pypi-dependencies]
+sage-docbuild = "==10.3"
