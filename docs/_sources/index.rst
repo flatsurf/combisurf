@@ -18,6 +18,8 @@ Module Reference
    oriented_map_builder
    permutation
    word
+   word_family
+   lyndon_word_family
    misc
    colored_map
    colored_map_builder

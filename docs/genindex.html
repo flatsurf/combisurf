@@ -186,6 +186,8 @@
 <li class="toctree-l1"><a class="reference internal" href="oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word_family.html"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="lyndon_word_family.html"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
@@ -354,11 +356,13 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.best_relabelling">best_relabelling() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map_builder.html#combisurf.oriented_map_builder.bridge">bridge() (in module combisurf.oriented_map_builder)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="colored_map_builder.html#combisurf.colored_map_builder.bridge_3col">bridge_3col() (in module combisurf.colored_map_builder)</a>
+</li>
+      <li><a href="word_family.html#combisurf.word_family.ByLengthWordFamily">ByLengthWordFamily (class in combisurf.word_family)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -400,6 +404,13 @@
 
       <ul>
         <li><a href="geometric_intersection.html#module-combisurf.geometric_intersection">module</a>
+</li>
+      </ul></li>
+      <li>
+    combisurf.lyndon_word_family
+
+      <ul>
+        <li><a href="lyndon_word_family.html#module-combisurf.lyndon_word_family">module</a>
 </li>
       </ul></li>
       <li>
@@ -446,6 +457,13 @@
         <li><a href="word.html#module-combisurf.word">module</a>
 </li>
       </ul></li>
+      <li>
+    combisurf.word_family
+
+      <ul>
+        <li><a href="word_family.html#module-combisurf.word_family">module</a>
+</li>
+      </ul></li>
       <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection.conjugate_plot">conjugate_plot() (combisurf.geometric_intersection.GeometricIntersection method)</a>
 </li>
       <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection.conjugate_sort">conjugate_sort() (combisurf.geometric_intersection.GeometricIntersection method)</a>
@@ -468,7 +486,13 @@
         <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.copy">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
       </ul></li>
+      <li><a href="word_family.html#combisurf.word_family.WordFamily.count">count() (combisurf.word_family.WordFamily method)</a>
+</li>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.cyclically_reduced_lyndon_words">cyclically_reduced_lyndon_words() (in module combisurf.lyndon_word_family)</a>
+</li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves">cyclically_sorted_leaves() (combisurf.conjugate_tree.ConjugateTree method)</a>
+</li>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.CyclicallyReducedLyndonWordFamily">CyclicallyReducedLyndonWordFamily (class in combisurf.lyndon_word_family)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -530,9 +554,11 @@
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.face_turn">face_turn() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
+      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.faces">faces() (combisurf.oriented_map.OrientedMap method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.faces">faces() (combisurf.oriented_map.OrientedMap method)</a>
+      <li><a href="word_family.html#combisurf.word_family.WordFamily.flat">flat() (combisurf.word_family.WordFamily method)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.fold_corner">fold_corner() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
@@ -614,11 +640,23 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.leaf_as_conjugate">leaf_as_conjugate() (combisurf.conjugate_tree.ConjugateTree method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.least_rotation">least_rotation() (in module combisurf.permutation)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.leaves">leaves() (combisurf.conjugate_tree.ConjugateTree method)</a>
+</li>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.LexCyclicallyReducedLyndonWordFamily">LexCyclicallyReducedLyndonWordFamily (class in combisurf.lyndon_word_family)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.LexLyndonWordFamily">LexLyndonWordFamily (class in combisurf.lyndon_word_family)</a>
+</li>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.LexWordFamily">LexWordFamily (class in combisurf.lyndon_word_family)</a>
+</li>
+      <li><a href="word_family.html#combisurf.word_family.WordFamily.list">list() (combisurf.word_family.WordFamily method)</a>
+</li>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.lyndon_words">lyndon_words() (in module combisurf.lyndon_word_family)</a>
+</li>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.LyndonWordFamily">LyndonWordFamily (class in combisurf.lyndon_word_family)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -644,6 +682,8 @@
 </li>
         <li><a href="geometric_intersection.html#module-combisurf.geometric_intersection">combisurf.geometric_intersection</a>
 </li>
+        <li><a href="lyndon_word_family.html#module-combisurf.lyndon_word_family">combisurf.lyndon_word_family</a>
+</li>
         <li><a href="misc.html#module-combisurf.misc">combisurf.misc</a>
 </li>
         <li><a href="oriented_map.html#module-combisurf.oriented_map">combisurf.oriented_map</a>
@@ -655,6 +695,8 @@
         <li><a href="permutation.html#module-combisurf.permutation">combisurf.permutation</a>
 </li>
         <li><a href="word.html#module-combisurf.word">combisurf.word</a>
+</li>
+        <li><a href="word_family.html#module-combisurf.word_family">combisurf.word_family</a>
 </li>
       </ul></li>
   </ul></td>
@@ -949,6 +991,8 @@
         <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsNaive.update">(combisurf.partial_sums.PartialSumsNaive method)</a>
 </li>
       </ul></li>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.UpToInverseWordFamily">UpToInverseWordFamily (class in combisurf.lyndon_word_family)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -989,10 +1033,10 @@
 </li>
       <li><a href="word.html#combisurf.word.word_free_group_mul">word_free_group_mul() (in module combisurf.word)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="word.html#combisurf.word.word_init">word_init() (in module combisurf.word)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="word.html#combisurf.word.word_is_cyclically_reduced">word_is_cyclically_reduced() (in module combisurf.word)</a>
 </li>
       <li><a href="word.html#combisurf.word.word_is_factor">word_is_factor() (in module combisurf.word)</a>
@@ -1002,6 +1046,10 @@
       <li><a href="word.html#combisurf.word.word_reduce">word_reduce() (in module combisurf.word)</a>
 </li>
       <li><a href="word.html#combisurf.word.word_string">word_string() (in module combisurf.word)</a>
+</li>
+      <li><a href="word_family.html#combisurf.word_family.WordFamily">WordFamily (class in combisurf.word_family)</a>
+</li>
+      <li><a href="word_family.html#combisurf.word_family.WordFamilyIterator">WordFamilyIterator (class in combisurf.word_family)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.words">words() (combisurf.conjugate_tree.ConjugateTree method)</a>
 </li>

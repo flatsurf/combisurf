@@ -1,0 +1,832 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>word_family &#8212; combisurf 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=a1637f0b"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'word_family';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="lyndon_word_family" href="lyndon_word_family.html" />
+    <link rel="prev" title="word" href="word.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">combisurf 0.1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://flatsurf.github.io" title="flatsurf" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://flatsurf.github.io/assets/logo.svg" class="icon-link-image" alt="flatsurf"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/flatsurf/combisurf" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://sagemath.zulipchat.com/#narrow/channel/271193-flatsurf" title="Zulip" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-regular fa-comments fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Zulip</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="oriented_map.html"><code class="docutils literal notranslate"><span class="pre">oriented_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="lyndon_word_family.html"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/flatsurf/combisurf/edit/master/doc/word_family.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button"
+   title="Suggest edit"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/word_family.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>word_family</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.ByLengthWordFamily"><code class="docutils literal notranslate"><span class="pre">ByLengthWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamily"><code class="docutils literal notranslate"><span class="pre">WordFamily</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamily.count"><code class="docutils literal notranslate"><span class="pre">WordFamily.count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamily.flat"><code class="docutils literal notranslate"><span class="pre">WordFamily.flat()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamily.list"><code class="docutils literal notranslate"><span class="pre">WordFamily.list()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamilyIterator"><code class="docutils literal notranslate"><span class="pre">WordFamilyIterator</span></code></a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-combisurf.word_family">
+<span id="word-family"></span><h1><code class="docutils literal notranslate"><span class="pre">word_family</span></code><a class="headerlink" href="#module-combisurf.word_family" title="Link to this heading">#</a></h1>
+<p>Families of words on non-negative integers</p>
+<p>A family is a set of words together with an order on them, so the same words
+taken in another order make another family. This module holds what every
+family has in common; the families themselves are in
+<a class="reference internal" href="lyndon_word_family.html#module-combisurf.lyndon_word_family" title="combisurf.lyndon_word_family"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.lyndon_word_family</span></code></a>.</p>
+<p>The first half of what follows is what there is to know to run through a
+family; the second half is what a new family has to provide.</p>
+<p><strong>Using a family</strong></p>
+<p>A family is not an iterator, no more than a <code class="docutils literal notranslate"><span class="pre">range</span></code> is. It is iterated any
+number of times, each <code class="docutils literal notranslate"><span class="pre">iter</span></code> handing out a <a class="reference internal" href="#combisurf.word_family.WordFamilyIterator" title="combisurf.word_family.WordFamilyIterator"><code class="xref py py-class docutils literal notranslate"><span class="pre">WordFamilyIterator</span></code></a> of
+its own, and it also answers <a class="reference internal" href="#combisurf.word_family.WordFamily.list" title="combisurf.word_family.WordFamily.list"><code class="xref py py-meth docutils literal notranslate"><span class="pre">list()</span></code></a>,
+<a class="reference internal" href="#combisurf.word_family.WordFamily.flat" title="combisurf.word_family.WordFamily.flat"><code class="xref py py-meth docutils literal notranslate"><span class="pre">flat()</span></code></a> and <a class="reference internal" href="#combisurf.word_family.WordFamily.count" title="combisurf.word_family.WordFamily.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code></a> without any of them
+disturbing an iteration under way:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">lyndon_words</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">f</span> <span class="o">=</span> <span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<span class="mi">2</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">flat</span><span class="p">()</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="#combisurf.word_family.WordFamily.count" title="combisurf.word_family.WordFamily.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code></a> uses a closed form when the family knows one,
+rather than running through anything, which is why counting words that could
+never be enumerated is instant:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">cyclically_reduced_lyndon_words</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">24</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<span class="mi">2483526855452500</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="#combisurf.word_family.WordFamily.flat" title="combisurf.word_family.WordFamily.flat"><code class="xref py py-meth docutils literal notranslate"><span class="pre">flat()</span></code></a> lays the words end to end in a single array instead
+of building one object per word, and is therefore only available when they
+all have the same length.</p>
+<p><a class="reference internal" href="#combisurf.word_family.ByLengthWordFamily" title="combisurf.word_family.ByLengthWordFamily"><code class="xref py py-class docutils literal notranslate"><span class="pre">ByLengthWordFamily</span></code></a> runs any family at one length after the other,
+so that the words of a range of lengths come out shortest first:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByLengthWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">ByLengthWordFamily</span><span class="p">(</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>Iteration hands out one array per word, and refills the array handed out
+last instead of allocating a new one, but only while nothing else holds it,
+which its reference count tells; see <code class="xref py py-meth docutils literal notranslate"><span class="pre">__next__()</span></code>. Getting
+a run through a family down to that speed is a matter of how the loop is
+written, not of the family. The steps below all run through the 179756976
+words of <code class="docutils literal notranslate"><span class="pre">cyclically_reduced_lyndon_words(4,</span> <span class="pre">11)</span></code>, timed on one
+machine.</p>
+<p>Written at the top level of a session, a plain loop takes 7.0 seconds:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">pass</span>
+</pre></div>
+</div>
+<p>Dropping the word at the end of the body brings it to 6.1 seconds. Without
+the <code class="docutils literal notranslate"><span class="pre">del</span></code> the loop variable still refers to the previous word at the
+moment the next one is asked for, so that array is not free and a new one is
+allocated for every word:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">del</span> <span class="n">w</span>
+</pre></div>
+</div>
+<p>Moving the very same loop inside a function brings it to 2.6 seconds. At the
+top level <code class="docutils literal notranslate"><span class="pre">w</span></code> is a global, so binding it and deleting it go through a
+dictionary, which costs about as much as the allocation the <code class="docutils literal notranslate"><span class="pre">del</span></code> saves;
+as a local both are array slots:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="k">def</span><span class="w"> </span><span class="nf">local_iter</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>         <span class="k">del</span> <span class="n">w</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">local_iter</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Finally, no Python object need be built at all: a Cython caller can
+<code class="docutils literal notranslate"><span class="pre">cimport</span></code> the class and drive <code class="docutils literal notranslate"><span class="pre">first</span></code> and <code class="docutils literal notranslate"><span class="pre">next</span></code> itself, which is what
+<code class="docutils literal notranslate"><span class="pre">word_family.pxd</span></code> is for. That takes 1.2 seconds, counting the words as
+it goes for good measure. In a session, with the source tree on the include
+path so that the declarations are found:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%%</span><span class="n">cython</span> <span class="o">--</span><span class="n">include</span><span class="o">-</span><span class="n">dirs</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">combisurf</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span> <span class="n">cimport</span> <span class="n">CyclicallyReducedLyndonWordFamily</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">cython_iter</span><span class="p">(</span><span class="nb">int</span> <span class="n">n</span><span class="p">,</span> <span class="nb">int</span> <span class="n">length</span><span class="p">):</span>
+    <span class="n">cdef</span> <span class="n">CyclicallyReducedLyndonWordFamily</span> <span class="n">f</span>
+    <span class="n">cdef</span> <span class="n">long</span> <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">f</span><span class="o">.</span><span class="n">first</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">total</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">f</span><span class="o">.</span><span class="n">next</span><span class="p">():</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">total</span>
+</pre></div>
+</div>
+<p>which agrees with <a class="reference internal" href="#combisurf.word_family.WordFamily.count" title="combisurf.word_family.WordFamily.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code></a>, <code class="docutils literal notranslate"><span class="pre">cython_iter(2,</span> <span class="pre">6)</span></code> giving
+116 and <code class="docutils literal notranslate"><span class="pre">cython_iter(4,</span> <span class="pre">11)</span></code> giving 179756976. This last step is shown
+rather than doctested, since compiling Cython from a doctest needs
+<code class="docutils literal notranslate"><span class="pre">sage.misc.cython</span></code>, which is not available everywhere.</p>
+<p><strong>Adding a family</strong></p>
+<p>A family is a subclass of <a class="reference internal" href="#combisurf.word_family.WordFamily" title="combisurf.word_family.WordFamily"><code class="xref py py-class docutils literal notranslate"><span class="pre">WordFamily</span></code></a>. Everything above comes for
+free from the C protocol below, declared in <code class="docutils literal notranslate"><span class="pre">word_family.pxd</span></code>; a subclass
+is only ever a few methods long.</p>
+<p>The words live in a buffer of C integers, <code class="docutils literal notranslate"><span class="pre">ww[0]</span></code>, …, <code class="docutils literal notranslate"><span class="pre">ww[size</span> <span class="pre">-</span> <span class="pre">1]</span></code>,
+allocated once by <code class="docutils literal notranslate"><span class="pre">_alloc(capacity)</span></code> and never reallocated while the
+family is run. <code class="docutils literal notranslate"><span class="pre">size</span></code> may change from one word to the next, as it does for
+the families of a range of lengths, as long as it stays at most
+<code class="docutils literal notranslate"><span class="pre">capacity</span></code>.</p>
+<p>Two methods are mandatory and move that buffer:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">first()</span></code> sets the buffer to the first word and returns 1, or returns 0
+when the family is empty;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">next()</span></code> moves it to the word after the current one and returns 1, or
+returns 0 when there is none. It may only be called when the buffer holds
+a word of the family, that is after a <code class="docutils literal notranslate"><span class="pre">first()</span></code> or a <code class="docutils literal notranslate"><span class="pre">next()</span></code> that
+returned 1; once either returned 0 the content of the buffer is
+unspecified.</p></li>
+</ul>
+<p>Both are <code class="docutils literal notranslate"><span class="pre">noexcept</span> <span class="pre">nogil</span></code>, which the compiler enforces: they work on
+<code class="docutils literal notranslate"><span class="pre">ww</span></code> and on C attributes, never on a Python object. That is what lets a
+Cython caller run through a family at the speed measured above, and what
+makes the <code class="docutils literal notranslate"><span class="pre">.pxd</span></code> worth cimporting.</p>
+<p>One more method is mandatory, and is the only one that builds an object:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_new()</span></code> returns a fresh family of the same words. It is what
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">__iter__()</span></code> hands out, so that iterators are independent
+of one another and of the family they come from. Its default returns the
+empty family, so a subclass that forgets it yields nothing at all.</p></li>
+</ul>
+<p>Two are optional refinements. Each has a default returning <code class="docutils literal notranslate"><span class="pre">-1</span></code>, which
+stands for “not supported by this family”; a caller falls back on running
+through the words:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cardinality()</span></code> returns the number of words, or <code class="docutils literal notranslate"><span class="pre">-1</span></code> when that number
+does not fit in a <code class="docutils literal notranslate"><span class="pre">long</span> <span class="pre">long</span></code>. <a class="reference internal" href="#combisurf.word_family.WordFamily.count" title="combisurf.word_family.WordFamily.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code></a> uses it, and so
+does <a class="reference internal" href="#combisurf.word_family.WordFamily.list" title="combisurf.word_family.WordFamily.list"><code class="xref py py-meth docutils literal notranslate"><span class="pre">list()</span></code></a>, which then fills a list of the right size
+rather than growing one;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">next_at(p)</span></code> is the pruning primitive: it moves the buffer to the next
+word whose first <code class="docutils literal notranslate"><span class="pre">p</span></code> letters are not those of the current word, stepping
+over the whole block of words sharing that prefix at once. A family whose
+words are chosen by a condition on a prefix can be run through much faster
+with it.</p></li>
+</ul>
+<p>Two more are only needed by a family that is run at several lengths, or that
+wraps another one. <a class="reference internal" href="#combisurf.word_family.ByLengthWordFamily" title="combisurf.word_family.ByLengthWordFamily"><code class="xref py py-class docutils literal notranslate"><span class="pre">ByLengthWordFamily</span></code></a> calls them, so a family that
+has to work underneath it implements them:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_resize(capacity)</span></code> gives the family a buffer of that many letters. The
+default calls <code class="docutils literal notranslate"><span class="pre">_alloc</span></code>; a family that does not own its buffer, because
+it shares the one of the family it wraps, passes the request on;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_set_size(size)</span></code> says at which length the family is about to be run.
+The default sets <code class="docutils literal notranslate"><span class="pre">size</span></code>; again a wrapping family passes it on, since
+that is where the words come from.</p></li>
+</ul>
+<p>Two flags say what the words are like, and are read by the machinery rather
+than by the algorithm:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">varying_size</span></code>, whether the words have different lengths, which
+<a class="reference internal" href="#combisurf.word_family.WordFamily.flat" title="combisurf.word_family.WordFamily.flat"><code class="xref py py-meth docutils literal notranslate"><span class="pre">flat()</span></code></a> refuses;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">has_empty_word</span></code>, whether the empty word is one of them.</p></li>
+</ul>
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.word_family.ByLengthWordFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.word_family.</span></span><span class="sig-name descname"><span class="pre">ByLengthWordFamily</span></span><a class="headerlink" href="#combisurf.word_family.ByLengthWordFamily" title="Link to this definition">#</a></dt>
+<dd><p>Family of the words of another family whose length lies in a range,
+ordered by length first and by the order of that family within a length.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">base</span></code> – a <a class="reference internal" href="#combisurf.word_family.WordFamily" title="combisurf.word_family.WordFamily"><code class="xref py py-class docutils literal notranslate"><span class="pre">WordFamily</span></code></a>; it is used at every length in turn,
+so its own length is immaterial and its buffer has to be large enough,
+which the constructor sees to</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_min</span></code> – non-negative integer; the smallest length</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_max</span></code> – non-negative integer; one past the largest length, as
+for <code class="docutils literal notranslate"><span class="pre">range</span></code></p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByLengthWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">F</span> <span class="o">=</span> <span class="n">ByLengthWordFamily</span><span class="p">(</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">F</span>
+<span class="n">Lyndon</span> <span class="n">words</span> <span class="n">of</span> <span class="n">length</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">4</span> <span class="n">on</span> <span class="mi">2</span> <span class="n">letters</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">F</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+</pre></div>
+</div>
+<p>The words of one length come out in the order of the underlying family,
+and the lengths in increasing order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">F</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>An empty range gives nothing, and a range reduced to one length gives
+that length alone:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">ByLengthWordFamily</span><span class="p">(</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">ByLengthWordFamily</span><span class="p">(</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+</pre></div>
+</div>
+<p>Since the words have different lengths, they cannot be laid end to end:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">F</span><span class="o">.</span><span class="n">flat</span><span class="p">()</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">ValueError</span><span class="p">:</span> <span class="n">flat</span><span class="p">()</span> <span class="n">needs</span> <span class="nb">all</span> <span class="n">the</span> <span class="n">words</span> <span class="n">to</span> <span class="n">have</span> <span class="n">the</span> <span class="n">same</span> <span class="n">length</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.word_family.WordFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.word_family.</span></span><span class="sig-name descname"><span class="pre">WordFamily</span></span><a class="headerlink" href="#combisurf.word_family.WordFamily" title="Link to this definition">#</a></dt>
+<dd><p>Base class for families of words.</p>
+<p>A subclass provides the words by overriding a handful of C methods,
+<code class="docutils literal notranslate"><span class="pre">first</span></code> and <code class="docutils literal notranslate"><span class="pre">next</span></code> at the very least. They are declared in
+<code class="docutils literal notranslate"><span class="pre">word_family.pxd</span></code> and spelled out under “Adding a family” in the
+documentation of this module, <a class="reference internal" href="#module-combisurf.word_family" title="combisurf.word_family"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.word_family</span></code></a>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">f</span> <span class="o">=</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<span class="mi">2</span>
+</pre></div>
+</div>
+<p>The base class is itself the empty family:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">WordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">WordFamily</span><span class="p">()</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">WordFamily</span><span class="p">()</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<span class="mi">0</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.word_family.WordFamily.count">
+<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word_family.WordFamily.count" title="Link to this definition">#</a></dt>
+<dd><p>Return the number of words of this family.</p>
+<p>The family is run through unless it provides a <code class="docutils literal notranslate"><span class="pre">cardinality</span></code>, in
+which case that count is returned directly.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">12</span><span class="p">)]</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">56</span><span class="p">,</span> <span class="mi">99</span><span class="p">,</span> <span class="mi">186</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">CyclicallyReducedLyndonWordFamily</span></code> is counted without being
+run through:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">CyclicallyReducedLyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">24</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<span class="mi">2483526855452500</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.word_family.WordFamily.flat">
+<span class="sig-name descname"><span class="pre">flat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word_family.WordFamily.flat" title="Link to this definition">#</a></dt>
+<dd><p>Return all the words of this family concatenated in a single array.</p>
+<p>This is the cheap way of getting the whole family at once: it builds
+one object instead of one per word. It is only available for families
+whose words all have the same length.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">flat</span><span class="p">()</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The words are read back by slicing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">f</span> <span class="o">=</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">flat</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="mi">4</span><span class="o">*</span><span class="n">i</span><span class="p">:</span> <span class="mi">4</span><span class="o">*</span><span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">//</span> <span class="mi">4</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>Slicing a <code class="xref py py-class docutils literal notranslate"><span class="pre">memoryview</span></code> of the result reads the words without
+copying them, and <code class="docutils literal notranslate"><span class="pre">toreadonly</span></code> makes such a view read only:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="nb">memoryview</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">toreadonly</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="n">m</span><span class="p">[</span><span class="mi">4</span><span class="o">*</span><span class="n">i</span><span class="p">:</span> <span class="mi">4</span><span class="o">*</span><span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="o">//</span> <span class="mi">4</span><span class="p">)]</span>
+<span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">TypeError</span><span class="p">:</span> <span class="n">cannot</span> <span class="n">modify</span> <span class="n">read</span><span class="o">-</span><span class="n">only</span> <span class="n">memory</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.word_family.WordFamily.list">
+<span class="sig-name descname"><span class="pre">list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word_family.WordFamily.list" title="Link to this definition">#</a></dt>
+<dd><p>Return the list of the words of this family.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])]</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The garbage collector is turned off while the list is built and
+restored afterwards. Arrays are tracked by the cyclic collector,
+so building a long list of them otherwise makes the collector
+walk a growing population over and over, which turns a linear
+construction into a superlinear one. Reference counting is not
+affected, hence neither is the memory actually used.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.word_family.WordFamilyIterator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.word_family.</span></span><span class="sig-name descname"><span class="pre">WordFamilyIterator</span></span><a class="headerlink" href="#combisurf.word_family.WordFamilyIterator" title="Link to this definition">#</a></dt>
+<dd><p>Iterator through a family of words.</p>
+<p>This is what <code class="xref py py-meth docutils literal notranslate"><span class="pre">WordFamily.__iter__()</span></code> hands out, in the way a
+<code class="docutils literal notranslate"><span class="pre">range</span></code> hands out a <code class="docutils literal notranslate"><span class="pre">range_iterator</span></code>; it is not meant to be built
+directly. It owns a family of its own, so that several runs through the
+same family, and the family itself, never interfere.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">it</span>
+<span class="n">iterator</span> <span class="n">through</span> <span class="n">Lyndon</span> <span class="n">words</span> <span class="n">of</span> <span class="n">length</span> <span class="mi">3</span> <span class="n">on</span> <span class="mi">2</span> <span class="n">letters</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Iterating an iterator gives it back, so a partial run is resumed rather
+than started again:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="nb">iter</span><span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="ow">is</span> <span class="n">it</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">StopIteration</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="word.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">word</span></code></p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="lyndon_word_family.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.ByLengthWordFamily"><code class="docutils literal notranslate"><span class="pre">ByLengthWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamily"><code class="docutils literal notranslate"><span class="pre">WordFamily</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamily.count"><code class="docutils literal notranslate"><span class="pre">WordFamily.count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamily.flat"><code class="docutils literal notranslate"><span class="pre">WordFamily.flat()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamily.list"><code class="docutils literal notranslate"><span class="pre">WordFamily.list()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word_family.WordFamilyIterator"><code class="docutils literal notranslate"><span class="pre">WordFamilyIterator</span></code></a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the combisurf authors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, the combisurf authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

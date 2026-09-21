@@ -1,0 +1,946 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>lyndon_word_family &#8212; combisurf 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=a1637f0b"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'lyndon_word_family';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="misc" href="misc.html" />
+    <link rel="prev" title="word_family" href="word_family.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">combisurf 0.1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://flatsurf.github.io" title="flatsurf" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://flatsurf.github.io/assets/logo.svg" class="icon-link-image" alt="flatsurf"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/flatsurf/combisurf" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://sagemath.zulipchat.com/#narrow/channel/271193-flatsurf" title="Zulip" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-regular fa-comments fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Zulip</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="oriented_map.html"><code class="docutils literal notranslate"><span class="pre">oriented_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word_family.html"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/flatsurf/combisurf/edit/master/doc/lyndon_word_family.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button"
+   title="Suggest edit"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/lyndon_word_family.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>lyndon_word_family</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.CyclicallyReducedLyndonWordFamily"><code class="docutils literal notranslate"><span class="pre">CyclicallyReducedLyndonWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.LexCyclicallyReducedLyndonWordFamily"><code class="docutils literal notranslate"><span class="pre">LexCyclicallyReducedLyndonWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.LexLyndonWordFamily"><code class="docutils literal notranslate"><span class="pre">LexLyndonWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.LexWordFamily"><code class="docutils literal notranslate"><span class="pre">LexWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.LyndonWordFamily"><code class="docutils literal notranslate"><span class="pre">LyndonWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.UpToInverseWordFamily"><code class="docutils literal notranslate"><span class="pre">UpToInverseWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.cyclically_reduced_lyndon_words"><code class="docutils literal notranslate"><span class="pre">cyclically_reduced_lyndon_words()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.lyndon_words"><code class="docutils literal notranslate"><span class="pre">lyndon_words()</span></code></a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-combisurf.lyndon_word_family">
+<span id="lyndon-word-family"></span><h1><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code><a class="headerlink" href="#module-combisurf.lyndon_word_family" title="Link to this heading">#</a></h1>
+<p>Families of Lyndon words</p>
+<p>A Lyndon word is a word that is strictly smaller than each of its proper
+rotations. This module holds them, and the ones that are cyclically reduced
+when the letters <code class="docutils literal notranslate"><span class="pre">i</span></code> and <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">^</span> <span class="pre">1</span></code> are read as inverse of each other in a
+free group, as families in the sense of <a class="reference internal" href="word_family.html#module-combisurf.word_family" title="combisurf.word_family"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.word_family</span></code></a>.</p>
+<p>The words of a single length come out in lexicographic order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">lyndon_words</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>Over a range of lengths <code class="docutils literal notranslate"><span class="pre">size_min</span> <span class="pre">&lt;=</span> <span class="pre">n</span> <span class="pre">&lt;</span> <span class="pre">size_max</span></code> there are two orders to
+choose from, and since a family is a set of words together with an order,
+they are two different families. By length, one length after the other, or
+lexicographically, in which a word comes before every longer word it
+begins:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s2">"lex"</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)]</span>
+</pre></div>
+</div>
+<p>The cyclically reduced ones are the Lyndon representatives of the conjugacy
+classes of the primitive elements of the free group, and
+<code class="docutils literal notranslate"><span class="pre">up_to_inverse</span></code> keeps one word out of each pair of a class and its
+inverse:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">cyclically_reduced_lyndon_words</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">up_to_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>The functions <a class="reference internal" href="#combisurf.lyndon_word_family.lyndon_words" title="combisurf.lyndon_word_family.lyndon_words"><code class="xref py py-func docutils literal notranslate"><span class="pre">lyndon_words()</span></code></a> and <a class="reference internal" href="#combisurf.lyndon_word_family.cyclically_reduced_lyndon_words" title="combisurf.lyndon_word_family.cyclically_reduced_lyndon_words"><code class="xref py py-func docutils literal notranslate"><span class="pre">cyclically_reduced_lyndon_words()</span></code></a>
+build any of these; the classes behind them are also usable directly.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.lyndon_word_family.CyclicallyReducedLyndonWordFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.lyndon_word_family.</span></span><span class="sig-name descname"><span class="pre">CyclicallyReducedLyndonWordFamily</span></span><a class="headerlink" href="#combisurf.lyndon_word_family.CyclicallyReducedLyndonWordFamily" title="Link to this definition">#</a></dt>
+<dd><p>Family of the cyclically reduced Lyndon words of given length on a given
+number of generators.</p>
+<p>The alphabet has <code class="docutils literal notranslate"><span class="pre">2n</span></code> letters, seen as the generators of a free group
+and their inverses, the letters <code class="docutils literal notranslate"><span class="pre">i</span></code> and <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">^</span> <span class="pre">1</span></code> being inverse of each
+other. A word is cyclically reduced when no letter is followed by its
+inverse, the last letter being followed by the first one. The words are
+produced in lexicographic order.</p>
+<p>Together these words are the Lyndon representatives of the conjugacy
+classes of the primitive elements of the free group.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> – non-negative integer; the number of generators, so that the
+alphabet is <code class="docutils literal notranslate"><span class="pre">0</span></code>, …, <code class="docutils literal notranslate"><span class="pre">2n</span> <span class="pre">-</span> <span class="pre">1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">length</span></code> – non-negative integer; the length of the words</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">CyclicallyReducedLyndonWordFamily</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">print</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">13</span><span class="p">)]</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">116</span><span class="p">,</span> <span class="mi">312</span><span class="p">,</span> <span class="mi">810</span><span class="p">,</span> <span class="mi">2184</span><span class="p">,</span> <span class="mi">5880</span><span class="p">,</span> <span class="mi">16104</span><span class="p">,</span> <span class="mi">44220</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">11</span><span class="p">)]</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">624</span><span class="p">,</span> <span class="mi">2580</span><span class="p">,</span> <span class="mi">11160</span><span class="p">,</span> <span class="mi">48750</span><span class="p">,</span> <span class="mi">217000</span><span class="p">,</span> <span class="mi">976248</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>These are exactly the reduced Lyndon words that are cyclically reduced,
+but they are produced without running through the others:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_is_cyclically_reduced</span>
+<span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">9</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="n">naive</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span> <span class="k">if</span> <span class="n">word_is_cyclically_reduced</span><span class="p">(</span><span class="n">w</span><span class="p">)]</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">assert</span> <span class="n">naive</span> <span class="o">==</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The empty word is the only word of length zero, and a single generator
+gives nothing beyond length one:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[]</span>
+</pre></div>
+</div>
+<p>ALGORITHM:</p>
+<p>Duval’s algorithm with two conditions on the letters: none is the
+inverse of the one before it, and the closing one is not the inverse of
+the first one either. Being cyclically reduced adds the
+single condition that the last letter is not the inverse of the first
+one, which is checked nowhere else than where the last letter is chosen,
+so no word outside the family is ever built.</p>
+<p>Note that the condition is vacuous for half of the words: a Lyndon word
+of length at least two starts with the letter that is strictly smallest
+in it, so its last letter is strictly larger than its first one, and when
+the first letter is odd its inverse is the letter below it, which
+therefore cannot occur at the end. The constraint only bites when the
+first letter is even, and then it forbids exactly one letter.</p>
+<p>Unlike the merely reduced words, the cyclically reduced ones are stable
+under rotation, which is what the usual Moebius inversion counting Lyndon
+words among the words of a family needs. The family therefore knows its
+own size, so that <code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code> does not run through it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">39</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<span class="mi">103911670590189280</span>
+</pre></div>
+</div>
+<p>The number of cyclically reduced words of length <cite>d</cite> on <cite>2n</cite> letters is
+<cite>(2n-1)^d + 1 + (n-1)(1 + (-1)^d)</cite>, and the number of cyclically reduced
+Lyndon words of length <cite>ell</cite> is <cite>sum_{d | ell} mu(ell/d)</cite> times
+that, divided by <cite>ell</cite>. The computation is made with machine integers,
+and gives up, leaving <code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code> to run through the
+family, once <cite>(2n-1)^{ell}</cite> no longer fits in one.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.lyndon_word_family.LexCyclicallyReducedLyndonWordFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.lyndon_word_family.</span></span><span class="sig-name descname"><span class="pre">LexCyclicallyReducedLyndonWordFamily</span></span><a class="headerlink" href="#combisurf.lyndon_word_family.LexCyclicallyReducedLyndonWordFamily" title="Link to this definition">#</a></dt>
+<dd><p>Family of the cyclically reduced Lyndon words whose length lies in a
+range, in lexicographic order.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> – non-negative integer; the number of generators, so that the
+alphabet is <code class="docutils literal notranslate"><span class="pre">0</span></code>, …, <code class="docutils literal notranslate"><span class="pre">2n</span> <span class="pre">-</span> <span class="pre">1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_min</span></code> – non-negative integer; the smallest length</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_max</span></code> – non-negative integer; one past the largest length</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LexCyclicallyReducedLyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">LexCyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">3</span><span class="p">])]</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">CyclicallyReducedLyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">LexCyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span> <span class="o">==</span> <span class="nb">sorted</span><span class="p">(</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">length</span><span class="p">))</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Unlike <a class="reference internal" href="#combisurf.lyndon_word_family.CyclicallyReducedLyndonWordFamily" title="combisurf.lyndon_word_family.CyclicallyReducedLyndonWordFamily"><code class="xref py py-class docutils literal notranslate"><span class="pre">CyclicallyReducedLyndonWordFamily</span></code></a>, this family cannot
+prune on the closing letter. Over a range of lengths every prefix is
+itself a word of the family to be, and a prefix whose last letter is
+the inverse of its first one still extends to words that are
+cyclically reduced, <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">2,</span> <span class="pre">1)</span></code> to <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">2,</span> <span class="pre">1,</span> <span class="pre">3)</span></code> for instance.
+The condition is therefore tested when a word is emitted rather than
+used to cut the walk short.</p>
+</div>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.lyndon_word_family.LexLyndonWordFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.lyndon_word_family.</span></span><span class="sig-name descname"><span class="pre">LexLyndonWordFamily</span></span><a class="headerlink" href="#combisurf.lyndon_word_family.LexLyndonWordFamily" title="Link to this definition">#</a></dt>
+<dd><p>Family of the Lyndon words whose length lies in a range, in
+lexicographic order.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> – non-negative integer; the size of the alphabet</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_min</span></code> – non-negative integer; the smallest length</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_max</span></code> – non-negative integer; one past the largest length</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LexLyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">F</span> <span class="o">=</span> <span class="n">LexLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">F</span>
+<span class="n">Lyndon</span> <span class="n">words</span> <span class="n">of</span> <span class="n">length</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">4</span> <span class="n">on</span> <span class="mi">2</span> <span class="n">letters</span><span class="p">,</span> <span class="ow">in</span> <span class="n">lexicographic</span> <span class="n">order</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">F</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+</pre></div>
+</div>
+<p>The same words taken length by length come out differently ordered:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByLengthWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">ByLengthWordFamily</span><span class="p">(</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">F</span><span class="p">)</span> <span class="o">==</span> <span class="nb">sorted</span><span class="p">(</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">ByLengthWordFamily</span><span class="p">(</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+<p>The empty word is smaller than every other, so it comes first when the
+range holds it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">LexLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.lyndon_word_family.LexWordFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.lyndon_word_family.</span></span><span class="sig-name descname"><span class="pre">LexWordFamily</span></span><a class="headerlink" href="#combisurf.lyndon_word_family.LexWordFamily" title="Link to this definition">#</a></dt>
+<dd><p>Base class for the families of Lyndon words of a range of lengths taken
+in lexicographic order.</p>
+<p>Words of different lengths are compared as words, so a word comes before
+every longer word it begins. That is what sets these families apart from
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ByLengthWordFamily</span></code>, which takes one length after the other.</p>
+<p>A subclass says which words it holds through two C methods: <code class="docutils literal notranslate"><span class="pre">_bump(i,</span>
+<span class="pre">c)</span></code>, returning the smallest letter allowed at position <code class="docutils literal notranslate"><span class="pre">i</span></code> that is at
+least <code class="docutils literal notranslate"><span class="pre">c</span></code>, or <code class="docutils literal notranslate"><span class="pre">-1</span></code>, and <code class="docutils literal notranslate"><span class="pre">_emit()</span></code>, telling whether the word now in
+the buffer belongs to the family.</p>
+<p>ALGORITHM:</p>
+<p>The words of a family of this module are the nodes of the tree of Lyndon
+prefixes whose Lyndon prefix is the whole word, and a pre-order walk of
+that tree visits the nodes in lexicographic order. Each node carries the
+length <code class="docutils literal notranslate"><span class="pre">p</span></code> of its Lyndon prefix: the child continuing the period keeps
+it, a child raising a letter above the period gets <code class="docutils literal notranslate"><span class="pre">p</span></code> equal to its own
+length, and a node is a Lyndon word exactly when <code class="docutils literal notranslate"><span class="pre">p</span></code> is its length.</p>
+<p>Note that the walk has to emit as it descends, and not only after a
+backtracking step as the fixed length algorithm does. When the letter
+that would continue the period is not allowed, raising it to the next
+allowed one makes a Lyndon word on the spot, and such a word would
+otherwise be stepped over.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.lyndon_word_family.LyndonWordFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.lyndon_word_family.</span></span><span class="sig-name descname"><span class="pre">LyndonWordFamily</span></span><a class="headerlink" href="#combisurf.lyndon_word_family.LyndonWordFamily" title="Link to this definition">#</a></dt>
+<dd><p>Family of the Lyndon words of given length on a given alphabet.</p>
+<p>A Lyndon word is a word that is strictly smaller than each of its proper
+rotations. The words are produced in lexicographic order, by Duval’s
+algorithm.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> – non-negative integer; the size of the alphabet, whose letters
+are <code class="docutils literal notranslate"><span class="pre">0</span></code>, …, <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">-</span> <span class="pre">1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">length</span></code> – non-negative integer; the length of the words</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">print</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">12</span><span class="p">)]</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">56</span><span class="p">,</span> <span class="mi">99</span><span class="p">,</span> <span class="mi">186</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">sum</span><span class="p">(</span><span class="n">moebius</span><span class="p">(</span><span class="n">length</span> <span class="o">//</span> <span class="n">d</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">divisors</span><span class="p">(</span><span class="n">length</span><span class="p">))</span> <span class="o">//</span> <span class="n">length</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)]</span>
+<span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">56</span><span class="p">]</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)]</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">116</span><span class="p">,</span> <span class="mi">312</span><span class="p">,</span> <span class="mi">810</span><span class="p">,</span> <span class="mi">2184</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">sum</span><span class="p">(</span><span class="n">moebius</span><span class="p">(</span><span class="n">length</span> <span class="o">//</span> <span class="n">d</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3</span><span class="o">**</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">divisors</span><span class="p">(</span><span class="n">length</span><span class="p">))</span> <span class="o">//</span> <span class="n">length</span> <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)]</span>
+<span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">116</span><span class="p">,</span> <span class="mi">312</span><span class="p">,</span> <span class="mi">810</span><span class="p">,</span> <span class="mi">2184</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The empty word is the only word of length zero, and there is no Lyndon
+word of length at least two on a single letter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[]</span>
+</pre></div>
+</div>
+<p>The family knows its own size, so that <code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code> does
+not run through it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<span class="mi">19215358392200893</span>
+</pre></div>
+</div>
+<p>The number of Lyndon words of length <cite>ell</cite> on <cite>n</cite> letters is
+<cite>frac{1}{ell} sum_{d | ell} mu(ell/d) n^d</cite>. The computation is
+made with machine integers, and gives up, leaving
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code> to run through the family, once <cite>n^{ell}</cite>
+no longer fits in one.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.lyndon_word_family.UpToInverseWordFamily">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.lyndon_word_family.</span></span><span class="sig-name descname"><span class="pre">UpToInverseWordFamily</span></span><a class="headerlink" href="#combisurf.lyndon_word_family.UpToInverseWordFamily" title="Link to this definition">#</a></dt>
+<dd><p>Family of the cyclically reduced Lyndon words that are smaller than the
+inverse of their own conjugacy class.</p>
+<p>The words are read as free group elements, the letters <code class="docutils literal notranslate"><span class="pre">i</span></code> and
+<code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">^</span> <span class="pre">1</span></code> being inverse of each other. Writing <cite>bar{w}</cite> for the Lyndon
+word of the conjugacy class of <cite>w^{-1}</cite>, that is the lexicographically
+least rotation of the reversed and inverted word, a word <code class="docutils literal notranslate"><span class="pre">w</span></code> is kept
+exactly when <code class="docutils literal notranslate"><span class="pre">w</span></code> is lexicographically smaller than <cite>bar{w}</cite>.</p>
+<p>Since the cyclically reduced Lyndon words are the Lyndon representatives
+of the conjugacy classes of the primitive elements of the free group,
+this runs through those classes up to inversion.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">base</span></code> – a family of cyclically reduced Lyndon words</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">UpToInverseWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">CyclicallyReducedLyndonWordFamily</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">UpToInverseWordFamily</span><span class="p">(</span><span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">])]</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">UpToInverseWordFamily</span><span class="p">(</span><span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">print</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>This splits the family in two exactly. No element of a free group is
+conjugate to its own inverse, so <cite>w mapsto bar{w}</cite> is an involution
+without fixed point on the cyclically reduced Lyndon words, and taking
+the smaller of each pair keeps one word out of two:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">for</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>         <span class="n">it</span> <span class="o">=</span> <span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+<span class="o">....</span><span class="p">:</span>         <span class="k">assert</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">UpToInverseWordFamily</span><span class="p">(</span><span class="n">it</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">==</span> <span class="n">it</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>That halving is where <code class="xref py py-meth docutils literal notranslate"><span class="pre">count()</span></code> gets its answer, so it
+inherits the closed form of the underlying family and does not run
+through anything:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">UpToInverseWordFamily</span><span class="p">(</span><span class="n">CyclicallyReducedLyndonWordFamily</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<span class="mi">1241763427726250</span>
+</pre></div>
+</div>
+<p>A family whose words are not all cyclically reduced is refused, since
+the criterion is meaningless on a family that <cite>w mapsto bar{w}</cite> does
+not send to itself, or that it fixes a word of:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">LyndonWordFamily</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">UpToInverseWordFamily</span><span class="p">(</span><span class="n">LyndonWordFamily</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">ValueError</span><span class="p">:</span> <span class="n">base</span> <span class="n">must</span> <span class="n">be</span> <span class="n">a</span> <span class="n">family</span> <span class="n">of</span> <span class="n">cyclically</span> <span class="n">reduced</span> <span class="n">Lyndon</span> <span class="n">words</span>
+</pre></div>
+</div>
+<p>ALGORITHM:</p>
+<p>Let <code class="docutils literal notranslate"><span class="pre">a</span></code> be the first letter of <code class="docutils literal notranslate"><span class="pre">w</span></code>, which for a Lyndon word is the
+smallest letter occurring in it. The first letter of <cite>bar{w}</cite> is the
+smallest letter of <cite>w^{-1}</cite>, which is readily read off <code class="docutils literal notranslate"><span class="pre">w</span></code>, and settles
+most of the comparison without computing <cite>bar{w}</cite> at all:</p>
+<ul class="simple">
+<li><p>when <code class="docutils literal notranslate"><span class="pre">a</span></code> is odd, its inverse <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">-</span> <span class="pre">1</span></code> occurs in <cite>w^{-1}</cite>, and no
+letter of <cite>w^{-1}</cite> is smaller, so <cite>bar{w}</cite> starts below <code class="docutils literal notranslate"><span class="pre">w</span></code> and the
+word is dropped. Being a condition on the first letter alone, it holds
+for the whole block of consecutive words starting with <code class="docutils literal notranslate"><span class="pre">a</span></code>, which is
+therefore stepped over at once through <code class="docutils literal notranslate"><span class="pre">next_at(1)</span></code> rather than
+generated and rejected word by word;</p></li>
+<li><p>when <code class="docutils literal notranslate"><span class="pre">a</span></code> is even and its inverse <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">+</span> <span class="pre">1</span></code> does not occur in <code class="docutils literal notranslate"><span class="pre">w</span></code>,
+every letter of <cite>w^{-1}</cite> is at least <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">+</span> <span class="pre">1</span></code>, so <cite>bar{w}</cite> starts
+above <code class="docutils literal notranslate"><span class="pre">w</span></code> and the word is kept;</p></li>
+<li><p>otherwise both start with <code class="docutils literal notranslate"><span class="pre">a</span></code>, and <cite>bar{w}</cite> is computed by Duval’s
+least rotation algorithm and compared with <code class="docutils literal notranslate"><span class="pre">w</span></code>.</p></li>
+</ul>
+<p>Only the first of these is a condition on a prefix, so it is the only one
+that prunes; it keeps between 7 and 25 percent of the family from being
+generated at all, over the range of parameters that can be run through.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.lyndon_word_family.cyclically_reduced_lyndon_words">
+<span class="sig-prename descclassname"><span class="pre">combisurf.lyndon_word_family.</span></span><span class="sig-name descname"><span class="pre">cyclically_reduced_lyndon_words</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'length'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_to_inverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.lyndon_word_family.cyclically_reduced_lyndon_words" title="Link to this definition">#</a></dt>
+<dd><p>Return the family of cyclically reduced Lyndon words on <code class="docutils literal notranslate"><span class="pre">n</span></code> generators,
+that is on the <code class="docutils literal notranslate"><span class="pre">2n</span></code> letters <code class="docutils literal notranslate"><span class="pre">0</span></code>, …, <code class="docutils literal notranslate"><span class="pre">2n</span> <span class="pre">-</span> <span class="pre">1</span></code>, of a given length or
+of a range of lengths.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> – non-negative integer; the number of generators</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_min</span></code> – non-negative integer; the length of the words, or the
+smallest of them when <code class="docutils literal notranslate"><span class="pre">size_max</span></code> is given</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_max</span></code> – non-negative integer (default: <code class="docutils literal notranslate"><span class="pre">None</span></code>); one past the
+largest length</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">order</span></code> – <code class="docutils literal notranslate"><span class="pre">&quot;length&quot;</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">&quot;lex&quot;</span></code>; see
+<a class="reference internal" href="#combisurf.lyndon_word_family.lyndon_words" title="combisurf.lyndon_word_family.lyndon_words"><code class="xref py py-func docutils literal notranslate"><span class="pre">lyndon_words()</span></code></a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">up_to_inverse</span></code> – boolean (default: <code class="docutils literal notranslate"><span class="pre">False</span></code>); whether to keep only
+one word out of each pair of a word and the Lyndon word of the
+conjugacy class of its inverse</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">cyclically_reduced_lyndon_words</span>
+<span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">print</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>With <code class="docutils literal notranslate"><span class="pre">up_to_inverse</span></code> the words left out are the ones whose inverse is
+kept, here <code class="docutils literal notranslate"><span class="pre">(1,</span> <span class="pre">2)</span></code> for <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">3)</span></code> and <code class="docutils literal notranslate"><span class="pre">(1,</span> <span class="pre">3)</span></code> for <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">2)</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">up_to_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">print</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Over a range of lengths:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s2">"lex"</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,)]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.lyndon_word_family.lyndon_words">
+<span class="sig-prename descclassname"><span class="pre">combisurf.lyndon_word_family.</span></span><span class="sig-name descname"><span class="pre">lyndon_words</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'length'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.lyndon_word_family.lyndon_words" title="Link to this definition">#</a></dt>
+<dd><p>Return the family of Lyndon words on <code class="docutils literal notranslate"><span class="pre">n</span></code> letters, of a given length or
+of a range of lengths.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> – non-negative integer; the size of the alphabet</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_min</span></code> – non-negative integer; the length of the words, or the
+smallest of them when <code class="docutils literal notranslate"><span class="pre">size_max</span></code> is given</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size_max</span></code> – non-negative integer (default: <code class="docutils literal notranslate"><span class="pre">None</span></code>); one past the
+largest length, as for <code class="docutils literal notranslate"><span class="pre">range</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">order</span></code> – <code class="docutils literal notranslate"><span class="pre">&quot;length&quot;</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">&quot;lex&quot;</span></code>; whether the words are
+taken one length after the other, or in lexicographic order, in which a
+word comes before every longer word it begins. The two agree on a
+single length, so this is only read when <code class="docutils literal notranslate"><span class="pre">size_max</span></code> is given</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">lyndon_words</span>
+<span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">print</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Over a range of lengths, the two orders hold the same words:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s2">"lex"</span><span class="p">)]</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">(</span><span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(),</span> <span class="n">lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s2">"lex"</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">())</span>
+<span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="word_family.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="misc.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">misc</span></code></p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.CyclicallyReducedLyndonWordFamily"><code class="docutils literal notranslate"><span class="pre">CyclicallyReducedLyndonWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.LexCyclicallyReducedLyndonWordFamily"><code class="docutils literal notranslate"><span class="pre">LexCyclicallyReducedLyndonWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.LexLyndonWordFamily"><code class="docutils literal notranslate"><span class="pre">LexLyndonWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.LexWordFamily"><code class="docutils literal notranslate"><span class="pre">LexWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.LyndonWordFamily"><code class="docutils literal notranslate"><span class="pre">LyndonWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.UpToInverseWordFamily"><code class="docutils literal notranslate"><span class="pre">UpToInverseWordFamily</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.cyclically_reduced_lyndon_words"><code class="docutils literal notranslate"><span class="pre">cyclically_reduced_lyndon_words()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.lyndon_word_family.lyndon_words"><code class="docutils literal notranslate"><span class="pre">lyndon_words()</span></code></a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the combisurf authors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, the combisurf authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
