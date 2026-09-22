@@ -7,7 +7,7 @@ from array import array
 from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclically_reduce, word_free_group_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
-from combisurf.partial_sums import PartialSums
+from combisurf.partial_sums import PartialSums, PartialSumsNaive
 
 class GeometricIntersection:
     def __init__(self, m):
@@ -424,3 +424,426 @@ class GeometricIntersection:
         assert pos == len(word_indices), (pos, len(word_indices))
         assert intersections % 2 == 0
         return intersections // 2
+
+    def intersection_matrix(self, curves, check=True):
+        r"""
+        Return the matrix of geometric intersection numbers of the primitive
+        curves ``curves``.
+
+        This is a :class:`GeometricIntersectionMatrix` sharing the angle table
+        of this object. It is much faster than calling
+        :meth:`geometric_intersection` on each pair, at the cost of fixing the
+        list of curves once and for all.
+
+        INPUT:
+
+        - ``curves`` -- a list of walks on the half-edges of the underlying map
+
+        - ``check`` -- boolean (default: ``True``); whether to cyclically
+          reduce the curves in input
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.geometric_intersection import GeometricIntersection
+            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: gi = GeometricIntersection(torus)
+            sage: gi.intersection_matrix([[0], [2], [0, 2]]).matrix()
+            [0 1 1]
+            [1 0 1]
+            [1 1 0]
+        """
+        return GeometricIntersectionMatrix(self, curves, check=check)
+
+
+class GeometricIntersectionMatrix:
+    r"""
+    The geometric intersection numbers of a fixed list of curves.
+
+    The list of curves is given once and for all at construction time. All the
+    conjugates of all the curves (and of their inverses) are stored in a single
+    :class:`~combisurf.conjugate_tree.ConjugateTree` and ordered on the boundary
+    at infinity once. An intersection number is then a merge of two rank-sorted
+    lists rather than a fresh tree, which is what makes this much faster than
+    calling :meth:`GeometricIntersection.geometric_intersection` on each pair.
+
+    Asking for a curve outside of ``curves`` means building another object.
+
+    INPUT:
+
+    - ``m`` -- an :class:`~combisurf.oriented_map.OrientedMap` or a
+      :class:`GeometricIntersection` built on it
+
+    - ``curves`` -- a list of walks on the half-edges of ``m``; each of them
+      must be primitive
+
+    - ``check`` -- boolean (default: ``True``); whether to cyclically reduce
+      the curves in input
+
+    EXAMPLES::
+
+        sage: from combisurf import OrientedMap
+        sage: from combisurf.geometric_intersection import GeometricIntersection, GeometricIntersectionMatrix
+
+        sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+        sage: I = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]])
+        sage: I
+        GeometricIntersectionMatrix of 4 curves on OrientedMap("(0,1,~0,~1)", "(0,1,~0,~1)")
+        sage: I.matrix()
+        [0 1 1 2]
+        [1 0 1 1]
+        [1 1 0 1]
+        [2 1 1 0]
+
+    The same object is reachable from an existing
+    :class:`GeometricIntersection`, in which case the angle table is shared::
+
+        sage: gi = GeometricIntersection(torus)
+        sage: gi.intersection_matrix([[0], [2]]).matrix()
+        [0 1]
+        [1 0]
+
+    An entry is the intersection of the two corresponding one-element
+    multicurves, so the diagonal is ``i(c, c) = 2 i(c)`` rather than the
+    self-intersection ``i(c)``::
+
+        sage: c = [0, 0, 2, 0, 3]
+        sage: I = GeometricIntersectionMatrix(torus, [c])
+        sage: I.entry(0, 0)
+        4
+        sage: gi.geometric_intersection([c], [c])
+        4
+        sage: gi.geometric_intersection([c])
+        2
+
+    Curves that are conjugate or inverse to one another share the same internal
+    data, which is correct since they have the same intersection numbers with
+    everything::
+
+        sage: from combisurf.word import word_init, word_free_group_inverse
+        sage: w = word_init([0, 0, 2, 0, 3])
+        sage: I = GeometricIntersectionMatrix(torus, [w, w[2:] + w[:2], word_free_group_inverse(w), [0, 2]])
+        sage: I.matrix()
+        [4 4 4 3]
+        [4 4 4 3]
+        [4 4 4 3]
+        [3 3 3 0]
+
+    Non-primitive curves are not supported. They are detected both when the
+    primitive root is already known and when it is not::
+
+        sage: GeometricIntersectionMatrix(torus, [[0, 2], [0, 2, 0, 2]])
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: non-primitive curve at index 1
+        sage: GeometricIntersectionMatrix(torus, [[0, 2, 0, 2]])
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: non-primitive curve at index 0
+    """
+    def __init__(self, m, curves, check=True):
+        if isinstance(m, GeometricIntersection):
+            gi = m
+        elif isinstance(m, OrientedMap):
+            gi = GeometricIntersection(m)
+        else:
+            raise ValueError("m must be an oriented map or a GeometricIntersection")
+
+        self._gi = gi
+        angles = gi._angles
+        n = len(angles)
+        self._n = n
+
+        # 1. all the curves and their inverses in a single tree, a curve and
+        # its inverse sitting at the consecutive indices (2 * slot, 2 * slot + 1)
+        T = self._tree = ConjugateTree()
+        self._curves = []
+        self._slot = []
+        for j, c in enumerate(curves):
+            w = word_init(c)
+            if check:
+                w = word_cyclically_reduce(w)
+            if not w:
+                raise ValueError(f"trivial curve at index {j}")
+            self._curves.append(w)
+
+            # 2. the slot of the curve, rejecting the non-primitive ones
+            status = T.process(w[:], check=False)
+            if status > 0:
+                if status != 1:
+                    # a power of a word that was not in the tree
+                    raise NotImplementedError(f"non-primitive curve at index {j}")
+                i = len(T._words) - 1
+                ans = T.process(word_free_group_inverse(T._words[i]), check=False)
+                assert ans == 1
+            else:
+                i = -status
+                if len(w) != len(T._words[i]):
+                    # a power of a word that was already in the tree
+                    raise NotImplementedError(f"non-primitive curve at index {j}")
+            self._slot.append(i >> 1)
+
+        num_slots = len(T._words) // 2
+
+        # 3. the cyclic order at infinity of all the leaves, once. For each
+        # slot we keep its own leaves in increasing order of rank, each of them
+        # described by its rank, its startpoint and the angle from its
+        # startpoint to its endpoint.
+        ranks = [[] for _ in range(num_slots)]
+        starts = [[] for _ in range(num_slots)]
+        arc_angles = [[] for _ in range(num_slots)]
+        for rank, s in enumerate(T.cyclically_sorted_leaves(angles)):
+            i, k = T.leaf_as_conjugate(s)
+            w = T._words[i]
+            startpoint = w[k]
+            endpoint = w[k - 1] ^ 1
+            slot = i >> 1
+            ranks[slot].append(rank)
+            starts[slot].append(startpoint)
+            arc_angles[slot].append((angles[endpoint] - angles[startpoint]) % n - 1)
+        self._ranks = ranks
+        self._starts = starts
+        self._arc_angles = arc_angles
+
+        # 4. the two per-curve halves of the O(n^2) term of an entry. The arc
+        # matrix M of a curve has M[first][last] counting the arcs going from
+        # the angle first to the angle last (first < last); P is M prefix
+        # summed down each column and S is M suffix summed along each row. The
+        # term only reads them at the pairs (i, j) with 1 <= i <= n - 3 and
+        # i + 1 <= j <= n - 2, so we flatten P[i - 1][j] and S[i][j + 1] over
+        # those pairs and the term becomes a dot product (see _double_sum).
+        pairs = [(i, j) for i in range(1, n - 2) for j in range(i + 1, n - 1)]
+        self._A = []
+        self._B = []
+        for slot in range(num_slots):
+            w = T._words[2 * slot]
+            M = [[0] * n for _ in range(n)]
+            for p in range(len(w)):
+                first = angles[w[p]]
+                last = angles[w[p - 1] ^ 1]
+                if last < first:
+                    first, last = last, first
+                M[first][last] += 1
+            P = [row[:] for row in M]
+            for j in range(n):
+                for i in range(j - 1):
+                    P[i + 1][j] += P[i][j]
+            S = M  # M itself is not needed anymore
+            for i in range(n):
+                for j in range(n - 1, i + 1, -1):
+                    S[i][j - 1] += S[i][j]
+            self._A.append([P[i - 1][j] for i, j in pairs])
+            self._B.append([S[i][j + 1] for i, j in pairs])
+
+        # Scratch space for the sweeps, allocated once. The sweep does one
+        # partial sum and two updates per arc, and on that mix the naive
+        # structure (O(1) updates, partial sums done by a C level sum over a
+        # slice) measures faster than the binary splitting one up to n in the
+        # hundreds, which covers every map this class is used on in practice.
+        cls = PartialSumsNaive if n <= 256 else PartialSums
+        self._Nu = cls(n - 1)
+        self._Nv = cls(n - 1)
+
+    def __repr__(self):
+        return f"GeometricIntersectionMatrix of {len(self._curves)} curves on {self._gi._cm}"
+
+    def __len__(self):
+        return len(self._curves)
+
+    def curves(self):
+        r"""
+        Return the list of curves of this matrix, cyclically reduced.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
+            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: GeometricIntersectionMatrix(torus, [[0, 0, 1, 2], [2]]).curves()
+            [array('i', [0, 2]), array('i', [2])]
+        """
+        return [w[:] for w in self._curves]
+
+    def _double_sum(self, sx, sy):
+        r"""
+        Return the contribution of the pairs of arcs whose four endpoints are
+        pairwise distinct, for the slots ``sx`` and ``sy``.
+
+        This is a dot product of the flat vectors built at construction time;
+        it costs `O(n^2)` where `n` is the number of half-edges.
+        """
+        Au = self._A[sx]
+        Bu = self._B[sx]
+        if sx == sy:
+            return 2 * sum(a * b for a, b in zip(Au, Bu))
+        Av = self._A[sy]
+        Bv = self._B[sy]
+        return sum(a * b + c * d for a, b, c, d in zip(Au, Bv, Av, Bu))
+
+    def _sweep(self, sx, sy):
+        r"""
+        Return the contribution of the pairs of arcs with identical startpoint,
+        for the slots ``sx`` and ``sy``.
+
+        The leaves of the two slots are merged by rank and the resulting list
+        is swept by groups of equal startpoints. This costs
+        `O((|u| + |v|) \log(n))`.
+
+        The two :class:`~combisurf.partial_sums.PartialSums` are zero on entry
+        and are restored to zero at the end of each group, by undoing the
+        updates of the group rather than by clearing the whole vector.
+        """
+        Nu = self._Nu
+        Nv = self._Nv
+        ans = 0
+
+        if sx == sy:
+            # a slot against itself is swept once with both multiplicities
+            # equal to one; merging it with a copy of itself is wrong
+            starts = self._starts[sx]
+            arc_angles = self._arc_angles[sx]
+            update = Nu.update
+            partial_sum = Nu.partial_sum
+            l = len(starts)
+            pos = 0
+            while pos < l:
+                startpoint = starts[pos]
+                first = pos
+                pos += 1
+                while pos < l and starts[pos] == startpoint:
+                    pos += 1
+                if pos - first == 1:
+                    # a single arc through this startpoint crosses nothing
+                    continue
+                update(arc_angles[first], 1)
+                for t in range(first + 1, pos):
+                    angle = arc_angles[t]
+                    ans += 2 * partial_sum(0, angle)
+                    update(angle, 1)
+                for t in range(first, pos):
+                    update(arc_angles[t], -1)
+            return ans
+
+        ru = self._ranks[sx]
+        su = self._starts[sx]
+        au = self._arc_angles[sx]
+        rv = self._ranks[sy]
+        sv = self._starts[sy]
+        av = self._arc_angles[sy]
+        lu = len(ru)
+        lv = len(rv)
+        iu = iv = 0
+        while iu < lu or iv < lv:
+            # the leaves sharing a startpoint are consecutive in the cyclic
+            # order, so the head of smaller rank opens the group
+            if iv == lv or (iu < lu and ru[iu] < rv[iv]):
+                startpoint = su[iu]
+            else:
+                startpoint = sv[iv]
+            iu0 = iu
+            while iu < lu and su[iu] == startpoint:
+                iu += 1
+            iv0 = iv
+            while iv < lv and sv[iv] == startpoint:
+                iv += 1
+            if iu0 == iu or iv0 == iv:
+                # only one of the two curves goes through this startpoint
+                continue
+
+            ju = iu0
+            jv = iv0
+            while ju < iu or jv < iv:
+                if jv == iv or (ju < iu and ru[ju] < rv[jv]):
+                    angle = au[ju]
+                    ans += Nv.partial_sum(0, angle)
+                    Nu.update(angle, 1)
+                    ju += 1
+                else:
+                    angle = av[jv]
+                    ans += Nu.partial_sum(0, angle)
+                    Nv.update(angle, 1)
+                    jv += 1
+            for t in range(iu0, iu):
+                Nu.update(au[t], -1)
+            for t in range(iv0, iv):
+                Nv.update(av[t], -1)
+        return ans
+
+    def entry(self, x, y):
+        r"""
+        Return the geometric intersection number of the curves of indices ``x``
+        and ``y``.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.geometric_intersection import GeometricIntersection, GeometricIntersectionMatrix
+            sage: from combisurf.word import word_init
+            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: gi = GeometricIntersection(octagon)
+            sage: curves = [word_init("0"), word_init("~1"), word_init("0,~1,3"),
+            ....:           word_init("0,1,1,~2,1,1,~2")]
+            sage: I = gi.intersection_matrix(curves)
+            sage: [I.entry(3, y) for y in range(4)]
+            [2, 3, 2, 8]
+            sage: [gi.geometric_intersection([curves[3]], [v]) for v in curves]
+            [2, 3, 2, 8]
+        """
+        sx = self._slot[x]
+        sy = self._slot[y]
+        # the two arcs of a crossing are counted once in each direction
+        ans = 2 * self._double_sum(sx, sy) + self._sweep(sx, sy)
+        assert ans % 2 == 0
+        return ans // 2
+
+    def row(self, x):
+        r"""
+        Return the list of the geometric intersection numbers of the curve of
+        index ``x`` with all the curves.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
+            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: I = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]])
+            sage: I.row(1)
+            [1, 0, 1, 1]
+        """
+        return [self.entry(x, y) for y in range(len(self._curves))]
+
+    def matrix(self):
+        r"""
+        Return the full symmetric matrix of geometric intersection numbers over
+        the integers.
+
+        Only the entries with ``x <= y`` are computed, the others being
+        obtained by symmetry.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
+            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: mat = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]]).matrix()
+            sage: mat
+            [0 1 1 2]
+            [1 0 1 1]
+            [1 1 0 1]
+            [2 1 1 0]
+            sage: mat.is_symmetric()
+            True
+            sage: mat.base_ring()
+            Integer Ring
+        """
+        from sage.matrix.constructor import matrix as sage_matrix
+        from sage.rings.integer_ring import ZZ
+
+        N = len(self._curves)
+        rows = [[0] * N for _ in range(N)]
+        for x in range(N):
+            for y in range(x, N):
+                e = self.entry(x, y)
+                rows[x][y] = e
+                rows[y][x] = e
+        return sage_matrix(ZZ, rows)

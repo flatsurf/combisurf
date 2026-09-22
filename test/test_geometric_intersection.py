@@ -93,3 +93,158 @@ def test_geometric_intersection_multilinearity():
             ans0 = sum(ucoeffs[i] * vcoeffs[j] * Q[i][j] for i in range(6) for j in range(6))
             ans1 = gi.geometric_intersection(ulist, vlist)
             assert ans0 == ans1, gi
+
+
+def polygon_4g(g):
+    r"""
+    Return the one vertex one face map obtained by identifying the sides of a
+    ``4g``-gon, that is a surface of genus ``g`` with ``4 * g`` half-edges.
+    """
+    from combisurf import OrientedMap
+    sides = [str(i) for i in range(2 * g)] + ["~%d" % i for i in range(2 * g)]
+    return OrientedMap(fp="(" + ",".join(sides) + ")")
+
+
+def random_primitive_curves(n, length, num, rng):
+    r"""
+    Return ``num`` distinct primitive cyclically reduced words of length
+    ``length`` on the ``n`` half-edges ``0``, ..., ``n - 1``.
+    """
+    from combisurf.conjugate_tree import ConjugateTree
+    from combisurf.word import word_init, word_cyclically_reduce
+
+    curves = []
+    seen = set()
+    while len(curves) < num:
+        w = [rng.randrange(n)]
+        while len(w) < length:
+            letter = rng.randrange(n)
+            if letter != w[-1] ^ 1:
+                w.append(letter)
+        w = word_cyclically_reduce(word_init(w))
+        if len(w) != length or tuple(w) in seen:
+            continue
+        # a conjugate of something already kept would share a slot, which is
+        # fine, but a power would be rejected by GeometricIntersectionMatrix
+        if ConjugateTree().process(w[:]) != 1:
+            continue
+        seen.add(tuple(w))
+        curves.append(list(w))
+    return curves
+
+
+def test_intersection_matrix_torus_benchmark():
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersection
+    from combisurf.lyndon_word_family import cyclically_reduced_lyndon_words
+
+    torus = OrientedMap(fp="(0,1,~0,~1)")
+    gi = GeometricIntersection(torus)
+    curves = [list(w) for w in cyclically_reduced_lyndon_words(torus.num_edges(), 1, 7, up_to_inverse=True)]
+    assert len(curves) == 99
+
+    I = gi.intersection_matrix(curves)
+    for x, u in enumerate(curves):
+        for y, v in enumerate(curves):
+            assert I.entry(x, y) == gi.geometric_intersection([u], [v]), (x, y)
+
+    mat = I.matrix()
+    assert sum(sum(row) for row in mat.rows()) == 62902
+
+
+def test_intersection_matrix_genus_and_length():
+    import random
+    from combisurf.geometric_intersection import GeometricIntersection
+
+    rng = random.Random(20260922)
+    for g in [1, 2, 4, 8, 16]:
+        m = polygon_4g(g)
+        gi = GeometricIntersection(m)
+        for length in [3, 8, 40, 200]:
+            curves = random_primitive_curves(4 * g, length, 5, rng)
+            I = gi.intersection_matrix(curves)
+            for x, u in enumerate(curves):
+                for y, v in enumerate(curves):
+                    if y < x:
+                        continue
+                    assert I.entry(x, y) == gi.geometric_intersection([u], [v]), (g, length, x, y)
+
+
+def test_intersection_matrix_large_alphabet():
+    # beyond the threshold above which the binary splitting partial sums are used
+    import random
+    from combisurf.geometric_intersection import GeometricIntersection
+    from combisurf.partial_sums import PartialSumsBinarySplitting
+
+    rng = random.Random(1234)
+    g = 70
+    m = polygon_4g(g)
+    gi = GeometricIntersection(m)
+    for length in [5, 30]:
+        curves = random_primitive_curves(4 * g, length, 4, rng)
+        I = gi.intersection_matrix(curves)
+        assert isinstance(I._Nu, PartialSumsBinarySplitting)
+        for x, u in enumerate(curves):
+            for y, v in enumerate(curves):
+                assert I.entry(x, y) == gi.geometric_intersection([u], [v]), (length, x, y)
+
+
+def test_intersection_matrix_conjugates_and_inverses():
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersection
+    from combisurf.word import word_init, word_free_group_inverse
+
+    torus = OrientedMap(fp="(0,1,~0,~1)")
+    gi = GeometricIntersection(torus)
+
+    w = word_init([0, 0, 2, 0, 3])
+    curves = [w, w[2:] + w[:2], word_free_group_inverse(w), word_init([0, 2]), word_init([0, 2, 2, 0, 3])]
+    I = gi.intersection_matrix(curves)
+
+    # a word, one of its conjugates and its inverse share a slot
+    assert I._slot == [0, 0, 0, 1, 2]
+
+    for x, u in enumerate(curves):
+        for y, v in enumerate(curves):
+            assert I.entry(x, y) == gi.geometric_intersection([list(u)], [list(v)]), (x, y)
+
+
+def test_intersection_matrix_non_primitive():
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersection
+    from combisurf.word import word_init, word_free_group_inverse
+
+    torus = OrientedMap(fp="(0,1,~0,~1)")
+    gi = GeometricIntersection(torus)
+
+    # a power of a curve that is not in the list
+    with pytest.raises(NotImplementedError):
+        gi.intersection_matrix([[0, 2, 0, 2]])
+    # a power of a curve that is already in the list
+    with pytest.raises(NotImplementedError):
+        gi.intersection_matrix([[0, 2], [0, 2, 0, 2]])
+    # a power of the inverse of a curve that is already in the list
+    inverse_square = list(word_free_group_inverse(word_init([0, 2, 0, 2])))
+    with pytest.raises(NotImplementedError):
+        gi.intersection_matrix([[0, 2], inverse_square])
+    # a curve that is trivial in the free group
+    with pytest.raises(ValueError):
+        gi.intersection_matrix([[0, 1]])
+
+
+def test_intersection_matrix_row_and_matrix():
+    from sage.rings.integer_ring import ZZ
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersection
+
+    octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+    gi = GeometricIntersection(octagon)
+    curves = [[0], [3], [0, 3, 6], [0, 2, 2, 5, 2, 2, 5], [0, 4, 1, 5]]
+    I = gi.intersection_matrix(curves)
+
+    mat = I.matrix()
+    assert mat.is_symmetric()
+    assert mat.base_ring() is ZZ
+    assert mat.nrows() == mat.ncols() == len(curves) == len(I)
+    for x in range(len(curves)):
+        assert I.row(x) == list(mat.row(x)), x

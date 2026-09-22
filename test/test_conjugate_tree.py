@@ -98,3 +98,71 @@ def test_hard_check_random():
     # bijection check at the end of process() and the structural check
     # during process() would not both be covered
     assert all(outcomes.values())
+
+
+def cyclic_order_key(conjugate, angles, depth):
+    r"""
+    Return the sequence that the cyclic order at infinity compares: the angle
+    of the first letter, then at each further step the angle from the reverse
+    of the previous letter to the current one.
+
+    This is an independent reimplementation of the ordering that
+    :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves`
+    realizes through the tree.
+    """
+    n = len(angles)
+    l = len(conjugate)
+    ans = [angles[conjugate[0]]]
+    for d in range(1, depth):
+        ans.append((angles[conjugate[d % l]] - angles[conjugate[(d - 1) % l] ^ 1]) % n)
+    return ans
+
+
+def check_cyclically_sorted_leaves(T, angles):
+    words = T.words()
+    depth = 2 * sum(len(w) for w in words) + 4
+    expected = sorted(((i, k) for i, w in enumerate(words) for k in range(len(w))),
+                      key=lambda ik: cyclic_order_key(list(words[ik[0]][ik[1]:]) + list(words[ik[0]][:ik[1]]),
+                                                      angles, depth))
+    leaves = T.cyclically_sorted_leaves(angles)
+    assert sorted(leaves) == T.leaves()
+    assert [T.leaf_as_conjugate(s) for s in leaves] == expected
+
+
+def test_cyclically_sorted_leaves():
+    from combisurf.conjugate_tree import ConjugateTree
+
+    T = ConjugateTree()
+    assert T.process([0, 1, 1]) == 1
+    assert T.process([0, 1]) == 1
+    assert T.cyclically_sorted_leaves([0, 1]) == [6, 1, 8, 4, 2]
+    check_cyclically_sorted_leaves(T, [0, 1])
+
+    # the torus and the octagon, with the angle tables that
+    # GeometricIntersection builds on them
+    T = ConjugateTree()
+    for w in [[0, 0, 2, 2], [0, 2, 0, 0, 3], [1, 3, 1, 2]]:
+        T.process(w)
+    check_cyclically_sorted_leaves(T, [0, 2, 1, 3])
+
+    T = ConjugateTree()
+    for w in [[0, 2, 2, 5, 2, 2, 5], [0, 3, 6], [1, 4, 7, 0]]:
+        T.process(w)
+    check_cyclically_sorted_leaves(T, [0, 2, 4, 6, 1, 3, 5, 7])
+
+
+def test_cyclically_sorted_leaves_random():
+    import random
+    from combisurf.conjugate_tree import ConjugateTree
+
+    rng = random.Random(20260922)
+    for _ in range(60):
+        n = 2 * rng.randint(1, 4)
+        angles = list(range(n))
+        rng.shuffle(angles)
+        T = ConjugateTree()
+        for _ in range(rng.randint(1, 5)):
+            T.process([rng.randrange(n) for _ in range(rng.randint(1, 9))])
+        if not T.words():
+            continue
+        check_cyclically_sorted_leaves(T, angles)
