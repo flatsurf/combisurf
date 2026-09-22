@@ -10,8 +10,8 @@ from array import array
 from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclically_reduce, word_free_group_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
-from combisurf.partial_sums import PartialSums
-from combisurf.crossing_arcs import crossing_arcs_sweep, crossing_arcs_sweep_sorted
+from combisurf.crossing_arcs import (crossing_arcs_sweep, crossing_arcs_sweep_sorted,
+                                     startpoint_sweep_sorted, startpoint_sweep_weighted)
 
 class GeometricIntersection:
     def __init__(self, m):
@@ -372,44 +372,30 @@ class GeometricIntersection:
             intersections *= 2
 
         # Essential intersections coming from pairs of conjugates with identical
-        # start. Total cost is (len(u) + len(v)) * log(n)
-        # where the log(n) factor comes from partial sums
-        word_indices = []
-        word_shifts = []
-        for s in T.cyclically_sorted_leaves(self._angles):
+        # start, each leaf being described by its startpoint, the angle from
+        # its startpoint to its endpoint and its two multiplicities. Total cost
+        # is (len(u) + len(v)) * log(n) where the log(n) factor comes from
+        # partial sums.
+        starts = array('q')
+        arc_angles = array('q')
+        uweights = array('q')
+        vweights = array('q')
+        for s in T.cyclically_sorted_leaves(angles):
             i, k = T.leaf_as_conjugate(s)
-            word_indices.append(i)
-            word_shifts.append(k)
-
-        letter = 0  # current letter that is looked at
-        pos = 0     # pointer in the list cs
-        Nu = PartialSums(n - 1)
-        Nv = PartialSums(n - 1)
-        while pos < len(word_indices):
-            Nu.reset()
-            Nv.reset()
-            startpoint = words[word_indices[pos]][word_shifts[pos]]
-            startangle = self._angles[startpoint]
-            while pos < len(word_indices) and words[word_indices[pos]][word_shifts[pos]] == startpoint:
-                # print(f"pos={pos} intersections={intersections} Nu={Nu} Nv={Nv}")
-                i = word_indices[pos]
-                w = words[i]
-                k = word_shifts[pos]
-                endpoint = w[(k - 1) % len(w)] ^ 1
-                assert startpoint != endpoint
-                endangle = self._angles[endpoint]
-                angle = (endangle - startangle) % n
-                assert angle >= 1
-                angle -= 1
-                intersections += u_multiplicities[i >> 1] * Nv.partial_sum(0, angle)
-                if not self_intersection:
-                    intersections += v_multiplicities[i >> 1] * Nu.partial_sum(0, angle)
-                Nu.update(angle, u_multiplicities[i >> 1])
-                Nv.update(angle, v_multiplicities[i >> 1])
-                pos += 1
+            w = words[i]
+            startpoint = w[k]
+            starts.append(startpoint)
+            arc_angles.append((angles[w[k - 1] ^ 1] - angles[startpoint]) % n - 1)
+            uweights.append(u_multiplicities[i >> 1])
+            vweights.append(v_multiplicities[i >> 1])
+        if self_intersection:
+            # with the v-weights equal to the u-weights, the sweep counts each
+            # pair of leaves in both orders
+            intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights) // 2
+        else:
+            intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights, vweights)
 
         # we got twice the geometric intersection because we register all arcs and their inverses
-        assert pos == len(word_indices), (pos, len(word_indices))
         assert intersections % 2 == 0
         return intersections // 2
 
@@ -587,9 +573,9 @@ class GeometricIntersectionMatrix:
         # slot we keep its own leaves in increasing order of rank, each of them
         # described by its rank, its startpoint and the angle from its
         # startpoint to its endpoint.
-        ranks = [[] for _ in range(num_slots)]
-        starts = [[] for _ in range(num_slots)]
-        arc_angles = [[] for _ in range(num_slots)]
+        ranks = [array('q') for _ in range(num_slots)]
+        starts = [array('q') for _ in range(num_slots)]
+        arc_angles = [array('q') for _ in range(num_slots)]
         for rank, s in enumerate(T.cyclically_sorted_leaves(angles)):
             i, k = T.leaf_as_conjugate(s)
             w = words[i]
@@ -624,12 +610,10 @@ class GeometricIntersectionMatrix:
             self._arc_keys.append(array('q', keys))
             self._arc_weights.append(array('q', [counts[key] for key in keys]))
 
-        # Scratch space for the sweeps, allocated once.
-        self._Nu = PartialSums(n - 1)
-        self._Nv = PartialSums(n - 1)
-        # NOTE: the sorted sweep leaves it filled with zeros, which saves an
-        # allocation per entry: 0.32 us against 0.42 us per call at n = 1000
-        # with curves of length 8.
+        # Scratch space for the two sweeps of an entry, allocated once.
+        # NOTE: the sweeps leave it filled with zeros, which saves an
+        # allocation per entry: 0.32 us against 0.42 us per call of
+        # crossing_arcs_sweep_sorted at n = 1000 with curves of length 8.
         self._arc_scratch = array('q', [0]) * (2 * (n + 1))
 
     def __repr__(self):
@@ -691,100 +675,33 @@ class GeometricIntersectionMatrix:
         r"""
         Return the intersection number of the slots ``sx`` and ``sy``, given
         the value ``double_sum`` of ``self._double_sum(sx, sy)``.
+
+        The other term, coming from the pairs of arcs with identical
+        startpoint, is :func:`~combisurf.crossing_arcs.startpoint_sweep_sorted`
+        on the leaves of the two slots built at construction time.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
+            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: I = GeometricIntersectionMatrix(octagon, [[0, 3, 6], [0, 2, 2, 5, 2, 2, 5]])
+            sage: I._entry_from(0, 1, I._double_sum(0, 1)), I._entry_from(1, 1, I._double_sum(1, 1))
+            (2, 8)
         """
+        if sx == sy:
+            # a slot against itself is swept once, merging it with a copy of
+            # itself is wrong
+            sweep = startpoint_sweep_sorted(self._n, self._ranks[sx], self._starts[sx], self._arc_angles[sx],
+                                            None, None, None, self._arc_scratch, False)
+        else:
+            sweep = startpoint_sweep_sorted(self._n, self._ranks[sx], self._starts[sx], self._arc_angles[sx],
+                                            self._ranks[sy], self._starts[sy], self._arc_angles[sy],
+                                            self._arc_scratch, False)
         # the two arcs of a crossing are counted once in each direction
-        ans = 2 * double_sum + self._sweep(sx, sy)
+        ans = 2 * double_sum + sweep
         assert ans % 2 == 0
         return ans // 2
-
-    def _sweep(self, sx, sy):
-        r"""
-        Return the contribution of the pairs of arcs with identical startpoint,
-        for the slots ``sx`` and ``sy``.
-
-        The leaves of the two slots are merged by rank and the resulting list
-        is swept by groups of equal startpoints. This costs
-        `O((|u| + |v|) \log(n))`.
-
-        The two :func:`~combisurf.partial_sums.PartialSums` structures are zero on entry
-        and are restored to zero at the end of each group, by undoing the
-        updates of the group rather than by clearing the whole vector.
-        """
-        Nu = self._Nu
-        Nv = self._Nv
-        ans = 0
-
-        if sx == sy:
-            # a slot against itself is swept once with both multiplicities
-            # equal to one; merging it with a copy of itself is wrong
-            starts = self._starts[sx]
-            arc_angles = self._arc_angles[sx]
-            update = Nu.update
-            partial_sum = Nu.partial_sum
-            l = len(starts)
-            pos = 0
-            while pos < l:
-                startpoint = starts[pos]
-                first = pos
-                pos += 1
-                while pos < l and starts[pos] == startpoint:
-                    pos += 1
-                if pos - first == 1:
-                    # a single arc through this startpoint crosses nothing
-                    continue
-                update(arc_angles[first], 1)
-                for t in range(first + 1, pos):
-                    angle = arc_angles[t]
-                    ans += 2 * partial_sum(0, angle)
-                    update(angle, 1)
-                for t in range(first, pos):
-                    update(arc_angles[t], -1)
-            return ans
-
-        ru = self._ranks[sx]
-        su = self._starts[sx]
-        au = self._arc_angles[sx]
-        rv = self._ranks[sy]
-        sv = self._starts[sy]
-        av = self._arc_angles[sy]
-        lu = len(ru)
-        lv = len(rv)
-        iu = iv = 0
-        while iu < lu or iv < lv:
-            # the leaves sharing a startpoint are consecutive in the cyclic
-            # order, so the head of smaller rank opens the group
-            if iv == lv or (iu < lu and ru[iu] < rv[iv]):
-                startpoint = su[iu]
-            else:
-                startpoint = sv[iv]
-            iu0 = iu
-            while iu < lu and su[iu] == startpoint:
-                iu += 1
-            iv0 = iv
-            while iv < lv and sv[iv] == startpoint:
-                iv += 1
-            if iu0 == iu or iv0 == iv:
-                # only one of the two curves goes through this startpoint
-                continue
-
-            ju = iu0
-            jv = iv0
-            while ju < iu or jv < iv:
-                if jv == iv or (ju < iu and ru[ju] < rv[jv]):
-                    angle = au[ju]
-                    ans += Nv.partial_sum(0, angle)
-                    Nu.update(angle, 1)
-                    ju += 1
-                else:
-                    angle = av[jv]
-                    ans += Nu.partial_sum(0, angle)
-                    Nv.update(angle, 1)
-                    jv += 1
-            for t in range(iu0, iu):
-                Nu.update(au[t], -1)
-            for t in range(iv0, iv):
-                Nv.update(av[t], -1)
-        return ans
 
     def entry(self, x, y):
         r"""

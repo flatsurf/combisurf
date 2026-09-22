@@ -6,10 +6,14 @@ This module holds :func:`crossing_arcs_sweep` and
 :func:`combisurf.crossing_arcs.crossing_arcs_sweep` and
 :func:`combisurf.crossing_arcs.crossing_arcs_sweep_sorted`, and
 :func:`crossing_arcs_double_sum`, which computes the same number by an
-`O(n^2)` double sum over the endpoints. They are the reference against which
-the Cython sweep is tested in ``test/test_geometric_intersection.py``;
-everything else in the package uses the Cython sweep, which is faster than
-both at every ``n``. See :mod:`combisurf.crossing_arcs` for the quantity
+`O(n^2)` double sum over the endpoints. It also holds
+:func:`startpoint_sweep_sorted` and :func:`startpoint_sweep_weighted`, the
+pure Python versions of the two sweeps counting the pairs of arcs with the
+same startpoint. They are the references against which the Cython
+sweeps are tested in ``test/test_geometric_intersection.py``; everything
+else in the package uses the Cython sweeps, the one for crossing arcs being
+faster than both the pure Python sweep and the double sum at every ``n``.
+See :mod:`combisurf.crossing_arcs` for the quantity
 computed.
 
 EXAMPLES::
@@ -315,3 +319,136 @@ def crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys=None, vweights=None):
         iu = ju
         iv = jv
     return S
+
+
+def startpoint_sweep_sorted(n, uranks, ustarts, uangles, vranks=None, vstarts=None, vangles=None):
+    r"""
+    Return the number of pairs of arcs with the same startpoint that cross,
+    the arcs being the leaves of two curves listed in increasing rank.
+
+    This is the pure Python version of
+    :func:`combisurf.crossing_arcs.startpoint_sweep_sorted`, the reference it
+    is tested against; see there for the quantity computed. It takes plain
+    lists and is written with
+    :class:`~combisurf.partial_sums_naive.PartialSumsNaive`, so it costs
+    `O((|u| + |v|) n)`.
+
+    EXAMPLES::
+
+        sage: from combisurf.crossing_arcs_naive import startpoint_sweep_sorted
+        sage: n = 8
+        sage: startpoint_sweep_sorted(n, [3], [0], [1], [4], [0], [5])
+        1
+        sage: startpoint_sweep_sorted(n, [3], [0], [5], [4], [0], [1])
+        0
+        sage: startpoint_sweep_sorted(n, [3, 4], [0, 0], [1, 5])
+        2
+    """
+    Nu = PartialSumsNaive(n - 1)
+    ans = 0
+
+    if vranks is None:
+        # a curve against itself is swept once, each pair being counted
+        # twice; merging it with a copy of itself is wrong
+        l = len(ustarts)
+        pos = 0
+        while pos < l:
+            startpoint = ustarts[pos]
+            first = pos
+            pos += 1
+            while pos < l and ustarts[pos] == startpoint:
+                pos += 1
+            if pos - first == 1:
+                # a single arc through this startpoint crosses nothing
+                continue
+            Nu.update(uangles[first], 1)
+            for t in range(first + 1, pos):
+                angle = uangles[t]
+                ans += 2 * Nu.partial_sum(0, angle)
+                Nu.update(angle, 1)
+            for t in range(first, pos):
+                Nu.update(uangles[t], -1)
+        return ans
+
+    Nv = PartialSumsNaive(n - 1)
+    lu = len(uranks)
+    lv = len(vranks)
+    iu = iv = 0
+    while iu < lu or iv < lv:
+        # the leaves sharing a startpoint are consecutive in the cyclic
+        # order, so the head of smaller rank opens the group
+        if iv == lv or (iu < lu and uranks[iu] < vranks[iv]):
+            startpoint = ustarts[iu]
+        else:
+            startpoint = vstarts[iv]
+        iu0 = iu
+        while iu < lu and ustarts[iu] == startpoint:
+            iu += 1
+        iv0 = iv
+        while iv < lv and vstarts[iv] == startpoint:
+            iv += 1
+        if iu0 == iu or iv0 == iv:
+            # only one of the two curves goes through this startpoint
+            continue
+
+        ju = iu0
+        jv = iv0
+        while ju < iu or jv < iv:
+            if jv == iv or (ju < iu and uranks[ju] < vranks[jv]):
+                angle = uangles[ju]
+                ans += Nv.partial_sum(0, angle)
+                Nu.update(angle, 1)
+                ju += 1
+            else:
+                angle = vangles[jv]
+                ans += Nu.partial_sum(0, angle)
+                Nv.update(angle, 1)
+                jv += 1
+        for t in range(iu0, iu):
+            Nu.update(uangles[t], -1)
+        for t in range(iv0, iv):
+            Nv.update(vangles[t], -1)
+    return ans
+
+
+def startpoint_sweep_weighted(n, starts, angles, uweights, vweights=None):
+    r"""
+    Return the weighted number of pairs of arcs with the same startpoint that
+    cross, the arcs being the leaves of a family of curves listed in cyclic
+    order at infinity.
+
+    This is the pure Python version of
+    :func:`combisurf.crossing_arcs.startpoint_sweep_weighted`, the reference
+    it is tested against; see there for the quantity computed. It takes plain
+    lists and is written with
+    :class:`~combisurf.partial_sums_naive.PartialSumsNaive`, so it costs
+    `O(|starts| n)`.
+
+    EXAMPLES::
+
+        sage: from combisurf.crossing_arcs_naive import startpoint_sweep_weighted
+        sage: startpoint_sweep_weighted(8, [0, 0], [1, 5], [2, 0], [0, 3])
+        6
+        sage: startpoint_sweep_weighted(8, [0, 0], [1, 5], [2, 3])
+        12
+    """
+    if vweights is None:
+        vweights = uweights
+    Nu = PartialSumsNaive(n - 1)
+    Nv = PartialSumsNaive(n - 1)
+    ans = 0
+    l = len(starts)
+    pos = 0
+    while pos < l:
+        startpoint = starts[pos]
+        first = pos
+        while pos < l and starts[pos] == startpoint:
+            angle = angles[pos]
+            ans += uweights[pos] * Nv.partial_sum(0, angle) + vweights[pos] * Nu.partial_sum(0, angle)
+            Nu.update(angle, uweights[pos])
+            Nv.update(angle, vweights[pos])
+            pos += 1
+        for t in range(first, pos):
+            Nu.update(angles[t], -uweights[t])
+            Nv.update(angles[t], -vweights[t])
+    return ans

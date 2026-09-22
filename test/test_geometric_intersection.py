@@ -175,12 +175,8 @@ def test_intersection_matrix_genus_and_length():
 
 def test_intersection_matrix_large_alphabet():
     # A large alphabet, well beyond the tree's dense/sparse threshold.
-    # GeometricIntersectionMatrix and the unit computation must pick the same
-    # PartialSums structure for this map size, since both now go through the
-    # shared combisurf.partial_sums.PartialSums factory.
     import random
     from combisurf.geometric_intersection import GeometricIntersection
-    from combisurf.partial_sums import PartialSums
 
     rng = random.Random(1234)
     g = 70
@@ -189,8 +185,6 @@ def test_intersection_matrix_large_alphabet():
     for length in [5, 30]:
         curves = random_primitive_curves(4 * g, length, 4, rng)
         I = gi.intersection_matrix(curves)
-        assert type(I._Nu) is type(PartialSums(4 * g - 1))
-        assert type(I._Nv) is type(PartialSums(4 * g - 1))
         assert I._tree.algorithm() == 'sparse'
         for x, u in enumerate(curves):
             for y, v in enumerate(curves):
@@ -375,6 +369,108 @@ def test_crossing_arcs_sweep_sorted_random():
             assert crossing_arcs_sweep_sorted(n, q[0], q[1], None, None, scratch) == expected
             assert crossing_arcs_sweep_sorted(n, q[0], q[1], q[0], q[1], scratch) == expected
             assert not any(scratch)
+
+
+def random_leaves(n, num, rng):
+    r"""
+    Return ``num`` random leaves on ``n`` half-edges, as the three lists of
+    their ranks, startpoints and angles, in increasing rank and with the
+    leaves of a given startpoint consecutive.
+    """
+    ranks = sorted(rng.sample(range(3 * num + 1), num))
+    # few startpoints, so that the groups are large
+    starts = sorted(rng.randrange(min(n, 4)) for _ in range(num))
+    rng.shuffle(starts)
+    order = {}
+    for x in starts:
+        order.setdefault(x, len(order))
+    starts.sort(key=order.__getitem__)
+    angles = [rng.randrange(n - 1) for _ in range(num)]
+    return ranks, starts, angles
+
+
+def test_startpoint_sweep_sorted_random():
+    # the Cython startpoint sweep against its pure Python oracle, symmetric
+    # and not, with and without a scratch
+    import random
+    from array import array
+    from combisurf.crossing_arcs import startpoint_sweep_sorted
+    from combisurf import crossing_arcs_naive
+
+    rng = random.Random(20260930)
+    for n in list(range(2, 20)) + [64, 257]:
+        scratch = array('q', [0]) * (2 * (n + 1))
+        for num in [0, 1, 2, 5, 30, 200]:
+            for _ in range(3):
+                ranks, starts, angles = random_leaves(n, num, rng)
+                side = [rng.randrange(2) for _ in range(num)]
+                u = [[x[k] for k in range(num) if side[k] == 0] for x in (ranks, starts, angles)]
+                v = [[x[k] for k in range(num) if side[k] == 1] for x in (ranks, starts, angles)]
+                qu = [array('q', x) for x in u]
+                qv = [array('q', x) for x in v]
+
+                expected = crossing_arcs_naive.startpoint_sweep_sorted(n, *u, *v)
+                assert startpoint_sweep_sorted(n, *qu, *qv) == expected
+                assert startpoint_sweep_sorted(n, *qu, *qv, scratch) == expected
+                assert not any(scratch)
+
+                q = [array('q', x) for x in (ranks, starts, angles)]
+                expected = crossing_arcs_naive.startpoint_sweep_sorted(n, ranks, starts, angles)
+                assert startpoint_sweep_sorted(n, *q) == expected
+                assert startpoint_sweep_sorted(n, *q, None, None, None, scratch) == expected
+                assert not any(scratch)
+
+
+def test_startpoint_sweep_weighted_random():
+    # the Cython weighted startpoint sweep against its pure Python oracle,
+    # with one or two weight vectors, with and without a scratch
+    import random
+    from array import array
+    from combisurf.crossing_arcs import startpoint_sweep_weighted
+    from combisurf import crossing_arcs_naive
+
+    rng = random.Random(20260931)
+    for n in list(range(2, 20)) + [64, 257]:
+        scratch = array('q', [0]) * (2 * (n + 1))
+        for num in [0, 1, 2, 5, 30, 200]:
+            for _ in range(3):
+                _, starts, angles = random_leaves(n, num, rng)
+                uweights = [rng.randrange(4) for _ in range(num)]
+                vweights = [rng.randrange(4) for _ in range(num)]
+                q = [array('q', x) for x in (starts, angles, uweights, vweights)]
+
+                expected = crossing_arcs_naive.startpoint_sweep_weighted(n, starts, angles, uweights, vweights)
+                assert startpoint_sweep_weighted(n, *q) == expected
+                assert startpoint_sweep_weighted(n, *q, scratch) == expected
+                assert not any(scratch)
+
+                expected = crossing_arcs_naive.startpoint_sweep_weighted(n, starts, angles, uweights)
+                assert expected % 2 == 0
+                assert startpoint_sweep_weighted(n, q[0], q[1], q[2]) == expected
+                assert startpoint_sweep_weighted(n, q[0], q[1], q[2], None, scratch) == expected
+                assert startpoint_sweep_weighted(n, q[0], q[1], q[2], q[2], scratch) == expected
+                assert not any(scratch)
+
+
+def test_intersection_matrix_self_intersection():
+    # the self-intersection of a curve is half of its diagonal entry
+    import random
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersection
+    from combisurf.lyndon_word_family import cyclically_reduced_lyndon_words
+
+    rng = random.Random(20260929)
+    torus = OrientedMap(fp="(0,1,~0,~1)")
+    octagon = polygon_4g(2)
+    cases = [(torus, [list(w) for w in cyclically_reduced_lyndon_words(2, 1, 7, up_to_inverse=True)]),
+             (octagon, rng.sample([list(w) for w in cyclically_reduced_lyndon_words(4, 1, 6, up_to_inverse=True)], 200)),
+             (polygon_4g(32), random_primitive_curves(128, 8, 50, rng))]
+    for m, curves in cases:
+        gi = GeometricIntersection(m)
+        I = gi.intersection_matrix(curves)
+        for x, c in enumerate(curves):
+            e = I.entry(x, x)
+            assert e % 2 == 0 and e // 2 == gi.geometric_intersection([c]), (m, c)
 
 
 def crossing_arcs_implementations():
