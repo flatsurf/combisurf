@@ -57,8 +57,6 @@ Which means that the leaf index ``6`` coressponds to the word number ``1``
 from combisurf.word import word_check, word_init
 
 
-VERBOSE = False
-INDENT = 0
 class ConjugateTree:
     r"""
     Tree structure to store all conjugates of a finite set of primitive words.
@@ -101,7 +99,6 @@ class ConjugateTree:
         self._transition_word = [0] # state -> word index
         self._transition_start = [-4]
         self._transition_end = [-3]
-        self._max_read = []
 
     def words(self):
         r"""
@@ -374,6 +371,7 @@ class ConjugateTree:
         return leaves
 
     def graph(self):
+        from sage.graphs.digraph import DiGraph
         G = DiGraph(self.num_states(), loops=False, multiedges=False)
         for s in range(self.num_states()):
             for t in self._transitions[s].values():
@@ -402,7 +400,14 @@ class ConjugateTree:
         self._transition_word.append(-2)
         return n
 
-    def _check(self):
+    def _check_structural(self):
+        r"""
+        Check the per-node invariants of this conjugate tree.
+
+        Unlike :meth:`_check_bijection`, these invariants hold at every
+        intermediate step of :meth:`process`, not only once it returns, since
+        they say nothing about the leaves of the word currently being added.
+        """
         for w in self._words:
             assert word_check(w)
         n = len(self._transitions)
@@ -436,6 +441,8 @@ class ConjugateTree:
 
             # the leaves should correspond to the -1 states
             if s != 0:
+                k = self._transition_start[s]
+                p = self._transition_end[s]
                 assert p == -1 or p - k > 0, (s, k, p)
 
                 assert (self._transition_end[s] == -1) == (not self._transitions[s])
@@ -448,11 +455,29 @@ class ConjugateTree:
                     assert self._transitions[s]
                     ss = self._suffix_link[s]
                     assert s != ss
-                    w0 = self.word(ss)
-                    w1 = self.word(s)
+                    w0 = self.internal_state_word(ss)
+                    w1 = self.internal_state_word(s)
                     assert w0 == w1[1:], (ss, w0, s, w1)
 
+    def _check_bijection(self):
+        r"""
+        Check that the leaves of this conjugate tree are in bijection with
+        the conjugates of the words in :meth:`words`.
+
+        This only holds once :meth:`process` has returned; while it is
+        running, the word being added does not yet have all of its leaves.
+        """
         assert [self.leaf_as_conjugate(s) for s in self.leaves()] == [(i, k) for i, w in enumerate(self.words()) for k in range(len(w))]
+
+    def _check(self):
+        r"""
+        Check all invariants of this conjugate tree.
+
+        Combines :meth:`_check_structural` and :meth:`_check_bijection`; only
+        valid to call outside of a :meth:`process` call.
+        """
+        self._check_structural()
+        self._check_bijection()
 
     def _test_and_split(self, s, i, k, p, letter):
         r"""
@@ -472,20 +497,13 @@ class ConjugateTree:
             # get the transition from s starting with word[i][k] and test
             # whether its (p - k)-th letter coincide with letter or not
             t = self._transitions[s][self._letter(i, k)]
-            if VERBOSE:
-                print(" " * INDENT + f"[_test_and_split] _test_and_split(s={s}, i={i}, k={k}, p={p}, letter={letter})")
-                print(" " * INDENT + f"[_test_and_split] implicit with target t={t}")
             ii = self._transition_word[t]
             # w = self._words[ii]
             kk = self._transition_start[t]
             assert kk >= 0
             index = kk + p - k
             assert index >= 0
-            # TODO: remove check
-            assert self._transition_end[t] == -1 or index < self._transition_end[t], (s, i, k, p, t, index)
             lletter = self._letter(ii, index)
-            if VERBOSE:
-                print(" " * INDENT + f"[_test_and_split] letter={letter} lletter={lletter}")
             if letter == lletter:
                 # the node already exists
                 return -1
@@ -508,14 +526,9 @@ class ConjugateTree:
 
                 self._depth[ss] = self._depth[s] + index - kk
 
-                if VERBOSE:
-                    print(" " * INDENT + f"[_test_and_split] new node {ss} ({self.word(ss)}) from split between {s} ({self.word(s)}) and {t} ({self.word(t)}")
-
                 return ss
         else:
             # explicit state
-            if VERBOSE:
-                print(" " * INDENT + f"[_test_and_split] _test_and_split(s={s}, i={i}, k={k}, p={p}, letter={letter}): explicit")
             if s == -1 or letter in self._transitions[s]:
                 # the node already exists
                 return -1
@@ -531,12 +544,9 @@ class ConjugateTree:
         Return a pair ``(s, k)`` (as ``i`` and ``p`` do not change).
         """
         assert s >= -1, s
-        if VERBOSE:
-            print(" " * INDENT + f"[canonize] canonize(s={s}, i={i}, k={k}, p={p})")
         if k >= p:
             # already explicit
-            # return (s, p)
-            out = (s, p)
+            return (s, p)
         else:
             ss = 0 if s == -1 else self._transitions[s][self._letter(i, k)]
             kk = self._transition_start[ss]
@@ -549,33 +559,10 @@ class ConjugateTree:
                 pp = self._transition_end[ss]
             if pp != -1 and pp - kk == p - k:
                 # explicit
-                # return (ss, p)
-                if VERBOSE:
-                    print(" " * INDENT + f"[canonize] 1: s={s} k={k} p={p} ss={ss} kk={kk} pp={pp}")
-                out = (ss, p)
+                return (ss, p)
             else:
                 # implicit
-                # return (s, k)
-                if VERBOSE:
-                    print(" " * INDENT + f"[canonize] 2: s={s} k={k} p={p} ss={ss} kk={kk} pp={pp}")
-                out = (s, k)
-
-        if VERBOSE:
-            print(" " * INDENT + f"[canonize] out={out}")
-
-        # TODO: remove check
-        s, k = out
-        if k == p:
-            return out
-        elif k > p:
-            raise RuntimeError
-        else:
-            assert s != -1
-            t = self._transitions[s][self._letter(i, k)]
-            kk = self._transition_start[t]
-            pp = self._transition_end[t]
-            assert pp == -1 or p - k < pp - kk, (k, p, kk, pp)
-            return out
+                return (s, k)
 
     def _update(self, s, i, k, p):
         r"""
@@ -593,50 +580,29 @@ class ConjugateTree:
         # (s, k, p): active state which is the first state along the boundary
         # path which is not an active leaf
         # r: closest branching from s (r is either s or its ancestor)
-        global VERBOSE, INDENT
-
         letter = self._letter(i, p)
         old_r = 0
         created_leaves = []
-        if VERBOSE:
-            print(" " * INDENT + f"[update] process letter w[{p}]={letter}")
-            print(" " * INDENT + f"[update] going through boundary path from active state s={s} k={k} p={p}")
-            INDENT += 2
         r = self._test_and_split(s, i, k, p, letter)
-        if VERBOSE:
-            INDENT -= 2
         while r != -1:
             assert k >= 0 and p >= 0, (k, p)
             assert r >= 0 and old_r >= 0, (r, old_r)
             # create a leaf
             rr = self._add_node()
             created_leaves.append(rr)
-            if VERBOSE:
-                print(" " * INDENT + f"[update]   r={r} s={s} k={k}")
-                print(" " * INDENT + f"[update]   new leaf rr={rr})")
             self._transitions[r][letter] = rr
             self._ancestor[rr] = r
             self._transition_word[rr] = i
             self._transition_start[rr] = p
             self._transition_end[rr] = -1
             if old_r != 0:
-                if VERBOSE:
-                    print(" " * INDENT + f"[update]   create suffix link {old_r} -> {r}")
                 assert r != old_r
                 self._suffix_link[old_r] = r
             old_r = r
-            if VERBOSE:
-                INDENT += 2
             s, k = self.canonize(self._suffix_link[s], i, k, p)
             r = self._test_and_split(s, i, k, p, letter)
-            if VERBOSE:
-                INDENT -= 2
-        if VERBOSE:
-            print(" " * INDENT + f"[update] end of loop: s={s} k={k} p={p} old_r={old_r}")
 
         if old_r != 0:
-            if VERBOSE:
-                print(" " * INDENT + f"[update] create suffix link {old_r} -> {s}")
             assert old_r != s, (old_r, s)
             self._suffix_link[old_r] = s
 
@@ -681,7 +647,6 @@ class ConjugateTree:
             sage: T._letter(0, 19)
             3
         """
-        self._max_read[i] = max(self._max_read[i], k)
         return self._words[i][k % len(self._words[i])]
 
     def process(self, w, check=True, hard_check=False):
@@ -708,11 +673,9 @@ class ConjugateTree:
         for letter in w:
             if letter < 0:
                 raise ValueError("invalid word: must be made of non-negative integers")
-        global VERBOSE, INDENT
         i = len(self._words)
         l = len(w)
         self._words.append(w)
-        self._max_read.append(-1)
 
         s = 0
         k = 0
@@ -722,33 +685,22 @@ class ConjugateTree:
         num_leaves = 0
         p = 0
         while True:
-            if VERBOSE:
-                print(f"[process] new loop with active state s={s} i={i} k={k} p={p}")
-                INDENT += 2
             if p != k:
                 ss = self._transitions[s][self._letter(i, k)]
                 ii = self._transition_word[ss]
                 kk = self._transition_start[ss]
                 pp = self._transition_end[ss]
-                if VERBOSE:
-                    print(f"[process] endpoint of active state ss={ss} ii={ii} kk={kk} pp={pp}")
             else:
                 ii = -1
             s, k, created_leaves = self._update(s, i, k, p)
             num_leaves += len(created_leaves)
-            if VERBOSE:
-                print(f"[process] {len(created_leaves)} new leaves, total={num_leaves}")
             if hard_check:
-                self._check()
+                self._check_structural()
             s, k = self.canonize(s, i, k, p + 1)
-            if VERBOSE:
-                INDENT -= 2
 
             # halt condition
             if num_leaves == l:
                 # w is primitive
-                if VERBOSE:
-                    print(f"[process] enough leaves to determine conjugates at p={p} (i={i} ii={ii} len(w)={len(w)})")
                 break
             elif ii == i and p >= 2 * l:
                 # w is non primitive
@@ -761,7 +713,8 @@ class ConjugateTree:
 
         if num_leaves == 0:
             self._words.pop()
-            self._max_read.pop()
+            if hard_check:
+                self._check_bijection()
             return -ii
         else:
             assert len(w) % num_leaves == 0, (len(w), num_leaves)
@@ -769,6 +722,8 @@ class ConjugateTree:
             if exponent != 1:
                 # NOTE: only store primitive words
                 del self._words[-1][l//exponent:]
+            if hard_check:
+                self._check_bijection()
             return exponent
 
     def internal_state_word(self, s):

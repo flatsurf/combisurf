@@ -12,9 +12,6 @@ implement a data structure that do both updates and partial sums in O(\log(n))
 time.
 """
 
-from sage.rings.integer_ring import ZZ
-
-
 class PartialSumsNaive:
     r"""
     Update in O(1) and partial sum in O(n).
@@ -56,7 +53,7 @@ class PartialSumsBinarySplitting:
     def __init__(self, n):
         if n <= 0:
             raise ValueError("n must be a positive integer")
-        self._b = ZZ(n - 1).nbits()
+        self._b = (n - 1).bit_length()
         self._values = [0] * (2 ** (self._b + 1))
 
     def __repr__(self):
@@ -83,7 +80,7 @@ class PartialSumsBinarySplitting:
 
     def index_to_interval(self, i):
         l = 0
-        j = ZZ(i)
+        j = i
         while j:
             j >>= 1
             l += 1

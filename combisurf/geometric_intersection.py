@@ -32,13 +32,6 @@ class GeometricIntersection:
             self._angles[j] = self._angles[i] + 1
             i = j
 
-    def _check_closed_walk(self, w):
-        if not isinstance(w, array):
-            w = array("i", w)
-
-        if w.typecode != "i":
-            raise ValueError
-
     def __repr__(self):
         return f"GeometricIntersection({self._cm})"
 
@@ -384,13 +377,6 @@ class GeometricIntersection:
         for i in range(n):
             for j in range(n - 1, i + 1, -1):
                 Nu2[i][j - 1] += Nu2[i][j]
-
-        for j in range(n):
-            for i in range(j - 1):
-                Nu[i + 1][j] += Nu[i][j]
-        for i in range(n):
-            for j in range(n - 1, i + 1, -1):
-                Nv[i][j - 1] += Nv[i][j]
 
         intersections += sum(Nu1[i1 - 1][j0] * Nv1[i1][j0 + 1] + Nv2[i1 - 1][j0] * Nu2[i1][j0 + 1]
                              for i1 in range(1, n - 2) for j0 in range(i1 + 1, n - 1))
