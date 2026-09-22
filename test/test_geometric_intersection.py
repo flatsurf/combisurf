@@ -342,3 +342,86 @@ def test_intersection_matrix_float64_bound():
     assert J._double_sum_row(0) is None
     assert J._double_sum_table() is None
     assert J.matrix() == expected
+
+
+def crossing_arcs_implementations():
+    r"""
+    Return the three functions computing the crossing arcs term of
+    ``GeometricIntersection.geometric_intersection``: the Cython sweep, its
+    pure Python version and the `O(n^2)` double sum.
+    """
+    from combisurf.crossing_arcs import crossing_arcs_sweep
+    from combisurf import crossing_arcs_naive
+
+    return [crossing_arcs_sweep, crossing_arcs_naive.crossing_arcs_sweep,
+            crossing_arcs_naive.crossing_arcs_double_sum]
+
+
+def test_crossing_arcs_random():
+    # the sweeps against the double sum, exactly, on random weighted arcs,
+    # including arcs sharing one endpoint with many others
+    import random
+
+    rng = random.Random(20260924)
+    implementations = crossing_arcs_implementations()
+    for n in list(range(1, 20)) + [64, 257]:
+        for num in [0, 1, 2, 5, 30, 200]:
+            if n < 2 and num:
+                continue
+            arcs = {}
+            for _ in range(num):
+                first, last = sorted(rng.sample(range(n), 2))
+                arcs[last * n + first] = [rng.randrange(4), rng.randrange(4)]
+            answers = [f(n, arcs) for f in implementations]
+            assert answers.count(answers[0]) == 3, (n, arcs, answers)
+            for weights in arcs.values():
+                weights[1] = weights[0]
+            answers = [f(n, arcs, True) for f in implementations]
+            answers.append(implementations[0](n, arcs, False))
+            assert answers.count(answers[0]) == 4, (n, arcs, answers)
+
+
+def test_geometric_intersection_crossing_arcs_paths(monkeypatch):
+    # geometric_intersection with the crossing arcs term computed by each of
+    # the three implementations, which must agree exactly on every call
+    import random
+    import combisurf.geometric_intersection as geometric_intersection
+    from combisurf.geometric_intersection import GeometricIntersection
+    from combisurf.word import word_init, word_free_group_inverse
+
+    implementations = crossing_arcs_implementations()
+    calls = []
+
+    def all_paths(n, arcs, symmetric):
+        answers = [f(n, arcs, symmetric) for f in implementations]
+        assert answers.count(answers[0]) == 3, (n, arcs, symmetric, answers)
+        calls.append(answers[0])
+        return answers[0]
+
+    def forced(f):
+        def call(ulist, vlist=None):
+            monkeypatch.setattr(geometric_intersection, "crossing_arcs_sweep", f)
+            return gi.geometric_intersection(ulist, vlist)
+        return call
+
+    paths = [forced(f) for f in implementations + [all_paths]]
+
+    rng = random.Random(20260925)
+    for g in [1, 2, 4, 8, 16, 32]:
+        gi = GeometricIntersection(polygon_4g(g))
+        for length in [1, 2, 8, 100]:
+            c0, c1, c2, c3 = random_primitive_curves(4 * g, length, 4, rng)
+            conj = c1[1:] + c1[:1]
+            inv = list(word_free_group_inverse(word_init(c2)))
+            inputs = [
+                ([c0], [c1]),
+                ([c0], None),
+                ([c0, c0, c1 * 2, conj, inv], [c1, c2 * 3, c0, c3]),
+                ([c0, c0, c1 * 2, conj, inv], None),
+                ([c2 * 2, c3, c3], [c3 * 2, inv]),
+                ([c2 * 3, c3], None)]
+            for ulist, vlist in inputs:
+                ncalls = len(calls)
+                answers = [path(ulist, vlist) for path in paths]
+                assert len(calls) == ncalls + 1
+                assert answers.count(answers[0]) == 4, (g, length, ulist, vlist, answers)

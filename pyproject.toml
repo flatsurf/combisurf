@@ -78,6 +78,7 @@ inputs = [
     "combisurf/conjugate_tree.pyx",
     "combisurf/partial_sums.pxd",
     "combisurf/partial_sums.pyx",
+    "combisurf/crossing_arcs.pyx",
 ]
 
 # Since sagelib 10.8, the conda package no longer ships the bin/sage* scripts,
