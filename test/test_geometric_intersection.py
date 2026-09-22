@@ -248,3 +248,89 @@ def test_intersection_matrix_row_and_matrix():
     assert mat.nrows() == mat.ncols() == len(curves) == len(I)
     for x in range(len(curves)):
         assert I.row(x) == list(mat.row(x)), x
+
+
+def forced_matrix_classes():
+    r"""
+    Return the two subclasses of ``GeometricIntersectionMatrix`` that pin the
+    evaluation of the `O(n^2)` term to one of its two paths, so that they can
+    be compared against each other.
+    """
+    from combisurf.geometric_intersection import GeometricIntersectionMatrix
+
+    class DoubleSumPerPair(GeometricIntersectionMatrix):
+        _DOT_SETUP_WORK = float('inf')
+
+    class DoubleSumByProduct(GeometricIntersectionMatrix):
+        _DOT_SETUP_WORK = 0
+
+    return DoubleSumPerPair, DoubleSumByProduct
+
+
+def test_intersection_matrix_double_sum_paths():
+    # the matrix product path against the entry-by-entry double sum, exactly
+    import random
+    from combisurf.geometric_intersection import GeometricIntersection
+
+    per_pair, by_product = forced_matrix_classes()
+    rng = random.Random(20260923)
+    for g, length in [(1, 8), (2, 8), (4, 8), (8, 8), (16, 8), (32, 8), (8, 100)]:
+        m = polygon_4g(g)
+        gi = GeometricIntersection(m)
+        curves = random_primitive_curves(4 * g, length, 12, rng)
+        slow = per_pair(gi, curves)
+        fast = by_product(gi, curves)
+        assert not slow._dot_arrays(1)
+        assert fast._dot_arrays(0)
+
+        assert slow.matrix() == fast.matrix(), (g, length)
+        for x in range(len(curves)):
+            row = [slow.entry(x, y) for y in range(len(curves))]
+            assert slow.row(x) == row, (g, length, x)
+            assert fast.row(x) == row, (g, length, x)
+
+
+def test_intersection_matrix_double_sum_gate():
+    # the matrix product is set up once the calls add up to more than it costs,
+    # and both sides of that switch give the same answers
+    import random
+    from combisurf.geometric_intersection import GeometricIntersection
+
+    rng = random.Random(4242)
+    g = 16
+    gi = GeometricIntersection(polygon_4g(g))
+    curves = random_primitive_curves(4 * g, 8, 200, rng)
+    I = gi.intersection_matrix(curves)
+    work = len(curves) * I._K
+    assert work < I._DOT_SETUP_WORK < 2 * work
+
+    expected = [I.entry(0, y) for y in range(len(curves))]
+    assert I.row(0) == expected
+    assert not I._dot                      # first row, still the double sum
+    assert I.row(0) == expected
+    assert I._dot                          # second row, now the product
+    assert I.row(0) == expected
+
+
+def test_intersection_matrix_float64_bound():
+    # when the products could leave the exactly representable integers the
+    # class must fall back to the Python double sum rather than round
+    import random
+    from combisurf.geometric_intersection import GeometricIntersection
+
+    _, by_product = forced_matrix_classes()
+    rng = random.Random(55)
+    g = 8
+    gi = GeometricIntersection(polygon_4g(g))
+    curves = random_primitive_curves(4 * g, 8, 10, rng)
+
+    I = by_product(gi, curves)
+    assert I._dot_arrays(0)                # K * L^2 is nowhere near 2^53 here
+    expected = I.matrix()
+
+    J = by_product(gi, curves)
+    J._K = 2 ** 53                         # as if the curves were enormous
+    assert not J._dot_arrays(0)
+    assert J._double_sum_row(0) is None
+    assert J._double_sum_table() is None
+    assert J.matrix() == expected
