@@ -1,27 +1,27 @@
 r"""
-Conjugate trees
+Conjugate trees, reference implementation
 
-A conjugate tree is a generalization of suffix trees from word combinatorics.
-It is a compact data-structure that contains all factors of all conjugates
-of a finite list of words.
+This module holds :class:`ConjugateTreeNaive`, the pure Python conjugate
+tree. It is the reference against which the fast Cython
+:class:`~combisurf.conjugate_tree.ConjugateTree` of
+:mod:`combisurf.conjugate_tree` is tested; everything else in the package
+uses the fast one. See :mod:`combisurf.conjugate_tree` for what a conjugate
+tree is.
 
-The data structures and algorithms in this module are crucial to compute the
-geometric intersection numbers of curves and multicurves on surfaces.
-
-More precisely, the leaves of a conjugate tree are in bijection with the
-conjugates. And each edge is labeled with a finite word that makes it a
-deterministic automaton (where all vertices of degree 2 have been
-removed).
+The two classes answer the same questions with the same node numbering, so
+either can be substituted for the other. This one stores the children of a
+node in a dictionary and the per-node data in parallel Python lists, which
+makes it easy to read and about twenty times slower.
 
 EXAMPLES:
 
-The main class from this module is :class:`ConjugateTree` which is initialized
+The main class from this module is :class:`ConjugateTreeNaive` which is initialized
 with no argument::
 
-    sage: from combisurf.conjugate_tree import ConjugateTree
-    sage: T = ConjugateTree()
+    sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+    sage: T = ConjugateTreeNaive()
 
-To populate a conjugate tree one uses the function :meth:`~ConjugateTree.process` that
+To populate a conjugate tree one uses the function :meth:`~ConjugateTreeNaive.process` that
 takes as argument a word on non-negative integers (given as a list)::
 
     sage: T.process([0])
@@ -33,7 +33,7 @@ takes as argument a word on non-negative integers (given as a list)::
     sage: T.process([0, 1])
     -2
 
-The output value of :meth:`~ConjugateTree.process` is either a pair ``(False,
+The output value of :meth:`~ConjugateTreeNaive.process` is either a pair ``(False,
 exponent)`` if the word is not present or ``(True, position)``.
 
 To get a hand on the structure of the tree, one can use the following functions
@@ -57,7 +57,7 @@ Which means that the leaf index ``6`` coressponds to the word number ``1``
 from combisurf.word import word_check, word_init
 
 
-class ConjugateTree:
+class ConjugateTreeNaive:
     r"""
     Tree structure to store all conjugates of a finite set of primitive words.
 
@@ -89,7 +89,15 @@ class ConjugateTree:
       associated variables are often denoted ``i``, ``k`` and ``p`` in the
       algorithms.
     """
-    def __init__(self):
+    def __init__(self, alphabet=0, reserve=0, algorithm=None):
+        r"""
+        INPUT:
+
+        - ``alphabet``, ``reserve``, ``algorithm`` -- ignored; they are
+          accepted so that this class is a drop-in replacement for the
+          Cython :class:`~combisurf.conjugate_tree.ConjugateTree`, which
+          uses them to pick and to size its transition table.
+        """
         # NOTE: -2 is a special code for uninitialized (see _add_node), when adding a node we reallocate accordingly
         self._words = []            # (primitive) words defining the tree
         self._depth = [0]           # internal state -> word length
@@ -106,9 +114,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,1,0,1])
             2
             sage: T.process([0,1,0,0,1])
@@ -121,6 +129,120 @@ class ConjugateTree:
             [array('i', [0, 1]), array('i', [0, 1, 0, 0, 1]), array('i', [0, 1, 0, 1, 1])]
         """
         return [w[:] for w in self._words]
+
+    def num_words(self):
+        r"""
+        Return the number of primitive words that define this conjugate tree.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0,1,0,1])
+            2
+            sage: T.num_words()
+            1
+        """
+        return len(self._words)
+
+    def word(self, i):
+        r"""
+        Return the ``i``-th primitive word of this conjugate tree.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0,1,0,0,1])
+            1
+            sage: T.word(0)
+            array('i', [0, 1, 0, 0, 1])
+        """
+        if i < 0 or i >= len(self._words):
+            raise ValueError(f"i (={i}) must be the index of a word")
+        return self._words[i][:]
+
+    def word_length(self, i):
+        r"""
+        Return the length of the ``i``-th primitive word of this conjugate
+        tree.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0,1,0,0,1])
+            1
+            sage: T.word_length(0)
+            5
+        """
+        if i < 0 or i >= len(self._words):
+            raise ValueError(f"i (={i}) must be the index of a word")
+        return len(self._words[i])
+
+    def letter(self, i, k):
+        r"""
+        Return the ``k``-th letter of the ``i``-th word, read cyclically.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0, 4, 2, 3])
+            1
+            sage: T.letter(0, 19)
+            3
+            sage: T.letter(0, -1)
+            3
+        """
+        if i < 0 or i >= len(self._words):
+            raise ValueError(f"i (={i}) must be the index of a word")
+        return self._letter(i, k)
+
+    def alphabet(self):
+        r"""
+        Return ``0``: this class is not told the alphabet.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: ConjugateTreeNaive(8).alphabet()
+            0
+        """
+        return 0
+
+    def algorithm(self):
+        r"""
+        Return ``'dict'``: this class holds the children of a node in a
+        dictionary.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: ConjugateTreeNaive().algorithm()
+            'dict'
+        """
+        return 'dict'
+
+    def transitions(self, s):
+        r"""
+        Return the children of the node ``s`` as a dictionary mapping the
+        first letter of a transition to its target, ordered by letter.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0,1,1])
+            1
+            sage: T.transitions(0)
+            {0: 1, 1: 3}
+            sage: T.transitions(1)
+            {}
+        """
+        if s < 0 or s >= self.num_states():
+            raise ValueError(f"s (={s}) must be a node")
+        return dict(sorted(self._transitions[s].items()))
 
     def pprint(self):
         ans = []
@@ -153,9 +275,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
 
         Get the orbit `(1,2,4,5,6,8,10)` from the first word::
 
@@ -225,9 +347,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,0,0,1,0,2])
             1
             sage: T.process([1,2,1,2,1,1,2])
@@ -254,9 +376,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,0,0,0,1])
             1
             sage: T.size()
@@ -268,7 +390,7 @@ class ConjugateTree:
 
         The total size is the same if we input the two words in the opposite order::
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,0,0,1])
             1
             sage: T.size()
@@ -305,9 +427,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,0,0,1])
             1
             sage: T.size()
@@ -326,9 +448,9 @@ class ConjugateTree:
 
         TESTS::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,1,1])
             1
             sage: T.process([0,1])
@@ -344,9 +466,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,1,1])
             1
             sage: T.process([0,1])
@@ -614,9 +736,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,1,2])
             1
             sage: T._slice(0, 15, 19)
@@ -637,9 +759,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0, 4, 2, 3])
             1
             sage: T._letter(0, 1)
@@ -732,9 +854,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([0,1,0,0,1])
             1
             sage: T.process([0])
@@ -768,9 +890,9 @@ class ConjugateTree:
 
         EXAMPLES::
 
-            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
 
-            sage: T = ConjugateTree()
+            sage: T = ConjugateTreeNaive()
             sage: T.process([1,0,0,1,0,1,1,0])
             1
             sage: T.plot()

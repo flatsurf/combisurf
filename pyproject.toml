@@ -74,6 +74,8 @@ inputs = [
     "combisurf/word_family.pyx",
     "combisurf/lyndon_word_family.pxd",
     "combisurf/lyndon_word_family.pyx",
+    "combisurf/conjugate_tree.pxd",
+    "combisurf/conjugate_tree.pyx",
 ]
 
 # Since sagelib 10.8, the conda package no longer ships the bin/sage* scripts,

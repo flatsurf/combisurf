@@ -163,6 +163,9 @@ def test_intersection_matrix_genus_and_length():
         for length in [3, 8, 40, 200]:
             curves = random_primitive_curves(4 * g, length, 5, rng)
             I = gi.intersection_matrix(curves)
+            # both sides of the conjugate tree dense/sparse threshold are
+            # covered by this range of genera
+            assert I._tree.algorithm() == ('dense' if 4 * g <= 32 else 'sparse')
             for x, u in enumerate(curves):
                 for y, v in enumerate(curves):
                     if y < x:
@@ -184,6 +187,7 @@ def test_intersection_matrix_large_alphabet():
         curves = random_primitive_curves(4 * g, length, 4, rng)
         I = gi.intersection_matrix(curves)
         assert isinstance(I._Nu, PartialSumsBinarySplitting)
+        assert I._tree.algorithm() == 'sparse'
         for x, u in enumerate(curves):
             for y, v in enumerate(curves):
                 assert I.entry(x, y) == gi.geometric_intersection([u], [v]), (length, x, y)

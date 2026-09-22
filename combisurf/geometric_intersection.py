@@ -74,7 +74,7 @@ class GeometricIntersection:
             [2, 0, 0, 2, 0]
             [2, 0, 2, 0, 0]
         """
-        T = ConjugateTree()
+        T = ConjugateTree(len(self._angles))
         for i, w in enumerate(words):
             if not isinstance(w, array):
                 w = array('i', w)
@@ -268,7 +268,8 @@ class GeometricIntersection:
         # For general multicurves where u and v might have common components, each primitive
         # word (and hence each arc) has an associated u-multiplicity and v-multiplicity.
         intersections = 0  # result
-        T = ConjugateTree()
+        n = len(self._cm._vp)
+        T = ConjugateTree(n)
         u_multiplicities = []
         v_multiplicities = []
         for u in ulist:
@@ -281,16 +282,16 @@ class GeometricIntersection:
             if status <= 0:
                 # u (or conjugate) already present
                 i = -status
-                assert len(u) % len(T._words[i]) == 0
-                exponent = len(u) // len(T._words[i])
+                assert len(u) % T.word_length(i) == 0
+                exponent = len(u) // T.word_length(i)
             else:
                 # u added to T
                 u_multiplicities.append(0)
                 if vlist is not None:
                     v_multiplicities.append(0)
-                i = len(T._words) - 1
+                i = T.num_words() - 1
                 exponent = status
-                ans = T.process(word_free_group_inverse(T._words[i]))
+                ans = T.process(word_free_group_inverse(T.word(i)))
                 assert ans == 1
             u_multiplicities[i >> 1] += exponent
             if vlist is None:
@@ -309,15 +310,15 @@ class GeometricIntersection:
                 if status <= 0:
                     # v (or conjugate) already present
                     i = -status
-                    assert len(v) % len(T._words[i])== 0
-                    exponent = len(v) // len(T._words[i])
+                    assert len(v) % T.word_length(i) == 0
+                    exponent = len(v) // T.word_length(i)
                 else:
                     # v added to T
                     u_multiplicities.append(0)
                     v_multiplicities.append(0)
-                    i = len(T._words) - 1
+                    i = T.num_words() - 1
                     exponent = status
-                    ans = T.process(word_free_group_inverse(T._words[i]))
+                    ans = T.process(word_free_group_inverse(T.word(i)))
                     assert ans == 1
                 v_multiplicities[i >> 1] += exponent
         else:
@@ -325,15 +326,17 @@ class GeometricIntersection:
             v_multiplicities = u_multiplicities
 
         # print(f"u_multiplicities={u_multiplicities} v_multiplicities={v_multiplicities}")
-        n = len(self._cm._vp)
+        # NOTE: the words are read many times below, so they are taken out
+        # of the tree once rather than through an accessor at every letter
+        words = T.words()
 
         # Essential intersection coming from pairs of conjugates with four
         # distinct 1-order intervals associated to their startpoints and endpoints
         # NOTE: O(n^2 + len(u) + len(v)) cost
         Nu = [[0] * n for _ in range(n)]
         Nv = [[0] * n for _ in range(n)]
-        for i in range(0, len(T._words), 2):
-            w = T._words[i]
+        for i in range(0, len(words), 2):
+            w = words[i]
             for p in range(len(w)):
                 first = self._angles[w[p]]
                 last = self._angles[w[(p - 1) % len(w)] ^ 1]
@@ -400,12 +403,12 @@ class GeometricIntersection:
         while pos < len(word_indices):
             Nu.reset()
             Nv.reset()
-            startpoint = T._words[word_indices[pos]][word_shifts[pos]]
+            startpoint = words[word_indices[pos]][word_shifts[pos]]
             startangle = self._angles[startpoint]
-            while pos < len(word_indices) and T._words[word_indices[pos]][word_shifts[pos]] == startpoint:
+            while pos < len(word_indices) and words[word_indices[pos]][word_shifts[pos]] == startpoint:
                 # print(f"pos={pos} intersections={intersections} Nu={Nu} Nv={Nv}")
                 i = word_indices[pos]
-                w = T._words[i]
+                w = words[i]
                 k = word_shifts[pos]
                 endpoint = w[(k - 1) % len(w)] ^ 1
                 assert startpoint != endpoint
@@ -556,9 +559,7 @@ class GeometricIntersectionMatrix:
 
         # 1. all the curves and their inverses in a single tree, a curve and
         # its inverse sitting at the consecutive indices (2 * slot, 2 * slot + 1)
-        T = self._tree = ConjugateTree()
         self._curves = []
-        self._slot = []
         for j, c in enumerate(curves):
             w = word_init(c)
             if check:
@@ -567,23 +568,33 @@ class GeometricIntersectionMatrix:
                 raise ValueError(f"trivial curve at index {j}")
             self._curves.append(w)
 
+        # NOTE: the tree holds every curve and its inverse, so it stores twice
+        # as many letters as the curves have, and a conjugate tree over T
+        # letters has at most 2 T + 1 nodes. Reserving that makes the
+        # construction below allocation-free.
+        total = sum(len(w) for w in self._curves)
+        T = self._tree = ConjugateTree(n, reserve=4 * total + 1)
+        self._slot = []
+        for j, w in enumerate(self._curves):
             # 2. the slot of the curve, rejecting the non-primitive ones
             status = T.process(w[:], check=False)
             if status > 0:
                 if status != 1:
                     # a power of a word that was not in the tree
                     raise NotImplementedError(f"non-primitive curve at index {j}")
-                i = len(T._words) - 1
-                ans = T.process(word_free_group_inverse(T._words[i]), check=False)
+                i = T.num_words() - 1
+                ans = T.process(word_free_group_inverse(T.word(i)), check=False)
                 assert ans == 1
             else:
                 i = -status
-                if len(w) != len(T._words[i]):
+                if len(w) != T.word_length(i):
                     # a power of a word that was already in the tree
                     raise NotImplementedError(f"non-primitive curve at index {j}")
             self._slot.append(i >> 1)
 
-        num_slots = len(T._words) // 2
+        num_slots = T.num_words() // 2
+        # NOTE: read once rather than through an accessor at every letter
+        words = T.words()
 
         # 3. the cyclic order at infinity of all the leaves, once. For each
         # slot we keep its own leaves in increasing order of rank, each of them
@@ -594,7 +605,7 @@ class GeometricIntersectionMatrix:
         arc_angles = [[] for _ in range(num_slots)]
         for rank, s in enumerate(T.cyclically_sorted_leaves(angles)):
             i, k = T.leaf_as_conjugate(s)
-            w = T._words[i]
+            w = words[i]
             startpoint = w[k]
             endpoint = w[k - 1] ^ 1
             slot = i >> 1
@@ -617,7 +628,7 @@ class GeometricIntersectionMatrix:
         self._A = []
         self._B = []
         for slot in range(num_slots):
-            w = T._words[2 * slot]
+            w = words[2 * slot]
             M = [[0] * n for _ in range(n)]
             for p in range(len(w)):
                 first = angles[w[p]]
