@@ -57,3 +57,6 @@ cdef class ConjugateTree:
     cdef int _test_and_split(self, int s, int i, int k, int p, int letter) except -2
     cdef void _canonize(self, int *s, int i, int *k, int p) noexcept nogil
     cdef int _update(self, int *s, int i, int *k, int p) except -1
+
+    cdef array.array _angles_array(self, angles)
+    cdef int _sorted_leaves(self, int *ang, int n, int *out) except -1

@@ -528,8 +528,26 @@ def test_geometric_intersection_crossing_arcs_paths(monkeypatch):
         return answers[0]
 
     def forced(f):
+        # geometric_intersection hands the arcs to crossing_arcs_sweep_sorted
+        # as sorted arrays, which are turned back into the dictionary read by
+        # the implementations
+        def sweep_sorted(n, ukeys, uweights, vkeys=None, vweights=None, scratch=None, check=True):
+            assert list(ukeys) == sorted(set(ukeys))
+            symmetric = vkeys is None
+            arcs = {}
+            for key, u in zip(ukeys, uweights):
+                arcs.setdefault(key, [0, 0])[0] = u
+            if symmetric:
+                for weights in arcs.values():
+                    weights[1] = weights[0]
+            else:
+                assert list(vkeys) == sorted(set(vkeys))
+                for key, v in zip(vkeys, vweights):
+                    arcs.setdefault(key, [0, 0])[1] = v
+            return f(n, arcs, symmetric)
+
         def call(ulist, vlist=None):
-            monkeypatch.setattr(geometric_intersection, "crossing_arcs_sweep", f)
+            monkeypatch.setattr(geometric_intersection, "crossing_arcs_sweep_sorted", sweep_sorted)
             return gi.geometric_intersection(ulist, vlist)
         return call
 
@@ -554,3 +572,53 @@ def test_geometric_intersection_crossing_arcs_paths(monkeypatch):
                 answers = [path(ulist, vlist) for path in paths]
                 assert len(calls) == ncalls + 1
                 assert answers.count(answers[0]) == 4, (g, length, ulist, vlist, answers)
+
+
+def test_word_arcs_random():
+    # word_arcs against the dictionary of the arcs built in Python, and the
+    # sweep of its output against crossing_arcs_sweep on that dictionary
+    import random
+    from array import array
+    from combisurf.crossing_arcs import word_arcs, crossing_arcs_sweep, crossing_arcs_sweep_sorted
+
+    rng = random.Random(20260926)
+    for n in [2, 4, 8, 12, 64, 256]:
+        for length in [1, 2, 8, 100]:
+            for _ in range(10):
+                angles = list(range(n))
+                rng.shuffle(angles)
+                num_slots = rng.randint(1, 4)
+                words = []
+                for _ in range(num_slots):
+                    w = random_primitive_curves(n, length, 1, rng)[0] if n > 2 or length == 1 else [0]
+                    words.append(array('i', w))
+                    words.append(array('i', [h ^ 1 for h in reversed(w)]))
+                uw = [rng.randrange(3) for _ in range(num_slots)]
+                vw = [rng.randrange(3) for _ in range(num_slots)]
+                arcs = {}
+                for i in range(0, len(words), 2):
+                    w = words[i]
+                    for p in range(len(w)):
+                        first, last = sorted([angles[w[p]], angles[w[p - 1] ^ 1]])
+                        weights = arcs.setdefault(last * n + first, [0, 0])
+                        weights[0] += uw[i >> 1]
+                        weights[1] += vw[i >> 1]
+                ukeys, uweights = word_arcs(n, angles, words, uw)
+                vkeys, vweights = word_arcs(n, array('i', angles), words, vw)
+                assert all(a.typecode == 'q' for a in (ukeys, uweights, vkeys, vweights))
+                assert list(ukeys) == sorted(k for k, (u, v) in arcs.items() if u)
+                assert list(vkeys) == sorted(k for k, (u, v) in arcs.items() if v)
+                assert dict(zip(ukeys, uweights)) == {k: u for k, (u, v) in arcs.items() if u}
+                assert dict(zip(vkeys, vweights)) == {k: v for k, (u, v) in arcs.items() if v}
+                assert crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights) == crossing_arcs_sweep(n, arcs)
+                sym = {k: [u, u] for k, (u, v) in arcs.items() if u}
+                assert crossing_arcs_sweep_sorted(n, ukeys, uweights) == crossing_arcs_sweep(n, sym, True)
+
+
+def test_word_arcs_degenerate():
+    from combisurf.crossing_arcs import word_arcs
+
+    with pytest.raises(ValueError, match="degenerate arc"):
+        word_arcs(4, [0, 2, 1, 3], [[0, 2, 3]], [1])
+    # a word of weight 0 is not read
+    assert [list(a) for a in word_arcs(4, [0, 2, 1, 3], [[0, 2, 3], [2, 1, 0]], [0])] == [[], []]

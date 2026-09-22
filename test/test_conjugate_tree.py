@@ -242,6 +242,29 @@ def test_cyclically_sorted_leaves_random(kind):
         check_cyclically_sorted_leaves(T, angles)
 
 
+
+@pytest.mark.parametrize("kind", ["dense", "sparse", "auto", "unknown"])
+def test_cyclically_sorted_leaf_arcs_random(kind):
+    # the leaves of cyclically_sorted_leaf_arcs are the ones of
+    # cyclically_sorted_leaves, described through leaf_as_conjugate
+    rng = random.Random(20260923)
+    for _ in range(60):
+        n = 2 * rng.randint(1, 4)
+        angles = list(range(n))
+        rng.shuffle(angles)
+        T = make_tree(kind, n)
+        for _ in range(rng.randint(1, 5)):
+            T.process([rng.randrange(n) for _ in range(rng.randint(1, 9))])
+        words = T.words()
+        expected = []
+        for s in T.cyclically_sorted_leaves(angles):
+            i, k = T.leaf_as_conjugate(s)
+            w = words[i]
+            expected.append((i, w[k], (angles[w[k - 1] ^ 1] - angles[w[k]]) % n - 1))
+        word_index, firsts, turns = T.cyclically_sorted_leaf_arcs(angles)
+        assert all(a.typecode == 'q' for a in (word_index, firsts, turns))
+        assert list(zip(word_index, firsts, turns)) == expected, (words, angles)
+
 def assert_same_tree(T0, T1):
     r"""
     Check that two conjugate trees are the same down to the numbering of

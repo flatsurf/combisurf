@@ -959,6 +959,105 @@ cdef class ConjugateTree:
             ...
             ValueError: the letters of this tree do not fit in an alphabet of size 1
         """
+        cdef array.array a_ang = self._angles_array(angles)
+        cdef array.array a_leaves = array.clone(a_ang, self.nstates, False)
+        cdef int *out = a_leaves.data.as_ints
+        cdef int num = self._sorted_leaves(a_ang.data.as_ints, len(a_ang), out)
+        cdef int j
+        return [out[j] for j in range(num)]
+
+    def cyclically_sorted_leaf_arcs(self, angles):
+        r"""
+        Return the leaves in the order of :meth:`cyclically_sorted_leaves`,
+        each one described by its word, its first letter and the angle it
+        turns.
+
+        The leaf of the conjugate ``(i, k)`` (see :meth:`leaf_as_conjugate`)
+        of the word ``w = self.word(i)`` starts with the letter ``w[k]`` and
+        ends with the reverse ``w[k - 1] ^ 1`` of the letter before it. Its
+        angle is ``(angles[w[k - 1] ^ 1] - angles[w[k]]) % n - 1`` where ``n``
+        is the length of ``angles``.
+
+        INPUT:
+
+        - ``angles`` -- a permutation of ``{0, 1, ..., n - 1}``, as in
+          :meth:`cyclically_sorted_leaves`
+
+        OUTPUT: a triple of arrays of typecode ``'q'`` with one entry per
+        leaf: the index ``i`` of the word of the leaf, its first letter and
+        its angle
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: T = ConjugateTree()
+            sage: T.process([0, 2, 1, 3])
+            1
+            sage: T.process([2, 0, 3, 1])
+            1
+            sage: angles = [0, 2, 1, 3]
+            sage: T.cyclically_sorted_leaf_arcs(angles)
+            (array('q', [1, 0, 1, 0, 1, 0, 1, 0]),
+             array('q', [0, 0, 2, 2, 1, 1, 3, 3]),
+             array('q', [2, 0, 2, 0, 2, 0, 2, 0]))
+
+        It describes the leaves of :meth:`cyclically_sorted_leaves`::
+
+            sage: n = len(angles)
+            sage: ans = []
+            sage: for s in T.cyclically_sorted_leaves(angles):
+            ....:     i, k = T.leaf_as_conjugate(s)
+            ....:     w = T.word(i)
+            ....:     ans.append((i, w[k], (angles[w[k - 1] ^^ 1] - angles[w[k]]) % n - 1))
+            sage: list(zip(*T.cyclically_sorted_leaf_arcs(angles))) == ans
+            True
+
+        TESTS::
+
+            sage: T.cyclically_sorted_leaf_arcs([0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: the letters of this tree do not fit in an alphabet of size 2
+        """
+        cdef array.array a_ang = self._angles_array(angles)
+        cdef int *ang = a_ang.data.as_ints
+        cdef int n = len(a_ang)
+        cdef array.array a_leaves = array.clone(a_ang, self.nstates, False)
+        cdef int *out = a_leaves.data.as_ints
+        cdef int num = self._sorted_leaves(ang, n, out)
+
+        cdef array.array a_q = array.array('q', [])
+        cdef array.array a_word = array.clone(a_q, num, False)
+        cdef array.array a_first = array.clone(a_q, num, False)
+        cdef array.array a_turn = array.clone(a_q, num, False)
+        cdef long long *word = a_word.data.as_longlongs
+        cdef long long *first = a_first.data.as_longlongs
+        cdef long long *turn = a_turn.data.as_longlongs
+        cdef int j, s, i, l, k, a, b, t
+        for j in range(num):
+            s = out[j]
+            # the conjugate (i, k) of the leaf, as in leaf_as_conjugate
+            i = self.tword[s]
+            l = self.wlen[i]
+            k = (self.tstart[s] - self.dep[self.parent[s]]) % l
+            if k < 0:
+                k += l
+            a = self.wbuf[self.wstart[i] + k]
+            b = self.wbuf[self.wstart[i] + (k - 1 if k else l - 1)] ^ 1
+            t = ang[b] - ang[a]
+            if t < 0:
+                t += n
+            word[j] = i
+            first[j] = a
+            turn[j] = t - 1
+        return (a_word, a_first, a_turn)
+
+    cdef array.array _angles_array(self, angles):
+        r"""
+        Return ``angles`` as an array of typecode ``'i'`` after checking that
+        it is a permutation of ``{0, 1, ..., n - 1}`` large enough for the
+        letters of this tree.
+        """
         cdef int n = len(angles)
         if n == 0:
             raise ValueError("angles must be non-empty")
@@ -970,17 +1069,27 @@ cdef class ConjugateTree:
                 raise ValueError("angles must be a permutation of {%s}" % ", ".join(str(j) for j in range(n)))
         if self.max_letter >= n or (self.max_letter ^ 1) >= n:
             raise ValueError(f"the letters of this tree do not fit in an alphabet of size {n}")
+        return a_ang
 
-        cdef array.array a_stack = array.clone(a_ang, self.nstates, False)
+    cdef int _sorted_leaves(self, int *ang, int n, int *out) except -1:
+        r"""
+        Write the leaves in the order of :meth:`cyclically_sorted_leaves` to
+        ``out``, which has room for ``self.nstates`` entries, and return their
+        number.
+
+        The angles ``ang[:n]`` must have been checked by :meth:`_angles_array`.
+        """
+        cdef array.array a_tmp = array.array('i', [])
+        cdef array.array a_stack = array.clone(a_tmp, self.nstates, False)
         cdef int *stack = a_stack.data.as_ints
-        cdef array.array a_kids = array.clone(a_ang, n, False)
+        cdef array.array a_kids = array.clone(a_tmp, n, False)
         cdef int *kids = a_kids.data.as_ints
-        cdef array.array a_keys = array.clone(a_ang, n, False)
+        cdef array.array a_keys = array.clone(a_tmp, n, False)
         cdef int *keys = a_keys.data.as_ints
 
         cdef int top = 0
-        cdef int s, t, d, key, base
-        leaves = []
+        cdef int num = 0
+        cdef int c, s, t, d, key, base
 
         # the children of the root, ordered by the angle of their first letter
         d = 0
@@ -1004,7 +1113,8 @@ cdef class ConjugateTree:
             top -= 1
             s = stack[top]
             if self.tend[s] == -1:
-                leaves.append(s)
+                out[num] = s
+                num += 1
                 continue
             # further down, the angle is measured from the reverse of the last
             # letter read
@@ -1032,7 +1142,7 @@ cdef class ConjugateTree:
                     d += 1
             top = _push_sorted(stack, top, kids, keys, d)
 
-        return leaves
+        return num
 
     def graph(self):
         r"""

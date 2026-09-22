@@ -10,8 +10,8 @@ from array import array
 from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclically_reduce, word_free_group_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
-from combisurf.crossing_arcs import (crossing_arcs_sweep, crossing_arcs_sweep_sorted,
-                                     startpoint_sweep_sorted, startpoint_sweep_weighted)
+from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, leaf_weights, startpoint_sweep_sorted,
+                                     startpoint_sweep_weighted, word_arcs)
 
 class GeometricIntersection:
     def __init__(self, m):
@@ -28,7 +28,11 @@ class GeometricIntersection:
             raise NotImplementedError
 
         n = len(self._cm._vp)
-        self._angles = [-1] * n
+        # NOTE: an array rather than a list, since the Cython functions it is
+        # handed to read it as a C array: converting a list of n = 128 angles
+        # costs 1.7 us, against 0.08 us for an array, and a call of
+        # geometric_intersection makes three such conversions
+        self._angles = array('i', [-1]) * n
         self._angles[0] = 0
         i = 0
         for _ in range(n - 1):
@@ -342,24 +346,7 @@ class GeometricIntersection:
         # endpoints. Arcs sharing both endpoints are merged, their weights
         # added up.
         angles = self._angles
-        arcs = {}
-        for i in range(0, len(words), 2):
-            w = words[i]
-            mu = u_multiplicities[i >> 1]
-            mv = v_multiplicities[i >> 1]
-            for p in range(len(w)):
-                first = angles[w[p]]
-                last = angles[w[p - 1] ^ 1]
-                assert first != last
-                if last < first:
-                    first, last = last, first
-                key = last * n + first
-                weights = arcs.get(key)
-                if weights is None:
-                    arcs[key] = [mu, mv]
-                else:
-                    weights[0] += mu
-                    weights[1] += mv
+        ukeys, ukey_weights = word_arcs(n, angles, words, u_multiplicities)
         # NOTE: the sweep is O((len(u) + len(v)) log(n)). The O(n^2) double
         # sum of crossing_arcs_naive.crossing_arcs_double_sum computes the same
         # number and is slower at every n, so there is no threshold: on the
@@ -367,8 +354,11 @@ class GeometricIntersection:
         # 0.3 us against 5.2 us at n = 4 and 1.0 us against 8000 us at
         # n = 256; when the arcs fill the n^2 / 2 possible pairs (n = 64,
         # curves of length 4000) it takes 260 us against 620 us.
-        intersections += crossing_arcs_sweep(n, arcs, self_intersection)
-        if not self_intersection:
+        if self_intersection:
+            intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, check=False)
+        else:
+            vkeys, vkey_weights = word_arcs(n, angles, words, v_multiplicities)
+            intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, vkeys, vkey_weights, check=False)
             intersections *= 2
 
         # Essential intersections coming from pairs of conjugates with identical
@@ -376,23 +366,14 @@ class GeometricIntersection:
         # its startpoint to its endpoint and its two multiplicities. Total cost
         # is (len(u) + len(v)) * log(n) where the log(n) factor comes from
         # partial sums.
-        starts = array('q')
-        arc_angles = array('q')
-        uweights = array('q')
-        vweights = array('q')
-        for s in T.cyclically_sorted_leaves(angles):
-            i, k = T.leaf_as_conjugate(s)
-            w = words[i]
-            startpoint = w[k]
-            starts.append(startpoint)
-            arc_angles.append((angles[w[k - 1] ^ 1] - angles[startpoint]) % n - 1)
-            uweights.append(u_multiplicities[i >> 1])
-            vweights.append(v_multiplicities[i >> 1])
+        word_index, starts, arc_angles = T.cyclically_sorted_leaf_arcs(angles)
+        uweights = leaf_weights(word_index, u_multiplicities)
         if self_intersection:
             # with the v-weights equal to the u-weights, the sweep counts each
             # pair of leaves in both orders
             intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights) // 2
         else:
+            vweights = leaf_weights(word_index, v_multiplicities)
             intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights, vweights)
 
         # we got twice the geometric intersection because we register all arcs and their inverses
@@ -576,15 +557,12 @@ class GeometricIntersectionMatrix:
         ranks = [array('q') for _ in range(num_slots)]
         starts = [array('q') for _ in range(num_slots)]
         arc_angles = [array('q') for _ in range(num_slots)]
-        for rank, s in enumerate(T.cyclically_sorted_leaves(angles)):
-            i, k = T.leaf_as_conjugate(s)
-            w = words[i]
-            startpoint = w[k]
-            endpoint = w[k - 1] ^ 1
-            slot = i >> 1
+        leaf_word, leaf_start, leaf_angle = T.cyclically_sorted_leaf_arcs(angles)
+        for rank in range(len(leaf_word)):
+            slot = leaf_word[rank] >> 1
             ranks[slot].append(rank)
-            starts[slot].append(startpoint)
-            arc_angles[slot].append((angles[endpoint] - angles[startpoint]) % n - 1)
+            starts[slot].append(leaf_start[rank])
+            arc_angles[slot].append(leaf_angle[rank])
         self._ranks = ranks
         self._starts = starts
         self._arc_angles = arc_angles
@@ -597,18 +575,9 @@ class GeometricIntersectionMatrix:
         self._arc_keys = []
         self._arc_weights = []
         for slot in range(num_slots):
-            w = words[2 * slot]
-            counts = {}
-            for p in range(len(w)):
-                first = angles[w[p]]
-                last = angles[w[p - 1] ^ 1]
-                if last < first:
-                    first, last = last, first
-                key = last * n + first
-                counts[key] = counts.get(key, 0) + 1
-            keys = sorted(counts)
-            self._arc_keys.append(array('q', keys))
-            self._arc_weights.append(array('q', [counts[key] for key in keys]))
+            keys, weights = word_arcs(n, angles, [words[2 * slot]], [1])
+            self._arc_keys.append(keys)
+            self._arc_weights.append(weights)
 
         # Scratch space for the two sweeps of an entry, allocated once.
         # NOTE: the sweeps leave it filled with zeros, which saves an
