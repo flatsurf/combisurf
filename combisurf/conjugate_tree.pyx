@@ -1403,10 +1403,179 @@ cdef class ConjugateTree:
             raise ValueError("empty word in input")
         if check:
             w = word_init(w)
-        cdef int i = self.nwords
-        cdef int l = len(w)
         self._add_word(w)
+        return self._insert_last(hard_check)
 
+    def process_with_inverse(self, w):
+        r"""
+        Add the free group word ``w`` and, if it is new, its inverse in this
+        conjugate tree.
+
+        The letter ``h ^ 1`` is the inverse of the letter ``h``. The word
+        ``w`` must be cyclically reduced and non-empty, and the words of this
+        tree must be closed under inverse, which holds when they were all
+        added by this method.
+
+        The output is a pair ``(i, exponent)`` where ``w`` is conjugate to the
+        ``exponent``-th power of the ``i``-th word of this tree. If ``w`` is
+        new, its primitive root gets the index ``i``, which is even, and its
+        inverse the index ``i + 1``.
+
+        Unlike :meth:`process`, this method does not convert ``w`` with
+        :func:`~combisurf.word.word_init`: it reads the letters of any
+        sequence of integers.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: T = ConjugateTree(4)
+            sage: T.process_with_inverse([0, 2, 0, 3])
+            (0, 1)
+            sage: T.words()
+            [array('i', [0, 2, 0, 3]), array('i', [2, 1, 3, 1])]
+            sage: T.process_with_inverse([2, 0, 2, 0])
+            (2, 2)
+            sage: T.words()
+            [array('i', [0, 2, 0, 3]), array('i', [2, 1, 3, 1]), array('i', [2, 0]), array('i', [1, 3])]
+            sage: T.process_with_inverse([0, 3, 0, 2])
+            (0, 1)
+            sage: T.process_with_inverse([1, 2, 1, 3])
+            (1, 1)
+            sage: T.process_with_inverse([0, 2, 0, 2, 0, 2])
+            (2, 3)
+
+        TESTS:
+
+        A word already present, then a power of a present word::
+
+            sage: T = ConjugateTree(4)
+            sage: T.process_with_inverse([0, 2])
+            (0, 1)
+            sage: T.process_with_inverse([2, 0])
+            (0, 1)
+            sage: T.process_with_inverse([3, 1])
+            (1, 1)
+            sage: T.process_with_inverse([1, 3, 1, 3])
+            (1, 2)
+            sage: T.num_words()
+            2
+
+        A word of length one, which is its own conjugate only::
+
+            sage: T.process_with_inverse([1])
+            (2, 1)
+            sage: T.process_with_inverse([0, 0])
+            (3, 2)
+
+        Invalid input leaves the tree as it was::
+
+            sage: T = ConjugateTree(4)
+            sage: T.process_with_inverse([0, 2, 3])
+            Traceback (most recent call last):
+            ...
+            ValueError: w must be cyclically reduced
+            sage: T.process_with_inverse([2, 1, 0])
+            Traceback (most recent call last):
+            ...
+            ValueError: w must be cyclically reduced
+            sage: T.process_with_inverse([])
+            Traceback (most recent call last):
+            ...
+            ValueError: empty word in input
+            sage: T.process_with_inverse([0, 4])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid word: letter 4 not in the alphabet {0, 1, ..., 3}
+            sage: T.num_words(), T.num_states()
+            (0, 1)
+
+        A tree whose words are not closed under inverse::
+
+            sage: T = ConjugateTree()
+            sage: T.process([1])
+            1
+            sage: T.process_with_inverse([0])
+            Traceback (most recent call last):
+            ...
+            ValueError: the words of this tree are not closed under inverse
+
+        With an alphabet of odd size, the inverse of the last letter is not in
+        the alphabet::
+
+            sage: T = ConjugateTree(3)
+            sage: T.process_with_inverse([2])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid word: letter 3 not in the alphabet {0, 1, ..., 2}
+            sage: T.num_words(), T.num_states()
+            (0, 1)
+        """
+        cdef int i = self.nwords
+        cdef int max_letter = self.max_letter
+        self._add_word(w)
+        cdef int l = self.wlen[i]
+        cdef int *u = self.wbuf + self.wstart[i]
+        cdef int j, letter
+        # NOTE: the checks come before any insertion, since a node is never
+        # removed from the tree
+        for j in range(l):
+            letter = u[j] ^ 1
+            if letter == u[j + 1 if j + 1 < l else 0]:
+                self._pop_word()
+                self.max_letter = max_letter
+                raise ValueError("w must be cyclically reduced")
+            if self.alphabet_size and letter >= self.alphabet_size:
+                self._pop_word()
+                self.max_letter = max_letter
+                raise ValueError(f"invalid word: letter {letter} not in the alphabet "
+                                 f"{{0, 1, ..., {self.alphabet_size - 1}}}")
+
+        cdef int status = self._insert_last(False)
+        if status <= 0:
+            # w is conjugate to a power of a word already present
+            j = -status
+            if l % self.wlen[j]:
+                raise RuntimeError(f"the length (={l}) is not a multiple of the one of the word (={self.wlen[j]})")
+            return (j, l // self.wlen[j])
+        self._add_inverse_word(i)
+        if self._insert_last(False) != 1:
+            # NOTE: the inverse of a cyclically reduced word is not conjugate
+            # to a power of it in a free group, so it was present before
+            raise ValueError("the words of this tree are not closed under inverse")
+        return (i, status)
+
+    cdef int _add_inverse_word(self, int i) except -1:
+        r"""
+        Append the inverse of the ``i``-th word to the word buffer, whose
+        letters must have been checked against the alphabet.
+        """
+        cdef int l = self.wlen[i]
+        cdef int j, letter
+        if self.nwords == self.words_capacity:
+            self._reserve_words(2 * self.words_capacity, 0)
+        if self.wbuf_size + l > self.wbuf_capacity:
+            self._reserve_words(0, 2 * (self.wbuf_size + l))
+        # NOTE: read after the reservations, which move the buffer
+        cdef int *src = self.wbuf + self.wstart[i]
+        cdef int *dst = self.wbuf + self.wbuf_size
+        for j in range(l):
+            letter = src[l - 1 - j] ^ 1
+            dst[j] = letter
+            if letter > self.max_letter:
+                self.max_letter = letter
+        self.wstart[self.nwords] = self.wbuf_size
+        self.wlen[self.nwords] = l
+        self.wbuf_size += l
+        self.nwords += 1
+        return 0
+
+    cdef int _insert_last(self, bint hard_check) except? -1:
+        r"""
+        Insert the last word of the word buffer in the tree and return what
+        :meth:`process` returns.
+        """
+        cdef int i = self.nwords - 1
+        cdef int l = self.wlen[i]
         cdef int s = 0
         cdef int k = 0
         cdef int p = 0

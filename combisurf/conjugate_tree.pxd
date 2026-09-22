@@ -48,6 +48,8 @@ cdef class ConjugateTree:
     cdef int _add_word(self, w) except -1
     cdef void _pop_word(self) noexcept nogil
     cdef void _truncate_word(self, int i, int size) noexcept nogil
+    cdef int _add_inverse_word(self, int i) except -1
+    cdef int _insert_last(self, bint hard_check) except? -1
 
     cdef inline int _letter(self, int i, int k) noexcept nogil
     cdef inline int _child(self, int s, int letter) noexcept nogil

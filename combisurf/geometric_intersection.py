@@ -284,27 +284,19 @@ class GeometricIntersection:
         T = ConjugateTree(n)
         u_multiplicities = []
         v_multiplicities = []
+        # NOTE: process_with_inverse adds a new word together with its inverse,
+        # the pair getting the indices (2 * slot, 2 * slot + 1) where slot is
+        # the next free one
         for u in ulist:
             if check:
-                u = word_init(u)
-                u = word_cyclically_reduce(u)
+                u = word_cyclically_reduce(word_init(u))
             if not u:
                 continue
-            status = T.process(u)
-            if status <= 0:
-                # u (or conjugate) already present
-                i = -status
-                assert len(u) % T.word_length(i) == 0
-                exponent = len(u) // T.word_length(i)
-            else:
+            i, exponent = T.process_with_inverse(u)
+            if (i >> 1) == len(u_multiplicities):
                 # u added to T
                 u_multiplicities.append(0)
-                if vlist is not None:
-                    v_multiplicities.append(0)
-                i = T.num_words() - 1
-                exponent = status
-                ans = T.process(word_free_group_inverse(T.word(i)))
-                assert ans == 1
+                v_multiplicities.append(0)
             u_multiplicities[i >> 1] += exponent
             if vlist is None:
                 # NOTE: non-primitive contribution to self-intersection
@@ -314,24 +306,14 @@ class GeometricIntersection:
             self_intersection = False
             for v in vlist:
                 if check:
-                    v = word_init(v)
-                    v = word_cyclically_reduce(v)
+                    v = word_cyclically_reduce(word_init(v))
                 if not v:
                     continue
-                status = T.process(v)
-                if status <= 0:
-                    # v (or conjugate) already present
-                    i = -status
-                    assert len(v) % T.word_length(i) == 0
-                    exponent = len(v) // T.word_length(i)
-                else:
+                i, exponent = T.process_with_inverse(v)
+                if (i >> 1) == len(u_multiplicities):
                     # v added to T
                     u_multiplicities.append(0)
                     v_multiplicities.append(0)
-                    i = T.num_words() - 1
-                    exponent = status
-                    ans = T.process(word_free_group_inverse(T.word(i)))
-                    assert ans == 1
                 v_multiplicities[i >> 1] += exponent
         else:
             self_intersection = True
@@ -531,19 +513,9 @@ class GeometricIntersectionMatrix:
         self._slot = []
         for j, w in enumerate(self._curves):
             # 2. the slot of the curve, rejecting the non-primitive ones
-            status = T.process(w[:], check=False)
-            if status > 0:
-                if status != 1:
-                    # a power of a word that was not in the tree
-                    raise NotImplementedError(f"non-primitive curve at index {j}")
-                i = T.num_words() - 1
-                ans = T.process(word_free_group_inverse(T.word(i)), check=False)
-                assert ans == 1
-            else:
-                i = -status
-                if len(w) != T.word_length(i):
-                    # a power of a word that was already in the tree
-                    raise NotImplementedError(f"non-primitive curve at index {j}")
+            i, exponent = T.process_with_inverse(w)
+            if exponent != 1:
+                raise NotImplementedError(f"non-primitive curve at index {j}")
             self._slot.append(i >> 1)
 
         num_slots = T.num_words() // 2

@@ -243,6 +243,57 @@ def test_cyclically_sorted_leaves_random(kind):
 
 
 
+def random_cyclically_reduced_word(rng, n, length):
+    while True:
+        w = [rng.randrange(n)]
+        while len(w) < length:
+            h = rng.randrange(n)
+            if h != w[-1] ^ 1:
+                w.append(h)
+        if w[0] ^ 1 != w[-1]:
+            return w
+
+
+@pytest.mark.parametrize("kind", ["dense", "sparse", "auto", "unknown"])
+def test_process_with_inverse_random(kind):
+    # process_with_inverse against process on the word and, when it is new,
+    # on the inverse of the word stored; the words are new ones, conjugates,
+    # inverses and powers of earlier ones, and powers of new ones
+    from combisurf.word import word_free_group_inverse
+    rng = random.Random(20260924)
+    for _ in range(100):
+        n = 2 * rng.randint(1, 4)
+        T0 = make_tree(kind, n)
+        T1 = make_tree(kind, n)
+        seen = []
+        for _ in range(rng.randint(1, 8)):
+            r = rng.random()
+            if seen and r < 0.4:
+                w = rng.choice(seen)
+                k = rng.randrange(len(w))
+                w = w[k:] + w[:k]
+                if rng.random() < 0.5:
+                    w = [h ^ 1 for h in reversed(w)]
+            else:
+                w = random_cyclically_reduced_word(rng, n, rng.randint(1, 6))
+            if rng.random() < 0.3:
+                w = w * rng.randint(2, 3)
+            seen.append(w)
+
+            i, exponent = T0.process_with_inverse(list(w))
+            status = T1.process(list(w))
+            if status > 0:
+                assert i == T1.num_words() - 1
+                assert exponent == status
+                assert T1.process(word_free_group_inverse(T1.word(i))) == 1
+            else:
+                assert i == -status
+                assert exponent == len(w) // T1.word_length(i)
+            assert T0.words() == T1.words()
+            assert T0.leaves() == T1.leaves()
+        assert_same_tree(T0, T1)
+
+
 @pytest.mark.parametrize("kind", ["dense", "sparse", "auto", "unknown"])
 def test_cyclically_sorted_leaf_arcs_random(kind):
     # the leaves of cyclically_sorted_leaf_arcs are the ones of
