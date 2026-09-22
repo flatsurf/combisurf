@@ -101,11 +101,24 @@ from combisurf.word import word_init
 
 
 cdef enum:
-    # Above this many letters a dense transition table costs more than all the
-    # rest of a node put together, while the nodes stay just as sparse: the
-    # mean degree of an internal node is between 2 and 10 for every alphabet
-    # from 4 to 256 letters and every word length. So past it we walk the
-    # children of a node instead of indexing them.
+    # A dense table costs 4 * alphabet bytes per node, where the sibling lists
+    # cost 8 and the rest of a node 24, and every new node clears its row and
+    # every listing of the leaves scans it. Measured on the pair of curves
+    # u, v of the one-vertex map with n half-edges (so an alphabet of n
+    # letters), the dense table makes the pairing slower on short curves and
+    # faster on long ones, by these ratios of dense over sparse time:
+    #
+    #     n = alphabet     32     64    128    256
+    #     length 8       1.03   1.06   1.11   1.20
+    #     length 100     0.91   0.87   0.86   0.88
+    #     length 1000    0.88   0.85   0.77   0.69
+    #
+    # A single word of length 100000 over 128 letters has 225000 nodes, that
+    # is 110 MB of dense table against 1.7 MB of sibling lists. Up to 32
+    # letters the dense table costs at most 3 % on short curves and 128 bytes
+    # per node; past it the loss on short curves, which are the common case,
+    # grows with the alphabet, and so does the memory. So past it we walk
+    # the children of a node instead of indexing them.
     DENSE_MAX_ALPHABET = 32
 
 
