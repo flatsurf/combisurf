@@ -1,8 +1,10 @@
 r"""
 Counting crossing chords of a circle, reference implementation
 
-This module holds :func:`crossing_arcs_sweep`, the pure Python version of
-:func:`combisurf.crossing_arcs.crossing_arcs_sweep`, and
+This module holds :func:`crossing_arcs_sweep` and
+:func:`crossing_arcs_sweep_sorted`, the pure Python versions of
+:func:`combisurf.crossing_arcs.crossing_arcs_sweep` and
+:func:`combisurf.crossing_arcs.crossing_arcs_sweep_sorted`, and
 :func:`crossing_arcs_double_sum`, which computes the same number by an
 `O(n^2)` double sum over the endpoints. They are the reference against which
 the Cython sweep is tested in ``test/test_geometric_intersection.py``;
@@ -214,4 +216,102 @@ def crossing_arcs_sweep(n, arcs, symmetric=False):
             if not symmetric:
                 Fv.update(first + 1, v)
                 Fv.update(last, -v)
+    return S
+
+
+def crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys=None, vweights=None):
+    r"""
+    Return the weighted number of pairs of crossing arcs, the arcs being given
+    as two sorted lists, one for the `u`-weights and one for the `v`-weights.
+
+    This is :func:`crossing_arcs_sweep` on the arcs ``arcs`` with
+    ``arcs[ukeys[k]][0] = uweights[k]``, ``arcs[vkeys[k]][1] = vweights[k]``
+    and the weights missing from these lists equal to zero. When ``vkeys``
+    and ``vweights`` are ``None`` the `v`-weights are the `u`-weights, which
+    is the ``symmetric`` case of :func:`crossing_arcs_sweep`. The keys are
+    those of :func:`crossing_arcs_double_sum`, and each list of keys is
+    strictly increasing.
+
+    This is the algorithm of
+    :func:`combisurf.crossing_arcs.crossing_arcs_sweep_sorted`: the arcs are
+    visited group by group, a group being the arcs with a given right
+    endpoint, by merging the two lists. The `u`-arcs of a group are queried
+    against the `v`-weights inserted so far and the `v`-arcs against the
+    `u`-weights, then all of them are inserted. It is written with the plain
+    array of :class:`~combisurf.partial_sums_naive.PartialSumsNaive`, so it
+    costs `O((|ukeys| + |vkeys|) n)`.
+
+    EXAMPLES::
+
+        sage: from combisurf.crossing_arcs_naive import crossing_arcs_sweep_sorted
+        sage: n = 4
+        sage: crossing_arcs_sweep_sorted(n, [2 * n + 0], [1], [3 * n + 1], [1])
+        1
+        sage: crossing_arcs_sweep_sorted(n, [2 * n + 0, 3 * n + 1], [1, 1])
+        2
+        sage: crossing_arcs_sweep_sorted(n, [2 * n + 0], [1], [3 * n + 2], [1])
+        0
+
+    It agrees with the double sum::
+
+        sage: from combisurf.crossing_arcs_naive import crossing_arcs_double_sum
+        sage: n = 9
+        sage: ukeys = sorted(set(b * n + a for a, b in (sorted(sample(range(n), 2)) for _ in range(15))))
+        sage: vkeys = sorted(set(b * n + a for a, b in (sorted(sample(range(n), 2)) for _ in range(15))))
+        sage: uweights = [randint(1, 3) for _ in ukeys]
+        sage: vweights = [randint(1, 3) for _ in vkeys]
+        sage: arcs = {k: [0, 0] for k in ukeys + vkeys}
+        sage: for k, u in zip(ukeys, uweights):
+        ....:     arcs[k][0] = u
+        sage: for k, v in zip(vkeys, vweights):
+        ....:     arcs[k][1] = v
+        sage: S = crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights)
+        sage: S == crossing_arcs_double_sum(n, arcs)
+        True
+        sage: S = crossing_arcs_sweep_sorted(n, ukeys, uweights)
+        sage: S == crossing_arcs_double_sum(n, {k: [u, u] for k, u in zip(ukeys, uweights)})
+        True
+    """
+    Fu = PartialSumsNaive(n)
+    if vkeys is None:
+        # the v-arcs are the u-arcs, and the two partial sums are the same
+        S = 0
+        k = 0
+        while k < len(ukeys):
+            last = ukeys[k] // n
+            k0 = k
+            while k < len(ukeys) and ukeys[k] // n == last:
+                S += 2 * uweights[k] * Fu.partial_sum(0, ukeys[k] - last * n + 1)
+                k += 1
+            for t in range(k0, k):
+                Fu.update(ukeys[t] - last * n + 1, uweights[t])
+                Fu.update(last, -uweights[t])
+        return S
+
+    Fv = PartialSumsNaive(n)
+    lu = len(ukeys)
+    lv = len(vkeys)
+    S = 0
+    iu = iv = 0
+    while iu < lu or iv < lv:
+        if iv == lv or (iu < lu and ukeys[iu] < vkeys[iv]):
+            last = ukeys[iu] // n
+        else:
+            last = vkeys[iv] // n
+        ju = iu
+        while ju < lu and ukeys[ju] // n == last:
+            S += uweights[ju] * Fv.partial_sum(0, ukeys[ju] - last * n + 1)
+            ju += 1
+        jv = iv
+        while jv < lv and vkeys[jv] // n == last:
+            S += vweights[jv] * Fu.partial_sum(0, vkeys[jv] - last * n + 1)
+            jv += 1
+        for t in range(iu, ju):
+            Fu.update(ukeys[t] - last * n + 1, uweights[t])
+            Fu.update(last, -uweights[t])
+        for t in range(iv, jv):
+            Fv.update(vkeys[t] - last * n + 1, vweights[t])
+            Fv.update(last, -vweights[t])
+        iu = ju
+        iv = jv
     return S

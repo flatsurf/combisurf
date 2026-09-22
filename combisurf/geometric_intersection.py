@@ -11,7 +11,7 @@ from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclicall
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
 from combisurf.partial_sums import PartialSums
-from combisurf.crossing_arcs import crossing_arcs_sweep
+from combisurf.crossing_arcs import crossing_arcs_sweep, crossing_arcs_sweep_sorted
 
 class GeometricIntersection:
     def __init__(self, m):
@@ -454,6 +454,8 @@ class GeometricIntersectionMatrix:
     at infinity once. An intersection number is then a merge of two rank-sorted
     lists rather than a fresh tree, which is what makes this much faster than
     calling :meth:`GeometricIntersection.geometric_intersection` on each pair.
+    Each curve keeps data of size proportional to its length, and an entry
+    costs `O((|u| + |v|) \log(n))` where `n` is the number of half-edges.
 
     Asking for a curve outside of ``curves`` means building another object.
 
@@ -601,47 +603,34 @@ class GeometricIntersectionMatrix:
         self._starts = starts
         self._arc_angles = arc_angles
 
-        # 4. the two per-curve halves of the O(n^2) term of an entry. The arc
-        # matrix M of a curve has M[first][last] counting the arcs going from
-        # the angle first to the angle last (first < last); P is M prefix
-        # summed down each column and S is M suffix summed along each row. The
-        # term only reads them at the pairs (i, j) with 1 <= i <= n - 3 and
-        # i + 1 <= j <= n - 2, so we flatten P[i - 1][j] and S[i][j + 1] over
-        # those pairs and the term becomes a dot product (see _double_sum).
-        pairs = [(i, j) for i in range(1, n - 2) for j in range(i + 1, n - 1)]
-        self._K = len(pairs)
-        self._A = []
-        self._B = []
+        # 4. the arcs of each slot for the crossing arcs term of an entry: the
+        # consecutive pairs of letters of the curve, each an arc between two
+        # angles first < last, keyed by last * n + first. We keep the distinct
+        # keys in increasing order and their multiplicities, in the layout
+        # that crossing_arcs_sweep_sorted reads (see _double_sum).
+        self._arc_keys = []
+        self._arc_weights = []
         for slot in range(num_slots):
             w = words[2 * slot]
-            M = [[0] * n for _ in range(n)]
+            counts = {}
             for p in range(len(w)):
                 first = angles[w[p]]
                 last = angles[w[p - 1] ^ 1]
                 if last < first:
                     first, last = last, first
-                M[first][last] += 1
-            P = [row[:] for row in M]
-            for j in range(n):
-                for i in range(j - 1):
-                    P[i + 1][j] += P[i][j]
-            S = M  # M itself is not needed anymore
-            for i in range(n):
-                for j in range(n - 1, i + 1, -1):
-                    S[i][j - 1] += S[i][j]
-            self._A.append([P[i - 1][j] for i, j in pairs])
-            self._B.append([S[i][j + 1] for i, j in pairs])
+                key = last * n + first
+                counts[key] = counts.get(key, 0) + 1
+            keys = sorted(counts)
+            self._arc_keys.append(array('q', keys))
+            self._arc_weights.append(array('q', [counts[key] for key in keys]))
 
         # Scratch space for the sweeps, allocated once.
         self._Nu = PartialSums(n - 1)
         self._Nv = PartialSums(n - 1)
-
-        # The float64 copies of _A and _B that row() and matrix() multiply,
-        # with the element-products asked of them so far: None while they have
-        # not been built, () once it is known that they cannot be. See
-        # _dot_arrays.
-        self._dot = None
-        self._dot_work = 0
+        # NOTE: the sorted sweep leaves it filled with zeros, which saves an
+        # allocation per entry: 0.32 us against 0.42 us per call at n = 1000
+        # with curves of length 8.
+        self._arc_scratch = array('q', [0]) * (2 * (n + 1))
 
     def __repr__(self):
         return f"GeometricIntersectionMatrix of {len(self._curves)} curves on {self._gi._cm}"
@@ -668,108 +657,35 @@ class GeometricIntersectionMatrix:
         Return the contribution of the pairs of arcs whose four endpoints are
         pairwise distinct, for the slots ``sx`` and ``sy``.
 
-        This is a dot product of the flat vectors built at construction time;
-        it costs `O(n^2)` where `n` is the number of half-edges.
+        This is :func:`~combisurf.crossing_arcs.crossing_arcs_sweep_sorted` on
+        the arcs of the two slots built at construction time, with the
+        `u`-weights from ``sx`` and the `v`-weights from ``sy``. It costs
+        `O((|u| + |v|) \log(n))` where `n` is the number of half-edges.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
+            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: I = GeometricIntersectionMatrix(octagon, [[0, 3, 6], [0, 2, 2, 5, 2, 2, 5]])
+            sage: I._double_sum(0, 1), I._double_sum(1, 0), I._double_sum(1, 1)
+            (1, 1, 6)
         """
-        Au = self._A[sx]
-        Bu = self._B[sx]
+        # NOTE: the O(n^2) double sum of crossing_arcs_naive computes the
+        # same number, from two flat vectors of length (n - 3)(n - 2) / 2 per
+        # curve. It is slower at every n, so there is no threshold: with 100
+        # random curves of length 8 on the one-vertex 4g-gon, the sweep takes
+        # 0.25 us per pair against 0.46 us at n = 4 and 0.87 us against 350 us
+        # at n = 128. Evaluating all the double sums at once as a float64
+        # matrix product was faster per pair, but not on the whole matrix(),
+        # and it needed O(n^2) memory per curve.
+        keys = self._arc_keys
+        weights = self._arc_weights
         if sx == sy:
-            return 2 * sum(a * b for a, b in zip(Au, Bu))
-        Av = self._A[sy]
-        Bv = self._B[sy]
-        return sum(a * b + c * d for a, b, c, d in zip(Au, Bv, Av, Bu))
-
-    # Setting up the many-pairs paths means importing numpy and building two
-    # num_slots x K arrays, which measures at about 30 ms on a cold process;
-    # the Python dot products they replace run at about 0.05 µs per element of
-    # A. So the setup pays for itself after some 600000 element-products, and
-    # _dot_arrays counts them across calls before doing it, which is what
-    # makes a first call that is just under the line correct itself on the
-    # second one rather than pay for a numpy it will not use.
-    _DOT_SETUP_WORK = 600000
-
-    def _dot_arrays(self, work):
-        r"""
-        Return the two ``num_slots x K`` ``float64`` arrays holding the flat
-        vectors of every slot, or the empty tuple when they are not to be used.
-
-        ``work`` is the number of element-products the caller would otherwise
-        run through :meth:`_double_sum`. The arrays are built once the calls
-        seen so far add up to more than the setup costs, and reused from then
-        on; until then the empty tuple is returned and nothing is cached, so
-        that a later and larger call can still build them.
-
-        The many-pairs paths of :meth:`row` and :meth:`matrix` evaluate the
-        `O(n^2)` term of all the pairs at once as a matrix product. NumPy has
-        no BLAS path for integer matrix products — an ``int64`` product falls
-        back to a naive loop and is an order of magnitude slower than
-        ``float64`` — so the product goes through ``float64``.
-
-        That is exact here rather than approximate. Every entry of ``A`` and
-        ``B`` is at most the length of its curve, since both are partial sums
-        of a matrix whose entries sum to that length, so a dot product is at
-        most ``K * L^2``; below `2^{53}` every integer is a ``float64``. The
-        bound is checked rather than assumed, and the empty tuple is returned
-        when it does not hold, which sends the callers back to the exact
-        Python dot product of :meth:`_double_sum`. It cannot in fact be
-        reached while this is worth doing — the `O(n^2)` term is already
-        negligible by the time the curves are long enough to overflow, the two
-        regimes being disjoint — but a single comparison is a cheap way not to
-        rely on that.
-        """
-        if self._dot is None:
-            self._dot_work += work
-            if self._dot_work < self._DOT_SETUP_WORK or not self._A:
-                return ()
-            import numpy
-
-            lmax = max(len(w) for w in self._curves)
-            if self._K * lmax * lmax >= 2 ** 53:
-                self._dot = ()
-            else:
-                self._dot = (numpy.array(self._A, dtype=numpy.float64),
-                             numpy.array(self._B, dtype=numpy.float64))
-        return self._dot
-
-    @staticmethod
-    def _exact_ints(values):
-        r"""
-        Return the ``float64`` array ``values`` as integers, checking that
-        nothing was lost on the way there.
-        """
-        import numpy
-
-        rounded = numpy.rint(values)
-        assert numpy.array_equal(rounded, values), "float64 lost the O(n^2) term"
-        return rounded.astype(numpy.int64)
-
-    def _double_sum_row(self, sx):
-        r"""
-        Return ``[self._double_sum(sx, sy) for sy in range(num_slots)]``, as
-        two matrix-vector products, or ``None`` when that path is unavailable.
-        """
-        arrays = self._dot_arrays(len(self._curves) * self._K)
-        if not arrays:
-            return None
-        A, B = arrays
-        return self._exact_ints(A[sx] @ B.T + B[sx] @ A.T).tolist()
-
-    def _double_sum_table(self):
-        r"""
-        Return the ``num_slots x num_slots`` array ``D`` with
-        ``D[x][y] = A[x] . B[y]``, as one matrix product, or ``None`` when that
-        path is unavailable.
-
-        ``self._double_sum(x, y)`` is ``D[x][y] + D[y][x]``; the two halves are
-        kept apart so that the symmetrization costs nothing here and is done
-        one row at a time by :meth:`matrix`.
-        """
-        N = len(self._curves)
-        arrays = self._dot_arrays(N * (N + 1) // 2 * self._K)
-        if not arrays:
-            return None
-        A, B = arrays
-        return self._exact_ints(A @ B.T)
+            return crossing_arcs_sweep_sorted(self._n, keys[sx], weights[sx], None, None,
+                                              self._arc_scratch, False)
+        return crossing_arcs_sweep_sorted(self._n, keys[sx], weights[sx], keys[sy], weights[sy],
+                                          self._arc_scratch, False)
 
     def _entry_from(self, sx, sy, double_sum):
         r"""
@@ -899,9 +815,6 @@ class GeometricIntersectionMatrix:
         Return the list of the geometric intersection numbers of the curve of
         index ``x`` with all the curves.
 
-        The `O(n^2)` term of all the entries of the row is obtained at once,
-        as two matrix-vector products; see :meth:`_dot_arrays`.
-
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
@@ -916,12 +829,10 @@ class GeometricIntersectionMatrix:
             sage: all(I.row(x) == [I.entry(x, y) for y in range(len(I))] for x in range(len(I)))
             True
         """
-        slot = self._slot
-        sx = slot[x]
-        terms = self._double_sum_row(sx)
-        if terms is None:
-            return [self._entry_from(sx, sy, self._double_sum(sx, sy)) for sy in slot]
-        return [self._entry_from(sx, sy, terms[sy]) for sy in slot]
+        sx = self._slot[x]
+        entry_from = self._entry_from
+        double_sum = self._double_sum
+        return [entry_from(sx, sy, double_sum(sx, sy)) for sy in self._slot]
 
     def matrix(self):
         r"""
@@ -929,8 +840,7 @@ class GeometricIntersectionMatrix:
         the integers.
 
         Only the entries with ``x <= y`` are computed, the others being
-        obtained by symmetry, and the `O(n^2)` term of all of them is obtained
-        at once as a single matrix product; see :meth:`_dot_arrays`.
+        obtained by symmetry.
 
         EXAMPLES::
 
@@ -953,17 +863,14 @@ class GeometricIntersectionMatrix:
 
         N = len(self._curves)
         slot = self._slot
-        D = self._double_sum_table()
+        entry_from = self._entry_from
+        double_sum = self._double_sum
         rows = [[0] * N for _ in range(N)]
         for x in range(N):
             sx = slot[x]
-            terms = None if D is None else (D[sx] + D[:, sx]).tolist()
             for y in range(x, N):
                 sy = slot[y]
-                if terms is None:
-                    e = self._entry_from(sx, sy, self._double_sum(sx, sy))
-                else:
-                    e = self._entry_from(sx, sy, terms[sy])
+                e = entry_from(sx, sy, double_sum(sx, sy))
                 rows[x][y] = e
                 rows[y][x] = e
         return sage_matrix(ZZ, rows)

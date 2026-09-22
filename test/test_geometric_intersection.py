@@ -258,90 +258,123 @@ def test_intersection_matrix_row_and_matrix():
         assert I.row(x) == list(mat.row(x)), x
 
 
-def forced_matrix_classes():
+def naive_double_sum_matrix_class():
     r"""
-    Return the two subclasses of ``GeometricIntersectionMatrix`` that pin the
-    evaluation of the `O(n^2)` term to one of its two paths, so that they can
-    be compared against each other.
+    Return a subclass of ``GeometricIntersectionMatrix`` whose crossing arcs
+    term goes through the pure Python oracle of the sorted sweep, so that it
+    can be compared against the Cython one.
     """
+    from combisurf.crossing_arcs_naive import crossing_arcs_sweep_sorted
     from combisurf.geometric_intersection import GeometricIntersectionMatrix
 
-    class DoubleSumPerPair(GeometricIntersectionMatrix):
-        _DOT_SETUP_WORK = float('inf')
+    class NaiveDoubleSum(GeometricIntersectionMatrix):
+        def _double_sum(self, sx, sy):
+            keys = self._arc_keys
+            weights = self._arc_weights
+            if sx == sy:
+                return crossing_arcs_sweep_sorted(self._n, keys[sx], weights[sx])
+            return crossing_arcs_sweep_sorted(self._n, keys[sx], weights[sx], keys[sy], weights[sy])
 
-    class DoubleSumByProduct(GeometricIntersectionMatrix):
-        _DOT_SETUP_WORK = 0
-
-    return DoubleSumPerPair, DoubleSumByProduct
+    return NaiveDoubleSum
 
 
 def test_intersection_matrix_double_sum_paths():
-    # the matrix product path against the entry-by-entry double sum, exactly
+    # the Cython sweep against its pure Python oracle, and matrix(), row() and
+    # entry() against each other and against geometric_intersection
     import random
-    from combisurf.geometric_intersection import GeometricIntersection
+    from combisurf.geometric_intersection import GeometricIntersection, GeometricIntersectionMatrix
 
-    per_pair, by_product = forced_matrix_classes()
+    naive = naive_double_sum_matrix_class()
     rng = random.Random(20260923)
     for g, length in [(1, 8), (2, 8), (4, 8), (8, 8), (16, 8), (32, 8), (8, 100)]:
         m = polygon_4g(g)
         gi = GeometricIntersection(m)
         curves = random_primitive_curves(4 * g, length, 12, rng)
-        slow = per_pair(gi, curves)
-        fast = by_product(gi, curves)
-        assert not slow._dot_arrays(1)
-        assert fast._dot_arrays(0)
+        fast = GeometricIntersectionMatrix(gi, curves)
+        slow = naive(gi, curves)
 
-        assert slow.matrix() == fast.matrix(), (g, length)
+        mat = fast.matrix()
+        assert mat == slow.matrix(), (g, length)
         for x in range(len(curves)):
-            row = [slow.entry(x, y) for y in range(len(curves))]
-            assert slow.row(x) == row, (g, length, x)
+            row = [fast.entry(x, y) for y in range(len(curves))]
+            assert row == [slow.entry(x, y) for y in range(len(curves))], (g, length, x)
             assert fast.row(x) == row, (g, length, x)
+            assert slow.row(x) == row, (g, length, x)
+            assert list(mat.row(x)) == row, (g, length, x)
+        for x, y in [(0, 0), (0, 1), (3, 7), (11, 5)]:
+            assert mat[x, y] == gi.geometric_intersection([curves[x]], [curves[y]]), (g, length, x, y)
 
 
-def test_intersection_matrix_double_sum_gate():
-    # the matrix product is set up once the calls add up to more than it costs,
-    # and both sides of that switch give the same answers
+def test_intersection_matrix_double_sum_identity():
+    # the crossing arcs term of an entry is the double sum over the arcs of
+    # the two slots, with u-weights from the first and v-weights from the
+    # second, as geometric_intersection builds them
     import random
+    from combisurf.crossing_arcs_naive import crossing_arcs_double_sum
     from combisurf.geometric_intersection import GeometricIntersection
 
-    rng = random.Random(4242)
-    g = 16
-    gi = GeometricIntersection(polygon_4g(g))
-    curves = random_primitive_curves(4 * g, 8, 200, rng)
-    I = gi.intersection_matrix(curves)
-    work = len(curves) * I._K
-    assert work < I._DOT_SETUP_WORK < 2 * work
+    rng = random.Random(20260926)
+    for g, length in [(1, 8), (2, 8), (4, 8), (8, 8), (8, 100)]:
+        gi = GeometricIntersection(polygon_4g(g))
+        n = 4 * g
+        I = gi.intersection_matrix(random_primitive_curves(n, length, 8, rng))
+        words = I._tree.words()
+        num_slots = len(words) // 2
+        for sx in range(num_slots):
+            for sy in range(num_slots):
+                arcs = {}
+                for s, side in [(sx, 0), (sy, 1)]:
+                    w = words[2 * s]
+                    for p in range(len(w)):
+                        first, last = sorted([gi._angles[w[p]], gi._angles[w[p - 1] ^ 1]])
+                        weights = arcs.setdefault(last * n + first, [0, 0])
+                        weights[side] += 1
+                if sx == sy:
+                    for weights in arcs.values():
+                        weights[1] = weights[0]
+                assert I._double_sum(sx, sy) == crossing_arcs_double_sum(n, arcs), (g, length, sx, sy)
 
-    expected = [I.entry(0, y) for y in range(len(curves))]
-    assert I.row(0) == expected
-    assert not I._dot                      # first row, still the double sum
-    assert I.row(0) == expected
-    assert I._dot                          # second row, now the product
-    assert I.row(0) == expected
 
-
-def test_intersection_matrix_float64_bound():
-    # when the products could leave the exactly representable integers the
-    # class must fall back to the Python double sum rather than round
+def test_crossing_arcs_sweep_sorted_random():
+    # the sorted sweep against its pure Python oracle and against the dict
+    # sweep, exactly, on random weighted arcs, with and without a scratch
     import random
-    from combisurf.geometric_intersection import GeometricIntersection
+    from array import array
+    from combisurf.crossing_arcs import crossing_arcs_sweep, crossing_arcs_sweep_sorted
+    from combisurf import crossing_arcs_naive
 
-    _, by_product = forced_matrix_classes()
-    rng = random.Random(55)
-    g = 8
-    gi = GeometricIntersection(polygon_4g(g))
-    curves = random_primitive_curves(4 * g, 8, 10, rng)
+    rng = random.Random(20260927)
+    for n in list(range(1, 20)) + [64, 257]:
+        scratch = array('q', [0]) * (2 * (n + 1))
+        for num in [0, 1, 2, 5, 30, 200]:
+            if n < 2 and num:
+                continue
+            sides = []
+            for _ in range(2):
+                weights = {}
+                for _ in range(num):
+                    first, last = sorted(rng.sample(range(n), 2))
+                    weights[last * n + first] = rng.randrange(1, 4)
+                keys = sorted(weights)
+                sides.append((keys, [weights[k] for k in keys]))
+            (ukeys, uweights), (vkeys, vweights) = sides
+            arcs = {}
+            for side, (keys, weights) in enumerate(sides):
+                for k, x in zip(keys, weights):
+                    arcs.setdefault(k, [0, 0])[side] = x
+            expected = crossing_arcs_sweep(n, arcs)
+            q = [array('q', x) for x in (ukeys, uweights, vkeys, vweights)]
+            assert crossing_arcs_naive.crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights) == expected
+            assert crossing_arcs_sweep_sorted(n, *q) == expected
+            assert crossing_arcs_sweep_sorted(n, *q, scratch) == expected
+            assert not any(scratch)
 
-    I = by_product(gi, curves)
-    assert I._dot_arrays(0)                # K * L^2 is nowhere near 2^53 here
-    expected = I.matrix()
-
-    J = by_product(gi, curves)
-    J._K = 2 ** 53                         # as if the curves were enormous
-    assert not J._dot_arrays(0)
-    assert J._double_sum_row(0) is None
-    assert J._double_sum_table() is None
-    assert J.matrix() == expected
+            expected = crossing_arcs_sweep(n, {k: [x, x] for k, x in zip(ukeys, uweights)}, True)
+            assert crossing_arcs_naive.crossing_arcs_sweep_sorted(n, ukeys, uweights) == expected
+            assert crossing_arcs_sweep_sorted(n, q[0], q[1]) == expected
+            assert crossing_arcs_sweep_sorted(n, q[0], q[1], None, None, scratch) == expected
+            assert crossing_arcs_sweep_sorted(n, q[0], q[1], q[0], q[1], scratch) == expected
+            assert not any(scratch)
 
 
 def crossing_arcs_implementations():

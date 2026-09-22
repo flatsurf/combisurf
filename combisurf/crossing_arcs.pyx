@@ -18,6 +18,10 @@ This is the `O(n^2)` term of
 :meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`,
 where the positions are the angles at the vertex and the arcs the
 consecutive pairs of letters of the curves.
+:func:`crossing_arcs_sweep_sorted` computes the same number from two sorted
+arrays of arcs, one per curve, which is how
+:class:`~combisurf.geometric_intersection.GeometricIntersectionMatrix` keeps
+them.
 
 EXAMPLES::
 
@@ -52,6 +56,7 @@ EXAMPLES::
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
+from cpython cimport array
 from libc.stdlib cimport calloc, free
 
 
@@ -70,6 +75,16 @@ cdef inline long long _fenwick_prefix(long long *tree, Py_ssize_t i) noexcept:
         s += tree[i]
         i -= i & (-i)
     return s
+
+
+cdef inline void _fenwick_clear(long long *tree, Py_ssize_t size, Py_ssize_t i) noexcept:
+    # zero the cells of the Fenwick tree that _fenwick_add(tree, size, i, x)
+    # touches, so that a tree can be restored to zero in the time it took to
+    # fill it rather than in O(size)
+    i += 1
+    while i <= size:
+        tree[i] = 0
+        i += i & (-i)
 
 
 def crossing_arcs_sweep(int n, dict arcs, bint symmetric=False):
@@ -203,4 +218,242 @@ def crossing_arcs_sweep(int n, dict arcs, bint symmetric=False):
         free(fu)
         free(fv)
 
+    return S
+
+
+cdef long long *_as_longlongs(array.array a, str name) except? NULL:
+    # the data pointer of an empty array may be NULL
+    if a.ob_descr.typecode != b'q':
+        raise TypeError(f"{name} must be an array of typecode 'q'")
+    return a.data.as_longlongs
+
+
+cdef int _check_arcs(int n, long long *keys, Py_ssize_t num, str name) except -1:
+    cdef Py_ssize_t k
+    cdef long long first, last
+    for k in range(num):
+        if keys[k] < 0:
+            raise ValueError(f"invalid arc in {name}")
+        last = keys[k] // n
+        first = keys[k] - last * n
+        if not first < last < n:
+            raise ValueError(f"invalid arc in {name}")
+        if k and keys[k] <= keys[k - 1]:
+            raise ValueError(f"{name} must be strictly increasing")
+    return 0
+
+
+def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uweights not None,
+                               array.array vkeys=None, array.array vweights=None,
+                               array.array scratch=None, bint check=True):
+    r"""
+    Return the weighted number of pairs of crossing arcs, the arcs being given
+    as two sorted arrays, one for the `u`-weights and one for the `v`-weights.
+
+    This is :func:`crossing_arcs_sweep` on the arcs ``arcs`` with
+    ``arcs[ukeys[k]][0] = uweights[k]``, ``arcs[vkeys[k]][1] = vweights[k]``
+    and the weights missing from these two arrays equal to zero.
+
+    INPUT:
+
+    - ``n`` -- positive integer, the number of positions on the circle
+
+    - ``ukeys``, ``uweights`` -- two arrays of typecode ``'q'`` and of the
+      same length; ``ukeys`` holds strictly increasing keys ``last * n +
+      first`` (with ``0 <= first < last < n``) and ``uweights`` the
+      `u`-weights of these arcs, non-negative
+
+    - ``vkeys``, ``vweights`` -- (default: ``None``) the same for the
+      `v`-weights; when they are ``None``, the `v`-weights are taken equal to
+      the `u`-weights, which is the ``symmetric`` case of
+      :func:`crossing_arcs_sweep`
+
+    - ``scratch`` -- (default: ``None``) an array of typecode ``'q'``, of
+      length at least ``2 * (n + 1)`` and filled with zeros, used as the
+      memory of the sweep and filled with zeros again on return; it saves an
+      allocation for each call when many of them are made with the same ``n``
+
+    - ``check`` -- boolean (default: ``True``); whether to check that the
+      keys are sorted and valid
+
+    OUTPUT: the integer `S` of the module documentation
+
+    ALGORITHM:
+
+    The sweep of :func:`crossing_arcs_sweep`, with the arcs visited by
+    merging the two arrays group by group, a group being the arcs with a
+    given right endpoint. The `u`-arcs of a group are queried against the
+    `v`-weights inserted so far, the `v`-arcs against the `u`-weights, and
+    both are inserted afterwards. So there is no dictionary and no sort, and
+    the cost is `O((|ukeys| + |vkeys|) \log(n))`. The cells of the Fenwick
+    trees touched by the insertions are set back to zero at the end, in the
+    same time.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.crossing_arcs import crossing_arcs_sweep, crossing_arcs_sweep_sorted
+        sage: n = 4
+        sage: crossing_arcs_sweep_sorted(n, array('q', [2 * n + 0]), array('q', [1]),
+        ....:                               array('q', [3 * n + 1]), array('q', [1]))
+        1
+        sage: crossing_arcs_sweep_sorted(n, array('q', [2 * n + 0, 3 * n + 1]), array('q', [1, 1]))
+        2
+
+    It agrees with :func:`crossing_arcs_sweep`, and leaves ``scratch`` as it
+    found it::
+
+        sage: n = 9
+        sage: ukeys = sorted(set(b * n + a for a, b in (sorted(sample(range(n), 2)) for _ in range(15))))
+        sage: vkeys = sorted(set(b * n + a for a, b in (sorted(sample(range(n), 2)) for _ in range(15))))
+        sage: uweights = [randint(1, 3) for _ in ukeys]
+        sage: vweights = [randint(1, 3) for _ in vkeys]
+        sage: arcs = {k: [0, 0] for k in ukeys + vkeys}
+        sage: for k, u in zip(ukeys, uweights):
+        ....:     arcs[k][0] = u
+        sage: for k, v in zip(vkeys, vweights):
+        ....:     arcs[k][1] = v
+        sage: scratch = array('q', [0] * (2 * (n + 1)))
+        sage: S = crossing_arcs_sweep_sorted(n, array('q', ukeys), array('q', uweights),
+        ....:                                   array('q', vkeys), array('q', vweights), scratch)
+        sage: S == crossing_arcs_sweep(n, arcs)
+        True
+        sage: all(x == 0 for x in scratch)
+        True
+        sage: S = crossing_arcs_sweep_sorted(n, array('q', ukeys), array('q', uweights), scratch=scratch)
+        sage: S == crossing_arcs_sweep(n, {k: [u, u] for k, u in zip(ukeys, uweights)}, True)
+        True
+        sage: all(x == 0 for x in scratch)
+        True
+
+    TESTS::
+
+        sage: e = array('q')
+        sage: crossing_arcs_sweep_sorted(1, e, e), crossing_arcs_sweep_sorted(1, e, e, e, e)
+        (0, 0)
+        sage: crossing_arcs_sweep_sorted(0, e, e)
+        Traceback (most recent call last):
+        ...
+        ValueError: n must be positive
+        sage: crossing_arcs_sweep_sorted(4, array('q', [8]), array('q', [1, 1]))
+        Traceback (most recent call last):
+        ...
+        ValueError: ukeys and uweights must have the same length
+        sage: crossing_arcs_sweep_sorted(4, array('q', [8]), array('q', [1]), array('q', [8]), None)
+        Traceback (most recent call last):
+        ...
+        ValueError: vkeys and vweights must be both given or both None
+        sage: crossing_arcs_sweep_sorted(4, array('q', [13, 8]), array('q', [1, 1]))
+        Traceback (most recent call last):
+        ...
+        ValueError: ukeys must be strictly increasing
+        sage: crossing_arcs_sweep_sorted(4, array('q', [5]), array('q', [1]))
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid arc in ukeys
+        sage: crossing_arcs_sweep_sorted(4, array('i', [8]), array('q', [1]))
+        Traceback (most recent call last):
+        ...
+        TypeError: ukeys must be an array of typecode 'q'
+        sage: crossing_arcs_sweep_sorted(4, e, e, scratch=array('q', [0] * 9))
+        Traceback (most recent call last):
+        ...
+        ValueError: scratch must have length at least 2 * (n + 1)
+    """
+    if n <= 0:
+        raise ValueError("n must be positive")
+    cdef bint symmetric = vkeys is None
+    if symmetric != (vweights is None):
+        raise ValueError("vkeys and vweights must be both given or both None")
+
+    cdef long long *ku = _as_longlongs(ukeys, "ukeys")
+    cdef long long *wu = _as_longlongs(uweights, "uweights")
+    cdef Py_ssize_t lu = len(ukeys)
+    if len(uweights) != lu:
+        raise ValueError("ukeys and uweights must have the same length")
+    cdef long long *kv = NULL
+    cdef long long *wv = NULL
+    cdef Py_ssize_t lv = 0
+    if not symmetric:
+        kv = _as_longlongs(vkeys, "vkeys")
+        wv = _as_longlongs(vweights, "vweights")
+        lv = len(vkeys)
+        if len(vweights) != lv:
+            raise ValueError("vkeys and vweights must have the same length")
+    if check:
+        _check_arcs(n, ku, lu, "ukeys")
+        if not symmetric:
+            _check_arcs(n, kv, lv, "vkeys")
+
+    cdef long long *fu
+    cdef long long *fv
+    cdef bint owned = scratch is None
+    if owned:
+        fu = <long long *> calloc(2 * (n + 1), sizeof(long long))
+        if fu == NULL:
+            raise MemoryError
+    else:
+        if len(scratch) < 2 * (n + 1):
+            raise ValueError("scratch must have length at least 2 * (n + 1)")
+        fu = _as_longlongs(scratch, "scratch")
+    # the positions go from 0 to n - 1, stored at 1..n of each tree
+    fv = fu + (n + 1)
+
+    cdef long long S = 0
+    cdef Py_ssize_t iu, iv, ju, jv, t
+    cdef long long last, first, key
+
+    if symmetric:
+        iu = 0
+        while iu < lu:
+            last = ku[iu] // n
+            ju = iu
+            while ju < lu and ku[ju] // n == last:
+                first = ku[ju] - last * n
+                S += 2 * wu[ju] * _fenwick_prefix(fu, first + 1)
+                ju += 1
+            for t in range(iu, ju):
+                first = ku[t] - last * n
+                _fenwick_add(fu, n, first + 1, wu[t])
+                _fenwick_add(fu, n, last, -wu[t])
+            iu = ju
+        for t in range(lu):
+            last = ku[t] // n
+            _fenwick_clear(fu, n, ku[t] - last * n + 1)
+            _fenwick_clear(fu, n, last)
+    else:
+        iu = iv = 0
+        while iu < lu or iv < lv:
+            # the next group is the smallest right endpoint of the two heads
+            if iv == lv or (iu < lu and ku[iu] < kv[iv]):
+                last = ku[iu] // n
+            else:
+                last = kv[iv] // n
+            ju = iu
+            while ju < lu and ku[ju] // n == last:
+                S += wu[ju] * _fenwick_prefix(fv, ku[ju] - last * n + 1)
+                ju += 1
+            jv = iv
+            while jv < lv and kv[jv] // n == last:
+                S += wv[jv] * _fenwick_prefix(fu, kv[jv] - last * n + 1)
+                jv += 1
+            for t in range(iu, ju):
+                _fenwick_add(fu, n, ku[t] - last * n + 1, wu[t])
+                _fenwick_add(fu, n, last, -wu[t])
+            for t in range(iv, jv):
+                _fenwick_add(fv, n, kv[t] - last * n + 1, wv[t])
+                _fenwick_add(fv, n, last, -wv[t])
+            iu = ju
+            iv = jv
+        for t in range(lu):
+            last = ku[t] // n
+            _fenwick_clear(fu, n, ku[t] - last * n + 1)
+            _fenwick_clear(fu, n, last)
+        for t in range(lv):
+            last = kv[t] // n
+            _fenwick_clear(fv, n, kv[t] - last * n + 1)
+            _fenwick_clear(fv, n, last)
+
+    if owned:
+        free(fu)
     return S
