@@ -27,6 +27,7 @@ Module Reference
    conjugate_tree
    conjugate_tree_naive
    partial_sums
+   partial_sums_naive
 
 .. toctree::
    :maxdepth: 1

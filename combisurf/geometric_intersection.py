@@ -7,7 +7,7 @@ from array import array
 from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclically_reduce, word_free_group_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
-from combisurf.partial_sums import PartialSums, PartialSumsNaive
+from combisurf.partial_sums import PartialSums
 
 class GeometricIntersection:
     def __init__(self, m):
@@ -647,14 +647,9 @@ class GeometricIntersectionMatrix:
             self._A.append([P[i - 1][j] for i, j in pairs])
             self._B.append([S[i][j + 1] for i, j in pairs])
 
-        # Scratch space for the sweeps, allocated once. The sweep does one
-        # partial sum and two updates per arc, and on that mix the naive
-        # structure (O(1) updates, partial sums done by a C level sum over a
-        # slice) measures faster than the binary splitting one up to n in the
-        # hundreds, which covers every map this class is used on in practice.
-        cls = PartialSumsNaive if n <= 256 else PartialSums
-        self._Nu = cls(n - 1)
-        self._Nv = cls(n - 1)
+        # Scratch space for the sweeps, allocated once.
+        self._Nu = PartialSums(n - 1)
+        self._Nv = PartialSums(n - 1)
 
         # The float64 copies of _A and _B that row() and matrix() multiply,
         # with the element-products asked of them so far: None while they have
@@ -810,7 +805,7 @@ class GeometricIntersectionMatrix:
         is swept by groups of equal startpoints. This costs
         `O((|u| + |v|) \log(n))`.
 
-        The two :class:`~combisurf.partial_sums.PartialSums` are zero on entry
+        The two :func:`~combisurf.partial_sums.PartialSums` structures are zero on entry
         and are restored to zero at the end of each group, by undoing the
         updates of the group rather than by clearing the whole vector.
         """

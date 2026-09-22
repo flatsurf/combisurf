@@ -174,10 +174,13 @@ def test_intersection_matrix_genus_and_length():
 
 
 def test_intersection_matrix_large_alphabet():
-    # beyond the threshold above which the binary splitting partial sums are used
+    # A large alphabet, well beyond the tree's dense/sparse threshold.
+    # GeometricIntersectionMatrix and the unit computation must pick the same
+    # PartialSums structure for this map size, since both now go through the
+    # shared combisurf.partial_sums.PartialSums factory.
     import random
     from combisurf.geometric_intersection import GeometricIntersection
-    from combisurf.partial_sums import PartialSumsBinarySplitting
+    from combisurf.partial_sums import PartialSums
 
     rng = random.Random(1234)
     g = 70
@@ -186,7 +189,8 @@ def test_intersection_matrix_large_alphabet():
     for length in [5, 30]:
         curves = random_primitive_curves(4 * g, length, 4, rng)
         I = gi.intersection_matrix(curves)
-        assert isinstance(I._Nu, PartialSumsBinarySplitting)
+        assert type(I._Nu) is type(PartialSums(4 * g - 1))
+        assert type(I._Nv) is type(PartialSums(4 * g - 1))
         assert I._tree.algorithm() == 'sparse'
         for x, u in enumerate(curves):
             for y, v in enumerate(curves):
