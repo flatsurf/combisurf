@@ -107,9 +107,10 @@ P. M. Fenwick. *A new data structure for cumulative frequency tables*.
 Software: Practice and Experience, 24(3):327-336, 1994.
 
 The binary indexed tree behind
-:class:`~combisurf.partial_sums.PartialSumsBinarySplitting` and the sweep of
-:func:`~combisurf.crossing_arcs.crossing_arcs_sweep`, where it answers each
-prefix sum and each update in logarithmic time.
+:class:`~combisurf.partial_sums.PartialSumsFenwick` and the sweeps
+:func:`~combisurf.crossing_arcs.crossing_arcs_sweep` and
+:func:`~combisurf.crossing_arcs.crossing_arcs_sweep_sorted`, where it answers
+each prefix sum and each update in logarithmic time.
 
 .. _chazelle1986:
 

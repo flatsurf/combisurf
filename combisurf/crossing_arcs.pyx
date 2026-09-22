@@ -59,32 +59,7 @@ EXAMPLES::
 from cpython cimport array
 from libc.stdlib cimport calloc, free
 
-
-cdef inline void _fenwick_add(long long *tree, Py_ssize_t size, Py_ssize_t i, long long x) noexcept:
-    # add x at position i (0-based) of the Fenwick tree tree[1..size]
-    i += 1
-    while i <= size:
-        tree[i] += x
-        i += i & (-i)
-
-
-cdef inline long long _fenwick_prefix(long long *tree, Py_ssize_t i) noexcept:
-    # sum of the positions 0, ..., i - 1 of the Fenwick tree
-    cdef long long s = 0
-    while i > 0:
-        s += tree[i]
-        i -= i & (-i)
-    return s
-
-
-cdef inline void _fenwick_clear(long long *tree, Py_ssize_t size, Py_ssize_t i) noexcept:
-    # zero the cells of the Fenwick tree that _fenwick_add(tree, size, i, x)
-    # touches, so that a tree can be restored to zero in the time it took to
-    # fill it rather than in O(size)
-    i += 1
-    while i <= size:
-        tree[i] = 0
-        i += i & (-i)
+from combisurf.partial_sums cimport fenwick_add, fenwick_prefix, fenwick_clear
 
 
 def crossing_arcs_sweep(int n, dict arcs, bint symmetric=False):
@@ -198,22 +173,22 @@ def crossing_arcs_sweep(int n, dict arcs, bint symmetric=False):
                 weights = arcs[keys[k]]
                 u = weights[0]
                 if symmetric:
-                    S += 2 * u * _fenwick_prefix(fu, first + 1)
+                    S += 2 * u * fenwick_prefix(fu, first + 1)
                 else:
                     v = weights[1]
-                    S += v * _fenwick_prefix(fu, first + 1) + u * _fenwick_prefix(fv, first + 1)
+                    S += v * fenwick_prefix(fu, first + 1) + u * fenwick_prefix(fv, first + 1)
                 k += 1
             for t in range(k0, k):
                 key = keys[t]
                 first = key - last * n
                 weights = arcs[keys[t]]
                 u = weights[0]
-                _fenwick_add(fu, n, first + 1, u)
-                _fenwick_add(fu, n, last, -u)
+                fenwick_add(fu, n, first + 1, u)
+                fenwick_add(fu, n, last, -u)
                 if not symmetric:
                     v = weights[1]
-                    _fenwick_add(fv, n, first + 1, v)
-                    _fenwick_add(fv, n, last, -v)
+                    fenwick_add(fv, n, first + 1, v)
+                    fenwick_add(fv, n, last, -v)
     finally:
         free(fu)
         free(fv)
@@ -410,17 +385,17 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
             ju = iu
             while ju < lu and ku[ju] // n == last:
                 first = ku[ju] - last * n
-                S += 2 * wu[ju] * _fenwick_prefix(fu, first + 1)
+                S += 2 * wu[ju] * fenwick_prefix(fu, first + 1)
                 ju += 1
             for t in range(iu, ju):
                 first = ku[t] - last * n
-                _fenwick_add(fu, n, first + 1, wu[t])
-                _fenwick_add(fu, n, last, -wu[t])
+                fenwick_add(fu, n, first + 1, wu[t])
+                fenwick_add(fu, n, last, -wu[t])
             iu = ju
         for t in range(lu):
             last = ku[t] // n
-            _fenwick_clear(fu, n, ku[t] - last * n + 1)
-            _fenwick_clear(fu, n, last)
+            fenwick_clear(fu, n, ku[t] - last * n + 1)
+            fenwick_clear(fu, n, last)
     else:
         iu = iv = 0
         while iu < lu or iv < lv:
@@ -431,28 +406,28 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
                 last = kv[iv] // n
             ju = iu
             while ju < lu and ku[ju] // n == last:
-                S += wu[ju] * _fenwick_prefix(fv, ku[ju] - last * n + 1)
+                S += wu[ju] * fenwick_prefix(fv, ku[ju] - last * n + 1)
                 ju += 1
             jv = iv
             while jv < lv and kv[jv] // n == last:
-                S += wv[jv] * _fenwick_prefix(fu, kv[jv] - last * n + 1)
+                S += wv[jv] * fenwick_prefix(fu, kv[jv] - last * n + 1)
                 jv += 1
             for t in range(iu, ju):
-                _fenwick_add(fu, n, ku[t] - last * n + 1, wu[t])
-                _fenwick_add(fu, n, last, -wu[t])
+                fenwick_add(fu, n, ku[t] - last * n + 1, wu[t])
+                fenwick_add(fu, n, last, -wu[t])
             for t in range(iv, jv):
-                _fenwick_add(fv, n, kv[t] - last * n + 1, wv[t])
-                _fenwick_add(fv, n, last, -wv[t])
+                fenwick_add(fv, n, kv[t] - last * n + 1, wv[t])
+                fenwick_add(fv, n, last, -wv[t])
             iu = ju
             iv = jv
         for t in range(lu):
             last = ku[t] // n
-            _fenwick_clear(fu, n, ku[t] - last * n + 1)
-            _fenwick_clear(fu, n, last)
+            fenwick_clear(fu, n, ku[t] - last * n + 1)
+            fenwick_clear(fu, n, last)
         for t in range(lv):
             last = kv[t] // n
-            _fenwick_clear(fv, n, kv[t] - last * n + 1)
-            _fenwick_clear(fv, n, last)
+            fenwick_clear(fv, n, kv[t] - last * n + 1)
+            fenwick_clear(fv, n, last)
 
     if owned:
         free(fu)
