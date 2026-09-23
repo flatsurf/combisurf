@@ -244,7 +244,22 @@ class ConjugateTreeNaive:
             raise ValueError(f"s (={s}) must be a node")
         return dict(sorted(self._transitions[s].items()))
 
-    def pprint(self):
+    def _pprint(self):
+        r"""
+        Print the transitions of this conjugate tree.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0,1,1])
+            1
+            sage: T._pprint()
+             0 --0(i=0, k=0)-->  1
+             0 --1(array('i', [1]))-->  3
+             3 --0(i=0, k=3)-->  4
+             3 --1(i=0, k=2)-->  2
+        """
         ans = []
         for s, transitions in enumerate(self._transitions):
             for letter in sorted(transitions):
@@ -500,16 +515,66 @@ class ConjugateTreeNaive:
         return leaves
 
     def graph(self):
+        r"""
+        Return this conjugate tree as a directed graph, each edge labelled by
+        the letters it reads, or by its first letter only if it ends at a
+        leaf (such an edge reads an infinite periodic word).
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0,1,1])
+            1
+            sage: T.graph()
+            Digraph on 5 vertices
+            sage: sorted(T.graph().edges())
+            [(0, 1, '0'), (0, 3, '1'), (3, 2, '1'), (3, 4, '0')]
+        """
         from sage.graphs.digraph import DiGraph
         G = DiGraph(self.num_states(), loops=False, multiedges=False)
         for s in range(self.num_states()):
             for t in self._transitions[s].values():
-                # w = self._words[self._transition_word[t]]
-                i = self._transition_word[t]
-                k = self._transition_start[t]
-                p = self._transition_end[t]
-                G.add_edge(s, t, f"({i},{k},{p})")
+                G.add_edge(s, t, self._edge_label(t))
         return G
+
+    def _edge_label(self, t):
+        r"""
+        Return the label of the edge ending at the node ``t``: the letters it
+        reads, or only its first letter if ``t`` is a leaf (such an edge
+        reads an infinite periodic word).
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0,1,1])
+            1
+            sage: T._edge_label(1)
+            '0'
+            sage: T._edge_label(3)
+            '1'
+
+        TESTS::
+
+            sage: T._edge_label(0)
+            Traceback (most recent call last):
+            ...
+            ValueError: t (=0) must be a node
+            sage: T._edge_label(-1)
+            Traceback (most recent call last):
+            ...
+            ValueError: t (=-1) must be a node
+            sage: T._edge_label(T.num_states())
+            Traceback (most recent call last):
+            ...
+            ValueError: t (=5) must be a node
+        """
+        if t <= 0 or t >= self.num_states():
+            raise ValueError(f"t (={t}) must be a node")
+        if self._transition_end[t] == -1:
+            return str(self._letter(self._transition_word[t], self._transition_start[t]))
+        return ''.join(map(str, self._slice(self._transition_word[t], self._transition_start[t], self._transition_end[t])))
 
     def _add_node(self):
         r"""
@@ -971,10 +1036,6 @@ class ConjugateTreeNaive:
             for ss in self._transitions[s].values():
                 G += line2d([pos[s], pos[ss]], color="grey", zorder=0)
                 mid = ((pos[s][0]+pos[ss][0])/2, (pos[s][1]+pos[ss][1])/2)
-                if self._transition_end[ss] == -1:
-                    label = str(self._letter(self._transition_word[ss], self._transition_start[ss]))
-                else:
-                    label = ''.join(map(str, self._slice(self._transition_word[ss], self._transition_start[ss], self._transition_end[ss])))
-                G += text(label, mid, color="blue")
+                G += text(self._edge_label(ss), mid, color="blue")
         G.axes(False)
         return G

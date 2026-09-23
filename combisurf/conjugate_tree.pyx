@@ -956,7 +956,8 @@ cdef class ConjugateTree:
     def graph(self):
         r"""
         Return this conjugate tree as a directed graph, each edge labelled by
-        the triple that describes the word it reads.
+        the letters it reads, or by its first letter only if it ends at a
+        leaf (such an edge reads an infinite periodic word).
 
         EXAMPLES::
 
@@ -966,16 +967,57 @@ cdef class ConjugateTree:
             1
             sage: T.graph()
             Digraph on 5 vertices
+            sage: sorted(T.graph().edges())
+            [(0, 1, '0'), (0, 3, '1'), (3, 2, '1'), (3, 4, '0')]
         """
         from sage.graphs.digraph import DiGraph
         G = DiGraph(self.num_states(), loops=False, multiedges=False)
         cdef int s
         for s in range(self.T.nstates):
             for t in self.transitions(s).values():
-                G.add_edge(s, t, f"({self.T.tword[t]},{self.T.tstart[t]},{self.T.tend[t]})")
+                G.add_edge(s, t, self._edge_label(t))
         return G
 
-    def pprint(self):
+    def _edge_label(self, t):
+        r"""
+        Return the label of the edge ending at the node ``t``: the letters it
+        reads, or only its first letter if ``t`` is a leaf (such an edge
+        reads an infinite periodic word).
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree import ConjugateTree
+            sage: T = ConjugateTree()
+            sage: T.process([0,1,1])
+            1
+            sage: T._edge_label(1)
+            '0'
+            sage: T._edge_label(3)
+            '1'
+
+        TESTS::
+
+            sage: T._edge_label(0)
+            Traceback (most recent call last):
+            ...
+            ValueError: t (=0) must be a node
+            sage: T._edge_label(-1)
+            Traceback (most recent call last):
+            ...
+            ValueError: t (=-1) must be a node
+            sage: T._edge_label(T.num_states())
+            Traceback (most recent call last):
+            ...
+            ValueError: t (=5) must be a node
+        """
+        cdef int node = t
+        if node <= 0 or node >= self.T.nstates:
+            raise ValueError(f"t (={t}) must be a node")
+        if self.T.tend[node] == -1:
+            return str(ct_letter(&self.T, self.T.tword[node], self.T.tstart[node]))
+        return ''.join(map(str, self._slice(self.T.tword[node], self.T.tstart[node], self.T.tend[node])))
+
+    def _pprint(self):
         r"""
         Print the transitions of this conjugate tree.
 
@@ -985,7 +1027,7 @@ cdef class ConjugateTree:
             sage: T = ConjugateTree()
             sage: T.process([0,1,1])
             1
-            sage: T.pprint()
+            sage: T._pprint()
              0 --0(i=0, k=0)-->  1
              0 --1(array('i', [1]))-->  3
              3 --0(i=0, k=3)-->  4
@@ -1317,10 +1359,6 @@ cdef class ConjugateTree:
             for ss in children[s].values():
                 G += line2d([pos[s], pos[ss]], color="grey", zorder=0)
                 mid = ((pos[s][0]+pos[ss][0])/2, (pos[s][1]+pos[ss][1])/2)
-                if self.T.tend[ss] == -1:
-                    label = str(ct_letter(&self.T, self.T.tword[ss], self.T.tstart[ss]))
-                else:
-                    label = ''.join(map(str, self._slice(self.T.tword[ss], self.T.tstart[ss], self.T.tend[ss])))
-                G += text(label, mid, color="blue")
+                G += text(self._edge_label(ss), mid, color="blue")
         G.axes(False)
         return G

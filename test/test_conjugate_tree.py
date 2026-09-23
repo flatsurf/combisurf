@@ -316,6 +316,7 @@ def assert_same_tree(T0, T1):
     assert T0.size() == T1.size()
     assert T0.leaves() == T1.leaves()
     assert T0.internal_states() == T1.internal_states()
+    assert sorted(T0.graph().edges()) == sorted(T1.graph().edges())
     for s in range(T0.num_states()):
         assert T0.transitions(s) == T1.transitions(s), s
     for s in T0.leaves():
