@@ -26,8 +26,8 @@ def test_partial_sums(n, repeat):
 @pytest.mark.parametrize("cls_name", ["PartialSumsNaive", "PartialSumsFenwick"])
 @pytest.mark.parametrize("n, repeat", [(1, 20), (2, 20), (5, 20), (9, 20), (100, 20), (255, 20), (256, 20), (257, 20), (1024, 20)])
 def test_partial_sums_cython_matches_oracle(cls_name, n, repeat):
-    # The Cython port must agree with a plain Python list summed by slicing,
-    # not merely with its sibling algorithm.
+    # Each Cython class must agree with a plain Python list summed by slicing,
+    # not merely with the other class.
     from random import randrange
     from combisurf import partial_sums as fast
     Pf = getattr(fast, cls_name)(n)

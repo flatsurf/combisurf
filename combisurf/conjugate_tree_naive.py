@@ -260,7 +260,7 @@ class ConjugateTreeNaive:
 
 
     def __repr__(self):
-        return "SuffixTree with {} states, {} leaves and {} implicit nodes".format(self.num_states(), len(self.leaves()), self.size())
+        return "ConjugateTreeNaive with {} states, {} leaves and {} implicit nodes".format(self.num_states(), len(self.leaves()), self.size())
 
     def _leaf_shift(self, s):
         r"""

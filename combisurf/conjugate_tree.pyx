@@ -161,7 +161,7 @@ cdef class ConjugateTree:
         sage: T.process([0, 1, 0, 0, 1])
         1
         sage: T
-        SuffixTree with 9 states, 5 leaves and 11 implicit nodes
+        ConjugateTree with 9 states, 5 leaves and 11 implicit nodes
 
     The alphabet is checked when it is declared::
 
@@ -237,7 +237,7 @@ cdef class ConjugateTree:
             self._raise(err, None)
 
     def __repr__(self):
-        return "SuffixTree with {} states, {} leaves and {} implicit nodes".format(self.num_states(), len(self.leaves()), self.size())
+        return "ConjugateTree with {} states, {} leaves and {} implicit nodes".format(self.num_states(), len(self.leaves()), self.size())
 
     cdef int _raise(self, int err, array.array w) except -1:
         r"""
@@ -584,7 +584,7 @@ cdef class ConjugateTree:
         structure of the tree but not the word encoded by a given state. In
         particular, leaves remain leaves after an update.
 
-        TESTS::
+        EXAMPLES::
 
             sage: from combisurf.conjugate_tree import ConjugateTree
 
@@ -696,7 +696,7 @@ cdef class ConjugateTree:
         # we have to go through the tree
         cdef int node = s
         if node < 0 or node >= self.T.nstates:
-            raise ValueError
+            raise ValueError(f"s (={s}) must be a node")
         if self.T.tend[node] != -1:
             raise ValueError(f"s(={s}) not a leaf")
         cdef int i = self.T.tword[node]
@@ -1081,6 +1081,19 @@ cdef class ConjugateTree:
         - a non-negative ``-index`` if the word ``w`` is already present, that
           is, if it is conjugate to a power of the word of index ``index`` of
           this conjugate tree
+
+        INPUT:
+
+        - ``w`` -- a non-empty word
+
+        - ``check`` -- boolean (default: ``True``); whether to convert ``w``
+          with :func:`~combisurf.word.word_init`, so that ``w`` can be any
+          input that :func:`~combisurf.word.word_init` accepts, including a
+          string. With ``check=False``, ``w`` is used as it is if it is an
+          ``array('i')`` and copied with ``array('i', w)`` otherwise, so that
+          it can be any iterable of integers. In both cases the letters are
+          checked by the tree: a negative letter, or a letter outside of the
+          alphabet when it is declared, raises a ``ValueError``
 
         EXAMPLES::
 

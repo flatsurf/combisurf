@@ -62,9 +62,9 @@
  * than the sparse lists on the words with few factors, and took more memory
  * (130 MB against 96 MB at n = 1024 and 2^18 letters).
  *
- * Up to 32 letters the dense table stays: it costs at most 128 bytes per
- * node, and at 32 letters the rows are 3 to 50 % slower than it (1000 letters:
- * 147 us dense, 221 us rows).
+ * Up to 32 letters the default is the dense table: it costs at most 128
+ * bytes per node, and at 32 letters the rows are 3 to 50 % slower than it
+ * (1000 letters: 147 us dense, 221 us rows).
  */
 
 /* ------------------------------------------------------------------ */

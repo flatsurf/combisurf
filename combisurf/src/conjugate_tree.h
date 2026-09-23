@@ -112,10 +112,9 @@ typedef struct ct_tree {
 
 /*
  * Set up an empty tree over an alphabet of the given size (0 when unknown)
- * with room for reserve nodes, with the given layout (CT_LAYOUT_*; 0 and 1
- * are the sparse and dense layouts). The dense layout needs the alphabet;
- * without it, the rows layout has no rows. On failure *T is left in a state
- * that ct_free accepts.
+ * with room for reserve nodes, with the given layout (CT_LAYOUT_*). The dense
+ * layout needs the alphabet; without it, the rows layout has no rows. On
+ * failure *T is left in a state that ct_free accepts.
  */
 int ct_init(ct_tree *T, int alphabet, int reserve, int layout);
 

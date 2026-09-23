@@ -151,6 +151,19 @@ class GeometricIntersection:
         If ``vlist`` is not provided, return the self-intersection of
         ``ulist``.
 
+        INPUT:
+
+        - ``ulist`` -- a list of walks on the half-edges of the underlying map
+
+        - ``vlist`` -- an optional list of walks on the half-edges of the
+          underlying map
+
+        - ``check`` -- boolean (default: ``True``); whether to convert each
+          walk with :func:`~combisurf.word.word_init` and cyclically reduce
+          it. With ``check=False`` the walks must be sequences of integers
+          that are already cyclically reduced: a walk that is not cyclically
+          reduced raises a ``ValueError`` even with ``check=False``
+
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
@@ -172,81 +185,8 @@ class GeometricIntersection:
             sage: gi.geometric_intersection([[0, 2, 0]], [[0, 2, 0, 0, 2]])
             1
 
-        Two examples in genus 2 following :ref:`birman-series1984`, pages
-        336-337::
-
-            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
-            sage: gi = GeometricIntersection(octagon)
-            sage: w = word_init("0,~1,3")
-            sage: gi.geometric_intersection([w])
-            0
-            sage: w = word_init("0,1,1,~2,1,1,~2")
-            sage: gi.geometric_intersection([w])
-            4
-
-        Testing the simplicity criterion of :ref:`lapointe2019` on positive
-        words::
-
-            sage: W = Words([0, 2, 4, 6])
-            sage: for l in range(2, 7):
-            ....:     for w in W.iterate_by_length(l):
-            ....:         if not w.is_primitive():
-            ....:             continue
-            ....:         bwt = w.BWT()
-            ....:         ans1 = all(bwt[i + 1] <= bwt[i] for i in range(l - 1))
-            ....:         ans2 = gi.geometric_intersection([list(w)]) == 0
-            ....:         assert ans1 == ans2
-
-            sage: ulist = [[0], [0, 2], [0, 0, 2]]
-            sage: vlist = [[0, 2, 2, 0, 2], [2]]
-            sage: gi.geometric_intersection(ulist, vlist)
-            12
-            sage: gi.geometric_intersection([[0, 0, 2, 2]])
-            1
-
-            sage: gi.geometric_intersection([[0]], [[0, 2]])
-            1
-            sage: gi.geometric_intersection([[0, 2]], [[0, 2, 0]])
-            1
-            sage: gi.geometric_intersection([[0, 2, 0]], [[0, 2, 0, 0, 2]])
-            1
-
-            sage: for u in [[0], [0, 2], [0, 2, 0], [0, 2, 0, 0, 2],  [0, 2, 0, 0, 2, 0, 2, 0]]:
-            ....:     assert gi.geometric_intersection([u]) == 0
-            sage: for u in [[0, 0, 2, 2], [0, 2, 0, 2, 0, 0], [0, 2, 0, 0, 2, 0, 0, 2, 0, 2],
-            ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0],
-            ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2]]:
-            ....:     assert gi.geometric_intersection([u]) == 1
-
-        Two examples in genus 2 following :ref:`birman-series1984`, pages
-        336-337::
-
-            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
-            sage: gi = GeometricIntersection(octagon)
-            sage: w = word_init("0,~1,3")
-            sage: gi.geometric_intersection([w])
-            0
-            sage: w = word_init("0,1,1,~2,1,1,~2")
-            sage: gi.geometric_intersection([w])
-            4
-
-        Testing the simplicity criterion of :ref:`lapointe2019` on positive
-        words::
-
-            sage: W = Words([0, 2, 4, 6])
-            sage: for l in range(3, 6):
-            ....:     for w in W.iterate_by_length(l):
-            ....:         if not w.is_primitive():
-            ....:             continue
-            ....:         bwt = w.BWT()
-            ....:         ans1 = all(bwt[i + 1] <= bwt[i] for i in range(l - 1))
-            ....:         ans2 = gi.geometric_intersection([list(w)]) == 0
-            ....:         assert ans1 == ans2
-
         Intersection is multilinear::
 
-            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
-            sage: gi = GeometricIntersection(torus)
             sage: ulist = [[0], [0, 2], [0, 0, 2]]
             sage: vlist = [[0, 2, 2, 0, 2], [2]]
             sage: gi.geometric_intersection(ulist, vlist)
@@ -279,6 +219,38 @@ class GeometricIntersection:
             sage: gi.geometric_intersection([u * 3])
             11
 
+        Two examples in genus 2 following :ref:`birman-series1984`, pages
+        336-337::
+
+            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: gi = GeometricIntersection(octagon)
+            sage: w = word_init("0,~1,3")
+            sage: gi.geometric_intersection([w])
+            0
+            sage: w = word_init("0,1,1,~2,1,1,~2")
+            sage: gi.geometric_intersection([w])
+            4
+
+        Testing the simplicity criterion of :ref:`lapointe2019` on positive
+        words::
+
+            sage: W = Words([0, 2, 4, 6])
+            sage: for l in range(2, 7):
+            ....:     for w in W.iterate_by_length(l):
+            ....:         if not w.is_primitive():
+            ....:             continue
+            ....:         bwt = w.BWT()
+            ....:         ans1 = all(bwt[i + 1] <= bwt[i] for i in range(l - 1))
+            ....:         ans2 = gi.geometric_intersection([list(w)]) == 0
+            ....:         assert ans1 == ans2
+
+            sage: for u in [[0], [0, 2], [0, 2, 0], [0, 2, 0, 0, 2],  [0, 2, 0, 0, 2, 0, 2, 0]]:
+            ....:     assert gi.geometric_intersection([u]) == 0
+            sage: for u in [[0, 0, 2, 2], [0, 2, 0, 2, 0, 0], [0, 2, 0, 0, 2, 0, 0, 2, 0, 2],
+            ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0],
+            ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2]]:
+            ....:     assert gi.geometric_intersection([u]) == 1
+
         TESTS:
 
         A map with a folded edge is rejected at construction, before any
@@ -289,6 +261,16 @@ class GeometricIntersection:
             Traceback (most recent call last):
             ...
             NotImplementedError: geometric intersection is not implemented for maps with folded edges
+
+        A walk that is not cyclically reduced is rejected even with
+        ``check=False``::
+
+            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: gi = GeometricIntersection(torus)
+            sage: gi.geometric_intersection([[0, 1]], check=False)
+            Traceback (most recent call last):
+            ...
+            ValueError: w must be cyclically reduced
         """
         # For general multicurves where u and v might have common components, each primitive
         # word (and hence each arc) has an associated u-multiplicity and v-multiplicity.
@@ -389,7 +371,8 @@ class GeometricIntersection:
         - ``curves`` -- a list of walks on the half-edges of the underlying map
 
         - ``check`` -- boolean (default: ``True``); whether to cyclically
-          reduce the curves in input
+          reduce the curves in input. A curve that is not cyclically reduced
+          raises a ``ValueError`` even with ``check=False``
 
         EXAMPLES::
 
@@ -429,7 +412,8 @@ class GeometricIntersectionMatrix:
       must be primitive
 
     - ``check`` -- boolean (default: ``True``); whether to cyclically reduce
-      the curves in input
+      the curves in input. A curve that is not cyclically reduced raises a
+      ``ValueError`` even with ``check=False``
 
     EXAMPLES::
 

@@ -193,9 +193,9 @@ def word_arcs(int n, angles, list words, weights):
         ...
         ValueError: n must be positive
 
-    ``weights`` must have exactly ``(len(words) + 1) // 2`` entries, in
-    either direction, since a mismatch used to read past the end of
-    ``weights`` under ``boundscheck=False`` rather than raise::
+    ``weights`` must have exactly ``(len(words) + 1) // 2`` entries: a
+    shorter or a longer ``weights`` raises, since the loop reads it under
+    ``boundscheck=False``::
 
         sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [1, 2])
         Traceback (most recent call last):
