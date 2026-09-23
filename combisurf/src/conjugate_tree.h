@@ -168,8 +168,9 @@ int ct_child(const ct_tree *T, int s, int letter);
  * Canonize the reference (*s, i, *k, p) of the state reached by reading the
  * letters k, ..., p - 1 of the i-th word from the node s (-1 for the node
  * below the root). CT_EINVALID, with *s and *k unchanged, when s is not a
- * node (or -1), i not a word, when not 0 <= k <= p, or when the letters do not
- * lead along the tree.
+ * node (or -1), i not a word, when not 0 <= k <= p, or when some node on the
+ * way has no child for the next letter (the other letters of an edge are not
+ * compared).
  */
 int ct_canonize(const ct_tree *T, int *s, int i, int *k, int p);
 

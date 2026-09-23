@@ -436,9 +436,8 @@ static inline void add_child(ct_tree *T, int s, int letter, int t)
  * Put new where old, whose label starts with letter, sits among the children
  * of s.
  *
- * In the sparse representation old is found by its index and not by its
- * letter, since the letter of a node is read off the label of the edge into
- * it and a caller splitting that edge is about to move it.
+ * In the sibling lists old is found by its index and not by its letter, so
+ * that the caller may change the label of old before or after the call.
  */
 static inline void replace_child(ct_tree *T, int s, int letter, int old, int new_)
 {
@@ -587,8 +586,6 @@ static inline int test_and_split(ct_tree *T, int s, int i, int k, int p, int let
         T->parent[ss] = s;
         T->dep[ss] = T->dep[s] + index - kk;
 
-        /* NOTE: ss takes the place of t under s before the label of t is
-         * shortened, since that label is where its first letter is read */
         replace_child(T, s, first, t, ss);
         T->tstart[t] = index;
         T->parent[t] = ss;

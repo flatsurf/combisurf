@@ -33,8 +33,9 @@ takes as argument a word on non-negative integers (given as a list)::
     sage: T.process([0, 1])
     -2
 
-The output value of :meth:`~ConjugateTreeNaive.process` is either a pair ``(False,
-exponent)`` if the word is not present or ``(True, position)``.
+The output value of :meth:`~ConjugateTreeNaive.process` is an integer: the
+exponent of the word when it is new, and otherwise minus the index of the word
+of the tree that it is conjugate to a power of.
 
 To get a hand on the structure of the tree, one can use the following functions
 (the root is always index 0 and is omitted in the output)::
@@ -50,8 +51,8 @@ one uses::
     sage: T.leaf_as_conjugate(6)
     (1, 2)
 
-Which means that the leaf index ``6`` coressponds to the word number ``1``
-(ie ``[0, 1, 0, 0, 1]``) shifted twice.
+Which means that the leaf index ``6`` corresponds to the word number ``1``
+(i.e. ``[0, 1, 0, 0, 1]``) shifted twice.
 """
 
 from combisurf.word import word_check, word_init
@@ -63,7 +64,7 @@ class ConjugateTreeNaive:
 
     The data structure works with words over non-negative integers.  The nodes
     are encoded with integers from 0 to the number of nodes minus one. The root
-    always get the index ``0`` and created nodes gets the first available index
+    always gets the index ``0`` and created nodes get the first available index
     (nodes are never deleted). In all algorithms, a node index is often denoted
     by a variable ``s``.
 
@@ -281,7 +282,7 @@ class ConjugateTreeNaive:
         r"""
         Given a leaf with index ``s`` return the leaf corresponding to its shifted word.
 
-        The function ``leaf_shift`` is a permutation of the leaves of this conjugate
+        This function is a permutation of the leaves of this conjugate
         tree whose orbits represent conjugate words. There is no need for this function
         as each processing of a word provides a cycle of the created leaves (by
         increasing order).
@@ -328,8 +329,8 @@ class ConjugateTreeNaive:
             12 -> 14
             14 -> 12
         """
-        # NOTE: in the case the transition to s is made of a single letter
-        # we have to go through the tree
+        # NOTE: the shifted leaf is reached from the suffix link of the parent
+        # of s by reading down the rest of the label of s
         if s < 0 or s >= len(self._ancestor):
             raise ValueError
         if self._transition_end[s] != -1:
@@ -447,9 +448,8 @@ class ConjugateTreeNaive:
             sage: T = ConjugateTreeNaive()
             sage: T.process([0,0,0,1])
             1
-            sage: T.size()
-            7
-
+            sage: T.internal_states()
+            [2, 4]
         """
         return [s for s in range(1, self.num_states()) if self._transitions[s]]
 
@@ -600,7 +600,7 @@ class ConjugateTreeNaive:
 
     def _add_node(self):
         r"""
-        Internal low-level function that add a nodes and return its index.
+        Internal low-level function that adds a node and returns its index.
 
         The function performs the necessary reallocation so that one can
         access ``self._transitions[i]``, etc where ``i`` is the index
@@ -878,9 +878,9 @@ class ConjugateTreeNaive:
           increases by the period of ``w`` (which is its length divided by the
           exponent).
 
-        - a non-negative ``-index`` if the word ``w``is already present and
-          ``index`` is the index of the leaf corresponding to ``w`` in this
-          conjugate tree
+        - a non-positive ``-index`` if the word ``w`` is already present, that
+          is, if it is conjugate to a power of the word of index ``index`` of
+          this conjugate tree
         """
         if not w:
             raise ValueError("empty word in input")
@@ -897,7 +897,7 @@ class ConjugateTreeNaive:
         k = 0
 
         # To ensure that we find all conjugates we must create as many leaves
-        # as the size rof w (assuming it is primitive)
+        # as the length of w (assuming it is primitive)
         num_leaves = 0
         p = 0
         while True:

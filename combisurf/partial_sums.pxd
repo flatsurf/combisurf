@@ -2,7 +2,8 @@ from cpython cimport array
 
 
 cdef inline void fenwick_add(long long *tree, Py_ssize_t size, Py_ssize_t i, long long x) noexcept:
-    # add x at position i (0-based) of the Fenwick tree tree[1..size]
+    # add x at position i (0-based, 0 <= i < size; a negative i loops forever)
+    # of the Fenwick tree tree[1..size]
     i += 1
     while i <= size:
         tree[i] += x

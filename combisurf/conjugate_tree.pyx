@@ -15,6 +15,9 @@ conjugates. And each edge is labeled with a finite word that makes it a
 deterministic automaton (where all vertices of degree 2 have been
 removed).
 
+A word is added by the on-line construction of suffix trees of
+:ref:`ukkonen1995`, adapted to words read cyclically.
+
 EXAMPLES:
 
 The main class from this module is :class:`ConjugateTree` which can be
@@ -53,8 +56,8 @@ one uses::
     sage: T.leaf_as_conjugate(6)
     (1, 2)
 
-Which means that the leaf index ``6`` coressponds to the word number ``1``
-(ie ``[0, 1, 0, 0, 1]``) shifted twice.
+Which means that the leaf index ``6`` corresponds to the word number ``1``
+(i.e. ``[0, 1, 0, 0, 1]``) shifted twice.
 
 Telling the tree how large the alphabet is lets it index the children of a
 node by letter instead of walking through them, and telling it how many nodes
@@ -126,7 +129,7 @@ cdef class ConjugateTree:
 
     The data structure works with words over non-negative integers.  The nodes
     are encoded with integers from 0 to the number of nodes minus one. The root
-    always get the index ``0`` and created nodes gets the first available index
+    always gets the index ``0`` and created nodes get the first available index
     (nodes are never deleted). In all algorithms, a node index is often denoted
     by a variable ``s``.
 
@@ -173,7 +176,8 @@ cdef class ConjugateTree:
     """
     def __cinit__(self, *args, **kwds):
         r"""
-        Set up an empty tree; ``__init__`` reads the arguments.
+        Zero the C tree, so that ``__dealloc__`` is safe whatever ``__init__``
+        does; ``__init__`` sets the tree up.
 
         TESTS::
 
@@ -645,7 +649,7 @@ cdef class ConjugateTree:
         r"""
         Given a leaf with index ``s`` return the leaf corresponding to its shifted word.
 
-        The function ``leaf_shift`` is a permutation of the leaves of this conjugate
+        This function is a permutation of the leaves of this conjugate
         tree whose orbits represent conjugate words. There is no need for this function
         as each processing of a word provides a cycle of the created leaves (by
         increasing order).
@@ -692,8 +696,8 @@ cdef class ConjugateTree:
             12 -> 14
             14 -> 12
         """
-        # NOTE: in the case the transition to s is made of a single letter
-        # we have to go through the tree
+        # NOTE: the shifted leaf is reached from the suffix link of the parent
+        # of s by reading down the rest of the label of s
         cdef int node = s
         if node < 0 or node >= self.T.nstates:
             raise ValueError(f"s (={s}) must be a node")
@@ -1142,7 +1146,7 @@ cdef class ConjugateTree:
           increases by the period of ``w`` (which is its length divided by the
           exponent).
 
-        - a non-negative ``-index`` if the word ``w`` is already present, that
+        - a non-positive ``-index`` if the word ``w`` is already present, that
           is, if it is conjugate to a power of the word of index ``index`` of
           this conjugate tree
 
@@ -1153,7 +1157,8 @@ cdef class ConjugateTree:
         - ``check`` -- boolean (default: ``True``); whether to convert ``w``
           with :func:`~combisurf.word.word_init`, so that ``w`` can be any
           input that :func:`~combisurf.word.word_init` accepts, including a
-          string. With ``check=False``, ``w`` is used as it is if it is an
+          string of signed edges (``"0,1,~0"`` is the word ``[0, 2, 1]``).
+          With ``check=False``, ``w`` is used as it is if it is an
           ``array('i')`` and copied with ``array('i', w)`` otherwise, so that
           it can be any iterable of integers. In both cases the letters are
           checked by the tree: a negative letter, or a letter outside of the
@@ -1202,9 +1207,8 @@ cdef class ConjugateTree:
         r"""
         Check the per-node invariants of this conjugate tree.
 
-        Unlike :meth:`_check_bijection`, these invariants hold at every
-        intermediate step of an insertion, not only once it returns, since
-        they say nothing about the leaves of the word currently being added.
+        Unlike :meth:`_check_bijection`, these invariants are about each node
+        on its own and say nothing about the leaves.
 
         EXAMPLES::
 

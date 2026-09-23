@@ -162,3 +162,15 @@ Source of the simplicity criterion checked in the doctests of
 :meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`:
 a primitive positive word gives a simple curve exactly when its
 Burrows-Wheeler transform is non-increasing.
+
+.. _ukkonen1995:
+
+Ukkonen (1995)
+--------------
+
+E. Ukkonen. *On-line construction of suffix trees*. Algorithmica,
+14(3):249-260, 1995.
+
+Source of the construction of :class:`~combisurf.conjugate_tree.ConjugateTree`
+(the active point, ``canonize`` and ``test_and_split``), here applied to
+words read cyclically.

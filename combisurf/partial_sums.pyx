@@ -212,8 +212,9 @@ cdef class PartialSumsFenwick:
 
     A Fenwick tree, or binary indexed tree (:ref:`fenwick1994`): the vector is
     stored 1-indexed as ``tree[1..n]``, where ``tree[i]`` is the sum of the
-    entries ending at position `i - 1` (0-based, excluded) whose count is the
-    lowest set bit of `i`. An ``update`` at position `i` walks the nodes `i +
+    `\text{lowbit}(i)` entries at the 0-based positions `i -
+    \text{lowbit}(i), \ldots, i - 1`, `\text{lowbit}(i)` being the lowest
+    set bit of `i`. An ``update`` at position `i` walks the nodes `i +
     1, i + 1 + \text{lowbit}, \ldots` up to `n` that cover it, and a
     ``partial_sum`` up to some position walks the nodes `i, i - \text{lowbit},
     \ldots` down to `0`; both walks have at most `\lfloor \log_2(n) \rfloor +

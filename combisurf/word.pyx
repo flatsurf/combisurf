@@ -569,6 +569,8 @@ def word_is_cyclically_reduced(array.array w):
 
 def word_reduce(array.array w):
     r"""
+    Return the free reduction of ``w``.
+
     EXAMPLES::
 
         sage: from combisurf.word import word_init, word_reduce

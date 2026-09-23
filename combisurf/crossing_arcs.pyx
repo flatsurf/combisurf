@@ -15,7 +15,8 @@ endpoint do not cross. Each arc carries a `u`-weight and a `v`-weight, and
 
 over the pairs `(A, B)` of crossing arcs with `i_0 < i_1`.
 
-This is the `O(n^2)` term of
+This is the term, counting the pairs of arcs with four distinct endpoints,
+of
 :meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`,
 where the positions are the angles at the vertex and the arcs the
 consecutive pairs of letters of the curves, given to
@@ -37,6 +38,11 @@ inverses in the free group where ``h ^ 1`` is the inverse of the letter
 ``h``: :func:`tree_add_with_inverse` adds a curve and its inverse, and
 :func:`cyclically_sorted_leaf_arcs` lists the leaves in their cyclic order at
 infinity.
+
+The sweeps keep their prefix sums in Fenwick trees (:ref:`fenwick1994`).
+Counting crossing chords is the easy case of counting segment intersections
+(:ref:`chazelle1986`), the cyclic order of the endpoints giving the sweep
+order.
 
 EXAMPLES::
 
@@ -194,8 +200,9 @@ def word_arcs(int n, angles, list words, weights):
         ValueError: n must be positive
 
     ``weights`` must have exactly ``(len(words) + 1) // 2`` entries: a
-    shorter or a longer ``weights`` raises, since the loop reads it under
-    ``boundscheck=False``::
+    shorter ``weights`` would be read out of bounds under
+    ``boundscheck=False``, and a longer one points to a mismatch with
+    ``words``::
 
         sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [1, 2])
         Traceback (most recent call last):
@@ -328,10 +335,10 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
     Return the weighted number of pairs of crossing arcs, the arcs being given
     as two sorted arrays, one for the `u`-weights and one for the `v`-weights.
 
-    This computes the sum `S` of the module documentation from the arcs
-    ``arcs`` with ``arcs[ukeys[k]][0] = uweights[k]``, ``arcs[vkeys[k]][1] =
-    vweights[k]`` and the weights missing from these two arrays equal to
-    zero.
+    This computes the sum `S` of the module documentation, where the arc of
+    key ``ukeys[k]`` has `u`-weight ``uweights[k]``, the arc of key
+    ``vkeys[k]`` has `v`-weight ``vweights[k]``, and all the other weights
+    are zero.
 
     INPUT:
 
@@ -344,7 +351,8 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
 
     - ``vkeys``, ``vweights`` -- (default: ``None``) the same for the
       `v`-weights; when they are ``None``, the `v`-weights are taken equal to
-      the `u`-weights, which is the ``symmetric`` case
+      the `u`-weights, which counts the crossings of the `u`-arcs among
+      themselves
 
     - ``scratch`` -- (default: ``None``) an array of typecode ``'q'``, of
       length at least ``2 * (n + 1)`` and filled with zeros, used as the
@@ -790,22 +798,26 @@ def tree_add_with_inverse(ConjugateTree T not None, w):
     conjugate tree ``T``.
 
     The letter ``h ^ 1`` is the inverse of the letter ``h``, so the alphabet
-    of ``T``, if it is known, must have even size. The word ``w``
-    must be cyclically reduced and non-empty, and every word of ``T`` must
-    have been added by this function, so that the words are closed under
-    inverse. The only cheap evidence of the contrary is an odd number of
-    words, on which this function refuses to run: in particular once
-    :meth:`~combisurf.conjugate_tree.ConjugateTree.process` has added a single
-    word.
+    of ``T``, if it is known, must have even size.
 
-    The output is a pair ``(i, exponent)`` where ``w`` is conjugate to the
+    INPUT:
+
+    - ``T`` -- a :class:`~combisurf.conjugate_tree.ConjugateTree` every word
+      of which has been added by this function, so that the words are closed
+      under inverse. The only cheap evidence of the contrary is an odd number
+      of words, on which this function refuses to run: in particular once
+      :meth:`~combisurf.conjugate_tree.ConjugateTree.process` has added a
+      single word.
+
+    - ``w`` -- a non-empty cyclically reduced word, given as any sequence of
+      integers; unlike :meth:`~combisurf.conjugate_tree.ConjugateTree.process`,
+      this function does not convert ``w`` with
+      :func:`~combisurf.word.word_init`
+
+    OUTPUT: a pair ``(i, exponent)`` where ``w`` is conjugate to the
     ``exponent``-th power of the ``i``-th word of ``T``. If ``w`` is new,
     its primitive root gets the index ``i``, which is even, and its inverse
     the index ``i + 1``.
-
-    Unlike :meth:`~combisurf.conjugate_tree.ConjugateTree.process`, this
-    function does not convert ``w`` with :func:`~combisurf.word.word_init`:
-    it reads the letters of any sequence of integers.
 
     EXAMPLES::
 

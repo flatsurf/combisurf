@@ -1,5 +1,5 @@
 r"""
-Geometric intersection of arcs and geodesics on punctured and closed surfaces
+Geometric intersection numbers of closed curves on punctured surfaces
 
 See :ref:`despre-lazarus2019` for the computation of geometric intersection
 numbers of curves given as words.
@@ -116,11 +116,9 @@ class GeometricIntersection:
         words = [array('i', w) for w in words]
         words_with_inverse = list(words) + [word_free_group_inverse(w) for w in words]
         l = sum(len(w) for w in words_with_inverse)
-        # print(f"words_with_inverse={words_with_inverse}")
         colors = rainbow(n, 'rgbtuple')
         word_indices, word_shifts = self.conjugate_sort(words_with_inverse)
         assert len(word_indices) == len(word_shifts) == l
-        # print(f"word_indices={word_indices} word_shifts={word_shifts}")
         conj_to_pos = [[None] * len(w) for w in words_with_inverse]
         for pos, (i, k) in enumerate(zip(word_indices, word_shifts)):
             conj_to_pos[i][k] = pos
@@ -209,7 +207,8 @@ class GeometricIntersection:
             sage: gi.geometric_intersection([u0 * 2, u1], [u1 * 3])
             108
 
-        For self-intersection, non-primitivty adds a factor equal to the exponent minus one::
+        For self-intersection, the ``k``-th power of a primitive curve ``u`` has
+        self-intersection `k^2 i(u, u) + k - 1`::
 
             sage: u = [0, 0, 2, 2]
             sage: gi.geometric_intersection([u])
@@ -314,7 +313,6 @@ class GeometricIntersection:
             self_intersection = True
             v_multiplicities = u_multiplicities
 
-        # print(f"u_multiplicities={u_multiplicities} v_multiplicities={v_multiplicities}")
         # NOTE: the words are read many times below, so they are taken out
         # of the tree once rather than through an accessor at every letter
         words = T.words()
@@ -324,12 +322,13 @@ class GeometricIntersection:
         # added up.
         angles = self._angles
         ukeys, ukey_weights = word_arcs(n, angles, words, u_multiplicities)
-        # NOTE: the sweep is O((len(u) + len(v)) log(n)). The O(n^2) double
-        # sum of the same number (test/test_geometric_intersection.py) is
-        # slower at every n, so there is no threshold: on the one-vertex
+        # NOTE: the sweep is O(n + (len(u) + len(v)) log(n)). The O(n^2)
+        # double sum of the same number (test/test_geometric_intersection.py)
+        # is slower at every n, so there is no threshold: on the one-vertex
         # 4g-gon with two random curves of length 8, the sweep takes 0.3 us
-        # against 5.2 us at n = 4 and 1.0 us against 8000 us at n = 256; when the arcs fill the n^2 / 2 possible pairs (n = 64,
-        # curves of length 4000) it takes 260 us against 620 us.
+        # against 5.2 us at n = 4 and 1.0 us against 8000 us at n = 256; when
+        # the arcs fill the n^2 / 2 possible pairs (n = 64, curves of length
+        # 4000) it takes 260 us against 620 us.
         if self_intersection:
             intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, check=False)
         else:
@@ -340,8 +339,8 @@ class GeometricIntersection:
         # Essential intersections coming from pairs of conjugates with identical
         # start, each leaf being described by its startpoint, the angle from
         # its startpoint to its endpoint and its two multiplicities. Total cost
-        # is (len(u) + len(v)) * log(n) where the log(n) factor comes from
-        # partial sums.
+        # is O(n + (len(u) + len(v)) log(n)), where the n comes from the tables
+        # indexed by the angles and the log(n) factor from partial sums.
         word_index, starts, arc_angles = cyclically_sorted_leaf_arcs(T, angles)
         uweights = _leaf_weights(word_index, u_multiplicities)
         if self_intersection:
@@ -358,8 +357,8 @@ class GeometricIntersection:
 
     def intersection_matrix(self, curves, check=True):
         r"""
-        Return the matrix of geometric intersection numbers of the primitive
-        curves ``curves``.
+        Return a :class:`GeometricIntersectionMatrix` for the primitive curves
+        ``curves``.
 
         This is a :class:`GeometricIntersectionMatrix` sharing the angle table
         of this object. It is much faster than calling
