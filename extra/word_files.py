@@ -23,7 +23,12 @@ The first form writes ``count`` words of length ``L`` over the alphabet
   sequence, the same for each of the ``count`` words;
 - ``noisy-fibonacci <fraction>``: the Fibonacci word with ``round(fraction *
   L)`` positions replaced by letters drawn uniformly from
-  `\{2, \ldots, \min(n, 16) - 1\}`.
+  `\{2, \ldots, \min(n, 16) - 1\}`;
+- ``random-substitution``: the random Fibonacci word, from the substitution
+  ``0 -> 01 | 10`` (each with probability 1/2), ``1 -> 0``
+  (:func:`random_words.random_substitution`);
+- ``markov <d>``: a random walk over the letters, each of which has ``d``
+  successors drawn once per word (:func:`random_words.markov`).
 
 With ``--free-group``, each word is generated over the abstract alphabet
 `\{0, \ldots, n/2 - 1\}` and sent through :func:`random_words.to_free_group`,
@@ -126,14 +131,15 @@ def generate(generator, n, L, count, rng, param=None, free_group=False):
     INPUT:
 
     - ``generator`` -- one of ``"random"``, ``"zipf"``, ``"fibonacci"``,
-      ``"ruler"`` and ``"noisy-fibonacci"``
+      ``"ruler"``, ``"noisy-fibonacci"``, ``"random-substitution"`` and
+      ``"markov"``
 
     - ``n``, ``L``, ``count`` -- alphabet size, length and number of words
 
     - ``rng`` -- a ``random.Random``
 
     - ``param`` -- the exponent of ``"zipf"``, the fraction of
-      ``"noisy-fibonacci"``
+      ``"noisy-fibonacci"``, the number of successors of ``"markov"``
 
     - ``free_group`` -- whether to send each word through
       :func:`random_words.to_free_group`
@@ -162,6 +168,13 @@ def generate(generator, n, L, count, rng, param=None, free_group=False):
         for _ in range(count):
             noise = random_words.word_random(num, list(range(2, m)), [1] * (m - 2), rng)
             words.append(random_words.noisify(random_words.fibonacci(L), noise, num, rng))
+    elif generator == "random-substitution":
+        fib = {0: [((0, 1), 0.5), ((1, 0), 0.5)], 1: [((0,), 1)]}
+        words = [random_words.random_substitution(L, fib, rng) for _ in range(count)]
+    elif generator == "markov":
+        if param is None:
+            raise ValueError("markov needs the number of successors d")
+        words = [random_words.markov(L, k, int(param), rng) for _ in range(count)]
     else:
         raise ValueError(f"unknown generator {generator!r}")
     if free_group:

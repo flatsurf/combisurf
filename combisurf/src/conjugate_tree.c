@@ -19,24 +19,52 @@
 #include <string.h>
 
 /*
+ * The layouts of the children (see conjugate_tree.h).
+ *
  * A dense table costs 4 * alphabet bytes per node, where the sibling lists
  * cost 8 and the rest of a node 24, and every new node clears its row and
- * every listing of the leaves scans it. Measured on the pair of curves u, v
- * of the one-vertex map with n half-edges (so an alphabet of n letters), the
- * dense table makes the pairing slower on short curves and faster on long
- * ones, by these ratios of dense over sparse time:
+ * every listing of the leaves scans it. A single word of length 100000 over
+ * 128 letters has 225000 nodes, that is 110 MB of dense table against 1.7 MB
+ * of sibling lists: past a small alphabet, the table is only affordable for
+ * the few nodes that have many children.
  *
- *     n = alphabet     32     64    128    256
- *     length 8       1.03   1.06   1.11   1.20
- *     length 100     0.91   0.87   0.86   0.88
- *     length 1000    0.88   0.85   0.77   0.69
+ * Those are the nodes near the root. On two random cyclically reduced words
+ * over n = 1024 letters and their inverses, the root has 1024 children, the
+ * nodes of depth 1 have 226 on average at 2^16 letters of each word (646 at
+ * 2^18), and the deeper ones about 2. Walking the siblings then takes 510
+ * steps per lookup at the root and 101 at depth 1, all but 0.01 % of the steps,
+ * each a cache miss into the word buffer for the first letter. The rows
+ * layout reads that letter from flet instead, and gives the nodes with at
+ * least CT_PROMOTE children a dense row. Times to build the tree of the
+ * words and their inverses, rows against sparse:
  *
- * A single word of length 100000 over 128 letters has 225000 nodes, that is
- * 110 MB of dense table against 1.7 MB of sibling lists. Up to 32 letters the
- * dense table costs at most 3 % on short curves and 128 bytes per node; past
- * it the loss on short curves, which are the common case, grows with the
- * alphabet, and so does the memory. So past it we walk the children of a node
- * instead of indexing them (CT_DENSE_MAX_ALPHABET).
+ *     n        letters per word      8      1000     2^16     2^18
+ *     1024     sparse           1.61 us   8.06 ms   1.19 s   12.2 s
+ *              rows             1.25 us    686 us   31.5 ms   708 ms
+ *     128      sparse           1.61 us   1.29 ms   225 ms   1.64 s
+ *              rows             1.16 us    217 us   35.4 ms   186 ms
+ *
+ * With words drawn with Zipf's law of exponent 1, the nodes of depth 2 have
+ * up to 958 children (mean 7.5) at 2^18 letters, and rows are 25 to 27 times
+ * faster than the sparse layout at n = 1024 and 2^16 or 2^18 letters, 13
+ * times at 1000 letters. On words with few factors (Fibonacci, the ruler
+ * sequence, random Fibonacci), whose nodes have 2 to 16 children, rows take
+ * 0.8 to 1.1 times the sparse time.
+ *
+ * Giving a row at 8, 16 or 32 children makes no more than 7 % of difference
+ * on random words at n = 1024; 16 is the fastest on the Zipf words at 2^18
+ * letters, where 8 takes 222 MB against 155 MB for 16 (71 MB for sparse
+ * lists); at n = 128 and 2^18 letters, 32 and 64 are 1.6 and 3 times slower
+ * than 16. Hence CT_PROMOTE.
+ *
+ * A hash table (node, letter) -> child with linear probing was at most 27 %
+ * slower than the rows on random and Zipf words, but 1.3 to 2.8 times slower
+ * than the sparse lists on the words with few factors, and took more memory
+ * (130 MB against 96 MB at n = 1024 and 2^18 letters).
+ *
+ * Up to 32 letters the dense table stays: it costs at most 128 bytes per
+ * node, and at 32 letters the rows are 3 to 50 % slower than it (1000 letters:
+ * 147 us dense, 221 us rows).
  */
 
 /* ------------------------------------------------------------------ */
@@ -70,8 +98,56 @@ static int grown(int cap, int need, int max, int start)
 /* The largest number of nodes the node indices and the dense table allow. */
 static int max_nodes(const ct_tree *T)
 {
-    return T->dense ? INT_MAX / T->alphabet_size : INT_MAX;
+    return T->layout == CT_LAYOUT_DENSE ? INT_MAX / T->alphabet_size : INT_MAX;
 }
+
+/* ------------------------------------------------------------------ */
+/* the rows of CT_LAYOUT_ROWS                                          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A node gets its row when it gets its promote-th child. The number of such
+ * nodes is only bounded by nstates / promote, which is far more than the
+ * trees met in practice have (at n = 1024 letters and 2^19 letters of words,
+ * 1025 nodes out of 1.1 million), so the rows are not reserved ahead:
+ * promote_node allocates, and when it cannot the node keeps its sibling
+ * list alone, which gives the same answers, and tries again at its next
+ * child. An insertion therefore never fails because of the rows.
+ */
+static void promote_node(ct_tree *T, int s)
+{
+    size_t a = (size_t) T->alphabet_size;
+    int d = 0, r, t, c, *row;
+    for (t = T->fchild[s]; t != -1; t = T->nsib[t])
+        d++;
+    if (d < T->promote)
+        return;
+    if (T->nrows == T->rows_capacity) {
+        int cap = T->rows_capacity;
+        int *p;
+        if (cap > INT_MAX / 2)
+            return;
+        cap = cap ? 2 * cap : 4;
+        if ((size_t) cap > SIZE_MAX / sizeof(int) / a)
+            return;
+        p = (int *) realloc(T->rows, (size_t) cap * a * sizeof(int));
+        if (p == NULL)
+            return;
+        T->rows = p;
+        T->rows_capacity = cap;
+    }
+    r = T->nrows++;
+    row = T->rows + (size_t) r * a;
+    for (c = 0; c < T->alphabet_size; c++)
+        row[c] = -1;
+    for (t = T->fchild[s]; t != -1; t = T->nsib[t])
+        row[T->flet[t]] = t;
+    T->row[s] = r;
+}
+
+/* ------------------------------------------------------------------ */
+/* nodes                                                               */
+/* ------------------------------------------------------------------ */
 
 /*
  * Make room for need nodes. A failure leaves the tree as it was: arrays that
@@ -93,7 +169,7 @@ static int reserve_nodes(ct_tree *T, int need)
         (err = resize_ints(&T->tstart, cap)) ||
         (err = resize_ints(&T->tend, cap)))
         return err;
-    if (T->dense) {
+    if (T->layout == CT_LAYOUT_DENSE) {
         /* cap * alphabet_size <= INT_MAX by max_nodes */
         if ((err = resize_ints(&T->trans, cap * T->alphabet_size)))
             return err;
@@ -102,6 +178,9 @@ static int reserve_nodes(ct_tree *T, int need)
             (err = resize_ints(&T->nsib, cap)))
             return err;
     }
+    if (T->layout == CT_LAYOUT_ROWS &&
+        ((err = resize_ints(&T->flet, cap)) || (err = resize_ints(&T->row, cap))))
+        return err;
     T->capacity = cap;
     return CT_OK;
 }
@@ -156,7 +235,7 @@ static inline int add_node(ct_tree *T)
     T->tword[n] = -2;
     T->tstart[n] = -2;
     T->tend[n] = -2;
-    if (T->dense) {
+    if (T->layout == CT_LAYOUT_DENSE) {
         int *row = T->trans + (size_t) n * (size_t) T->alphabet_size;
         for (c = 0; c < T->alphabet_size; c++)
             row[c] = -1;
@@ -164,21 +243,26 @@ static inline int add_node(ct_tree *T)
         T->fchild[n] = -1;
         T->nsib[n] = -1;
     }
+    if (T->layout == CT_LAYOUT_ROWS) {
+        T->flet[n] = -1;
+        T->row[n] = -1;
+    }
     return n;
 }
 
-int ct_init(ct_tree *T, int alphabet, int reserve, int dense)
+int ct_init(ct_tree *T, int alphabet, int reserve, int layout)
 {
     int err;
     memset(T, 0, sizeof(ct_tree));
     T->max_letter = -1;
-    if (alphabet < 0 || reserve < 0 || (dense > 0 && alphabet == 0))
+    if (alphabet < 0 || reserve < 0 || layout > CT_LAYOUT_ROWS ||
+        (layout == CT_LAYOUT_DENSE && alphabet == 0))
         return CT_EINVALID;
     T->alphabet_size = alphabet;
-    if (dense < 0)
-        T->dense = 0 < alphabet && alphabet <= CT_DENSE_MAX_ALPHABET;
-    else
-        T->dense = dense != 0;
+    if (layout < 0)
+        layout = 0 < alphabet && alphabet <= CT_DENSE_MAX_ALPHABET ? CT_LAYOUT_DENSE : CT_LAYOUT_ROWS;
+    T->layout = layout;
+    T->promote = CT_PROMOTE;
 
     if ((err = reserve_nodes(T, reserve > 1 ? reserve : 1)))
         return err;
@@ -208,6 +292,9 @@ void ct_free(ct_tree *T)
     free(T->trans);
     free(T->fchild);
     free(T->nsib);
+    free(T->flet);
+    free(T->row);
+    free(T->rows);
     memset(T, 0, sizeof(ct_tree));
 }
 
@@ -282,18 +369,41 @@ static void truncate_last_word(ct_tree *T, int size)
 /* children                                                            */
 /* ------------------------------------------------------------------ */
 
-static inline int child(const ct_tree *T, int s, int letter)
+/* The first letter of the label into the node t. */
+static inline int first_letter(const ct_tree *T, int t)
+{
+    if (T->layout == CT_LAYOUT_ROWS)
+        return T->flet[t];
+    return letter_of(T, T->tword[t], T->tstart[t]);
+}
+
+/*
+ * The child of s by letter in the layouts with sibling lists. Kept out of
+ * child(), which is inlined everywhere: inlining this too made the dense
+ * layout 5 to 10 % slower at 32 letters, for the same instructions.
+ */
+static int child_in_lists(const ct_tree *T, int s, int letter)
 {
     int t;
-    if (T->dense)
-        return T->trans[s * T->alphabet_size + letter];
-    t = T->fchild[s];
-    while (t != -1) {
-        if (letter_of(T, T->tword[t], T->tstart[t]) == letter)
-            return t;
-        t = T->nsib[t];
+    if (T->layout == CT_LAYOUT_SPARSE) {
+        for (t = T->fchild[s]; t != -1; t = T->nsib[t])
+            if (letter_of(T, T->tword[t], T->tstart[t]) == letter)
+                return t;
+        return -1;
     }
+    if (T->row[s] != -1)
+        return T->rows[(size_t) T->row[s] * (size_t) T->alphabet_size + (size_t) letter];
+    for (t = T->fchild[s]; t != -1; t = T->nsib[t])
+        if (T->flet[t] == letter)
+            return t;
     return -1;
+}
+
+static inline int child(const ct_tree *T, int s, int letter)
+{
+    if (T->layout == CT_LAYOUT_DENSE)
+        return T->trans[s * T->alphabet_size + letter];
+    return child_in_lists(T, s, letter);
 }
 
 int ct_child(const ct_tree *T, int s, int letter)
@@ -304,27 +414,36 @@ int ct_child(const ct_tree *T, int s, int letter)
     return child(T, s, letter);
 }
 
+/* Make t, whose label starts with letter, a child of s. */
 static inline void add_child(ct_tree *T, int s, int letter, int t)
 {
-    if (T->dense) {
+    if (T->layout == CT_LAYOUT_DENSE) {
         T->trans[s * T->alphabet_size + letter] = t;
-    } else {
-        T->nsib[t] = T->fchild[s];
-        T->fchild[s] = t;
+        return;
+    }
+    T->nsib[t] = T->fchild[s];
+    T->fchild[s] = t;
+    if (T->layout == CT_LAYOUT_ROWS) {
+        T->flet[t] = letter;
+        if (T->row[s] != -1)
+            T->rows[(size_t) T->row[s] * (size_t) T->alphabet_size + (size_t) letter] = t;
+        else if (T->alphabet_size)
+            promote_node(T, s);
     }
 }
 
 /*
- * Put new where old sits among the children of s.
+ * Put new where old, whose label starts with letter, sits among the children
+ * of s.
  *
  * In the sparse representation old is found by its index and not by its
  * letter, since the letter of a node is read off the label of the edge into
  * it and a caller splitting that edge is about to move it.
  */
-static void replace_child(ct_tree *T, int s, int letter, int old, int new_)
+static inline void replace_child(ct_tree *T, int s, int letter, int old, int new_)
 {
     int prev, c;
-    if (T->dense) {
+    if (T->layout == CT_LAYOUT_DENSE) {
         T->trans[s * T->alphabet_size + letter] = new_;
         return;
     }
@@ -340,6 +459,11 @@ static void replace_child(ct_tree *T, int s, int letter, int old, int new_)
     else
         T->nsib[prev] = new_;
     T->nsib[old] = -1;
+    if (T->layout == CT_LAYOUT_ROWS) {
+        T->flet[new_] = letter;
+        if (T->row[s] != -1)
+            T->rows[(size_t) T->row[s] * (size_t) T->alphabet_size + (size_t) letter] = new_;
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -817,7 +941,7 @@ int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n
 
     /* the children of the root, ordered by order[] of their first letter */
     d = 0;
-    if (T->dense) {
+    if (T->layout == CT_LAYOUT_DENSE) {
         for (c = 0; c < T->alphabet_size; c++) {
             t = T->trans[c];
             if (t != -1) {
@@ -829,7 +953,7 @@ int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n
     } else {
         for (t = T->fchild[0]; t != -1; t = T->nsib[t]) {
             kids[d] = t;
-            keys[d] = order[letter_of(T, T->tword[t], T->tstart[t])];
+            keys[d] = order[first_letter(T, t)];
             d++;
         }
     }
@@ -845,7 +969,7 @@ int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n
          * of the label */
         base = pivot[letter_of(T, T->tword[s], T->tend[s] - 1)];
         d = 0;
-        if (T->dense) {
+        if (T->layout == CT_LAYOUT_DENSE) {
             const int *row = T->trans + (size_t) s * (size_t) T->alphabet_size;
             for (c = 0; c < T->alphabet_size; c++) {
                 t = row[c];
@@ -860,7 +984,7 @@ int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n
             }
         } else {
             for (t = T->fchild[s]; t != -1; t = T->nsib[t]) {
-                key = order[letter_of(T, T->tword[t], T->tstart[t])] - base;
+                key = order[first_letter(T, t)] - base;
                 if (key < 0)
                     key += n;
                 kids[d] = t;
@@ -918,13 +1042,20 @@ int ct_check(const ct_tree *T)
 {
     int n = T->nstates;
     int err = CT_OK;
-    int *buf = NULL, *buf2 = NULL;
+    int *buf = NULL, *buf2 = NULL, *owned = NULL;
     int i, j, s, t, r, c, k, count, steps, max_dep, ei, ek;
 
     CHECK(n >= 1 && n <= T->capacity);
     CHECK(T->broken == 0);
     CHECK(T->alphabet_size >= 0);
-    CHECK(!T->dense || T->alphabet_size > 0);
+    CHECK(T->layout >= CT_LAYOUT_SPARSE && T->layout <= CT_LAYOUT_ROWS);
+    CHECK(T->layout != CT_LAYOUT_DENSE || T->alphabet_size > 0);
+    if (T->layout == CT_LAYOUT_ROWS) {
+        CHECK(T->promote >= 1);
+        CHECK(T->nrows >= 0 && T->nrows <= T->rows_capacity);
+        /* without an alphabet, rows cannot be allocated */
+        CHECK(T->alphabet_size > 0 || T->nrows == 0);
+    }
 
     /* the words: laid end to end, non-empty, letters in range */
     CHECK(T->nwords >= 0 && T->nwords <= T->words_capacity);
@@ -961,14 +1092,28 @@ int ct_check(const ct_tree *T)
         }
     }
 
+    /* the first letters */
+    if (T->layout == CT_LAYOUT_ROWS) {
+        CHECK(T->flet[0] == -1);
+        for (s = 1; s < n; s++)
+            CHECK(T->flet[s] == letter_of(T, T->tword[s], T->tstart[s]));
+    }
+
     /* the children: a child of s has parent s and its slot is the first
      * letter of its label; a node has children if and only if it is not a
      * leaf; every node but the root is found under its parent by its first
      * letter, and there are n - 1 children in all, so each one exactly once */
+    if (T->layout == CT_LAYOUT_ROWS) {
+        owned = (int *) calloc((size_t) T->nrows + 1, sizeof(int));
+        if (owned == NULL) {
+            err = CT_ENOMEM;
+            goto done;
+        }
+    }
     count = 0;
     for (s = 0; s < n; s++) {
         int d = 0;
-        if (T->dense) {
+        if (T->layout == CT_LAYOUT_DENSE) {
             for (c = 0; c < T->alphabet_size; c++) {
                 t = T->trans[s * T->alphabet_size + c];
                 if (t == -1)
@@ -987,8 +1132,31 @@ int ct_check(const ct_tree *T)
         }
         CHECK(s == 0 || (T->tend[s] == -1) == (d == 0));
         count += d;
+        /* a row belongs to one node with at least promote children, and
+         * holds exactly its children, each at its first letter; a node with
+         * that many children may lack a row (see promote_node) */
+        if (T->layout == CT_LAYOUT_ROWS && T->row[s] != -1) {
+            const int *row;
+            int e = 0;
+            r = T->row[s];
+            CHECK(r >= 0 && r < T->nrows && !owned[r]);
+            owned[r] = 1;
+            CHECK(d >= T->promote);
+            row = T->rows + (size_t) r * (size_t) T->alphabet_size;
+            for (c = 0; c < T->alphabet_size; c++) {
+                t = row[c];
+                if (t == -1)
+                    continue;
+                CHECK(t >= 1 && t < n && T->parent[t] == s && T->flet[t] == c);
+                e++;
+            }
+            CHECK(e == d);
+        }
     }
     CHECK(count == n - 1);
+    if (T->layout == CT_LAYOUT_ROWS)
+        for (r = 0; r < T->nrows; r++)
+            CHECK(owned[r]);
     for (t = 1; t < n; t++)
         CHECK(child(T, T->parent[t], letter_of(T, T->tword[t], T->tstart[t])) == t);
 
@@ -1043,5 +1211,6 @@ int ct_check(const ct_tree *T)
 done:
     free(buf);
     free(buf2);
+    free(owned);
     return err;
 }

@@ -2,15 +2,17 @@ import itertools
 import random
 import pytest
 
-# the conjugate tree comes in two implementations and the fast one in two
+# the conjugate tree comes in two implementations and the fast one in three
 # transition representations; every test below runs against all of them
 #
 # - "naive"   the pure Python reference, combisurf.conjugate_tree_naive
 # - "dense"   the Cython one with an alphabet-indexed transition table
 # - "sparse"  the Cython one walking a linked list of siblings
-# - "auto"    the Cython one picking between the two on the alphabet
+# - "rows"    the Cython one with sibling lists and dense rows for the nodes
+#             with many children
+# - "auto"    the Cython one picking between them on the alphabet
 # - "unknown" the Cython one that was not told the alphabet
-KINDS = ["naive", "dense", "sparse", "auto", "unknown"]
+KINDS = ["naive", "dense", "sparse", "rows", "auto", "unknown"]
 
 
 def make_tree(kind, alphabet, reserve=0):
@@ -98,11 +100,12 @@ def test_algorithm_dispatch():
     # knowing how long the words will be
     assert ConjugateTree(4).algorithm() == 'dense'
     assert ConjugateTree(32).algorithm() == 'dense'
-    assert ConjugateTree(33).algorithm() == 'sparse'
-    assert ConjugateTree(256).algorithm() == 'sparse'
-    assert ConjugateTree().algorithm() == 'sparse'
+    assert ConjugateTree(33).algorithm() == 'rows'
+    assert ConjugateTree(256).algorithm() == 'rows'
+    assert ConjugateTree().algorithm() == 'rows'
     assert ConjugateTree(256, algorithm='dense').algorithm() == 'dense'
     assert ConjugateTree(4, algorithm='sparse').algorithm() == 'sparse'
+    assert ConjugateTree(4, algorithm='rows').algorithm() == 'rows'
 
 
 @pytest.mark.parametrize("kind", KINDS)
@@ -287,7 +290,7 @@ def test_cyclically_sorted_leaves_random(kind):
         check_cyclically_sorted_leaves(T, *random_order_and_pivot(rng, n))
 
 
-@pytest.mark.parametrize("kind", ["dense", "sparse", "auto", "unknown"])
+@pytest.mark.parametrize("kind", ["dense", "sparse", "rows", "auto", "unknown"])
 def test_sorted_leaves_as_conjugates(kind):
     rng = random.Random(20260925)
     for _ in range(60):
@@ -322,7 +325,7 @@ def assert_same_tree(T0, T1):
         assert T0.internal_state_word(s) == T1.internal_state_word(s), s
 
 
-# 4 and 8 are below the dense/sparse threshold, 34 and 64 above it
+# 4 and 8 are below the threshold of the dense layout, 34 and 64 above it
 @pytest.mark.parametrize("alphabet", [2, 4, 8, 34, 64])
 def test_against_naive(alphabet):
     r"""
@@ -334,7 +337,7 @@ def test_against_naive(alphabet):
     rng = random.Random(1000 + alphabet)
     for trial in range(40):
         reserve = rng.choice([0, 1, 5, 500])
-        algorithm = rng.choice([None, 'dense', 'sparse'])
+        algorithm = rng.choice([None, 'dense', 'sparse', 'rows'])
         T0 = ConjugateTree(alphabet, reserve=reserve, algorithm=algorithm)
         T1 = ConjugateTreeNaive()
         history = []

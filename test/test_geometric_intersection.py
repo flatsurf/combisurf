@@ -258,9 +258,9 @@ def test_intersection_matrix_genus_and_length():
         for length in [3, 8, 40, 200]:
             curves = random_primitive_curves(4 * g, length, 5, rng)
             I = gi.intersection_matrix(curves)
-            # both sides of the conjugate tree dense/sparse threshold are
-            # covered by this range of genera
-            assert I._tree.algorithm() == ('dense' if 4 * g <= 32 else 'sparse')
+            # both sides of the threshold of the dense layout of the
+            # conjugate tree are covered by this range of genera
+            assert I._tree.algorithm() == ('dense' if 4 * g <= 32 else 'rows')
             for x, u in enumerate(curves):
                 for y, v in enumerate(curves):
                     if y < x:
@@ -269,7 +269,7 @@ def test_intersection_matrix_genus_and_length():
 
 
 def test_intersection_matrix_large_alphabet():
-    # A large alphabet, well beyond the tree's dense/sparse threshold.
+    # A large alphabet, well beyond the threshold of the dense layout.
     import random
     from combisurf.geometric_intersection import GeometricIntersection
 
@@ -280,7 +280,7 @@ def test_intersection_matrix_large_alphabet():
     for length in [5, 30]:
         curves = random_primitive_curves(4 * g, length, 4, rng)
         I = gi.intersection_matrix(curves)
-        assert I._tree.algorithm() == 'sparse'
+        assert I._tree.algorithm() == 'rows'
         for x, u in enumerate(curves):
             for y, v in enumerate(curves):
                 assert I.entry(x, y) == gi.geometric_intersection([u], [v]), (length, x, y)
@@ -715,7 +715,7 @@ def test_word_arcs_degenerate():
 
 # the conjugate tree of curves and their inverses, as built by
 # tree_add_with_inverse and read by cyclically_sorted_leaf_arcs
-CONJUGATE_TREE_KINDS = ["dense", "sparse", "auto", "unknown"]
+CONJUGATE_TREE_KINDS = ["dense", "sparse", "rows", "auto", "unknown"]
 
 
 def make_conjugate_tree(kind, alphabet):

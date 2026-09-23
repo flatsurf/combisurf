@@ -37,6 +37,24 @@ enum {
 };
 
 /*
+ * How the children of a node are held:
+ * - CT_LAYOUT_SPARSE: a list of siblings per node, where a child is looked
+ *   up by reading the first letter of each sibling's label in the words;
+ * - CT_LAYOUT_DENSE: a table with one slot per node and letter;
+ * - CT_LAYOUT_ROWS: a list of siblings per node with the first letter of
+ *   each node in the array flet, and, when the alphabet is known, a dense
+ *   row of alphabet_size slots for each node with at least promote children.
+ * CT_LAYOUT_DEFAULT lets ct_init choose. See conjugate_tree.c for the
+ * measurements behind the choice.
+ */
+enum {
+    CT_LAYOUT_DEFAULT = -1,
+    CT_LAYOUT_SPARSE = 0,
+    CT_LAYOUT_DENSE = 1,
+    CT_LAYOUT_ROWS = 2
+};
+
+/*
  * The tree. The nodes are the integers 0, 1, ..., nstates - 1, the root is
  * 0, and a new node takes the first free index (nodes are never removed).
  * All per-node arrays have room for capacity nodes.
@@ -48,7 +66,7 @@ enum {
  */
 typedef struct ct_tree {
     int alphabet_size;   /* size of the alphabet, 0 when it is not known */
-    int dense;           /* whether children are a flat alphabet-indexed table */
+    int layout;          /* one of the CT_LAYOUT_* above, never the default */
     int max_letter;      /* largest letter seen so far, -1 when none */
     int broken;          /* 0, or the error code that left the tree inconsistent */
 
@@ -71,22 +89,35 @@ typedef struct ct_tree {
     int *tstart;         /* node -> start of that label */
     int *tend;           /* node -> end of that label, -1 for a leaf */
 
-    /* children, dense or sibling lists; only one of the two is allocated */
-    int *trans;          /* node * alphabet_size + letter -> child, -1 when absent */
-    int *fchild;         /* node -> first child, -1 when none */
-    int *nsib;           /* node -> next sibling, -1 when last */
+    /* children; each array is allocated only by the layouts that use it */
+    int *trans;          /* dense: node * alphabet_size + letter -> child, -1 when absent */
+    int *fchild;         /* sparse, rows: node -> first child, -1 when none */
+    int *nsib;           /* sparse, rows: node -> next sibling, -1 when last */
+    int *flet;           /* rows: node -> first letter of the label into it, -1 for the root */
+
+    /* rows: the dense rows of the nodes with at least promote children */
+    int promote;         /* may be changed before the first word is added */
+    int *row;            /* node -> its row, -1 when none */
+    int *rows;           /* row * alphabet_size + letter -> child, -1 when absent */
+    int nrows;
+    int rows_capacity;
 } ct_tree;
 
-/* The largest alphabet for which ct_init picks the dense layout by default. */
+/* The largest alphabet for which ct_init picks the dense layout by default;
+ * past it, and without an alphabet, it picks the rows layout. */
 #define CT_DENSE_MAX_ALPHABET 32
+
+/* The number of children from which a node gets a dense row in CT_LAYOUT_ROWS. */
+#define CT_PROMOTE 16
 
 /*
  * Set up an empty tree over an alphabet of the given size (0 when unknown)
- * with room for reserve nodes. dense is 1 for the dense layout, 0 for the
- * sibling lists, and negative for the default choice. On failure *T is left
- * in a state that ct_free accepts.
+ * with room for reserve nodes, with the given layout (CT_LAYOUT_*; 0 and 1
+ * are the sparse and dense layouts). The dense layout needs the alphabet;
+ * without it, the rows layout has no rows. On failure *T is left in a state
+ * that ct_free accepts.
  */
-int ct_init(ct_tree *T, int alphabet, int reserve, int dense);
+int ct_init(ct_tree *T, int alphabet, int reserve, int layout);
 
 /* Release the memory of T. Safe on a zero-filled struct; T is zero-filled after. */
 void ct_free(ct_tree *T);
@@ -101,9 +132,11 @@ int ct_process(ct_tree *T, const int *w, int len, int *result);
 
 /*
  * Make room for the given number of words more, of the given number of
- * letters in all, so that adding them needs no allocation: after it,
- * ct_process on valid words of that total length cannot fail. A caller that
- * must add several words or none calls it first.
+ * letters in all: after it, ct_process on valid words of that total length
+ * cannot fail. The rows of CT_LAYOUT_ROWS are not reserved and may still be
+ * allocated, but a node whose row cannot be allocated keeps its sibling list
+ * and the insertion succeeds. A caller that must add several words or none
+ * calls it first.
  */
 int ct_reserve(ct_tree *T, int words, int letters);
 

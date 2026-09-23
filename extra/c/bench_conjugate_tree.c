@@ -1,15 +1,18 @@
 /*
  * Benchmark of the conjugate trees of combisurf/src/conjugate_tree.c.
  *
- * Usage: bench <word file> [rounds] [--with-inverse]
+ * Usage: bench <word file> [rounds] [--with-inverse] [--layout <layout>]
+ *              [--promote <P>]
  *
  * Reads a word file (see extra/word_files.py), builds a fresh tree over its
- * alphabet with the default layout and inserts every word with ct_process;
+ * alphabet with the given layout (default, sparse, dense or rows; with
+ * --promote, the rows layout gives a row to a node at P children)
+ * and inserts every word with ct_process;
  * with --with-inverse, it inserts each new word followed by the inverse of
  * its primitive root (reversed, each letter h replaced by h ^ 1), as
  * geometric_intersection does. It prints the best time over the rounds of
- * one build, which a round repeats until it has lasted 10 ms, and the shape
- * of the tree.
+ * one build, which a round repeats until it has lasted 10 ms, the shape of
+ * the tree, and the memory it holds (from the capacities of its arrays).
  *
  * It also times, on the same sequence of sizes:
  * - the copy of the words into the word buffer of the tree, and the growth of
@@ -159,6 +162,7 @@ static void record(int need, int len, int size, const int *src)
 }
 
 static int *invbuf;
+static int opt_layout = CT_LAYOUT_DEFAULT, opt_promote = 0;
 
 static void process(ct_tree *T, const int *w, int len, int *result, int rec)
 {
@@ -173,8 +177,10 @@ static void process(ct_tree *T, const int *w, int len, int *result, int rec)
 static void build(ct_tree *T, int with_inverse, int rec)
 {
     int j, k, r, status, check, i;
-    if (ct_init(T, alphabet, 0, -1))
+    if (ct_init(T, alphabet, 0, opt_layout))
         die("ct_init failed");
+    if (opt_promote)
+        T->promote = opt_promote;
     for (j = 0; j < nwords; j++) {
         if (!with_inverse) {
             process(T, words[j], lens[j], &status, rec);
@@ -361,6 +367,31 @@ static void print_shape(const ct_tree *T)
     free(stack);
 }
 
+/* The bytes allocated for T, from the capacities. */
+static double tree_bytes(const ct_tree *T)
+{
+    double per_node = 6, b;
+    if (T->layout == CT_LAYOUT_DENSE)
+        per_node += T->alphabet_size;
+    else
+        per_node += 2;
+    if (T->layout == CT_LAYOUT_ROWS)
+        per_node += 2;
+    b = 4 * (per_node * T->capacity + T->wbuf_capacity + 2.0 * T->words_capacity);
+    b += 4.0 * T->rows_capacity * T->alphabet_size;
+    return b;
+}
+
+static const char *layout_name(int layout)
+{
+    switch (layout) {
+    case CT_LAYOUT_SPARSE: return "sparse";
+    case CT_LAYOUT_DENSE: return "dense";
+    case CT_LAYOUT_ROWS: return "rows";
+    default: return "?";
+    }
+}
+
 /* ------------------------------------------------------------------ */
 
 int main(int argc, char **argv)
@@ -373,15 +404,27 @@ int main(int argc, char **argv)
     for (j = 1; j < argc; j++) {
         if (strcmp(argv[j], "--with-inverse") == 0)
             opt_inverse = 1;
-        else if (argv[j][0] == '-')
-            die("usage: bench <word file> [rounds] [--with-inverse]");
+        else if (strcmp(argv[j], "--layout") == 0 && j + 1 < argc) {
+            const char *l = argv[++j];
+            opt_layout = !strcmp(l, "default") ? CT_LAYOUT_DEFAULT :
+                         !strcmp(l, "sparse") ? CT_LAYOUT_SPARSE :
+                         !strcmp(l, "dense") ? CT_LAYOUT_DENSE :
+                         !strcmp(l, "rows") ? CT_LAYOUT_ROWS : -2;
+            if (opt_layout == -2)
+                die("unknown layout");
+        } else if (strcmp(argv[j], "--promote") == 0 && j + 1 < argc) {
+            opt_promote = atoi(argv[++j]);
+            if (opt_promote <= 0)
+                die("--promote needs a positive integer");
+        } else if (argv[j][0] == '-')
+            die("usage: bench <word file> [rounds] [--with-inverse] [--layout <layout>] [--promote <P>]");
         else if (positional++ == 0)
             path = argv[j];
         else
             rounds = atoi(argv[j]);
     }
     if (path == NULL || rounds <= 0)
-        die("usage: bench <word file> [rounds] [--with-inverse]");
+        die("usage: bench <word file> [rounds] [--with-inverse] [--layout <layout>] [--promote <P>]");
     read_file(path);
     if (opt_inverse && alphabet % 2)
         die("an alphabet of odd size has no inverses");
@@ -395,13 +438,17 @@ int main(int argc, char **argv)
     build(&T, opt_inverse, 1);
     t_copy = best_time(copy_alone, rounds);
 
-    printf("%s: n = %d, %d words, %ld letters, %s\n", path, alphabet, nwords,
-           total_letters, opt_inverse ? "with inverse" : "plain");
+    printf("%s: n = %d, %d words, %ld letters, %s, layout %s", path, alphabet, nwords,
+           total_letters, opt_inverse ? "with inverse" : "plain", layout_name(T.layout));
+    if (T.layout == CT_LAYOUT_ROWS)
+        printf(" (promote %d, %d rows)", T.promote, T.nrows);
+    printf("\n");
     print_time("build:", t_build);
     printf(" per tree, %.2f ns per letter\n", t_build / (double) total_letters * 1e9);
     print_time("copy alone:", t_copy);
     printf(" per tree, %.1f %% of the build\n", 100 * t_copy / t_build);
     print_shape(&T);
+    printf("memory: %.0f bytes\n", tree_bytes(&T));
 
     if (opt_inverse) {
         double t_sort, t_check;

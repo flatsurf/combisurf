@@ -141,12 +141,16 @@ cdef class ConjugateTree:
     - ``reserve`` -- (default: ``0``) the number of nodes to allocate up
       front. This is a hint and nothing more: the tree grows on demand
       whatever it is given. A tree over words of total length ``T`` has at
-      most ``2 T + 1`` nodes, so that value makes a reallocation impossible.
+      most ``2 T + 1`` nodes, so that value makes a reallocation of the nodes
+      impossible (with ``algorithm='rows'`` a node that reaches 16 children
+      may still allocate its row).
 
     - ``algorithm`` -- (default: ``None``) how to hold the children of a node,
-      either ``'dense'`` (one slot per letter, which needs ``alphabet``) or
-      ``'sparse'`` (a linked list of siblings). The default takes ``'dense'``
-      for an alphabet of at most 32 letters and ``'sparse'`` otherwise. It is
+      either ``'dense'`` (one slot per letter, which needs ``alphabet``),
+      ``'sparse'`` (a linked list of siblings) or ``'rows'`` (a linked list
+      of siblings, and one slot per letter for the nodes with at least 16
+      children when ``alphabet`` is given). The default takes ``'dense'``
+      for an alphabet of at most 32 letters and ``'rows'`` otherwise. It is
       a time against memory trade-off and changes no answer.
 
     EXAMPLES::
@@ -204,7 +208,7 @@ cdef class ConjugateTree:
             sage: ConjugateTree(2, algorithm='bogus')
             Traceback (most recent call last):
             ...
-            ValueError: algorithm must be None, 'dense' or 'sparse'
+            ValueError: algorithm must be None, 'dense', 'sparse' or 'rows'
         """
         cdef int n = alphabet
         cdef int r = reserve
@@ -215,15 +219,17 @@ cdef class ConjugateTree:
             raise ValueError(f"reserve (={reserve}) must be a non-negative integer")
 
         if algorithm is None:
-            d = -1
+            d = CT_LAYOUT_DEFAULT
         elif algorithm == 'dense':
             if n == 0:
                 raise ValueError("the 'dense' algorithm needs the alphabet")
-            d = 1
+            d = CT_LAYOUT_DENSE
         elif algorithm == 'sparse':
-            d = 0
+            d = CT_LAYOUT_SPARSE
+        elif algorithm == 'rows':
+            d = CT_LAYOUT_ROWS
         else:
-            raise ValueError("algorithm must be None, 'dense' or 'sparse'")
+            raise ValueError("algorithm must be None, 'dense', 'sparse' or 'rows'")
 
         ct_free(&self.T)
         cdef int err = ct_init(&self.T, n, r, d)
@@ -258,7 +264,7 @@ cdef class ConjugateTree:
     cdef int _reserve(self, int words, int letters) except -1:
         r"""
         Make room so that adding ``words`` more words of ``letters`` letters
-        in all needs no allocation, as ``ct_reserve``.
+        in all cannot fail, as ``ct_reserve``.
 
         The C functions are only linked into this module, so another
         extension reaches them through this method.
@@ -303,22 +309,28 @@ cdef class ConjugateTree:
 
     def algorithm(self):
         r"""
-        Return how the children of a node are held, ``'dense'`` or
-        ``'sparse'``.
+        Return how the children of a node are held, ``'dense'``,
+        ``'sparse'`` or ``'rows'``.
 
         EXAMPLES::
 
             sage: from combisurf.conjugate_tree import ConjugateTree
             sage: ConjugateTree().algorithm()
-            'sparse'
+            'rows'
             sage: ConjugateTree(8).algorithm()
             'dense'
             sage: ConjugateTree(256).algorithm()
-            'sparse'
+            'rows'
             sage: ConjugateTree(256, algorithm='dense').algorithm()
             'dense'
+            sage: ConjugateTree(256, algorithm='sparse').algorithm()
+            'sparse'
         """
-        return 'dense' if self.T.dense else 'sparse'
+        if self.T.layout == CT_LAYOUT_DENSE:
+            return 'dense'
+        if self.T.layout == CT_LAYOUT_SPARSE:
+            return 'sparse'
+        return 'rows'
 
     def num_words(self):
         r"""
@@ -472,7 +484,7 @@ cdef class ConjugateTree:
             raise ValueError(f"s (={s}) must be a node")
         cdef int c, t
         ans = {}
-        if self.T.dense:
+        if self.T.layout == CT_LAYOUT_DENSE:
             for c in range(self.T.alphabet_size):
                 t = self.T.trans[node * self.T.alphabet_size + c]
                 if t != -1:

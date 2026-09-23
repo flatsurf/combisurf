@@ -3,7 +3,8 @@
 #   make bench      build build/bench
 #   make clean
 #
-# Then: build/bench <word file> [rounds] [--with-inverse], with word files
+# Then: build/bench <word file> [rounds] [--with-inverse] [--layout <layout>]
+# [--promote <P>], with word files
 # written by extra/word_files.py (into words/, say).
 
 CC ?= cc

@@ -14,9 +14,15 @@ cdef extern from "conjugate_tree.h":
         CT_EINTERNAL
         CT_EBROKEN
 
+    enum:
+        CT_LAYOUT_DEFAULT
+        CT_LAYOUT_SPARSE
+        CT_LAYOUT_DENSE
+        CT_LAYOUT_ROWS
+
     ctypedef struct ct_tree:
         int alphabet_size
-        int dense
+        int layout
         int max_letter
         int broken
         int *wbuf
@@ -37,8 +43,14 @@ cdef extern from "conjugate_tree.h":
         int *trans
         int *fchild
         int *nsib
+        int *flet
+        int promote
+        int *row
+        int *rows
+        int nrows
+        int rows_capacity
 
-    int ct_init(ct_tree *T, int alphabet, int reserve, int dense) nogil
+    int ct_init(ct_tree *T, int alphabet, int reserve, int layout) nogil
     void ct_free(ct_tree *T) nogil
     int ct_process(ct_tree *T, const int *w, int len, int *result) nogil
     int ct_reserve(ct_tree *T, int words, int letters) nogil

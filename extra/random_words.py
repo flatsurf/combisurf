@@ -168,6 +168,89 @@ def noisify(w_source, w_noise, k, rng):
     return w
 
 
+def random_substitution(length, rules, rng, start=0):
+    r"""
+    Return the prefix of the given length of the word obtained by iterating,
+    from the letter ``start``, a random substitution.
+
+    Each letter ``a`` has a list ``rules[a]`` of pairs ``(image, probability)``,
+    and at each application of the substitution, each occurrence of ``a``
+    is replaced by an image drawn from that list, independently of the
+    others. With ``0 -> 01 | 10`` (each with probability 1/2) and ``1 -> 0``
+    this is the random Fibonacci substitution.
+
+    INPUT:
+
+    - ``length`` -- length of the output
+
+    - ``rules`` -- dictionary mapping each letter to a list of pairs
+      ``(image, probability)``, where ``image`` is a non-empty sequence of
+      letters (the probabilities need not sum to one); some image must have
+      at least two letters, and the letters reached from ``start`` must
+      eventually grow, or this does not return
+
+    - ``rng`` -- a ``random.Random``
+
+    - ``start`` -- (default: ``0``) the letter to start from
+
+    EXAMPLES::
+
+        sage: import random
+        sage: fib = {0: [((0, 1), 0.5), ((1, 0), 0.5)], 1: [((0,), 1)]}
+        sage: random_substitution(13, fib, random.Random(0))
+        array('i', [0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0])
+    """
+    images = {a: [array('i', u) for u, _ in rule] for a, rule in rules.items()}
+    weights = {a: [p for _, p in rule] for a, rule in rules.items()}
+    if all(len(u) <= 1 for rule in images.values() for u in rule):
+        raise ValueError("the substitution does not grow")
+    w = array('i', [start])
+    while len(w) < length:
+        u = array('i')
+        for a in w:
+            u.extend(rng.choices(images[a], weights=weights[a])[0])
+        w = u
+    return w[:length]
+
+
+def markov(length, k, d, rng):
+    r"""
+    Return a random walk of the given length on a random graph over the
+    letters `\{0, \ldots, k - 1\}` in which each letter has ``d``
+    successors.
+
+    The ``d`` successors of each letter are drawn once, distinct and
+    uniformly; the walk starts at a uniform letter and moves to a uniform
+    successor at each step. Every factor of the word is then followed by at
+    most ``d`` letters, so every node of its conjugate tree but the root has
+    at most ``d`` children, up to the factors that run across the end of
+    the word (read cyclically) and those of the other words of the tree.
+
+    INPUT:
+
+    - ``length`` -- length of the output
+
+    - ``k`` -- size of the alphabet
+
+    - ``d`` -- number of successors of a letter, at most ``k``
+
+    - ``rng`` -- a ``random.Random``
+
+    EXAMPLES::
+
+        sage: import random
+        sage: markov(16, 8, 2, random.Random(0))
+        array('i', [2, 4, 3, 7, 7, 2, 4, 3, 3, 7, 7, 7, 7, 2, 7, 7])
+    """
+    if not 1 <= d <= k:
+        raise ValueError("d must be between 1 and k")
+    successors = [rng.sample(range(k), d) for _ in range(k)]
+    w = array('i', [rng.randrange(k)])
+    while len(w) < length:
+        w.append(rng.choice(successors[w[-1]]))
+    return w[:length]
+
+
 def to_free_group(w, n, rng):
     r"""
     Return the image of the abstract word ``w`` under a random injection of

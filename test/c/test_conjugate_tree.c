@@ -50,6 +50,21 @@ static long num_checks = 0;
         } \
     } while (0)
 
+static const char *layout_names[] = {"sparse", "dense", "rows"};
+
+/* The promotion threshold of the rows layout in the tests: small, so that
+ * small trees have rows, and changed by the cases that vary it. */
+static int test_promote = 2;
+
+/* ct_init, with the promotion threshold of the tests for the rows layout. */
+static int init_tree(ct_tree *T, int alphabet, int reserve, int layout)
+{
+    int err = ct_init(T, alphabet, reserve, layout);
+    if (err == CT_OK && T->layout == CT_LAYOUT_ROWS)
+        T->promote = test_promote;
+    return err;
+}
+
 static void *xmalloc(size_t n)
 {
     void *p = malloc(n ? n : 1);
@@ -237,7 +252,7 @@ static int same_snapshot(snapshot a, snapshot b)
 static int trees_equal(const ct_tree *A, const ct_tree *B)
 {
     size_t n = (size_t) A->nstates, sz = sizeof(int);
-    if (A->alphabet_size != B->alphabet_size || A->dense != B->dense ||
+    if (A->alphabet_size != B->alphabet_size || A->layout != B->layout ||
         A->max_letter != B->max_letter || A->broken != B->broken ||
         A->nwords != B->nwords || A->wbuf_size != B->wbuf_size ||
         A->nstates != B->nstates)
@@ -251,9 +266,15 @@ static int trees_equal(const ct_tree *A, const ct_tree *B)
         memcmp(A->parent, B->parent, n * sz) || memcmp(A->tword, B->tword, n * sz) ||
         memcmp(A->tstart, B->tstart, n * sz) || memcmp(A->tend, B->tend, n * sz))
         return 0;
-    if (A->dense)
+    if (A->layout == CT_LAYOUT_DENSE)
         return memcmp(A->trans, B->trans, n * (size_t) A->alphabet_size * sz) == 0;
-    return memcmp(A->fchild, B->fchild, n * sz) == 0 && memcmp(A->nsib, B->nsib, n * sz) == 0;
+    if (memcmp(A->fchild, B->fchild, n * sz) || memcmp(A->nsib, B->nsib, n * sz))
+        return 0;
+    if (A->layout == CT_LAYOUT_ROWS)
+        return A->promote == B->promote && A->nrows == B->nrows &&
+               memcmp(A->flet, B->flet, n * sz) == 0 && memcmp(A->row, B->row, n * sz) == 0 &&
+               (A->nrows == 0 || memcmp(A->rows, B->rows, (size_t) A->nrows * (size_t) A->alphabet_size * sz) == 0);
+    return 1;
 }
 
 /* Insert w, compare with the model and check the tree. */
@@ -449,16 +470,16 @@ static int random_word(int *w, int maxlen, int A, const model *M)
 
 /*
  * One random tree: alphabet (0 for unknown), letter bound A (A = alphabet
- * when it is known), layout dense (negative for the default), reserve, and
- * up to nw words of length at most maxlen.
+ * when it is known), layout (negative for the default), reserve, and up to
+ * nw words of length at most maxlen.
  */
-static void random_tree(int alphabet, int A, int dense, int reserve, int nw, int maxlen)
+static void random_tree(int alphabet, int A, int layout, int reserve, int nw, int maxlen)
 {
     ct_tree T;
     model M;
     int *w = (int *) xmalloc((size_t) maxlen * sizeof(int));
     int j, len;
-    CHECK_CODE(ct_init(&T, alphabet, reserve, dense), CT_OK);
+    CHECK_CODE(init_tree(&T, alphabet, reserve, layout), CT_OK);
     model_init(&M);
     for (j = 0; j < nw; j++) {
         len = random_word(w, maxlen, A, &M);
@@ -472,37 +493,48 @@ static void random_tree(int alphabet, int A, int dense, int reserve, int nw, int
 
 static void test_random(void)
 {
-    int trial, alphabet, A, dense;
+    int trial, alphabet, A, layout;
     current_case = "random small trees";
-    for (trial = 0; trial < 3000; trial++) {
+    for (trial = 0; trial < 5000; trial++) {
         /* the alphabet: unknown, small, and past the dense threshold */
         alphabet = trial % 3 == 0 ? 0 : 1 + rnd(trial % 3 == 1 ? 32 : 200);
         A = alphabet ? alphabet : 1 + rnd(10);
-        /* the layout: default, sparse, and dense when the alphabet is known */
-        dense = alphabet ? rnd(3) - 1 : -1 - rnd(2);
-        if (dense == -2)
-            dense = 0;
-        random_tree(alphabet, A, dense, rnd(2) ? 0 : rnd(64), 1 + rnd(15), 1 + rnd(12));
+        /* the layout: any, dense only when the alphabet is known */
+        layout = rnd(4) - 1;
+        if (layout == CT_LAYOUT_DENSE && !alphabet)
+            layout = CT_LAYOUT_DEFAULT;
+        test_promote = 1 + rnd(4);
+        random_tree(alphabet, A, layout, rnd(2) ? 0 : rnd(64), 1 + rnd(15), 1 + rnd(12));
     }
 
-    current_case = "random long words, sparse";
-    for (trial = 0; trial < 60; trial++) {
-        alphabet = trial % 2 ? 0 : 33 + rnd(168);
-        A = alphabet ? alphabet : 2 + rnd(199);
-        random_tree(alphabet, A, 0, 0, 1 + rnd(8), 300);
+    /* long words past the dense threshold, in every layout but dense */
+    for (layout = CT_LAYOUT_SPARSE; layout <= CT_LAYOUT_ROWS; layout++) {
+        if (layout == CT_LAYOUT_DENSE)
+            continue;
+        current_case = layout_names[layout];
+        for (trial = 0; trial < 60; trial++) {
+            alphabet = trial % 2 ? 0 : 33 + rnd(168);
+            A = alphabet ? alphabet : 2 + rnd(199);
+            test_promote = 1 + rnd(16);
+            random_tree(alphabet, A, layout, 0, 1 + rnd(8), 300);
+        }
     }
+    test_promote = 2;
 
     current_case = "random long words, dense past 32 letters";
     for (trial = 0; trial < 40; trial++) {
         alphabet = 33 + rnd(80);
-        random_tree(alphabet, alphabet, 1, 0, 1 + rnd(8), 300);
+        random_tree(alphabet, alphabet, CT_LAYOUT_DENSE, 0, 1 + rnd(8), 300);
     }
 
     current_case = "random long words, small alphabets";
     for (trial = 0; trial < 60; trial++) {
         alphabet = trial % 3 ? 1 + rnd(4) : 0;
         A = alphabet ? alphabet : 1 + rnd(4);
-        random_tree(alphabet, A, trial % 2 ? -1 : 0, 0, 1 + rnd(8), 300);
+        layout = trial % 4 - 1;
+        if (layout == CT_LAYOUT_DENSE && !alphabet)
+            layout = CT_LAYOUT_DEFAULT;
+        random_tree(alphabet, A, layout, 0, 1 + rnd(8), 300);
     }
 }
 
@@ -556,17 +588,19 @@ static int lyndon_words(int k, int maxlen, int *out, int *lens)
     }
 }
 
-static void test_hand_picked(int dense)
+/* The hand-picked cases, in the given layout and over the given alphabet
+ * (0, or at least 16). */
+static void test_hand_picked(int layout, int alphabet)
 {
     ct_tree T;
     model M;
     int w[64], lyn[1024], lens[64];
-    int k, j, i, num, pos, alphabet = dense ? 16 : 0;
+    int k, j, i, num, pos;
 
-    current_case = dense ? "hand-picked, dense" : "hand-picked, sparse";
+    current_case = layout_names[layout];
 
     /* a single letter */
-    CHECK_CODE(ct_init(&T, alphabet, 0, dense), CT_OK);
+    CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
     model_init(&M);
     w[0] = 3;
     expect(&T, &M, w, 1, 1);
@@ -577,7 +611,7 @@ static void test_hand_picked(int dense)
 
     /* a^k, each in a fresh tree and then all in one */
     for (k = 1; k <= 6; k++) {
-        CHECK_CODE(ct_init(&T, alphabet, 0, dense), CT_OK);
+        CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
         model_init(&M);
         for (j = 0; j < k; j++)
             w[j] = 5;
@@ -586,7 +620,7 @@ static void test_hand_picked(int dense)
         ct_free(&T);
         model_free(&M);
     }
-    CHECK_CODE(ct_init(&T, alphabet, 0, dense), CT_OK);
+    CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
     model_init(&M);
     for (k = 1; k <= 6; k++)
         expect(&T, &M, w, k, k == 1 ? 1 : 0);
@@ -594,7 +628,7 @@ static void test_hand_picked(int dense)
     model_free(&M);
 
     /* (ab)^3 */
-    CHECK_CODE(ct_init(&T, alphabet, 0, dense), CT_OK);
+    CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
     model_init(&M);
     for (j = 0; j < 6; j++)
         w[j] = j % 2 ? 7 : 2;
@@ -608,7 +642,7 @@ static void test_hand_picked(int dense)
     {
         int u[] = {0, 1, 1, 0, 2, 1, 0};
         int l = 7;
-        CHECK_CODE(ct_init(&T, alphabet, 0, dense), CT_OK);
+        CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
         model_init(&M);
         w[0] = 4;
         expect(&T, &M, w, 1, 1);
@@ -631,7 +665,7 @@ static void test_hand_picked(int dense)
      * primitive, and each conjugate of each is found */
     num = lyndon_words(2, 6, lyn, lens);
     CHECK(num == 23);
-    CHECK_CODE(ct_init(&T, alphabet, 0, dense), CT_OK);
+    CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
     model_init(&M);
     for (i = 0, pos = 0; i < num; pos += lens[i], i++)
         expect(&T, &M, lyn + pos, lens[i], 1);
@@ -648,7 +682,7 @@ static void test_hand_picked(int dense)
     model_free(&M);
 
     /* every letter distinct */
-    CHECK_CODE(ct_init(&T, alphabet, 0, dense), CT_OK);
+    CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
     model_init(&M);
     for (j = 0; j < 16; j++)
         w[j] = (7 * j) % 16;
@@ -658,7 +692,7 @@ static void test_hand_picked(int dense)
     model_free(&M);
 
     /* errors, on an empty tree and on a tree with words */
-    CHECK_CODE(ct_init(&T, alphabet, 0, dense), CT_OK);
+    CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
     model_init(&M);
     for (k = 0; k < 2; k++) {
         w[0] = 1;
@@ -798,7 +832,7 @@ static void corrupt_node(ct_tree *T, int s)
         if (j == 3)
             corrupt(T, fields[j] + s, (fields[j][s] + 1) % T->nwords, 1, names[j], s);
     }
-    if (T->dense) {
+    if (T->layout == CT_LAYOUT_DENSE) {
         int *row = T->trans + (size_t) s * (size_t) T->alphabet_size;
         for (c = 0; c < T->alphabet_size; c++) {
             values_for(row[c], n, 0, v);
@@ -821,16 +855,37 @@ static void corrupt_node(ct_tree *T, int s)
             corrupt(T, T->nsib + s, 1 + rnd(n - 1), 0, "nsib", s);
         }
     }
+    if (T->flet) {
+        values_for(T->flet[s], n, 0, v);
+        for (j = 0; j < 5; j++)
+            corrupt(T, T->flet + s, v[j], 0, "flet", s);
+        corrupt(T, T->flet + s, rnd(T->alphabet_size), 0, "flet", s);
+    }
+    if (T->layout == CT_LAYOUT_ROWS) {
+        values_for(T->row[s], T->nrows, 0, v);
+        for (j = 0; j < 7; j++)
+            corrupt(T, T->row + s, v[j], 0, "row", s);
+        if (T->row[s] != -1) {
+            int *row = T->rows + (size_t) T->row[s] * (size_t) T->alphabet_size;
+            for (c = 0; c < T->alphabet_size; c++) {
+                values_for(row[c], n, 0, v);
+                for (j = 0; j < 5; j++)
+                    corrupt(T, row + c, v[j], 0, "rows", s);
+                corrupt(T, row + c, s, 0, "rows", s);
+                corrupt(T, row + c, 1 + rnd(n - 1), 0, "rows", s);
+            }
+        }
+    }
 }
 
-static void test_corruption(int dense)
+static void test_corruption(int layout)
 {
     ct_tree T;
     model M;
     int w1[] = {0, 2, 0, 3, 1, 0, 2}, w2[] = {2, 0, 2, 0, 1}, w3[] = {3, 3, 1};
     int s, j, x;
-    current_case = dense ? "corruption, dense" : "corruption, sparse";
-    CHECK_CODE(ct_init(&T, 4, 0, dense), CT_OK);
+    current_case = layout_names[layout];
+    CHECK_CODE(init_tree(&T, 4, 0, layout), CT_OK);
     model_init(&M);
     process_checked(&T, &M, w1, 7);
     process_checked(&T, &M, w2, 5);
@@ -839,6 +894,15 @@ static void test_corruption(int dense)
     /* every node, the root included */
     for (s = 0; s < T.nstates; s++)
         corrupt_node(&T, s);
+    if (T.layout == CT_LAYOUT_ROWS) {
+        /* the root has 4 children, so it has a row */
+        CHECK(T.nrows > 0 && T.row[0] != -1);
+        corrupt(&T, &T.nrows, T.nrows - 1, 0, "nrows", 0);
+        if (T.nrows < T.rows_capacity)
+            corrupt(&T, &T.nrows, T.nrows + 1, 0, "nrows", 0);
+        corrupt(&T, &T.promote, 0, 0, "promote", 0);
+        corrupt(&T, &T.promote, 5, 0, "promote", 0);
+    }
 
     /* the words */
     for (j = 0; j < T.wbuf_size; j++) {
@@ -857,6 +921,8 @@ static void test_corruption(int dense)
     corrupt(&T, &T.max_letter, 2, 0, "max_letter", 0);
     corrupt(&T, &T.nstates, T.nstates - 1, 0, "nstates", 0);
     corrupt(&T, &T.broken, CT_EINTERNAL, 0, "broken", 0);
+    corrupt(&T, &T.layout, CT_LAYOUT_ROWS + 1, 0, "layout", 0);
+    corrupt(&T, &T.layout, -1, 0, "layout", 0);
 
     /* nothing was left corrupted */
     CHECK_CODE(ct_check(&T), CT_OK);
@@ -910,6 +976,8 @@ static void test_odd_states(void)
     check_unusable(&T);
     CHECK_CODE(ct_init(&T, 0, 0, 1), CT_EINVALID);
     check_unusable(&T);
+    CHECK_CODE(ct_init(&T, 4, 0, CT_LAYOUT_ROWS + 1), CT_EINVALID);
+    check_unusable(&T);
     CHECK_CODE(ct_init(&T, INT_MAX / 2, 10, 1), CT_ETOOLARGE);
     check_unusable(&T);
 
@@ -917,6 +985,28 @@ static void test_odd_states(void)
     CHECK_CODE(ct_init(&T, 3, 0, -1), CT_OK);
     ct_free(&T);
     ct_free(&T);
+
+    /* the layouts that ct_init chooses */
+    CHECK_CODE(ct_init(&T, 0, 0, CT_LAYOUT_DEFAULT), CT_OK);
+    CHECK(T.layout == CT_LAYOUT_ROWS);
+    ct_free(&T);
+    CHECK_CODE(ct_init(&T, CT_DENSE_MAX_ALPHABET, 0, CT_LAYOUT_DEFAULT), CT_OK);
+    CHECK(T.layout == CT_LAYOUT_DENSE);
+    ct_free(&T);
+    CHECK_CODE(ct_init(&T, CT_DENSE_MAX_ALPHABET + 1, 0, CT_LAYOUT_DEFAULT), CT_OK);
+    CHECK(T.layout == CT_LAYOUT_ROWS && T.promote == CT_PROMOTE);
+    ct_free(&T);
+
+    /* without an alphabet, the rows layout never promotes a node */
+    {
+        int w[] = {0, 1, 2, 3, 4, 5, 6, 7}, r;
+        CHECK_CODE(init_tree(&T, 0, 0, CT_LAYOUT_ROWS), CT_OK);
+        CHECK(T.layout == CT_LAYOUT_ROWS && T.promote == test_promote);
+        CHECK_CODE(ct_process(&T, w, 8, &r), CT_OK);
+        CHECK(T.nrows == 0 && T.row[0] == -1);
+        CHECK_CODE(ct_check(&T), CT_OK);
+        ct_free(&T);
+    }
 
     /* the checked queries on a tree that holds words */
     {
@@ -972,10 +1062,10 @@ static void test_odd_states(void)
 /* 6: ct_reserve                                                       */
 /* ------------------------------------------------------------------ */
 
-/* Build over (alphabet, dense) the words of pre, reserve for the words of
- * post (when with_reserve), insert them, and compare with the tree built
- * without the reservation. */
-static void check_reserve(int alphabet, int dense, int npre, int npost, int maxlen)
+/* Build over (alphabet, layout) the words of pre, reserve for the words of
+ * post, insert them, and compare with the tree built without the
+ * reservation. */
+static void check_reserve(int alphabet, int layout, int npre, int npost, int maxlen)
 {
     ct_tree A, B;
     int *words = (int *) xmalloc((size_t) (npre + npost) * (size_t) maxlen * sizeof(int));
@@ -992,8 +1082,8 @@ static void check_reserve(int alphabet, int dense, int npre, int npost, int maxl
     }
     model_free(&M);
 
-    CHECK_CODE(ct_init(&A, alphabet, 0, dense), CT_OK);
-    CHECK_CODE(ct_init(&B, alphabet, 0, dense), CT_OK);
+    CHECK_CODE(init_tree(&A, alphabet, 0, layout), CT_OK);
+    CHECK_CODE(init_tree(&B, alphabet, 0, layout), CT_OK);
     for (j = 0; j < npre; j++) {
         CHECK_CODE(ct_process(&A, words + (size_t) j * (size_t) maxlen, lens[j], &r1), CT_OK);
         CHECK_CODE(ct_process(&B, words + (size_t) j * (size_t) maxlen, lens[j], &r2), CT_OK);
@@ -1033,13 +1123,17 @@ static void test_reserve(void)
     current_case = "ct_reserve";
     for (trial = 0; trial < 300; trial++) {
         int alphabet = trial % 3 == 0 ? 0 : 1 + rnd(trial % 3 == 1 ? 32 : 100);
-        int dense = alphabet ? rnd(3) - 1 : 0;
-        check_reserve(alphabet, dense, trial % 2 ? 0 : 1 + rnd(5), 1 + rnd(10), 1 + rnd(40));
+        int layout = rnd(4) - 1;
+        if (layout == CT_LAYOUT_DENSE && !alphabet)
+            layout = CT_LAYOUT_DEFAULT;
+        test_promote = 1 + rnd(4);
+        check_reserve(alphabet, layout, trial % 2 ? 0 : 1 + rnd(5), 1 + rnd(10), 1 + rnd(40));
     }
+    test_promote = 2;
 
-    for (trial = 0; trial < 2; trial++) {
-        CHECK_CODE(ct_init(&T, 4, 0, trial), CT_OK);
-        if (trial)
+    for (trial = 0; trial < 6; trial++) {
+        CHECK_CODE(init_tree(&T, 4, 0, trial % 3), CT_OK);
+        if (trial >= 3)
             CHECK_CODE(ct_process(&T, w, 3, &r), CT_OK);
         expect_reserve_error(&T, 1, INT_MAX, CT_ETOOLARGE);
         expect_reserve_error(&T, 1, (INT_MAX - T.nstates) / 2 + 1, CT_ETOOLARGE);
@@ -1085,10 +1179,15 @@ int main(int argc, char **argv)
         seed = strtoull(argv[1], NULL, 10);
     rng_state = seed;
 
-    test_hand_picked(0);
-    test_hand_picked(1);
-    test_corruption(1);
-    test_corruption(0);
+    {
+        int layout;
+        for (layout = CT_LAYOUT_SPARSE; layout <= CT_LAYOUT_ROWS; layout++) {
+            test_hand_picked(layout, 16);
+            if (layout != CT_LAYOUT_DENSE)
+                test_hand_picked(layout, 0);
+            test_corruption(layout);
+        }
+    }
     test_odd_states();
     test_reserve();
     test_random();
