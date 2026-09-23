@@ -6,7 +6,7 @@ circle. Two of them, `A = (i_0, j_0)` and `B = (i_1, j_1)` with `i_0 < j_0`
 and `i_1 < j_1`, cross when their endpoints strictly interleave, that is
 `i_0 < i_1 < j_0 < j_1` or `i_1 < i_0 < j_1 < j_0`; arcs that share an
 endpoint do not cross. Each arc carries a `u`-weight and a `v`-weight, and
-:func:`crossing_arcs_sweep` returns
+:func:`crossing_arcs_sweep_sorted` returns
 
 .. MATH::
 
@@ -17,9 +17,9 @@ over the pairs `(A, B)` of crossing arcs with `i_0 < i_1`.
 This is the `O(n^2)` term of
 :meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`,
 where the positions are the angles at the vertex and the arcs the
-consecutive pairs of letters of the curves.
-:func:`crossing_arcs_sweep_sorted` computes the same number from two sorted
-arrays of arcs, one per curve, which is how
+consecutive pairs of letters of the curves, given to
+:func:`crossing_arcs_sweep_sorted` as two sorted arrays of arcs, one per
+curve, which is also how
 :class:`~combisurf.geometric_intersection.GeometricIntersectionMatrix` keeps
 them.
 
@@ -33,16 +33,17 @@ listed together as in
 
 EXAMPLES::
 
-    sage: from combisurf.crossing_arcs import crossing_arcs_sweep
+    sage: from array import array
+    sage: from combisurf.crossing_arcs import crossing_arcs_sweep_sorted
     sage: n = 4
-    sage: crossing_arcs_sweep(n, {2 * n + 0: [1, 0], 3 * n + 1: [0, 1]})
+    sage: crossing_arcs_sweep_sorted(n, array('q', [2 * n + 0]), array('q', [1]),
+    ....:                               array('q', [3 * n + 1]), array('q', [1]))
     1
 
 .. SEEALSO::
 
-    :mod:`combisurf.crossing_arcs_naive` holds the same sweep in pure Python,
-    and :func:`~combisurf.crossing_arcs_naive.crossing_arcs_double_sum` the
-    `O(n^2)` double sum. They are the reference this is tested against.
+    The brute forces this is tested against, straight from the definitions
+    above, live in ``test/test_geometric_intersection.py``.
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -68,140 +69,6 @@ from cpython cimport array
 from libc.stdlib cimport calloc, free, malloc, qsort
 
 from combisurf.partial_sums cimport fenwick_add, fenwick_prefix, fenwick_clear
-
-
-def crossing_arcs_sweep(int n, dict arcs, bint symmetric=False):
-    r"""
-    Return the weighted number of pairs of crossing arcs in ``arcs``.
-
-    INPUT:
-
-    - ``n`` -- positive integer, the number of positions on the circle
-
-    - ``arcs`` -- dictionary; the arc from ``first`` to ``last`` (with
-      ``0 <= first < last < n``) is the key ``last * n + first`` and its value
-      is the pair ``[u, v]`` of its weights, both non-negative
-
-    - ``symmetric`` -- boolean (default: ``False``); whether the `u`-weight
-      and the `v`-weight are equal on every arc, in which case the
-      `v`-weights are not read
-
-    OUTPUT: the integer `S` of the module documentation
-
-    ALGORITHM:
-
-    The arcs `B = (i_1, j_1)` are visited by increasing right endpoint `j_1`.
-    When `B` is visited, the arcs already inserted are exactly the arcs
-    `A = (i_0, j_0)` with `j_0 < j_1`, and among those `A` crosses `B` from
-    the left if and only if `i_0 < i_1` and not `j_0 \le i_1` (the second
-    condition implies the first since `i_0 < j_0`). So `A` is inserted as
-    `+u(A)` at position `i_0 + 1` and `-u(A)` at position `j_0` of a Fenwick
-    tree (:ref:`fenwick1994`), and its prefix sum up to `i_1` is the total
-    `u`-weight of the arcs crossing `B` from the left. The same goes for `v`.
-    The arcs sharing the right endpoint `j_1` do not cross each other, so
-    they are all visited before any of them is inserted.
-
-    This is the easy case of counting segment intersections by a sweep
-    (:ref:`chazelle1986`): on a circle the cyclic order of the endpoints
-    already is the sweep order. It costs `O(|\text{arcs}| \log(n))` after
-    sorting the keys.
-
-    The weights and the result are held in C ``long long``. The `u`-weights
-    add up to the total length of the curves they come from, and the same
-    for `v`, so the result is at most twice the product of these two lengths
-    and does not overflow for any input that fits in memory.
-
-    EXAMPLES::
-
-        sage: from combisurf.crossing_arcs import crossing_arcs_sweep
-        sage: n = 4
-        sage: crossing_arcs_sweep(n, {2 * n + 0: [1, 0], 3 * n + 1: [0, 1]})
-        1
-        sage: crossing_arcs_sweep(n, {2 * n + 0: [1, 1], 3 * n + 1: [1, 1]}, True)
-        2
-
-    Arcs sharing an endpoint do not cross::
-
-        sage: crossing_arcs_sweep(n, {2 * n + 0: [1, 1], 3 * n + 2: [1, 1]})
-        0
-        sage: crossing_arcs_sweep(n, {2 * n + 0: [1, 1], 2 * n + 1: [1, 1]})
-        0
-
-    It agrees with the double sum::
-
-        sage: from combisurf.crossing_arcs_naive import crossing_arcs_double_sum
-        sage: n = 9
-        sage: arcs = {}
-        sage: for _ in range(20):
-        ....:     first, last = sorted(sample(range(n), 2))
-        ....:     arcs[last * n + first] = [randint(0, 3), randint(0, 3)]
-        sage: crossing_arcs_sweep(n, arcs) == crossing_arcs_double_sum(n, arcs)
-        True
-        sage: for weights in arcs.values():
-        ....:     weights[1] = weights[0]
-        sage: crossing_arcs_sweep(n, arcs, True) == crossing_arcs_double_sum(n, arcs)
-        True
-
-    TESTS::
-
-        sage: crossing_arcs_sweep(1, {})
-        0
-        sage: crossing_arcs_sweep(0, {})
-        Traceback (most recent call last):
-        ...
-        ValueError: n must be positive
-    """
-    if n <= 0:
-        raise ValueError("n must be positive")
-
-    cdef list keys = sorted(arcs)
-    cdef Py_ssize_t num = len(keys)
-    cdef Py_ssize_t k, k0, t
-    cdef long long key, last, first, u, v
-    cdef long long S = 0
-
-    # the positions go from 0 to n - 1, stored at 1..n
-    cdef long long *fu = <long long *> calloc(n + 1, sizeof(long long))
-    cdef long long *fv = <long long *> calloc(n + 1, sizeof(long long))
-    if fu == NULL or fv == NULL:
-        free(fu)
-        free(fv)
-        raise MemoryError
-
-    try:
-        k = 0
-        while k < num:
-            last = (<long long> keys[k]) // n
-            k0 = k
-            while k < num:
-                key = keys[k]
-                if key // n != last:
-                    break
-                first = key - last * n
-                weights = arcs[keys[k]]
-                u = weights[0]
-                if symmetric:
-                    S += 2 * u * fenwick_prefix(fu, first + 1)
-                else:
-                    v = weights[1]
-                    S += v * fenwick_prefix(fu, first + 1) + u * fenwick_prefix(fv, first + 1)
-                k += 1
-            for t in range(k0, k):
-                key = keys[t]
-                first = key - last * n
-                weights = arcs[keys[t]]
-                u = weights[0]
-                fenwick_add(fu, n, first + 1, u)
-                fenwick_add(fu, n, last, -u)
-                if not symmetric:
-                    v = weights[1]
-                    fenwick_add(fv, n, first + 1, v)
-                    fenwick_add(fv, n, last, -v)
-    finally:
-        free(fu)
-        free(fv)
-
-    return S
 
 
 cdef struct _weighted_arc:
@@ -241,13 +108,17 @@ def word_arcs(int n, angles, list words, weights):
       :class:`~combisurf.conjugate_tree.ConjugateTree` holding each word
       next to its inverse are the words without their inverses
 
-    - ``weights`` -- a sequence of non-negative integers, the weight of the
-      word ``words[2 * j]`` being ``weights[j]``; the words of weight ``0``
-      are skipped
+    - ``weights`` -- a sequence of non-negative integers, of length exactly
+      ``(len(words) + 1) // 2``, one entry per word read (``words[0]``,
+      ``words[2]``, ...); the weight of the word ``words[2 * j]`` is
+      ``weights[j]`` and must fit in a C ``long long``; the words of weight
+      ``0`` are skipped
 
     OUTPUT: a pair ``(keys, key_weights)`` of arrays of typecode ``'q'``:
     the distinct keys by increasing order and, for each of them, the sum of
-    the weights of its occurrences
+    the weights of its occurrences. The sum of all the weights read from
+    ``words`` is exact, but see :func:`crossing_arcs_sweep_sorted` for the
+    bound past which combining two such outputs by a sweep overflows.
 
     ALGORITHM:
 
@@ -257,8 +128,7 @@ def word_arcs(int n, angles, list words, weights):
     arcs term of
     :meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`
     takes 1.9 us with two calls of this function and
-    :func:`crossing_arcs_sweep_sorted`, against 4.5 us with the arcs
-    gathered in a Python dictionary and :func:`crossing_arcs_sweep`.
+    :func:`crossing_arcs_sweep_sorted`.
 
     EXAMPLES::
 
@@ -271,40 +141,23 @@ def word_arcs(int n, angles, list words, weights):
         sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1], [0], [1]], [0, 2])
         (array('q', [8]), array('q', [2]))
 
-    It agrees with the dictionary of the arcs read by
-    :func:`crossing_arcs_sweep`::
+    Feeding the output of two calls to :func:`crossing_arcs_sweep_sorted`
+    counts the crossing arcs of two curves; here the identity angles put the
+    letters at their own position on a hexagon, the word ``[0, 3]`` gives the
+    arcs ``(0, 2)`` and ``(1, 3)``, the word ``[1, 4]`` gives ``(0, 4)`` and
+    ``(1, 5)``, and only ``(0, 2)`` and ``(1, 5)`` cross::
 
-        sage: from combisurf.crossing_arcs import crossing_arcs_sweep, crossing_arcs_sweep_sorted
-        sage: n = 12
+        sage: from combisurf.crossing_arcs import crossing_arcs_sweep_sorted
+        sage: n = 6
         sage: angles = list(range(n))
-        sage: shuffle(angles)
-        sage: def random_word(l):
-        ....:     w = [randrange(n)]
-        ....:     while len(w) < l or w[0] == w[-1] ^^ 1:
-        ....:         if len(w) == l:
-        ....:             w.pop()
-        ....:         w.append(choice([h for h in range(n) if h != w[-1] ^^ 1]))
-        ....:     return w
-        sage: W = [random_word(randint(1, 10)) for _ in range(10)]
-        sage: uw = [randrange(3) for _ in range(5)]
-        sage: vw = [randrange(3) for _ in range(5)]
-        sage: arcs = {}
-        sage: for i in range(0, len(W), 2):
-        ....:     w = W[i]
-        ....:     for p in range(len(w)):
-        ....:         first, last = sorted([angles[w[p]], angles[w[p - 1] ^^ 1]])
-        ....:         weights = arcs.setdefault(last * n + first, [0, 0])
-        ....:         weights[0] += uw[i // 2]
-        ....:         weights[1] += vw[i // 2]
-        sage: ukeys, uweights = word_arcs(n, angles, W, uw)
-        sage: vkeys, vweights = word_arcs(n, angles, W, vw)
-        sage: dict(zip(ukeys, uweights)) == {k: u for k, (u, v) in arcs.items() if u}
-        True
-        sage: dict(zip(vkeys, vweights)) == {k: v for k, (u, v) in arcs.items() if v}
-        True
-        sage: S = crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights)
-        sage: S == crossing_arcs_sweep(n, arcs)
-        True
+        sage: ukeys, uweights = word_arcs(n, angles, [array('i', [0, 3])], [1])
+        sage: ukeys, uweights
+        (array('q', [12, 19]), array('q', [1, 1]))
+        sage: vkeys, vweights = word_arcs(n, angles, [array('i', [1, 4])], [1])
+        sage: vkeys, vweights
+        (array('q', [24, 31]), array('q', [1, 1]))
+        sage: crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights)
+        1
 
     TESTS::
 
@@ -330,6 +183,26 @@ def word_arcs(int n, angles, list words, weights):
         Traceback (most recent call last):
         ...
         ValueError: n must be positive
+
+    ``weights`` must have exactly ``(len(words) + 1) // 2`` entries, in
+    either direction, since a mismatch used to read past the end of
+    ``weights`` under ``boundscheck=False`` rather than raise::
+
+        sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [1, 2])
+        Traceback (most recent call last):
+        ...
+        ValueError: weights must have (len(words) + 1) // 2 entries
+        sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]] * 2, [1])
+        Traceback (most recent call last):
+        ...
+        ValueError: weights must have (len(words) + 1) // 2 entries
+
+    Each weight must fit in a C ``long long``::
+
+        sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [2**63])
+        Traceback (most recent call last):
+        ...
+        OverflowError: weight 9223372036854775808 does not fit in a long long
     """
     if n <= 0:
         raise ValueError("n must be positive")
@@ -343,9 +216,15 @@ def word_arcs(int n, angles, list words, weights):
             raise ValueError("invalid position in angles")
 
     cdef Py_ssize_t num_words = len(words)
+    if len(weights) != (num_words + 1) // 2:
+        raise ValueError("weights must have (len(words) + 1) // 2 entries")
+
     cdef Py_ssize_t i, total = 0
     for i in range(0, num_words, 2):
-        if weights[i >> 1]:
+        wt = weights[i >> 1]
+        if not -(1 << 63) <= wt < (1 << 63):
+            raise OverflowError(f"weight {wt} does not fit in a long long")
+        if wt:
             total += len(words[i])
 
     cdef array.array a_q = array.array('q', [])
@@ -440,9 +319,10 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
     Return the weighted number of pairs of crossing arcs, the arcs being given
     as two sorted arrays, one for the `u`-weights and one for the `v`-weights.
 
-    This is :func:`crossing_arcs_sweep` on the arcs ``arcs`` with
-    ``arcs[ukeys[k]][0] = uweights[k]``, ``arcs[vkeys[k]][1] = vweights[k]``
-    and the weights missing from these two arrays equal to zero.
+    This computes the sum `S` of the module documentation from the arcs
+    ``arcs`` with ``arcs[ukeys[k]][0] = uweights[k]``, ``arcs[vkeys[k]][1] =
+    vweights[k]`` and the weights missing from these two arrays equal to
+    zero.
 
     INPUT:
 
@@ -455,8 +335,7 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
 
     - ``vkeys``, ``vweights`` -- (default: ``None``) the same for the
       `v`-weights; when they are ``None``, the `v`-weights are taken equal to
-      the `u`-weights, which is the ``symmetric`` case of
-      :func:`crossing_arcs_sweep`
+      the `u`-weights, which is the ``symmetric`` case
 
     - ``scratch`` -- (default: ``None``) an array of typecode ``'q'``, of
       length at least ``2 * (n + 1)`` and filled with zeros, used as the
@@ -466,23 +345,27 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
     - ``check`` -- boolean (default: ``True``); whether to check that the
       keys are sorted and valid
 
-    OUTPUT: the integer `S` of the module documentation
+    OUTPUT: the integer `S` of the module documentation, held together with
+    the running sweep in a C ``long long``. Writing `U` for the sum of
+    ``uweights`` and `V` for the sum of ``vweights`` (or `U` again when
+    ``vweights`` is ``None``), `S` is at most `2 U V` and is exact only while
+    `2 U V < 2^{63}`; past that bound it silently wraps around, since it is
+    a sum of products of weights rather than of the weights themselves.
 
     ALGORITHM:
 
-    The sweep of :func:`crossing_arcs_sweep`, with the arcs visited by
-    merging the two arrays group by group, a group being the arcs with a
-    given right endpoint. The `u`-arcs of a group are queried against the
-    `v`-weights inserted so far, the `v`-arcs against the `u`-weights, and
-    both are inserted afterwards. So there is no dictionary and no sort, and
-    the cost is `O((|ukeys| + |vkeys|) \log(n))`. The cells of the Fenwick
-    trees touched by the insertions are set back to zero at the end, in the
-    same time.
+    The arcs are visited by merging the two arrays group by group, a group
+    being the arcs with a given right endpoint. The `u`-arcs of a group are
+    queried against the `v`-weights inserted so far, the `v`-arcs against the
+    `u`-weights, and both are inserted afterwards. So there is no dictionary
+    and no sort, and the cost is `O((|ukeys| + |vkeys|) \log(n))`. The cells
+    of the Fenwick trees touched by the insertions are set back to zero at
+    the end, in the same time.
 
     EXAMPLES::
 
         sage: from array import array
-        sage: from combisurf.crossing_arcs import crossing_arcs_sweep, crossing_arcs_sweep_sorted
+        sage: from combisurf.crossing_arcs import crossing_arcs_sweep_sorted
         sage: n = 4
         sage: crossing_arcs_sweep_sorted(n, array('q', [2 * n + 0]), array('q', [1]),
         ....:                               array('q', [3 * n + 1]), array('q', [1]))
@@ -490,29 +373,22 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
         sage: crossing_arcs_sweep_sorted(n, array('q', [2 * n + 0, 3 * n + 1]), array('q', [1, 1]))
         2
 
-    It agrees with :func:`crossing_arcs_sweep`, and leaves ``scratch`` as it
-    found it::
+    On the hexagon of :func:`word_arcs`, ``ukeys`` holds the two arcs
+    ``(0, 2)`` and ``(1, 3)`` of the word ``[0, 3]``, which already cross
+    each other, and ``vkeys`` the two arcs ``(0, 4)`` and ``(1, 5)`` of the
+    word ``[1, 4]``, of which only ``(1, 5)`` crosses an arc of ``ukeys``;
+    this also leaves ``scratch`` as it found it::
 
-        sage: n = 9
-        sage: ukeys = sorted(set(b * n + a for a, b in (sorted(sample(range(n), 2)) for _ in range(15))))
-        sage: vkeys = sorted(set(b * n + a for a, b in (sorted(sample(range(n), 2)) for _ in range(15))))
-        sage: uweights = [randint(1, 3) for _ in ukeys]
-        sage: vweights = [randint(1, 3) for _ in vkeys]
-        sage: arcs = {k: [0, 0] for k in ukeys + vkeys}
-        sage: for k, u in zip(ukeys, uweights):
-        ....:     arcs[k][0] = u
-        sage: for k, v in zip(vkeys, vweights):
-        ....:     arcs[k][1] = v
+        sage: n = 6
+        sage: ukeys, uweights = array('q', [12, 19]), array('q', [1, 1])
+        sage: vkeys, vweights = array('q', [24, 31]), array('q', [1, 1])
         sage: scratch = array('q', [0] * (2 * (n + 1)))
-        sage: S = crossing_arcs_sweep_sorted(n, array('q', ukeys), array('q', uweights),
-        ....:                                   array('q', vkeys), array('q', vweights), scratch)
-        sage: S == crossing_arcs_sweep(n, arcs)
-        True
+        sage: crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights, scratch)
+        1
         sage: all(x == 0 for x in scratch)
         True
-        sage: S = crossing_arcs_sweep_sorted(n, array('q', ukeys), array('q', uweights), scratch=scratch)
-        sage: S == crossing_arcs_sweep(n, {k: [u, u] for k, u in zip(ukeys, uweights)}, True)
-        True
+        sage: crossing_arcs_sweep_sorted(n, ukeys, uweights, scratch=scratch)
+        2
         sage: all(x == 0 for x in scratch)
         True
 
@@ -730,24 +606,15 @@ def startpoint_sweep_sorted(int n, array.array uranks not None, array.array usta
         sage: startpoint_sweep_sorted(n, q(3, 4), q(0, 0), q(1, 5))
         2
 
-    It agrees with the pure Python version, and leaves ``scratch`` as it
-    found it::
+    Reusing ``scratch`` across the two calls above leaves it as it found it::
 
-        sage: from combisurf import crossing_arcs_naive
-        sage: n = 9
-        sage: ranks = sorted(sample(range(60), 40))
-        sage: starts = sorted(randrange(n) for _ in ranks)
-        sage: angles = [randrange(n - 1) for _ in ranks]
-        sage: side = [randrange(2) for _ in ranks]
-        sage: u = [[x[k] for k in range(40) if side[k] == 0] for x in (ranks, starts, angles)]
-        sage: v = [[x[k] for k in range(40) if side[k] == 1] for x in (ranks, starts, angles)]
         sage: scratch = array('q', [0] * (2 * (n + 1)))
-        sage: S = startpoint_sweep_sorted(n, *[array('q', x) for x in u + v], scratch=scratch)
-        sage: S == crossing_arcs_naive.startpoint_sweep_sorted(n, *u, *v)
+        sage: startpoint_sweep_sorted(n, q(3), q(0), q(1), q(4), q(0), q(5), scratch)
+        1
+        sage: all(x == 0 for x in scratch)
         True
-        sage: S = startpoint_sweep_sorted(n, *[array('q', x) for x in u], scratch=scratch)
-        sage: S == crossing_arcs_naive.startpoint_sweep_sorted(n, *u)
-        True
+        sage: startpoint_sweep_sorted(n, q(3, 4), q(0, 0), q(1, 5), scratch=scratch)
+        2
         sage: all(x == 0 for x in scratch)
         True
 
@@ -895,7 +762,7 @@ def startpoint_sweep_sorted(int n, array.array uranks not None, array.array usta
     return S
 
 
-def leaf_weights(array.array word_index not None, weights):
+def _leaf_weights(array.array word_index not None, weights):
     r"""
     Return the weights of the leaves of a family of words, from the index of
     the word of each leaf.
@@ -924,17 +791,17 @@ def leaf_weights(array.array word_index not None, weights):
     EXAMPLES::
 
         sage: from array import array
-        sage: from combisurf.crossing_arcs import leaf_weights
-        sage: leaf_weights(array('q', [0, 3, 1, 2, 3]), [5, 7])
+        sage: from combisurf.crossing_arcs import _leaf_weights
+        sage: _leaf_weights(array('q', [0, 3, 1, 2, 3]), [5, 7])
         array('q', [5, 7, 5, 7, 7])
 
     TESTS::
 
-        sage: leaf_weights(array('q', [4]), [5, 7])
+        sage: _leaf_weights(array('q', [4]), [5, 7])
         Traceback (most recent call last):
         ...
         ValueError: invalid word index 4
-        sage: leaf_weights(array('q'), [])
+        sage: _leaf_weights(array('q'), [])
         array('q')
     """
     cdef long long *index = _as_longlongs(word_index, "word_index")
@@ -993,7 +860,10 @@ def startpoint_sweep_weighted(int n, array.array starts not None, array.array an
     - ``check`` -- boolean (default: ``True``); whether to check that the
       lengths match and that the angles lie in ``0 .. n - 2``
 
-    OUTPUT: an integer, even when ``vweights`` is ``None``
+    OUTPUT: an integer, even when ``vweights`` is ``None``; exact only while
+    twice the product of the total `u`-weight and the total `v`-weight given
+    is below `2^{63}`, for the same reason as the bound given in the OUTPUT
+    of :func:`crossing_arcs_sweep_sorted`
 
     ALGORITHM:
 
@@ -1014,22 +884,15 @@ def startpoint_sweep_weighted(int n, array.array starts not None, array.array an
         sage: startpoint_sweep_weighted(8, q(0, 0), q(1, 5), q(2, 3))
         12
 
-    It agrees with the pure Python version, and leaves ``scratch`` as it
-    found it::
+    Reusing ``scratch`` across the two calls above leaves it as it found it::
 
-        sage: from combisurf import crossing_arcs_naive
-        sage: n = 9
-        sage: starts = sorted(randrange(n) for _ in range(40))
-        sage: angles = [randrange(n - 1) for _ in starts]
-        sage: uweights = [randrange(3) for _ in starts]
-        sage: vweights = [randrange(3) for _ in starts]
-        sage: scratch = array('q', [0] * (2 * (n + 1)))
-        sage: S = startpoint_sweep_weighted(n, *[array('q', x) for x in (starts, angles, uweights, vweights)], scratch=scratch)
-        sage: S == crossing_arcs_naive.startpoint_sweep_weighted(n, starts, angles, uweights, vweights)
+        sage: scratch = array('q', [0] * (2 * (8 + 1)))
+        sage: startpoint_sweep_weighted(8, q(0, 0), q(1, 5), q(2, 0), q(0, 3), scratch)
+        6
+        sage: all(x == 0 for x in scratch)
         True
-        sage: S = startpoint_sweep_weighted(n, *[array('q', x) for x in (starts, angles, uweights)], scratch=scratch)
-        sage: S == crossing_arcs_naive.startpoint_sweep_weighted(n, starts, angles, uweights)
-        True
+        sage: startpoint_sweep_weighted(8, q(0, 0), q(1, 5), q(2, 3), scratch=scratch)
+        12
         sage: all(x == 0 for x in scratch)
         True
 

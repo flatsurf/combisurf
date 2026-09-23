@@ -24,10 +24,10 @@ Module Reference
    colored_map
    colored_map_builder
    geometric_intersection
+   crossing_arcs
    conjugate_tree
    conjugate_tree_naive
    partial_sums
-   partial_sums_naive
 
 .. toctree::
    :maxdepth: 1

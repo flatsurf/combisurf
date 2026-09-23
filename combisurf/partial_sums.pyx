@@ -17,9 +17,8 @@ does not want to make that choice itself does not have to::
     sage: type(PartialSums(10000)) is PartialSumsFenwick
     True
 
-Both structures answer the same queries and are checked against each other,
-and against their pure Python reference implementations, in
-``test/test_partial_sums.py``::
+Both structures answer the same queries and are checked against each other
+and against a plain Python list, in ``test/test_partial_sums.py``::
 
     sage: P0 = PartialSumsNaive(5)
     sage: P1 = PartialSumsFenwick(5)
@@ -28,14 +27,6 @@ and against their pure Python reference implementations, in
     ....:     P1.update(i, x)
     sage: P0.partial_sum(1, 4) == P1.partial_sum(1, 4)
     True
-
-.. SEEALSO::
-
-    :mod:`combisurf.partial_sums_naive` holds pure Python
-    :class:`~combisurf.partial_sums_naive.PartialSumsNaive` and
-    :class:`~combisurf.partial_sums_naive.PartialSumsFenwick`
-    classes answering exactly the same queries. They are the reference these
-    are tested against.
 """
 # ****************************************************************************
 #  This file is part of combisurf

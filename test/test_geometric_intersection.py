@@ -133,6 +133,101 @@ def random_primitive_curves(n, length, num, rng):
     return curves
 
 
+def crossing_arcs_double_sum(n, arcs, symmetric=False):
+    r"""
+    Return the weighted number of pairs of crossing arcs in ``arcs``, by a
+    double sum over the endpoints.
+
+    The arcs are chords between the positions ``0``, ..., ``n - 1`` of a
+    circle. Two of them, ``A = (i0, j0)`` and ``B = (i1, j1)``, cross when
+    their endpoints strictly interleave, that is ``i0 < i1 < j0 < j1``; arcs
+    that share an endpoint do not cross. ``arcs`` maps the key
+    ``last * n + first`` of an arc from ``first`` to ``last`` to its pair
+    ``[u, v]`` of weights, and the returned value is the sum of
+    ``u(A) * v(B) + v(A) * u(B)`` over the pairs of crossing arcs with
+    ``i0 < i1``. ``symmetric`` is accepted for signature parity with
+    :func:`crossing_arcs_brute_force` but not read, since the sum above
+    already treats ``u`` and ``v`` independently. This is the ``O(n^2)``
+    reference :func:`~combisurf.crossing_arcs.crossing_arcs_sweep_sorted` is
+    tested against, an algorithm of its own rather than a copy of the Cython
+    sweep.
+    """
+    Nu = [[0] * n for _ in range(n)]
+    Nv = [[0] * n for _ in range(n)]
+    for key, (u, v) in arcs.items():
+        last, first = divmod(key, n)
+        Nu[first][last] = u
+        Nv[first][last] = v
+
+    # NOTE: below is a O(n^2) time version of the two following O(n^4) time sums
+    #     sum(Nu[i0][j0] * Nv[i1][j1]
+    #         for i0 in range(n)
+    #         for j0 in range(i0 + 1, n)
+    #         for i1 in range(i0 + 1, j0)
+    #         for j1 in range(j0 + 1, n))
+    #
+    #     sum(Nu[i1][j1] * Nv[i0][j0]
+    #         for i0 in range(n)
+    #         for j0 in range(i0 + 1, n)
+    #         for i1 in range(i0 + 1, j0)
+    #         for j1 in range(j0 + 1, n))
+    #
+    # We optimize the computation of the first sum by transforming Nu and
+    # Nv to contain partial sums in respectively i0 and j1 respectively
+    # (O(n^2) time).  Then we do a double sum in i1, j0 (O(n^2) time). We
+    # reverse the role of Nu and Nv to handle the second sum.
+    Nu1 = [l[:] for l in Nu]
+    for j in range(n):
+        for i in range(j - 1):
+            Nu1[i + 1][j] += Nu1[i][j]
+    Nv1 = [l[:] for l in Nv]
+    for i in range(n):
+        for j in range(n - 1, i + 1, -1):
+            Nv1[i][j - 1] += Nv1[i][j]
+
+    Nv2 = [l[:] for l in Nv]
+    for j in range(n):
+        for i in range(j - 1):
+            Nv2[i + 1][j] += Nv2[i][j]
+    Nu2 = [l[:] for l in Nu]
+    for i in range(n):
+        for j in range(n - 1, i + 1, -1):
+            Nu2[i][j - 1] += Nu2[i][j]
+
+    return sum(Nu1[i1 - 1][j0] * Nv1[i1][j0 + 1] + Nv2[i1 - 1][j0] * Nu2[i1][j0 + 1]
+               for i1 in range(1, n - 2) for j0 in range(i1 + 1, n - 1))
+
+
+def crossing_arcs_brute_force(n, arcs, symmetric=False):
+    r"""
+    Return the weighted number of pairs of crossing arcs in ``arcs``, straight
+    from the definition in the module docstring of ``crossing_arcs.pyx``: the
+    sum over pairs of arcs ``(i0, j0)``, ``(i1, j1)`` with
+    ``i0 < i1 < j0 < j1`` of ``u(A) * v(B) + v(A) * u(B)``. ``symmetric`` is
+    accepted for signature parity with :func:`crossing_arcs_double_sum` but
+    not read.
+    """
+    items = [(key % n, key // n, u, v) for key, (u, v) in arcs.items()]
+    return sum(u0 * v1 + v0 * u1
+               for i0, j0, u0, v0 in items
+               for i1, j1, u1, v1 in items
+               if i0 < i1 < j0 < j1)
+
+
+def startpoint_sweep_brute_force(starts, angles, uweights, vweights):
+    r"""
+    Return the sum of ``u(A) * v(B) + v(A) * u(B)`` over the pairs of leaves
+    ``A`` before ``B`` (by index) with the same startpoint and the angle of
+    ``A`` smaller than the one of ``B``, straight from the definitions of
+    :func:`~combisurf.crossing_arcs.startpoint_sweep_sorted` and
+    :func:`~combisurf.crossing_arcs.startpoint_sweep_weighted`.
+    """
+    l = len(starts)
+    return sum(uweights[a] * vweights[b] + vweights[a] * uweights[b]
+               for a in range(l) for b in range(a + 1, l)
+               if starts[a] == starts[b] and angles[a] < angles[b])
+
+
 def test_intersection_matrix_torus_benchmark():
     from combisurf import OrientedMap
     from combisurf.geometric_intersection import GeometricIntersection
@@ -255,19 +350,23 @@ def test_intersection_matrix_row_and_matrix():
 def naive_double_sum_matrix_class():
     r"""
     Return a subclass of ``GeometricIntersectionMatrix`` whose crossing arcs
-    term goes through the pure Python oracle of the sorted sweep, so that it
-    can be compared against the Cython one.
+    term goes through the O(n^2) double sum, so that it can be compared
+    against the Cython sweep.
     """
-    from combisurf.crossing_arcs_naive import crossing_arcs_sweep_sorted
     from combisurf.geometric_intersection import GeometricIntersectionMatrix
 
     class NaiveDoubleSum(GeometricIntersectionMatrix):
         def _double_sum(self, sx, sy):
+            n = self._n
             keys = self._arc_keys
             weights = self._arc_weights
+            arcs = {k: [u, 0] for k, u in zip(keys[sx], weights[sx])}
+            for k, v in zip(keys[sy], weights[sy]):
+                arcs.setdefault(k, [0, 0])[1] += v
             if sx == sy:
-                return crossing_arcs_sweep_sorted(self._n, keys[sx], weights[sx])
-            return crossing_arcs_sweep_sorted(self._n, keys[sx], weights[sx], keys[sy], weights[sy])
+                for w in arcs.values():
+                    w[1] = w[0]
+            return crossing_arcs_double_sum(n, arcs)
 
     return NaiveDoubleSum
 
@@ -304,7 +403,6 @@ def test_intersection_matrix_double_sum_identity():
     # the two slots, with u-weights from the first and v-weights from the
     # second, as geometric_intersection builds them
     import random
-    from combisurf.crossing_arcs_naive import crossing_arcs_double_sum
     from combisurf.geometric_intersection import GeometricIntersection
 
     rng = random.Random(20260926)
@@ -330,12 +428,11 @@ def test_intersection_matrix_double_sum_identity():
 
 
 def test_crossing_arcs_sweep_sorted_random():
-    # the sorted sweep against its pure Python oracle and against the dict
-    # sweep, exactly, on random weighted arcs, with and without a scratch
+    # the sorted sweep against the brute force, exactly, on random weighted
+    # arcs, with and without a scratch
     import random
     from array import array
-    from combisurf.crossing_arcs import crossing_arcs_sweep, crossing_arcs_sweep_sorted
-    from combisurf import crossing_arcs_naive
+    from combisurf.crossing_arcs import crossing_arcs_sweep_sorted
 
     rng = random.Random(20260927)
     for n in list(range(1, 20)) + [64, 257]:
@@ -356,15 +453,13 @@ def test_crossing_arcs_sweep_sorted_random():
             for side, (keys, weights) in enumerate(sides):
                 for k, x in zip(keys, weights):
                     arcs.setdefault(k, [0, 0])[side] = x
-            expected = crossing_arcs_sweep(n, arcs)
+            expected = crossing_arcs_brute_force(n, arcs)
             q = [array('q', x) for x in (ukeys, uweights, vkeys, vweights)]
-            assert crossing_arcs_naive.crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights) == expected
             assert crossing_arcs_sweep_sorted(n, *q) == expected
             assert crossing_arcs_sweep_sorted(n, *q, scratch) == expected
             assert not any(scratch)
 
-            expected = crossing_arcs_sweep(n, {k: [x, x] for k, x in zip(ukeys, uweights)}, True)
-            assert crossing_arcs_naive.crossing_arcs_sweep_sorted(n, ukeys, uweights) == expected
+            expected = crossing_arcs_brute_force(n, {k: [x, x] for k, x in zip(ukeys, uweights)})
             assert crossing_arcs_sweep_sorted(n, q[0], q[1]) == expected
             assert crossing_arcs_sweep_sorted(n, q[0], q[1], None, None, scratch) == expected
             assert crossing_arcs_sweep_sorted(n, q[0], q[1], q[0], q[1], scratch) == expected
@@ -390,12 +485,11 @@ def random_leaves(n, num, rng):
 
 
 def test_startpoint_sweep_sorted_random():
-    # the Cython startpoint sweep against its pure Python oracle, symmetric
-    # and not, with and without a scratch
+    # the Cython startpoint sweep against the brute force, symmetric and
+    # not, with and without a scratch
     import random
     from array import array
     from combisurf.crossing_arcs import startpoint_sweep_sorted
-    from combisurf import crossing_arcs_naive
 
     rng = random.Random(20260930)
     for n in list(range(2, 20)) + [64, 257]:
@@ -403,31 +497,33 @@ def test_startpoint_sweep_sorted_random():
         for num in [0, 1, 2, 5, 30, 200]:
             for _ in range(3):
                 ranks, starts, angles = random_leaves(n, num, rng)
+                # the full lists are already in rank order (ranks increases
+                # with the index), so splitting by side keeps each of u and v
+                # in rank order without an explicit merge
                 side = [rng.randrange(2) for _ in range(num)]
                 u = [[x[k] for k in range(num) if side[k] == 0] for x in (ranks, starts, angles)]
                 v = [[x[k] for k in range(num) if side[k] == 1] for x in (ranks, starts, angles)]
                 qu = [array('q', x) for x in u]
                 qv = [array('q', x) for x in v]
 
-                expected = crossing_arcs_naive.startpoint_sweep_sorted(n, *u, *v)
+                expected = startpoint_sweep_brute_force(starts, angles, [1 - s for s in side], side)
                 assert startpoint_sweep_sorted(n, *qu, *qv) == expected
                 assert startpoint_sweep_sorted(n, *qu, *qv, scratch) == expected
                 assert not any(scratch)
 
                 q = [array('q', x) for x in (ranks, starts, angles)]
-                expected = crossing_arcs_naive.startpoint_sweep_sorted(n, ranks, starts, angles)
+                expected = startpoint_sweep_brute_force(starts, angles, [1] * num, [1] * num)
                 assert startpoint_sweep_sorted(n, *q) == expected
                 assert startpoint_sweep_sorted(n, *q, None, None, None, scratch) == expected
                 assert not any(scratch)
 
 
 def test_startpoint_sweep_weighted_random():
-    # the Cython weighted startpoint sweep against its pure Python oracle,
-    # with one or two weight vectors, with and without a scratch
+    # the Cython weighted startpoint sweep against the brute force, with one
+    # or two weight vectors, with and without a scratch
     import random
     from array import array
     from combisurf.crossing_arcs import startpoint_sweep_weighted
-    from combisurf import crossing_arcs_naive
 
     rng = random.Random(20260931)
     for n in list(range(2, 20)) + [64, 257]:
@@ -439,12 +535,12 @@ def test_startpoint_sweep_weighted_random():
                 vweights = [rng.randrange(4) for _ in range(num)]
                 q = [array('q', x) for x in (starts, angles, uweights, vweights)]
 
-                expected = crossing_arcs_naive.startpoint_sweep_weighted(n, starts, angles, uweights, vweights)
+                expected = startpoint_sweep_brute_force(starts, angles, uweights, vweights)
                 assert startpoint_sweep_weighted(n, *q) == expected
                 assert startpoint_sweep_weighted(n, *q, scratch) == expected
                 assert not any(scratch)
 
-                expected = crossing_arcs_naive.startpoint_sweep_weighted(n, starts, angles, uweights)
+                expected = startpoint_sweep_brute_force(starts, angles, uweights, uweights)
                 assert expected % 2 == 0
                 assert startpoint_sweep_weighted(n, q[0], q[1], q[2]) == expected
                 assert startpoint_sweep_weighted(n, q[0], q[1], q[2], None, scratch) == expected
@@ -475,20 +571,17 @@ def test_intersection_matrix_self_intersection():
 
 def crossing_arcs_implementations():
     r"""
-    Return the three functions computing the crossing arcs term of
-    ``GeometricIntersection.geometric_intersection``: the Cython sweep, its
-    pure Python version and the `O(n^2)` double sum.
+    Return the two independent functions computing the crossing arcs term of
+    ``GeometricIntersection.geometric_intersection`` from a dictionary of
+    arcs: the brute force straight from the definition and the `O(n^2)`
+    double sum.
     """
-    from combisurf.crossing_arcs import crossing_arcs_sweep
-    from combisurf import crossing_arcs_naive
-
-    return [crossing_arcs_sweep, crossing_arcs_naive.crossing_arcs_sweep,
-            crossing_arcs_naive.crossing_arcs_double_sum]
+    return [crossing_arcs_brute_force, crossing_arcs_double_sum]
 
 
 def test_crossing_arcs_random():
-    # the sweeps against the double sum, exactly, on random weighted arcs,
-    # including arcs sharing one endpoint with many others
+    # the brute force against the double sum, exactly, on random weighted
+    # arcs, including arcs sharing one endpoint with many others
     import random
 
     rng = random.Random(20260924)
@@ -502,17 +595,13 @@ def test_crossing_arcs_random():
                 first, last = sorted(rng.sample(range(n), 2))
                 arcs[last * n + first] = [rng.randrange(4), rng.randrange(4)]
             answers = [f(n, arcs) for f in implementations]
-            assert answers.count(answers[0]) == 3, (n, arcs, answers)
-            for weights in arcs.values():
-                weights[1] = weights[0]
-            answers = [f(n, arcs, True) for f in implementations]
-            answers.append(implementations[0](n, arcs, False))
-            assert answers.count(answers[0]) == 4, (n, arcs, answers)
+            assert answers.count(answers[0]) == 2, (n, arcs, answers)
 
 
 def test_geometric_intersection_crossing_arcs_paths(monkeypatch):
     # geometric_intersection with the crossing arcs term computed by each of
-    # the three implementations, which must agree exactly on every call
+    # the two dictionary-based implementations, which must agree exactly on
+    # every call
     import random
     import combisurf.geometric_intersection as geometric_intersection
     from combisurf.geometric_intersection import GeometricIntersection
@@ -523,7 +612,7 @@ def test_geometric_intersection_crossing_arcs_paths(monkeypatch):
 
     def all_paths(n, arcs, symmetric):
         answers = [f(n, arcs, symmetric) for f in implementations]
-        assert answers.count(answers[0]) == 3, (n, arcs, symmetric, answers)
+        assert answers.count(answers[0]) == 2, (n, arcs, symmetric, answers)
         calls.append(answers[0])
         return answers[0]
 
@@ -571,15 +660,15 @@ def test_geometric_intersection_crossing_arcs_paths(monkeypatch):
                 ncalls = len(calls)
                 answers = [path(ulist, vlist) for path in paths]
                 assert len(calls) == ncalls + 1
-                assert answers.count(answers[0]) == 4, (g, length, ulist, vlist, answers)
+                assert answers.count(answers[0]) == 3, (g, length, ulist, vlist, answers)
 
 
 def test_word_arcs_random():
     # word_arcs against the dictionary of the arcs built in Python, and the
-    # sweep of its output against crossing_arcs_sweep on that dictionary
+    # sweep of its output against the brute force on that dictionary
     import random
     from array import array
-    from combisurf.crossing_arcs import word_arcs, crossing_arcs_sweep, crossing_arcs_sweep_sorted
+    from combisurf.crossing_arcs import word_arcs, crossing_arcs_sweep_sorted
 
     rng = random.Random(20260926)
     for n in [2, 4, 8, 12, 64, 256]:
@@ -610,9 +699,9 @@ def test_word_arcs_random():
                 assert list(vkeys) == sorted(k for k, (u, v) in arcs.items() if v)
                 assert dict(zip(ukeys, uweights)) == {k: u for k, (u, v) in arcs.items() if u}
                 assert dict(zip(vkeys, vweights)) == {k: v for k, (u, v) in arcs.items() if v}
-                assert crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights) == crossing_arcs_sweep(n, arcs)
+                assert crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights) == crossing_arcs_brute_force(n, arcs)
                 sym = {k: [u, u] for k, (u, v) in arcs.items() if u}
-                assert crossing_arcs_sweep_sorted(n, ukeys, uweights) == crossing_arcs_sweep(n, sym, True)
+                assert crossing_arcs_sweep_sorted(n, ukeys, uweights) == crossing_arcs_brute_force(n, sym)
 
 
 def test_word_arcs_degenerate():

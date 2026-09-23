@@ -10,7 +10,7 @@ from array import array
 from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclically_reduce, word_free_group_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
-from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, leaf_weights, startpoint_sweep_sorted,
+from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, _leaf_weights, startpoint_sweep_sorted,
                                      startpoint_sweep_weighted, word_arcs)
 
 class GeometricIntersection:
@@ -26,6 +26,8 @@ class GeometricIntersection:
         # TODO: implement reduction and buffering through reducing triangulations for closed surfaces
         if self._cm.num_vertices() != 1:
             raise NotImplementedError
+        if self._cm.has_folded_edge():
+            raise NotImplementedError("geometric intersection is not implemented for maps with folded edges")
 
         n = len(self._cm._vp)
         # NOTE: an array rather than a list, since the Cython functions it is
@@ -276,6 +278,17 @@ class GeometricIntersection:
             5
             sage: gi.geometric_intersection([u * 3])
             11
+
+        TESTS:
+
+        A map with a folded edge is rejected at construction, before any
+        curve is even looked at::
+
+            sage: m = OrientedMap(fp="(0,1,~0,~1,2)")
+            sage: GeometricIntersection(m)
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: geometric intersection is not implemented for maps with folded edges
         """
         # For general multicurves where u and v might have common components, each primitive
         # word (and hence each arc) has an associated u-multiplicity and v-multiplicity.
@@ -330,11 +343,10 @@ class GeometricIntersection:
         angles = self._angles
         ukeys, ukey_weights = word_arcs(n, angles, words, u_multiplicities)
         # NOTE: the sweep is O((len(u) + len(v)) log(n)). The O(n^2) double
-        # sum of crossing_arcs_naive.crossing_arcs_double_sum computes the same
-        # number and is slower at every n, so there is no threshold: on the
-        # one-vertex 4g-gon with two random curves of length 8, the sweep takes
-        # 0.3 us against 5.2 us at n = 4 and 1.0 us against 8000 us at
-        # n = 256; when the arcs fill the n^2 / 2 possible pairs (n = 64,
+        # sum of the same number (test/test_geometric_intersection.py) is
+        # slower at every n, so there is no threshold: on the one-vertex
+        # 4g-gon with two random curves of length 8, the sweep takes 0.3 us
+        # against 5.2 us at n = 4 and 1.0 us against 8000 us at n = 256; when the arcs fill the n^2 / 2 possible pairs (n = 64,
         # curves of length 4000) it takes 260 us against 620 us.
         if self_intersection:
             intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, check=False)
@@ -349,13 +361,13 @@ class GeometricIntersection:
         # is (len(u) + len(v)) * log(n) where the log(n) factor comes from
         # partial sums.
         word_index, starts, arc_angles = T.cyclically_sorted_leaf_arcs(angles)
-        uweights = leaf_weights(word_index, u_multiplicities)
+        uweights = _leaf_weights(word_index, u_multiplicities)
         if self_intersection:
             # with the v-weights equal to the u-weights, the sweep counts each
             # pair of leaves in both orders
             intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights) // 2
         else:
-            vweights = leaf_weights(word_index, v_multiplicities)
+            vweights = _leaf_weights(word_index, v_multiplicities)
             intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights, vweights)
 
         # we got twice the geometric intersection because we register all arcs and their inverses
@@ -479,6 +491,17 @@ class GeometricIntersectionMatrix:
         Traceback (most recent call last):
         ...
         NotImplementedError: non-primitive curve at index 0
+
+    TESTS:
+
+    A map with a folded edge is rejected already by the underlying
+    :class:`GeometricIntersection`::
+
+        sage: m = OrientedMap(fp="(0,1,~0,~1,2)")
+        sage: GeometricIntersectionMatrix(m, [[0]])
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: geometric intersection is not implemented for maps with folded edges
     """
     def __init__(self, m, curves, check=True):
         if isinstance(m, GeometricIntersection):
@@ -596,14 +619,14 @@ class GeometricIntersectionMatrix:
             sage: I._double_sum(0, 1), I._double_sum(1, 0), I._double_sum(1, 1)
             (1, 1, 6)
         """
-        # NOTE: the O(n^2) double sum of crossing_arcs_naive computes the
-        # same number, from two flat vectors of length (n - 3)(n - 2) / 2 per
-        # curve. It is slower at every n, so there is no threshold: with 100
-        # random curves of length 8 on the one-vertex 4g-gon, the sweep takes
-        # 0.25 us per pair against 0.46 us at n = 4 and 0.87 us against 350 us
-        # at n = 128. Evaluating all the double sums at once as a float64
-        # matrix product was faster per pair, but not on the whole matrix(),
-        # and it needed O(n^2) memory per curve.
+        # NOTE: the O(n^2) double sum (test/test_geometric_intersection.py)
+        # computes the same number, from two flat vectors of length
+        # (n - 3)(n - 2) / 2 per curve. It is slower at every n, so there is
+        # no threshold: with 100 random curves of length 8 on the one-vertex
+        # 4g-gon, the sweep takes 0.25 us per pair against 0.46 us at n = 4
+        # and 0.87 us against 350 us at n = 128. Evaluating all the double
+        # sums at once as a float64 matrix product was faster per pair, but
+        # not on the whole matrix(), and it needed O(n^2) memory per curve.
         keys = self._arc_keys
         weights = self._arc_weights
         if sx == sy:
