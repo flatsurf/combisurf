@@ -192,33 +192,40 @@ def test_checked_process_random(kind):
     assert all(outcomes.values())
 
 
-def cyclic_order_key(conjugate, angles, depth):
+def cyclic_order_key(conjugate, order, pivot, depth):
     r"""
-    Return the sequence that the cyclic order at infinity compares: the angle
-    of the first letter, then at each further step the angle from the reverse
-    of the previous letter to the current one.
+    Return the sequence that the order of the leaves compares: ``order`` of
+    the first letter, then at each further letter ``c`` preceded by ``b`` the
+    value ``(order[c] - pivot[b]) % n``.
 
     This is an independent reimplementation of the ordering that
     :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves`
     realizes through the tree.
     """
-    n = len(angles)
+    n = len(order)
     l = len(conjugate)
-    ans = [angles[conjugate[0]]]
+    ans = [order[conjugate[0]]]
     for d in range(1, depth):
-        ans.append((angles[conjugate[d % l]] - angles[conjugate[(d - 1) % l] ^ 1]) % n)
+        ans.append((order[conjugate[d % l]] - pivot[conjugate[(d - 1) % l]]) % n)
     return ans
 
 
-def check_cyclically_sorted_leaves(T, angles):
+def check_cyclically_sorted_leaves(T, order, pivot):
     words = T.words()
     depth = 2 * sum(len(w) for w in words) + 4
     expected = sorted(((i, k) for i, w in enumerate(words) for k in range(len(w))),
                       key=lambda ik: cyclic_order_key(list(words[ik[0]][ik[1]:]) + list(words[ik[0]][:ik[1]]),
-                                                      angles, depth))
-    leaves = T.cyclically_sorted_leaves(angles)
+                                                      order, pivot, depth))
+    leaves = T.cyclically_sorted_leaves(order, pivot)
     assert sorted(leaves) == T.leaves()
     assert [T.leaf_as_conjugate(s) for s in leaves] == expected
+
+
+def random_order_and_pivot(rng, n):
+    order = list(range(n))
+    rng.shuffle(order)
+    pivot = [rng.randrange(n) for _ in range(n)]
+    return order, pivot
 
 
 @pytest.mark.parametrize("kind", KINDS)
@@ -226,110 +233,74 @@ def test_cyclically_sorted_leaves(kind):
     T = make_tree(kind, 2)
     assert T.process([0, 1, 1]) == 1
     assert T.process([0, 1]) == 1
-    assert T.cyclically_sorted_leaves([0, 1]) == [6, 1, 8, 4, 2]
-    check_cyclically_sorted_leaves(T, [0, 1])
+    assert T.cyclically_sorted_leaves([0, 1], [1, 0]) == [6, 1, 8, 4, 2]
+    for pivot in ([1, 0], [0, 1], [0, 0], [1, 1]):
+        check_cyclically_sorted_leaves(T, [0, 1], pivot)
+        check_cyclically_sorted_leaves(T, [1, 0], pivot)
 
-    # the torus and the octagon, with the angle tables that
-    # GeometricIntersection builds on them
+    rng = random.Random(20260923)
     T = make_tree(kind, 4)
     for w in [[0, 0, 2, 2], [0, 2, 0, 0, 3], [1, 3, 1, 2]]:
         T.process(w)
-    check_cyclically_sorted_leaves(T, [0, 2, 1, 3])
+    check_cyclically_sorted_leaves(T, [0, 2, 1, 3], [2, 0, 3, 1])
+    for _ in range(10):
+        check_cyclically_sorted_leaves(T, *random_order_and_pivot(rng, 4))
 
     T = make_tree(kind, 8)
     for w in [[0, 2, 2, 5, 2, 2, 5], [0, 3, 6], [1, 4, 7, 0]]:
         T.process(w)
-    check_cyclically_sorted_leaves(T, [0, 2, 4, 6, 1, 3, 5, 7])
+    check_cyclically_sorted_leaves(T, [0, 2, 4, 6, 1, 3, 5, 7], [2, 0, 6, 4, 3, 1, 7, 5])
+    for _ in range(10):
+        check_cyclically_sorted_leaves(T, *random_order_and_pivot(rng, 8))
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_cyclically_sorted_leaves_pivot_from_order(kind):
+    # pivot[b] = order[b ^ 1] gives the cyclic order at infinity of curves
+    # on a surface; the leaves are hard-coded so that any change of that
+    # order is caught
+    for n, words, order, expected in [
+            (2, [[0, 1, 1], [0, 1]], [1, 0], [8, 4, 2, 6, 1]),
+            (4, [[0, 0, 2, 2], [0, 2, 0, 0, 3], [1, 3, 1, 2]], [0, 2, 1, 3],
+             [13, 12, 1, 8, 3, 10, 6, 4, 20, 19, 15, 17, 14]),
+            (8, [[0, 2, 2, 5, 2, 2, 5], [0, 3, 6], [1, 4, 7, 0]], [0, 2, 4, 6, 1, 3, 5, 7],
+             [19, 1, 13, 17, 16, 5, 11, 4, 9, 2, 7, 15, 14, 18]),
+            (6, [[0, 2, 4, 1, 5, 3, 3], [5, 5, 2, 0], [1, 2, 3, 4, 0]], [3, 0, 5, 1, 4, 2],
+             [17, 4, 6, 8, 19, 11, 5, 10, 22, 15, 1, 21, 3, 18, 13, 2])]:
+        T = make_tree(kind, n)
+        for w in words:
+            T.process(w)
+        pivot = [order[b ^ 1] for b in range(n)]
+        assert T.cyclically_sorted_leaves(order, pivot) == expected
 
 
 @pytest.mark.parametrize("kind", KINDS)
 def test_cyclically_sorted_leaves_random(kind):
     rng = random.Random(20260922)
     for _ in range(60):
-        n = 2 * rng.randint(1, 4)
-        angles = list(range(n))
-        rng.shuffle(angles)
+        n = rng.randint(1, 8)
         T = make_tree(kind, n)
         for _ in range(rng.randint(1, 5)):
             T.process([rng.randrange(n) for _ in range(rng.randint(1, 9))])
         if not T.words():
             continue
-        check_cyclically_sorted_leaves(T, angles)
-
-
-
-def random_cyclically_reduced_word(rng, n, length):
-    while True:
-        w = [rng.randrange(n)]
-        while len(w) < length:
-            h = rng.randrange(n)
-            if h != w[-1] ^ 1:
-                w.append(h)
-        if w[0] ^ 1 != w[-1]:
-            return w
+        check_cyclically_sorted_leaves(T, *random_order_and_pivot(rng, n))
 
 
 @pytest.mark.parametrize("kind", ["dense", "sparse", "auto", "unknown"])
-def test_process_with_inverse_random(kind):
-    # process_with_inverse against process on the word and, when it is new,
-    # on the inverse of the word stored; the words are new ones, conjugates,
-    # inverses and powers of earlier ones, and powers of new ones
-    from combisurf.word import word_free_group_inverse
-    rng = random.Random(20260924)
-    for _ in range(100):
-        n = 2 * rng.randint(1, 4)
-        T0 = make_tree(kind, n)
-        T1 = make_tree(kind, n)
-        seen = []
-        for _ in range(rng.randint(1, 8)):
-            r = rng.random()
-            if seen and r < 0.4:
-                w = rng.choice(seen)
-                k = rng.randrange(len(w))
-                w = w[k:] + w[:k]
-                if rng.random() < 0.5:
-                    w = [h ^ 1 for h in reversed(w)]
-            else:
-                w = random_cyclically_reduced_word(rng, n, rng.randint(1, 6))
-            if rng.random() < 0.3:
-                w = w * rng.randint(2, 3)
-            seen.append(w)
-
-            i, exponent = T0.process_with_inverse(list(w))
-            status = T1.process(list(w))
-            if status > 0:
-                assert i == T1.num_words() - 1
-                assert exponent == status
-                assert T1.process(word_free_group_inverse(T1.word(i))) == 1
-            else:
-                assert i == -status
-                assert exponent == len(w) // T1.word_length(i)
-            assert T0.words() == T1.words()
-            assert T0.leaves() == T1.leaves()
-        assert_same_tree(T0, T1)
-
-
-@pytest.mark.parametrize("kind", ["dense", "sparse", "auto", "unknown"])
-def test_cyclically_sorted_leaf_arcs_random(kind):
-    # the leaves of cyclically_sorted_leaf_arcs are the ones of
-    # cyclically_sorted_leaves, described through leaf_as_conjugate
-    rng = random.Random(20260923)
+def test_sorted_leaves_as_conjugates(kind):
+    rng = random.Random(20260925)
     for _ in range(60):
-        n = 2 * rng.randint(1, 4)
-        angles = list(range(n))
-        rng.shuffle(angles)
+        n = rng.randint(1, 8)
         T = make_tree(kind, n)
         for _ in range(rng.randint(1, 5)):
             T.process([rng.randrange(n) for _ in range(rng.randint(1, 9))])
-        words = T.words()
-        expected = []
-        for s in T.cyclically_sorted_leaves(angles):
-            i, k = T.leaf_as_conjugate(s)
-            w = words[i]
-            expected.append((i, w[k], (angles[w[k - 1] ^ 1] - angles[w[k]]) % n - 1))
-        word_index, firsts, turns = T.cyclically_sorted_leaf_arcs(angles)
-        assert all(a.typecode == 'q' for a in (word_index, firsts, turns))
-        assert list(zip(word_index, firsts, turns)) == expected, (words, angles)
+        order, pivot = random_order_and_pivot(rng, n)
+        words, shifts = T.sorted_leaves_as_conjugates(order, pivot)
+        assert words.typecode == shifts.typecode == 'i'
+        expected = [T.leaf_as_conjugate(s) for s in T.cyclically_sorted_leaves(order, pivot)]
+        assert list(zip(words, shifts)) == expected
+
 
 def assert_same_tree(T0, T1):
     r"""
@@ -379,9 +350,8 @@ def test_against_naive(alphabet):
         T0._check()
         T1._check()
         if T0.num_words():
-            angles = list(range(alphabet))
-            rng.shuffle(angles)
-            assert T0.cyclically_sorted_leaves(angles) == T1.cyclically_sorted_leaves(angles), (history, angles)
+            order, pivot = random_order_and_pivot(rng, alphabet)
+            assert T0.cyclically_sorted_leaves(order, pivot) == T1.cyclically_sorted_leaves(order, pivot), (history, order, pivot)
 
 
 def test_against_naive_long_words():
@@ -400,9 +370,8 @@ def test_against_naive_long_words():
             w = [rng.randrange(alphabet) for _ in range(length)]
             assert T0.process(list(w)) == T1.process(list(w))
         assert_same_tree(T0, T1)
-        angles = list(range(alphabet))
-        rng.shuffle(angles)
-        assert T0.cyclically_sorted_leaves(angles) == T1.cyclically_sorted_leaves(angles)
+        order, pivot = random_order_and_pivot(rng, alphabet)
+        assert T0.cyclically_sorted_leaves(order, pivot) == T1.cyclically_sorted_leaves(order, pivot)
 
 
 def test_reserve_is_only_a_hint():

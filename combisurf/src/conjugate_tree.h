@@ -30,12 +30,10 @@ enum {
     CT_EEMPTY = -2,        /* empty word */
     CT_ENEGATIVE = -3,     /* negative letter */
     CT_EALPHABET = -4,     /* letter outside the alphabet */
-    CT_ENOTREDUCED = -5,   /* word not cyclically reduced */
-    CT_ENOTCLOSED = -6,    /* the words of the tree are not closed under inverse */
-    CT_ETOOLARGE = -7,     /* tree too large for int indices or for a dense table */
-    CT_EINVALID = -8,      /* invalid argument */
-    CT_EINTERNAL = -9,     /* internal inconsistency */
-    CT_EBROKEN = -10       /* the tree was broken by an earlier CT_EINTERNAL */
+    CT_ETOOLARGE = -5,     /* tree too large for int indices or for a dense table */
+    CT_EINVALID = -6,      /* invalid argument */
+    CT_EINTERNAL = -7,     /* internal inconsistency */
+    CT_EBROKEN = -8        /* the tree was broken by an earlier CT_EINTERNAL */
 };
 
 /*
@@ -52,7 +50,6 @@ typedef struct ct_tree {
     int alphabet_size;   /* size of the alphabet, 0 when it is not known */
     int dense;           /* whether children are a flat alphabet-indexed table */
     int max_letter;      /* largest letter seen so far, -1 when none */
-    int closed;          /* whether the words are known to be closed under inverse */
     int broken;          /* 0, or the error code that left the tree inconsistent */
 
     /* the words, laid end to end in one buffer addressed by offsets */
@@ -103,21 +100,26 @@ void ct_free(ct_tree *T);
 int ct_process(ct_tree *T, const int *w, int len, int *result);
 
 /*
- * Add the cyclically reduced free group word w[0..len-1], where h ^ 1 is the
- * inverse of the letter h, and its inverse when w is new. T must be flagged as
- * closed under inverse: a new tree is, and ct_process clears the flag when it
- * adds a new word (not when w was already present). w is conjugate to the
- * *exponent-th power of the word *index.
+ * Make room for the given number of words more, of the given number of
+ * letters in all, so that adding them needs no allocation: after it,
+ * ct_process on valid words of that total length cannot fail. A caller that
+ * must add several words or none calls it first.
  */
-int ct_process_with_inverse(ct_tree *T, const int *w, int len, int *index, int *exponent);
+int ct_reserve(ct_tree *T, int words, int letters);
 
 /*
- * Write to out, which has room for T->nstates entries, the leaves ordered by
- * the cyclic order angles[0..n-1] of the letters, and their number to *num.
- * angles must take its values in {0, ..., n - 1} and n must exceed every
- * letter of T and its inverse.
+ * Write to out, which has room for T->nstates entries, the leaves of T in
+ * the order below, and their number to *num.
+ *
+ * order is a permutation of {0, ..., n - 1} indexed by the letters, pivot
+ * any map from the letters to {0, ..., n - 1}, and n must exceed every letter
+ * of T. The leaves are listed depth first. The children of the root are
+ * visited by increasing order[c], where c is the first letter of their label;
+ * the children of an internal node whose label ends with the letter b are
+ * visited by increasing (order[c] - pivot[b]) mod n.
  */
-int ct_sorted_leaves(const ct_tree *T, const int *angles, int n, int *out, int *num);
+int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n,
+                     int *out, int *num);
 
 /* Check the invariants of T; CT_OK or CT_EINTERNAL (or CT_ENOMEM). */
 int ct_check(const ct_tree *T);

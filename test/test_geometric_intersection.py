@@ -711,3 +711,101 @@ def test_word_arcs_degenerate():
         word_arcs(4, [0, 2, 1, 3], [[0, 2, 3]], [1])
     # a word of weight 0 is not read
     assert [list(a) for a in word_arcs(4, [0, 2, 1, 3], [[0, 2, 3], [2, 1, 0]], [0])] == [[], []]
+
+
+# the conjugate tree of curves and their inverses, as built by
+# tree_add_with_inverse and read by cyclically_sorted_leaf_arcs
+CONJUGATE_TREE_KINDS = ["dense", "sparse", "auto", "unknown"]
+
+
+def make_conjugate_tree(kind, alphabet):
+    from combisurf.conjugate_tree import ConjugateTree
+
+    if kind == "unknown":
+        return ConjugateTree()
+    if kind == "auto":
+        return ConjugateTree(alphabet)
+    return ConjugateTree(alphabet, algorithm=kind)
+
+
+def random_cyclically_reduced_word(rng, n, length):
+    while True:
+        w = [rng.randrange(n)]
+        while len(w) < length:
+            h = rng.randrange(n)
+            if h != w[-1] ^ 1:
+                w.append(h)
+        if w[0] ^ 1 != w[-1]:
+            return w
+
+
+@pytest.mark.parametrize("kind", CONJUGATE_TREE_KINDS)
+def test_tree_add_with_inverse_random(kind):
+    # tree_add_with_inverse against process on the word and, when it is new,
+    # on the inverse of the word stored; the words are new ones, conjugates,
+    # inverses and powers of earlier ones, and powers of new ones
+    import random
+    from combisurf.crossing_arcs import tree_add_with_inverse
+    from combisurf.word import word_free_group_inverse
+    rng = random.Random(20260924)
+    for _ in range(100):
+        n = 2 * rng.randint(1, 4)
+        T0 = make_conjugate_tree(kind, n)
+        T1 = make_conjugate_tree(kind, n)
+        seen = []
+        for _ in range(rng.randint(1, 8)):
+            r = rng.random()
+            if seen and r < 0.4:
+                w = rng.choice(seen)
+                k = rng.randrange(len(w))
+                w = w[k:] + w[:k]
+                if rng.random() < 0.5:
+                    w = [h ^ 1 for h in reversed(w)]
+            else:
+                w = random_cyclically_reduced_word(rng, n, rng.randint(1, 6))
+            if rng.random() < 0.3:
+                w = w * rng.randint(2, 3)
+            seen.append(w)
+
+            i, exponent = tree_add_with_inverse(T0, list(w))
+            status = T1.process(list(w))
+            if status > 0:
+                assert i == T1.num_words() - 1
+                assert exponent == status
+                assert T1.process(word_free_group_inverse(T1.word(i))) == 1
+            else:
+                assert i == -status
+                assert exponent == len(w) // T1.word_length(i)
+            assert T0.words() == T1.words()
+            assert T0.leaves() == T1.leaves()
+        T0._check()
+        assert T0.num_states() == T1.num_states()
+        for s in range(T0.num_states()):
+            assert T0.transitions(s) == T1.transitions(s), s
+
+
+@pytest.mark.parametrize("kind", CONJUGATE_TREE_KINDS)
+def test_cyclically_sorted_leaf_arcs_random(kind):
+    # the leaves of cyclically_sorted_leaf_arcs are the ones of
+    # cyclically_sorted_leaves with the pivot of the inverse letter,
+    # described through leaf_as_conjugate
+    import random
+    from combisurf.crossing_arcs import cyclically_sorted_leaf_arcs
+    rng = random.Random(20260923)
+    for _ in range(60):
+        n = 2 * rng.randint(1, 4)
+        angles = list(range(n))
+        rng.shuffle(angles)
+        pivot = [angles[b ^ 1] for b in range(n)]
+        T = make_conjugate_tree(kind, n)
+        for _ in range(rng.randint(1, 5)):
+            T.process([rng.randrange(n) for _ in range(rng.randint(1, 9))])
+        words = T.words()
+        expected = []
+        for s in T.cyclically_sorted_leaves(angles, pivot):
+            i, k = T.leaf_as_conjugate(s)
+            w = words[i]
+            expected.append((i, w[k], (angles[w[k - 1] ^ 1] - angles[w[k]]) % n - 1))
+        word_index, firsts, turns = cyclically_sorted_leaf_arcs(T, angles)
+        assert all(a.typecode == 'q' for a in (word_index, firsts, turns))
+        assert list(zip(word_index, firsts, turns)) == expected, (words, angles)

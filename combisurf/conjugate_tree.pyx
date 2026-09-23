@@ -246,23 +246,41 @@ cdef class ConjugateTree:
         if err == CT_ENEGATIVE:
             raise ValueError("invalid word: must be made of non-negative integers")
         if err == CT_EALPHABET:
-            # the first offending letter is the first one out of the alphabet,
-            # or failing that the first inverse of a letter out of it, as the
-            # C code checks them in this order
-            letter = next((a for a in w if a >= n), None)
-            if letter is None:
-                letter = next(a ^ 1 for a in w if a ^ 1 >= n)
+            letter = next(a for a in w if a >= n)
             raise ValueError(f"invalid word: letter {letter} not in the alphabet "
                              f"{{0, 1, ..., {n - 1}}}")
-        if err == CT_ENOTREDUCED:
-            raise ValueError("w must be cyclically reduced")
-        if err == CT_ENOTCLOSED:
-            raise ValueError("the words of this tree are not closed under inverse")
         if err == CT_ETOOLARGE:
             raise OverflowError("conjugate tree too large for int indices or for a dense transition table")
         if err == CT_EINVALID:
             raise ValueError("invalid argument")
         raise RuntimeError(f"conjugate tree: {ct_strerror(err).decode()} (error code {err})")
+
+    cdef int _reserve(self, int words, int letters) except -1:
+        r"""
+        Make room so that adding ``words`` more words of ``letters`` letters
+        in all needs no allocation, as ``ct_reserve``.
+
+        The C functions are only linked into this module, so another
+        extension reaches them through this method.
+        """
+        cdef int err = ct_reserve(&self.T, words, letters)
+        if err:
+            self._raise(err, None)
+        return 0
+
+    cdef int _process(self, const int *w, int length, int *result) except -1:
+        r"""
+        Add the word ``w[:length]`` and write to ``result`` what
+        :meth:`process` returns, as ``ct_process``.
+
+        The C functions are only linked into this module, so another
+        extension reaches them through this method.
+        """
+        cdef int err = ct_process(&self.T, w, length, result)
+        cdef int j
+        if err:
+            self._raise(err, array.array('i', [w[j] for j in range(max(length, 0))]))
+        return 0
 
     # ------------------------------------------------------------------
     # words
@@ -725,13 +743,29 @@ cdef class ConjugateTree:
             ans.extend(self._slice(i, k, p))
         return ans
 
-    def cyclically_sorted_leaves(self, angles):
+    def cyclically_sorted_leaves(self, order, pivot):
         r"""
-        Return the leaves sorted using a cyclic ordering of the alphabet given by ``angles``.
+        Return the leaves sorted by the order of the letters ``order``, the
+        order below a node being turned by ``pivot``.
 
-        The leaf of a conjugate comes before the leaf of another when the
-        angle of its first letter is the smaller, ties being broken by the
-        angle turned at each further letter.
+        The leaves are listed depth first. The children of the root are
+        visited by increasing ``order[c]``, where ``c`` is the first letter of
+        their label, and the children of an internal node whose label ends
+        with the letter ``b`` by increasing ``(order[c] - pivot[b]) % n``.
+        So the leaf of a conjugate comes before the leaf of another when
+        ``order`` of its first letter is the smaller, ties being broken, at the
+        first letter ``c`` where they differ, by ``(order[c] - pivot[b]) % n``
+        where ``b`` is the letter before ``c``.
+
+        INPUT:
+
+        - ``order`` -- a permutation of ``{0, 1, ..., n - 1}``, indexed by the
+          letters, where ``n`` is larger than every letter of this tree
+
+        - ``pivot`` -- a sequence of ``n`` values in ``{0, 1, ..., n - 1}``,
+          indexed by the letters
+
+        OUTPUT: a list of leaves
 
         EXAMPLES::
 
@@ -742,150 +776,167 @@ cdef class ConjugateTree:
             1
             sage: T.process([0,1])
             1
-            sage: T.cyclically_sorted_leaves([0, 1])
+            sage: T.cyclically_sorted_leaves([0, 1], [1, 0])
             [6, 1, 8, 4, 2]
+
+        With a constant ``pivot``, the children of every node are ordered by
+        ``order`` as the ones of the root, which is the lexicographic order of
+        the conjugates when ``order`` is the identity; other pivots turn the
+        order below each node::
+
+            sage: T = ConjugateTree()
+            sage: T.process([0, 1, 2])
+            1
+            sage: T.process([0, 2, 1, 1])
+            1
+            sage: leaves = T.cyclically_sorted_leaves([0, 1, 2], [0, 0, 0])
+            sage: [T.leaf_as_conjugate(s) for s in leaves]
+            [(0, 0), (1, 0), (1, 3), (1, 2), (0, 1), (0, 2), (1, 1)]
+            sage: leaves = T.cyclically_sorted_leaves([0, 1, 2], [2, 0, 1])
+            sage: [T.leaf_as_conjugate(s) for s in leaves]
+            [(1, 0), (0, 0), (1, 3), (1, 2), (0, 1), (1, 1), (0, 2)]
 
         TESTS::
 
-            sage: T.cyclically_sorted_leaves([])
+            sage: T.cyclically_sorted_leaves([], [])
             Traceback (most recent call last):
             ...
-            ValueError: angles must be non-empty
-            sage: T.cyclically_sorted_leaves([0, 2])
+            ValueError: order must be non-empty
+            sage: T.cyclically_sorted_leaves([0, 2], [0, 1])
             Traceback (most recent call last):
             ...
-            ValueError: angles must be a permutation of {0, 1}
-            sage: T.cyclically_sorted_leaves([0])
+            ValueError: order must be a permutation of {0, 1}
+            sage: T.cyclically_sorted_leaves([1, 1], [0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: order must be a permutation of {0, 1}
+            sage: T.cyclically_sorted_leaves([0], [0])
             Traceback (most recent call last):
             ...
             ValueError: the letters of this tree do not fit in an alphabet of size 1
-            sage: ConjugateTree.__new__(ConjugateTree).cyclically_sorted_leaves([0, 1])
+            sage: T.cyclically_sorted_leaves([0, 1], [0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: the letters of this tree do not fit in an alphabet of size 2
+            sage: T.cyclically_sorted_leaves([0, 1, 2], [0, 3, 0])
+            Traceback (most recent call last):
+            ...
+            ValueError: pivot must be a sequence of 3 values in {0, 1, 2}
+            sage: T.cyclically_sorted_leaves([0, 1, 2], [0, -1, 0])
+            Traceback (most recent call last):
+            ...
+            ValueError: pivot must be a sequence of 3 values in {0, 1, 2}
+            sage: T.cyclically_sorted_leaves([0, 1, 2], [0])
+            Traceback (most recent call last):
+            ...
+            ValueError: pivot must be a sequence of 3 values in {0, 1, 2}
+            sage: ConjugateTree.__new__(ConjugateTree).cyclically_sorted_leaves([0, 1], [0, 1])
             Traceback (most recent call last):
             ...
             ValueError: invalid argument
         """
-        cdef array.array a_ang = self._angles_array(angles)
-        cdef array.array a_leaves = array.clone(a_ang, self.T.nstates, False)
+        cdef array.array a_order = self._order_array(order)
+        cdef array.array a_pivot = self._pivot_array(pivot, len(a_order))
+        cdef array.array a_leaves = array.clone(_int_array, self.T.nstates, False)
         cdef int *out = a_leaves.data.as_ints
-        cdef int num = self._sorted_leaves(a_ang.data.as_ints, len(a_ang), out)
+        cdef int num = self._sorted_leaves(a_order, a_pivot, out)
         cdef int j
         return [out[j] for j in range(num)]
 
-    def cyclically_sorted_leaf_arcs(self, angles):
+    def sorted_leaves_as_conjugates(self, order, pivot):
         r"""
-        Return the leaves in the order of :meth:`cyclically_sorted_leaves`,
-        each one described by its word, its first letter and the angle it
-        turns.
-
-        The leaf of the conjugate ``(i, k)`` (see :meth:`leaf_as_conjugate`)
-        of the word ``w = self.word(i)`` starts with the letter ``w[k]`` and
-        ends with the reverse ``w[k - 1] ^ 1`` of the letter before it. Its
-        angle is ``(angles[w[k - 1] ^ 1] - angles[w[k]]) % n - 1`` where ``n``
-        is the length of ``angles``.
+        Return the conjugates of the leaves in the order of
+        :meth:`cyclically_sorted_leaves`.
 
         INPUT:
 
-        - ``angles`` -- a permutation of ``{0, 1, ..., n - 1}``, as in
-          :meth:`cyclically_sorted_leaves`
+        - ``order``, ``pivot`` -- as in :meth:`cyclically_sorted_leaves`
 
-        OUTPUT: a triple of arrays of typecode ``'q'`` with one entry per
-        leaf: the index ``i`` of the word of the leaf, its first letter and
-        its angle
+        OUTPUT: two arrays of typecode ``'i'``, with one entry per leaf: the
+        index ``i`` of its word and its shift ``k``, as in
+        :meth:`leaf_as_conjugate`
 
         EXAMPLES::
 
             sage: from combisurf.conjugate_tree import ConjugateTree
             sage: T = ConjugateTree()
-            sage: T.process([0, 2, 1, 3])
+            sage: T.process([0, 1, 1])
             1
-            sage: T.process([2, 0, 3, 1])
+            sage: T.process([0, 1])
             1
-            sage: angles = [0, 2, 1, 3]
-            sage: T.cyclically_sorted_leaf_arcs(angles)
-            (array('q', [1, 0, 1, 0, 1, 0, 1, 0]),
-             array('q', [0, 0, 2, 2, 1, 1, 3, 3]),
-             array('q', [2, 0, 2, 0, 2, 0, 2, 0]))
-
-        It describes the leaves of :meth:`cyclically_sorted_leaves`::
-
-            sage: n = len(angles)
-            sage: ans = []
-            sage: for s in T.cyclically_sorted_leaves(angles):
-            ....:     i, k = T.leaf_as_conjugate(s)
-            ....:     w = T.word(i)
-            ....:     ans.append((i, w[k], (angles[w[k - 1] ^^ 1] - angles[w[k]]) % n - 1))
-            sage: list(zip(*T.cyclically_sorted_leaf_arcs(angles))) == ans
-            True
+            sage: T.sorted_leaves_as_conjugates([0, 1], [1, 0])
+            (array('i', [1, 0, 1, 0, 0]), array('i', [0, 0, 1, 2, 1]))
+            sage: [T.leaf_as_conjugate(s) for s in T.cyclically_sorted_leaves([0, 1], [1, 0])]
+            [(1, 0), (0, 0), (1, 1), (0, 2), (0, 1)]
 
         TESTS::
 
-            sage: T.cyclically_sorted_leaf_arcs([0, 1])
+            sage: T.sorted_leaves_as_conjugates([0, 1], [0, 2])
             Traceback (most recent call last):
             ...
-            ValueError: the letters of this tree do not fit in an alphabet of size 2
+            ValueError: pivot must be a sequence of 2 values in {0, 1}
         """
-        cdef array.array a_ang = self._angles_array(angles)
-        cdef int *ang = a_ang.data.as_ints
-        cdef int n = len(a_ang)
-        cdef array.array a_leaves = array.clone(a_ang, self.T.nstates, False)
+        cdef array.array a_order = self._order_array(order)
+        cdef array.array a_pivot = self._pivot_array(pivot, len(a_order))
+        cdef array.array a_leaves = array.clone(_int_array, self.T.nstates, False)
         cdef int *out = a_leaves.data.as_ints
-        cdef int num = self._sorted_leaves(ang, n, out)
-
-        cdef array.array a_q = array.array('q', [])
-        cdef array.array a_word = array.clone(a_q, num, False)
-        cdef array.array a_first = array.clone(a_q, num, False)
-        cdef array.array a_turn = array.clone(a_q, num, False)
-        cdef long long *word = a_word.data.as_longlongs
-        cdef long long *first = a_first.data.as_longlongs
-        cdef long long *turn = a_turn.data.as_longlongs
-        cdef int j, s, i, l, k, a, b, t
+        cdef int num = self._sorted_leaves(a_order, a_pivot, out)
+        cdef array.array a_word = array.clone(_int_array, num, False)
+        cdef array.array a_shift = array.clone(_int_array, num, False)
+        cdef int j
         for j in range(num):
-            s = out[j]
-            # the conjugate (i, k) of the leaf, as in leaf_as_conjugate
-            i = self.T.tword[s]
-            l = self.T.wlen[i]
-            k = (self.T.tstart[s] - self.T.dep[self.T.parent[s]]) % l
-            if k < 0:
-                k += l
-            a = self.T.wbuf[self.T.wstart[i] + k]
-            b = self.T.wbuf[self.T.wstart[i] + (k - 1 if k else l - 1)] ^ 1
-            t = ang[b] - ang[a]
-            if t < 0:
-                t += n
-            word[j] = i
-            first[j] = a
-            turn[j] = t - 1
-        return (a_word, a_first, a_turn)
+            ct_leaf_as_conjugate(&self.T, out[j], a_word.data.as_ints + j, a_shift.data.as_ints + j)
+        return (a_word, a_shift)
 
-    cdef array.array _angles_array(self, angles):
+    cdef array.array _order_array(self, order):
         r"""
-        Return ``angles`` as an array of typecode ``'i'`` after checking that
-        it is a permutation of ``{0, 1, ..., n - 1}`` large enough for the
-        letters of this tree.
-        """
-        cdef int n = len(angles)
-        if n == 0:
-            raise ValueError("angles must be non-empty")
-        cdef array.array a_ang = array.array('i', angles)
-        cdef int *ang = a_ang.data.as_ints
-        cdef int c
-        for c in range(n):
-            if ang[c] < 0 or ang[c] >= n:
-                raise ValueError("angles must be a permutation of {%s}" % ", ".join(str(j) for j in range(n)))
-        if self.T.max_letter >= n or (self.T.max_letter ^ 1) >= n:
-            raise ValueError(f"the letters of this tree do not fit in an alphabet of size {n}")
-        return a_ang
+        Return ``order`` as an array of typecode ``'i'``.
 
-    cdef int _sorted_leaves(self, int *ang, int n, int *out) except -1:
+        Its values are checked by ``ct_sorted_leaves``, and on a failure
+        :meth:`_sorted_leaves` says which condition does not hold.
+        """
+        if not len(order):
+            raise ValueError("order must be non-empty")
+        return _as_int_array(order)
+
+    cdef array.array _pivot_array(self, pivot, int n):
+        r"""
+        Return ``pivot`` as an array of typecode ``'i'`` after checking that
+        it has ``n`` entries.
+
+        Its values are checked by ``ct_sorted_leaves``, and on a failure
+        :meth:`_sorted_leaves` says which condition does not hold.
+        """
+        cdef array.array a_pivot = _as_int_array(pivot)
+        if len(a_pivot) != n:
+            raise ValueError(f"pivot must be a sequence of {n} values in "
+                             "{%s}" % ", ".join(str(j) for j in range(n)))
+        return a_pivot
+
+    cdef int _sorted_leaves(self, array.array order, array.array pivot, int *out) except -1:
         r"""
         Write the leaves in the order of :meth:`cyclically_sorted_leaves` to
         ``out``, which has room for ``self.num_states()`` entries, and return
         their number.
 
-        The angles ``ang[:n]`` must have been checked by :meth:`_angles_array`.
+        ``order`` and ``pivot`` must be arrays of typecode ``'i'`` of the
+        same length, as returned by :meth:`_order_array` and
+        :meth:`_pivot_array`.
         """
+        cdef int n = len(order)
         cdef int num
-        cdef int err = ct_sorted_leaves(&self.T, ang, n, out, &num)
+        cdef int err = ct_sorted_leaves(&self.T, order.data.as_ints, pivot.data.as_ints,
+                                        n, out, &num)
+        if err == CT_EINVALID:
+            # NOTE: the arguments are only looked at again on a failure, to
+            # say which condition does not hold
+            if sorted(order) != list(range(n)):
+                raise ValueError("order must be a permutation of {%s}" % ", ".join(str(j) for j in range(n)))
+            if self.T.max_letter >= n:
+                raise ValueError(f"the letters of this tree do not fit in an alphabet of size {n}")
+            if any(p < 0 or p >= n for p in pivot):
+                raise ValueError(f"pivot must be a sequence of {n} values in "
+                                 "{%s}" % ", ".join(str(j) for j in range(n)))
         if err:
             self._raise(err, None)
         return num
@@ -1026,120 +1077,6 @@ cdef class ConjugateTree:
         if err:
             self._raise(err, a)
         return result
-
-    def process_with_inverse(self, w):
-        r"""
-        Add the free group word ``w`` and, if it is new, its inverse in this
-        conjugate tree.
-
-        The letter ``h ^ 1`` is the inverse of the letter ``h``. The word
-        ``w`` must be cyclically reduced and non-empty, and every word of this
-        tree must have been added by this method, so that the words are closed
-        under inverse: once :meth:`process` has added a word, this method
-        refuses to run.
-
-        The output is a pair ``(i, exponent)`` where ``w`` is conjugate to the
-        ``exponent``-th power of the ``i``-th word of this tree. If ``w`` is
-        new, its primitive root gets the index ``i``, which is even, and its
-        inverse the index ``i + 1``.
-
-        Unlike :meth:`process`, this method does not convert ``w`` with
-        :func:`~combisurf.word.word_init`: it reads the letters of any
-        sequence of integers.
-
-        EXAMPLES::
-
-            sage: from combisurf.conjugate_tree import ConjugateTree
-            sage: T = ConjugateTree(4)
-            sage: T.process_with_inverse([0, 2, 0, 3])
-            (0, 1)
-            sage: T.words()
-            [array('i', [0, 2, 0, 3]), array('i', [2, 1, 3, 1])]
-            sage: T.process_with_inverse([2, 0, 2, 0])
-            (2, 2)
-            sage: T.words()
-            [array('i', [0, 2, 0, 3]), array('i', [2, 1, 3, 1]), array('i', [2, 0]), array('i', [1, 3])]
-            sage: T.process_with_inverse([0, 3, 0, 2])
-            (0, 1)
-            sage: T.process_with_inverse([1, 2, 1, 3])
-            (1, 1)
-            sage: T.process_with_inverse([0, 2, 0, 2, 0, 2])
-            (2, 3)
-
-        TESTS:
-
-        A word already present, then a power of a present word::
-
-            sage: T = ConjugateTree(4)
-            sage: T.process_with_inverse([0, 2])
-            (0, 1)
-            sage: T.process_with_inverse([2, 0])
-            (0, 1)
-            sage: T.process_with_inverse([3, 1])
-            (1, 1)
-            sage: T.process_with_inverse([1, 3, 1, 3])
-            (1, 2)
-            sage: T.num_words()
-            2
-
-        A word of length one, which is its own conjugate only::
-
-            sage: T.process_with_inverse([1])
-            (2, 1)
-            sage: T.process_with_inverse([0, 0])
-            (3, 2)
-
-        Invalid input leaves the tree as it was::
-
-            sage: T = ConjugateTree(4)
-            sage: T.process_with_inverse([0, 2, 3])
-            Traceback (most recent call last):
-            ...
-            ValueError: w must be cyclically reduced
-            sage: T.process_with_inverse([2, 1, 0])
-            Traceback (most recent call last):
-            ...
-            ValueError: w must be cyclically reduced
-            sage: T.process_with_inverse([])
-            Traceback (most recent call last):
-            ...
-            ValueError: empty word in input
-            sage: T.process_with_inverse([0, 4])
-            Traceback (most recent call last):
-            ...
-            ValueError: invalid word: letter 4 not in the alphabet {0, 1, ..., 3}
-            sage: T.num_words(), T.num_states()
-            (0, 1)
-
-        A tree whose words are not closed under inverse::
-
-            sage: T = ConjugateTree()
-            sage: T.process([1])
-            1
-            sage: T.process_with_inverse([0])
-            Traceback (most recent call last):
-            ...
-            ValueError: the words of this tree are not closed under inverse
-            sage: T.num_words(), T.num_states()
-            (1, 2)
-
-        With an alphabet of odd size, the inverse of the last letter is not in
-        the alphabet::
-
-            sage: T = ConjugateTree(3)
-            sage: T.process_with_inverse([2])
-            Traceback (most recent call last):
-            ...
-            ValueError: invalid word: letter 3 not in the alphabet {0, 1, ..., 2}
-            sage: T.num_words(), T.num_states()
-            (0, 1)
-        """
-        cdef array.array a = _as_int_array(w)
-        cdef int index, exponent
-        cdef int err = ct_process_with_inverse(&self.T, a.data.as_ints, len(a), &index, &exponent)
-        if err:
-            self._raise(err, a)
-        return (index, exponent)
 
     # ------------------------------------------------------------------
     # self-checks

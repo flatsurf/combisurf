@@ -460,9 +460,16 @@ class ConjugateTreeNaive:
         """
         return [s for s in range(1, self.num_states()) if not self._transitions[s]]
 
-    def cyclically_sorted_leaves(self, angles):
+    def cyclically_sorted_leaves(self, order, pivot):
         r"""
-        Return the leaves sorted using a cyclic ordering of the alphabet given by ``angles``.
+        Return the leaves sorted by the order of the letters ``order``, the
+        order below a node being turned by ``pivot``.
+
+        See
+        :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves`:
+        the children of the root are visited by increasing ``order[c]`` and
+        the children of an internal node whose label ends with the letter
+        ``b`` by increasing ``(order[c] - pivot[b]) % n``.
 
         EXAMPLES::
 
@@ -473,12 +480,12 @@ class ConjugateTreeNaive:
             1
             sage: T.process([0,1])
             1
-            sage: T.cyclically_sorted_leaves([0, 1])
+            sage: T.cyclically_sorted_leaves([0, 1], [1, 0])
             [6, 1, 8, 4, 2]
         """
-        n = len(angles)
+        n = len(order)
         leaves = []
-        queue = [self._transitions[0][letter] for letter in sorted(self._transitions[0], key = lambda letter: angles[letter], reverse=True)]
+        queue = [self._transitions[0][letter] for letter in sorted(self._transitions[0], key=lambda letter: order[letter], reverse=True)]
         while queue:
             s = queue.pop()
             if self._transition_end[s] == -1:
@@ -486,8 +493,8 @@ class ConjugateTreeNaive:
             else:
                 i = self._transition_word[s]
                 p = self._transition_end[s]
-                last_letter = self._letter(i, p - 1) ^ 1
-                transitions = sorted(self._transitions[s], key = lambda letter: (angles[letter] - angles[last_letter]) %  n, reverse=True)
+                base = pivot[self._letter(i, p - 1)]
+                transitions = sorted(self._transitions[s], key=lambda letter: (order[letter] - base) % n, reverse=True)
                 queue.extend(self._transitions[s][letter] for letter in transitions)
 
         return leaves

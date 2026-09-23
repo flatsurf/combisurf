@@ -10,8 +10,9 @@ from array import array
 from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclically_reduce, word_free_group_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
-from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, _leaf_weights, startpoint_sweep_sorted,
-                                     startpoint_sweep_weighted, word_arcs)
+from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, cyclically_sorted_leaf_arcs, _leaf_weights,
+                                     startpoint_sweep_sorted, startpoint_sweep_weighted, tree_add_with_inverse,
+                                     word_arcs)
 
 class GeometricIntersection:
     def __init__(self, m):
@@ -95,14 +96,13 @@ class GeometricIntersection:
                 # was already given in T
                 raise ValueError(f"conjugate words at position {-ans} and {i}")
 
-        word_indices = []
-        word_shifts = []
-        for s in T.cyclically_sorted_leaves(self._angles):
-            i, k = T.leaf_as_conjugate(s)
-            word_indices.append(i)
-            word_shifts.append(k)
+        # NOTE: below a node, the angles are measured from the half-edge
+        # through which the curve came in, the inverse of the last letter read
+        n = len(self._angles)
+        pivot = array('i', [self._angles[b ^ 1] for b in range(n)])
+        word_indices, word_shifts = T.sorted_leaves_as_conjugates(self._angles, pivot)
 
-        return word_indices, word_shifts
+        return list(word_indices), list(word_shifts)
 
     def conjugate_plot(self, words):
         from sage.rings.complex_double import CDF
@@ -297,7 +297,7 @@ class GeometricIntersection:
         T = ConjugateTree(n)
         u_multiplicities = []
         v_multiplicities = []
-        # NOTE: process_with_inverse adds a new word together with its inverse,
+        # NOTE: tree_add_with_inverse adds a new word together with its inverse,
         # the pair getting the indices (2 * slot, 2 * slot + 1) where slot is
         # the next free one
         for u in ulist:
@@ -305,7 +305,7 @@ class GeometricIntersection:
                 u = word_cyclically_reduce(word_init(u))
             if not u:
                 continue
-            i, exponent = T.process_with_inverse(u)
+            i, exponent = tree_add_with_inverse(T, u)
             if (i >> 1) == len(u_multiplicities):
                 # u added to T
                 u_multiplicities.append(0)
@@ -322,7 +322,7 @@ class GeometricIntersection:
                     v = word_cyclically_reduce(word_init(v))
                 if not v:
                     continue
-                i, exponent = T.process_with_inverse(v)
+                i, exponent = tree_add_with_inverse(T, v)
                 if (i >> 1) == len(u_multiplicities):
                     # v added to T
                     u_multiplicities.append(0)
@@ -360,7 +360,7 @@ class GeometricIntersection:
         # its startpoint to its endpoint and its two multiplicities. Total cost
         # is (len(u) + len(v)) * log(n) where the log(n) factor comes from
         # partial sums.
-        word_index, starts, arc_angles = T.cyclically_sorted_leaf_arcs(angles)
+        word_index, starts, arc_angles = cyclically_sorted_leaf_arcs(T, angles)
         uweights = _leaf_weights(word_index, u_multiplicities)
         if self_intersection:
             # with the v-weights equal to the u-weights, the sweep counts each
@@ -536,7 +536,7 @@ class GeometricIntersectionMatrix:
         self._slot = []
         for j, w in enumerate(self._curves):
             # 2. the slot of the curve, rejecting the non-primitive ones
-            i, exponent = T.process_with_inverse(w)
+            i, exponent = tree_add_with_inverse(T, w)
             if exponent != 1:
                 raise NotImplementedError(f"non-primitive curve at index {j}")
             self._slot.append(i >> 1)
@@ -552,7 +552,7 @@ class GeometricIntersectionMatrix:
         ranks = [array('q') for _ in range(num_slots)]
         starts = [array('q') for _ in range(num_slots)]
         arc_angles = [array('q') for _ in range(num_slots)]
-        leaf_word, leaf_start, leaf_angle = T.cyclically_sorted_leaf_arcs(angles)
+        leaf_word, leaf_start, leaf_angle = cyclically_sorted_leaf_arcs(T, angles)
         for rank in range(len(leaf_word)):
             slot = leaf_word[rank] >> 1
             ranks[slot].append(rank)

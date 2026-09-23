@@ -1,3 +1,4 @@
+# distutils: include_dirs = combisurf/src
 r"""
 Counting crossing chords of a circle
 
@@ -30,6 +31,12 @@ for the leaves of two curves kept apart as in
 by :func:`startpoint_sweep_weighted`, for the leaves of weighted multicurves
 listed together as in
 :meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`.
+
+Those leaves are the ones of a conjugate tree holding the curves and their
+inverses in the free group where ``h ^ 1`` is the inverse of the letter
+``h``: :func:`tree_add_with_inverse` adds a curve and its inverse, and
+:func:`cyclically_sorted_leaf_arcs` lists the leaves in their cyclic order at
+infinity.
 
 EXAMPLES::
 
@@ -66,8 +73,10 @@ EXAMPLES::
 # ****************************************************************************
 
 from cpython cimport array
+from libc.limits cimport INT_MAX
 from libc.stdlib cimport calloc, free, malloc, qsort
 
+from combisurf.conjugate_tree cimport ConjugateTree, CT_EALPHABET, CT_ENEGATIVE, CT_ETOOLARGE
 from combisurf.partial_sums cimport fenwick_add, fenwick_prefix, fenwick_clear
 
 
@@ -762,6 +771,323 @@ def startpoint_sweep_sorted(int n, array.array uranks not None, array.array usta
     return S
 
 
+cdef array.array _int_array = array.array('i', [])
+
+
+cdef array.array _as_int_array(w):
+    r"""
+    Return ``w`` if it is an array of typecode ``'i'`` and a copy of it as
+    one otherwise.
+    """
+    if type(w) is array.array and (<array.array> w).ob_descr.typecode == b'i':
+        return <array.array> w
+    return array.array('i', w)
+
+
+def tree_add_with_inverse(ConjugateTree T not None, w):
+    r"""
+    Add the free group word ``w`` and, if it is new, its inverse to the
+    conjugate tree ``T``.
+
+    The letter ``h ^ 1`` is the inverse of the letter ``h``, so the alphabet
+    of ``T``, if it is known, must have even size. The word ``w``
+    must be cyclically reduced and non-empty, and every word of ``T`` must
+    have been added by this function, so that the words are closed under
+    inverse. The only cheap evidence of the contrary is an odd number of
+    words, on which this function refuses to run: in particular once
+    :meth:`~combisurf.conjugate_tree.ConjugateTree.process` has added a single
+    word.
+
+    The output is a pair ``(i, exponent)`` where ``w`` is conjugate to the
+    ``exponent``-th power of the ``i``-th word of ``T``. If ``w`` is new,
+    its primitive root gets the index ``i``, which is even, and its inverse
+    the index ``i + 1``.
+
+    Unlike :meth:`~combisurf.conjugate_tree.ConjugateTree.process`, this
+    function does not convert ``w`` with :func:`~combisurf.word.word_init`:
+    it reads the letters of any sequence of integers.
+
+    EXAMPLES::
+
+        sage: from combisurf.conjugate_tree import ConjugateTree
+        sage: from combisurf.crossing_arcs import tree_add_with_inverse
+        sage: T = ConjugateTree(4)
+        sage: tree_add_with_inverse(T, [0, 2, 0, 3])
+        (0, 1)
+        sage: T.words()
+        [array('i', [0, 2, 0, 3]), array('i', [2, 1, 3, 1])]
+        sage: tree_add_with_inverse(T, [2, 0, 2, 0])
+        (2, 2)
+        sage: T.words()
+        [array('i', [0, 2, 0, 3]), array('i', [2, 1, 3, 1]), array('i', [2, 0]), array('i', [1, 3])]
+        sage: tree_add_with_inverse(T, [0, 3, 0, 2])
+        (0, 1)
+        sage: tree_add_with_inverse(T, [1, 2, 1, 3])
+        (1, 1)
+        sage: tree_add_with_inverse(T, [0, 2, 0, 2, 0, 2])
+        (2, 3)
+
+    TESTS:
+
+    A word already present, then a power of a present word::
+
+        sage: T = ConjugateTree(4)
+        sage: tree_add_with_inverse(T, [0, 2])
+        (0, 1)
+        sage: tree_add_with_inverse(T, [2, 0])
+        (0, 1)
+        sage: tree_add_with_inverse(T, [3, 1])
+        (1, 1)
+        sage: tree_add_with_inverse(T, [1, 3, 1, 3])
+        (1, 2)
+        sage: T.num_words()
+        2
+
+    A word of length one, which is its own conjugate only::
+
+        sage: tree_add_with_inverse(T, [1])
+        (2, 1)
+        sage: tree_add_with_inverse(T, [0, 0])
+        (3, 2)
+
+    Invalid input leaves the tree as it was::
+
+        sage: T = ConjugateTree(4)
+        sage: tree_add_with_inverse(T, [0, 2, 3])
+        Traceback (most recent call last):
+        ...
+        ValueError: w must be cyclically reduced
+        sage: tree_add_with_inverse(T, [2, 1, 0])
+        Traceback (most recent call last):
+        ...
+        ValueError: w must be cyclically reduced
+        sage: tree_add_with_inverse(T, [])
+        Traceback (most recent call last):
+        ...
+        ValueError: empty word in input
+        sage: tree_add_with_inverse(T, [0, 4])
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid word: letter 4 not in the alphabet {0, 1, ..., 3}
+        sage: tree_add_with_inverse(T, [0, -1])
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid word: must be made of non-negative integers
+        sage: T.num_words(), T.num_states()
+        (0, 1)
+
+    A tree whose words are not closed under inverse::
+
+        sage: T = ConjugateTree()
+        sage: T.process([1])
+        1
+        sage: tree_add_with_inverse(T, [0])
+        Traceback (most recent call last):
+        ...
+        ValueError: the words of this tree are not closed under inverse
+        sage: T.num_words(), T.num_states()
+        (1, 2)
+
+    An alphabet of odd size is not the alphabet of a free group::
+
+        sage: T = ConjugateTree(3)
+        sage: tree_add_with_inverse(T, [2])
+        Traceback (most recent call last):
+        ...
+        ValueError: the alphabet size (=3) must be even
+        sage: T.num_words(), T.num_states()
+        (0, 1)
+
+    A long word, whose inverse does not fit in the buffer on the stack::
+
+        sage: w = [0, 2] * 50 + [0, 3]
+        sage: T = ConjugateTree(4)
+        sage: tree_add_with_inverse(T, w)
+        (0, 1)
+        sage: list(T.word(1)) == [h ^^ 1 for h in reversed(w)]
+        True
+        sage: T._check()
+    """
+    cdef array.array a = _as_int_array(w)
+    cdef int *v = a.data.as_ints
+    cdef Py_ssize_t size = len(a)
+    cdef int n = T.T.alphabet_size
+    cdef int l, j, h, status, i, r, check
+    cdef int stack_buf[64]
+    cdef int *buf = stack_buf
+    cdef const int *src
+
+    if n % 2:
+        raise ValueError(f"the alphabet size (={n}) must be even")
+    if size == 0:
+        raise ValueError("empty word in input")
+    if size > INT_MAX // 2:
+        T._raise(CT_ETOOLARGE, a)
+    l = <int> size
+
+    # NOTE: all the checks come before any insertion, since a node is never
+    # removed from the tree; ct_process checks the letters again
+    for j in range(l):
+        h = v[j]
+        if h < 0:
+            T._raise(CT_ENEGATIVE, a)
+        if n and h >= n:
+            T._raise(CT_EALPHABET, a)
+    for j in range(l):
+        if v[j] ^ 1 == v[j + 1 if j + 1 < l else 0]:
+            raise ValueError("w must be cyclically reduced")
+    if T.T.nwords % 2:
+        raise ValueError("the words of this tree are not closed under inverse")
+
+    # w and the inverse of its primitive root, which is at most as long
+    T._reserve(2, 2 * l)
+
+    T._process(v, l, &status)
+    if status <= 0:
+        # w is conjugate to a power of a word already present
+        i = -status
+        if l % T.T.wlen[i]:
+            raise RuntimeError("conjugate tree: a word conjugate to a power of a word "
+                               "whose length does not divide its own")
+        return (i, l // T.T.wlen[i])
+
+    # NOTE: the inverse is built outside of the word buffer of T, which
+    # ct_process writes to
+    i = T.T.nwords - 1
+    r = T.T.wlen[i]
+    if r > 64:
+        buf = <int *> malloc(r * sizeof(int))
+        if buf == NULL:
+            raise MemoryError
+    src = T.T.wbuf + T.T.wstart[i]
+    for j in range(r):
+        buf[j] = src[r - 1 - j] ^ 1
+    try:
+        T._process(buf, r, &check)
+    finally:
+        if buf != stack_buf:
+            free(buf)
+    if check != 1:
+        # NOTE: the inverse of a cyclically reduced word is not conjugate to a
+        # power of it in a free group, and the words were closed under
+        # inverse, so the inverse of the new word w is new and primitive
+        raise RuntimeError("conjugate tree: the inverse of a new word is not new and primitive")
+    return (i, status)
+
+
+def cyclically_sorted_leaf_arcs(ConjugateTree T not None, angles):
+    r"""
+    Return the leaves of the conjugate tree ``T`` in their cyclic order at
+    infinity, each one described by its word, its first letter and the angle
+    it turns.
+
+    The letter ``h ^ 1`` is the inverse of the letter ``h`` and ``angles[h]``
+    is the position of the half-edge ``h`` around the vertex. The order is
+    the one of
+    :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves`
+    with ``order = angles`` and ``pivot[b] = angles[b ^ 1]``: below a node,
+    the angles are measured from the half-edge through which the curve came
+    in.
+
+    The leaf of the conjugate ``(i, k)`` (see
+    :meth:`~combisurf.conjugate_tree.ConjugateTree.leaf_as_conjugate`) of the
+    word ``w = T.word(i)`` starts with the letter ``w[k]`` and ends with the
+    reverse ``w[k - 1] ^ 1`` of the letter before it. Its angle is
+    ``(angles[w[k - 1] ^ 1] - angles[w[k]]) % n - 1`` where ``n`` is the
+    length of ``angles``.
+
+    INPUT:
+
+    - ``T`` -- a conjugate tree
+
+    - ``angles`` -- a permutation of ``{0, 1, ..., n - 1}``, where ``n`` is
+      even and larger than every letter of ``T``
+
+    OUTPUT: a triple of arrays of typecode ``'q'`` with one entry per leaf:
+    the index ``i`` of the word of the leaf, its first letter and its angle
+
+    EXAMPLES::
+
+        sage: from combisurf.conjugate_tree import ConjugateTree
+        sage: from combisurf.crossing_arcs import cyclically_sorted_leaf_arcs
+        sage: T = ConjugateTree()
+        sage: T.process([0, 2, 1, 3])
+        1
+        sage: T.process([2, 0, 3, 1])
+        1
+        sage: angles = [0, 2, 1, 3]
+        sage: cyclically_sorted_leaf_arcs(T, angles)
+        (array('q', [1, 0, 1, 0, 1, 0, 1, 0]),
+         array('q', [0, 0, 2, 2, 1, 1, 3, 3]),
+         array('q', [2, 0, 2, 0, 2, 0, 2, 0]))
+
+    It describes the leaves of
+    :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves`::
+
+        sage: n = len(angles)
+        sage: pivot = [angles[b ^^ 1] for b in range(n)]
+        sage: ans = []
+        sage: for s in T.cyclically_sorted_leaves(angles, pivot):
+        ....:     i, k = T.leaf_as_conjugate(s)
+        ....:     w = T.word(i)
+        ....:     ans.append((i, w[k], (angles[w[k - 1] ^^ 1] - angles[w[k]]) % n - 1))
+        sage: list(zip(*cyclically_sorted_leaf_arcs(T, angles))) == ans
+        True
+
+    TESTS::
+
+        sage: cyclically_sorted_leaf_arcs(T, [0, 1])
+        Traceback (most recent call last):
+        ...
+        ValueError: the letters of this tree do not fit in an alphabet of size 2
+        sage: cyclically_sorted_leaf_arcs(T, [0, 2, 1])
+        Traceback (most recent call last):
+        ...
+        ValueError: the length of angles (=3) must be even
+    """
+    cdef array.array a_ang = T._order_array(angles)
+    cdef int *ang = a_ang.data.as_ints
+    cdef int n = len(a_ang)
+    if n % 2:
+        raise ValueError(f"the length of angles (={n}) must be even")
+
+    cdef array.array a_pivot = array.clone(_int_array, n, False)
+    cdef int *pivot = a_pivot.data.as_ints
+    cdef int c
+    for c in range(n):
+        pivot[c] = ang[c ^ 1]
+
+    cdef array.array a_leaves = array.clone(_int_array, T.T.nstates, False)
+    cdef int *out = a_leaves.data.as_ints
+    cdef int num = T._sorted_leaves(a_ang, a_pivot, out)
+
+    cdef array.array a_q = array.array('q', [])
+    cdef array.array a_word = array.clone(a_q, num, False)
+    cdef array.array a_first = array.clone(a_q, num, False)
+    cdef array.array a_turn = array.clone(a_q, num, False)
+    cdef long long *word = a_word.data.as_longlongs
+    cdef long long *first = a_first.data.as_longlongs
+    cdef long long *turn = a_turn.data.as_longlongs
+    cdef int j, s, i, l, k, a, b, t
+    for j in range(num):
+        s = out[j]
+        # the conjugate (i, k) of the leaf, as in leaf_as_conjugate
+        i = T.T.tword[s]
+        l = T.T.wlen[i]
+        k = (T.T.tstart[s] - T.T.dep[T.T.parent[s]]) % l
+        if k < 0:
+            k += l
+        a = T.T.wbuf[T.T.wstart[i] + k]
+        b = T.T.wbuf[T.T.wstart[i] + (k - 1 if k else l - 1)] ^ 1
+        t = ang[b] - ang[a]
+        if t < 0:
+            t += n
+        word[j] = i
+        first[j] = a
+        turn[j] = t - 1
+    return (a_word, a_first, a_turn)
+
+
 def _leaf_weights(array.array word_index not None, weights):
     r"""
     Return the weights of the leaves of a family of words, from the index of
@@ -769,7 +1095,7 @@ def _leaf_weights(array.array word_index not None, weights):
 
     This builds the ``uweights`` and ``vweights`` of
     :func:`startpoint_sweep_weighted` from the first array returned by
-    :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaf_arcs`.
+    :func:`cyclically_sorted_leaf_arcs`.
 
     INPUT:
 

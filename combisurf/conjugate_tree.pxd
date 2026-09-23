@@ -9,8 +9,6 @@ cdef extern from "conjugate_tree.h":
         CT_EEMPTY
         CT_ENEGATIVE
         CT_EALPHABET
-        CT_ENOTREDUCED
-        CT_ENOTCLOSED
         CT_ETOOLARGE
         CT_EINVALID
         CT_EINTERNAL
@@ -20,7 +18,6 @@ cdef extern from "conjugate_tree.h":
         int alphabet_size
         int dense
         int max_letter
-        int closed
         int broken
         int *wbuf
         int wbuf_size
@@ -44,8 +41,8 @@ cdef extern from "conjugate_tree.h":
     int ct_init(ct_tree *T, int alphabet, int reserve, int dense) nogil
     void ct_free(ct_tree *T) nogil
     int ct_process(ct_tree *T, const int *w, int len, int *result) nogil
-    int ct_process_with_inverse(ct_tree *T, const int *w, int len, int *index, int *exponent) nogil
-    int ct_sorted_leaves(const ct_tree *T, const int *angles, int n, int *out, int *num) nogil
+    int ct_reserve(ct_tree *T, int words, int letters) nogil
+    int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n, int *out, int *num) nogil
     int ct_check(const ct_tree *T) nogil
     int ct_letter(const ct_tree *T, int i, int k) nogil
     int ct_child(const ct_tree *T, int s, int letter) nogil
@@ -59,5 +56,8 @@ cdef class ConjugateTree:
     cdef ct_tree T
 
     cdef int _raise(self, int err, array.array w) except -1
-    cdef array.array _angles_array(self, angles)
-    cdef int _sorted_leaves(self, int *ang, int n, int *out) except -1
+    cdef int _reserve(self, int words, int letters) except -1
+    cdef int _process(self, const int *w, int length, int *result) except -1
+    cdef array.array _order_array(self, order)
+    cdef array.array _pivot_array(self, pivot, int n)
+    cdef int _sorted_leaves(self, array.array order, array.array pivot, int *out) except -1

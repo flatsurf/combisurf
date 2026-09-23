@@ -172,7 +172,6 @@ int ct_init(ct_tree *T, int alphabet, int reserve, int dense)
     int err;
     memset(T, 0, sizeof(ct_tree));
     T->max_letter = -1;
-    T->closed = 1;
     if (alphabet < 0 || reserve < 0 || (dense > 0 && alphabet == 0))
         return CT_EINVALID;
     T->alphabet_size = alphabet;
@@ -259,25 +258,6 @@ static void append_word(ct_tree *T, const int *w, int len, int max)
     T->wstart[T->nwords] = T->wbuf_size;
     T->wlen[T->nwords] = len;
     T->wbuf_size += len;
-    T->nwords++;
-}
-
-/* Append the inverse of the i-th word, whose room was reserved. */
-static void append_inverse_word(ct_tree *T, int i)
-{
-    int l = T->wlen[i];
-    const int *src = T->wbuf + T->wstart[i];
-    int *dst = T->wbuf + T->wbuf_size;
-    int j, letter;
-    for (j = 0; j < l; j++) {
-        letter = src[l - 1 - j] ^ 1;
-        dst[j] = letter;
-        if (letter > T->max_letter)
-            T->max_letter = letter;
-    }
-    T->wstart[T->nwords] = T->wbuf_size;
-    T->wlen[T->nwords] = l;
-    T->wbuf_size += l;
     T->nwords++;
 }
 
@@ -575,67 +555,19 @@ int ct_process(ct_tree *T, const int *w, int len, int *result)
     if ((err = reserve(T, 1, len, 2 * len)))
         return err;
     append_word(T, w, len, max);
-    if ((err = insert_last(T, result)))
-        return err;
-    if (*result > 0)
-        /* a word added alone breaks the closure under inverse */
-        T->closed = 0;
-    return CT_OK;
+    return insert_last(T, result);
 }
 
-int ct_process_with_inverse(ct_tree *T, const int *w, int len, int *index, int *exponent)
+int ct_reserve(ct_tree *T, int words, int letters)
 {
-    int err, max, i, j, inv, status;
     if (T->broken)
         return CT_EBROKEN;
-    if (T->nstates == 0)
+    if (T->nstates == 0 || words < 0 || letters < 0)
         return CT_EINVALID;
-    /* NOTE: the checks come before any insertion, since a node is never
-     * removed from the tree */
-    if ((err = check_word(T, w, len, &max)))
-        return err;
-    for (j = 0; j < len; j++) {
-        inv = w[j] ^ 1;
-        if (inv == w[j + 1 < len ? j + 1 : 0])
-            return CT_ENOTREDUCED;
-        if (T->alphabet_size && inv >= T->alphabet_size)
-            return CT_EALPHABET;
-    }
-    if (!T->closed)
-        return CT_ENOTCLOSED;
-    if (len > (INT_MAX - T->nstates) / 4 || len > INT_MAX / 2)
+    /* the same bound as in ct_process, for the letters of all the words */
+    if (letters > (INT_MAX - T->nstates) / 2)
         return CT_ETOOLARGE;
-    if ((err = reserve(T, 2, 2 * len, 4 * len)))
-        return err;
-
-    i = T->nwords;
-    append_word(T, w, len, max);
-    if ((err = insert_last(T, &status)))
-        return err;
-    if (status <= 0) {
-        /* w is conjugate to a power of a word already present */
-        j = -status;
-        if (len % T->wlen[j]) {
-            T->broken = CT_EINTERNAL;
-            return CT_EINTERNAL;
-        }
-        *index = j;
-        *exponent = len / T->wlen[j];
-        return CT_OK;
-    }
-    append_inverse_word(T, i);
-    if ((err = insert_last(T, &j)))
-        return err;
-    if (j != 1) {
-        /* NOTE: the inverse of a cyclically reduced word is not conjugate to
-         * a power of it in a free group, and the words were closed under
-         * inverse, so the inverse of the new word w is new and primitive */
-        T->broken = CT_EINTERNAL;
-        return CT_EINTERNAL;
-    }
-    *index = i;
-    *exponent = status;
-    return CT_OK;
+    return reserve(T, words, letters, 2 * letters);
 }
 
 /* ------------------------------------------------------------------ */
@@ -697,17 +629,18 @@ static int push_sorted(int *stack, int top, int *kids, int *keys, int d)
     return top + d;
 }
 
-int ct_sorted_leaves(const ct_tree *T, const int *ang, int n, int *out, int *num)
+int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n,
+                     int *out, int *num)
 {
     int *stack, *kids, *keys;
     int top = 0;
     int count = 0;
     int c, s, t, d, key, base;
 
-    if (T->nstates == 0 || n <= 0 || T->max_letter >= n || (T->max_letter ^ 1) >= n)
+    if (T->nstates == 0 || n <= 0 || T->max_letter >= n)
         return CT_EINVALID;
     for (c = 0; c < n; c++)
-        if (ang[c] < 0 || ang[c] >= n)
+        if (order[c] < 0 || order[c] >= n || pivot[c] < 0 || pivot[c] >= n)
             return CT_EINVALID;
 
     /* each node is pushed at most once, and a node has at most n children
@@ -722,21 +655,35 @@ int ct_sorted_leaves(const ct_tree *T, const int *ang, int n, int *out, int *num
         return CT_ENOMEM;
     }
 
-    /* the children of the root, ordered by the angle of their first letter */
+    /* order is a permutation: keys[] marks the values seen, which also
+     * makes the keys of the children of a node distinct */
+    for (c = 0; c < n; c++)
+        keys[c] = 0;
+    for (c = 0; c < n; c++) {
+        if (keys[order[c]]) {
+            free(stack);
+            free(kids);
+            free(keys);
+            return CT_EINVALID;
+        }
+        keys[order[c]] = 1;
+    }
+
+    /* the children of the root, ordered by order[] of their first letter */
     d = 0;
     if (T->dense) {
         for (c = 0; c < T->alphabet_size; c++) {
             t = T->trans[c];
             if (t != -1) {
                 kids[d] = t;
-                keys[d] = ang[c];
+                keys[d] = order[c];
                 d++;
             }
         }
     } else {
         for (t = T->fchild[0]; t != -1; t = T->nsib[t]) {
             kids[d] = t;
-            keys[d] = ang[letter_of(T, T->tword[t], T->tstart[t])];
+            keys[d] = order[letter_of(T, T->tword[t], T->tstart[t])];
             d++;
         }
     }
@@ -748,16 +695,16 @@ int ct_sorted_leaves(const ct_tree *T, const int *ang, int n, int *out, int *num
             out[count++] = s;
             continue;
         }
-        /* further down, the angle is measured from the reverse of the last
-         * letter read */
-        base = ang[letter_of(T, T->tword[s], T->tend[s] - 1) ^ 1];
+        /* further down, order[] is read from the pivot of the last letter
+         * of the label */
+        base = pivot[letter_of(T, T->tword[s], T->tend[s] - 1)];
         d = 0;
         if (T->dense) {
             const int *row = T->trans + (size_t) s * (size_t) T->alphabet_size;
             for (c = 0; c < T->alphabet_size; c++) {
                 t = row[c];
                 if (t != -1) {
-                    key = ang[c] - base;
+                    key = order[c] - base;
                     if (key < 0)
                         key += n;
                     kids[d] = t;
@@ -767,7 +714,7 @@ int ct_sorted_leaves(const ct_tree *T, const int *ang, int n, int *out, int *num
             }
         } else {
             for (t = T->fchild[s]; t != -1; t = T->nsib[t]) {
-                key = ang[letter_of(T, T->tword[t], T->tstart[t])] - base;
+                key = order[letter_of(T, T->tword[t], T->tstart[t])] - base;
                 if (key < 0)
                     key += n;
                 kids[d] = t;
@@ -793,8 +740,6 @@ const char *ct_strerror(int code)
     case CT_EEMPTY: return "empty word";
     case CT_ENEGATIVE: return "negative letter";
     case CT_EALPHABET: return "letter outside the alphabet";
-    case CT_ENOTREDUCED: return "word not cyclically reduced";
-    case CT_ENOTCLOSED: return "the words of the tree are not closed under inverse";
     case CT_ETOOLARGE: return "tree too large for int indices or for a dense table";
     case CT_EINVALID: return "invalid argument";
     case CT_EINTERNAL: return "internal inconsistency";
@@ -828,7 +773,7 @@ int ct_check(const ct_tree *T)
     int n = T->nstates;
     int err = CT_OK;
     int *buf = NULL, *buf2 = NULL;
-    int i, j, s, t, r, c, l, k, count, steps, max_dep, ei, ek;
+    int i, j, s, t, r, c, k, count, steps, max_dep, ei, ek;
 
     CHECK(n >= 1 && n <= T->capacity);
     CHECK(T->broken == 0);
@@ -846,16 +791,6 @@ int ct_check(const ct_tree *T)
     for (j = 0; j < T->wbuf_size; j++) {
         CHECK(T->wbuf[j] >= 0 && T->wbuf[j] <= T->max_letter);
         CHECK(!T->alphabet_size || T->wbuf[j] < T->alphabet_size);
-    }
-    if (T->closed) {
-        /* the words come in pairs of mutual inverses */
-        CHECK(T->nwords % 2 == 0);
-        for (i = 0; i < T->nwords; i += 2) {
-            l = T->wlen[i];
-            CHECK(T->wlen[i + 1] == l);
-            for (j = 0; j < l; j++)
-                CHECK(T->wbuf[T->wstart[i + 1] + j] == (T->wbuf[T->wstart[i] + l - 1 - j] ^ 1));
-        }
     }
 
     /* the root */
