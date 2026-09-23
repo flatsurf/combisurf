@@ -114,6 +114,12 @@ depends-on = ["build"]
 cmd = "pytest -n auto test/"
 depends-on = ["build"]
 
+# The tests of the C conjugate tree (combisurf/src/conjugate_tree.c) as a
+# standalone C program: optimized, with the debug checks, and under the
+# address and undefined behaviour sanitizers.
+[tool.pixi.tasks.test-c]
+cmd = "make -C test/c check debug asan"
+
 [tool.pixi.feature.dev.tasks]
 # "sage" and "test" are shortcuts that should (together with their
 # dependencies) run in the "dev" environment. To achieve this, we need to split

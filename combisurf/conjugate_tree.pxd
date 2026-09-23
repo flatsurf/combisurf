@@ -46,7 +46,7 @@ cdef extern from "conjugate_tree.h":
     int ct_check(const ct_tree *T) nogil
     int ct_letter(const ct_tree *T, int i, int k) nogil
     int ct_child(const ct_tree *T, int s, int letter) nogil
-    void ct_canonize(const ct_tree *T, int *s, int i, int *k, int p) nogil
+    int ct_canonize(const ct_tree *T, int *s, int i, int *k, int p) nogil
     int ct_leaf_as_conjugate(const ct_tree *T, int s, int *i, int *k) nogil
     int64_t ct_size(const ct_tree *T) nogil
     const char *ct_strerror(int code) nogil

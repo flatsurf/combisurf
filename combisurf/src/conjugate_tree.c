@@ -226,6 +226,8 @@ static inline int letter_of(const ct_tree *T, int i, int k)
 
 int ct_letter(const ct_tree *T, int i, int k)
 {
+    if (i < 0 || i >= T->nwords)
+        return CT_EINVALID;
     return letter_of(T, i, k);
 }
 
@@ -296,6 +298,9 @@ static inline int child(const ct_tree *T, int s, int letter)
 
 int ct_child(const ct_tree *T, int s, int letter)
 {
+    if (s < 0 || s >= T->nstates || letter < 0 ||
+        (T->alphabet_size && letter >= T->alphabet_size))
+        return CT_EINVALID;
     return child(T, s, letter);
 }
 
@@ -341,6 +346,90 @@ static void replace_child(ct_tree *T, int s, int letter, int old, int new_)
 /* construction                                                        */
 /* ------------------------------------------------------------------ */
 
+#ifdef CT_DEBUG
+/*
+ * Local checks, run after each step of an insertion when CT_DEBUG is
+ * defined. ct_check does not hold in the middle of an insertion (the suffix
+ * link of the last internal node is set one step late, and the leaves of the
+ * word being inserted are not all there yet), but these do, and each costs
+ * O(1) except debug_active, which costs the length of the active edge. On a
+ * failure they mark the tree broken.
+ */
+
+static int debug_fail(ct_tree *T)
+{
+    T->broken = CT_EINTERNAL;
+    return 0;
+}
+
+/* ss was just made explicit between s and t: the three nodes are linked both
+ * ways and the depths agree with the labels. */
+static int debug_split(ct_tree *T, int s, int ss, int t)
+{
+    if (T->parent[ss] != s || T->parent[t] != ss ||
+        T->tend[ss] <= T->tstart[ss] || T->tstart[t] != T->tend[ss] ||
+        T->tword[t] != T->tword[ss] ||
+        child(T, s, letter_of(T, T->tword[ss], T->tstart[ss])) != ss ||
+        child(T, ss, letter_of(T, T->tword[t], T->tstart[t])) != t ||
+        T->dep[ss] != T->dep[s] + T->tend[ss] - T->tstart[ss] ||
+        (T->tend[t] != -1 && T->dep[t] != T->dep[ss] + T->tend[t] - T->tstart[t]))
+        return debug_fail(T);
+    return 1;
+}
+
+/* rr was just added as a leaf under r, reading letter first. */
+static int debug_leaf(ct_tree *T, int r, int rr, int letter)
+{
+    if (T->parent[rr] != r || T->tend[rr] != -1 ||
+        letter_of(T, T->tword[rr], T->tstart[rr]) != letter ||
+        child(T, r, letter) != rr)
+        return debug_fail(T);
+    return 1;
+}
+
+/* The suffix link of the internal node r was just set. */
+static int debug_link(ct_tree *T, int r)
+{
+    int t = T->sl[r];
+    if (t < 0 || t >= T->nstates || (t != 0 && T->tend[t] == -1) ||
+        T->dep[t] != T->dep[r] - 1)
+        return debug_fail(T);
+    return 1;
+}
+
+/* (s, i, k, p) is canonical and reads the letters k, ..., p - 1 of the i-th
+ * word along the tree. */
+static int debug_active(ct_tree *T, int s, int i, int k, int p)
+{
+    int t, j;
+    if (k > p || s < -1 || s >= T->nstates || (s > 0 && T->tend[s] == -1))
+        return debug_fail(T);
+    if (k == p)
+        return 1;
+    if (s == -1)
+        return debug_fail(T);
+    t = child(T, s, letter_of(T, i, k));
+    if (t == -1 || (T->tend[t] != -1 && T->tend[t] - T->tstart[t] <= p - k))
+        return debug_fail(T);
+    for (j = 0; j < p - k; j++)
+        if (letter_of(T, i, k + j) != letter_of(T, T->tword[t], T->tstart[t] + j))
+            return debug_fail(T);
+    return 1;
+}
+
+/* The whole tree, after an insertion. A CT_ENOMEM of ct_check says nothing
+ * about the tree, whose insertion went through: only an inconsistency is an
+ * error. */
+static int debug_tree(ct_tree *T)
+{
+    if (ct_check(T) == CT_EINTERNAL) {
+        T->broken = CT_EINTERNAL;
+        return CT_EINTERNAL;
+    }
+    return CT_OK;
+}
+#endif
+
 /*
  * Given the canonical reference (s, i, k, p), test whether reading letter
  * from it creates a branching. Return -1 if the transition exists, otherwise
@@ -380,7 +469,10 @@ static inline int test_and_split(ct_tree *T, int s, int i, int k, int p, int let
         T->tstart[t] = index;
         T->parent[t] = ss;
         add_child(T, ss, lletter, t);
-
+#ifdef CT_DEBUG
+        if (!debug_split(T, s, ss, t))
+            return -2;
+#endif
         return ss;
     }
     /* explicit state */
@@ -426,9 +518,35 @@ static inline void canonize(const ct_tree *T, int *sp, int i, int *kp, int p)
     }
 }
 
-void ct_canonize(const ct_tree *T, int *s, int i, int *k, int p)
+/*
+ * The same as canonize, for a reference that may not describe a path of the
+ * tree: canonize reads tstart[-1] when a child is missing.
+ */
+int ct_canonize(const ct_tree *T, int *sp, int i, int *kp, int p)
 {
-    canonize(T, s, i, k, p);
+    int s = *sp;
+    int k = *kp;
+    int ss;
+    if (s < -1 || s >= T->nstates || i < 0 || i >= T->nwords || k < 0 || k > p)
+        return CT_EINVALID;
+    if (k == p)
+        return CT_OK;
+    ss = s == -1 ? 0 : child(T, s, letter_of(T, i, k));
+    while (ss != -1 && T->tend[ss] != -1 && T->tend[ss] - T->tstart[ss] < p - k) {
+        k += T->tend[ss] - T->tstart[ss];
+        s = ss;
+        ss = child(T, s, letter_of(T, i, k));
+    }
+    if (ss == -1)
+        return CT_EINVALID;
+    if (T->tend[ss] != -1 && T->tend[ss] - T->tstart[ss] == p - k) {
+        *sp = ss;
+        *kp = p;
+    } else {
+        *sp = s;
+        *kp = k;
+    }
+    return CT_OK;
 }
 
 /*
@@ -461,8 +579,17 @@ static int update(ct_tree *T, int *sp, int i, int *kp, int p)
         T->tword[rr] = i;
         T->tstart[rr] = p;
         T->tend[rr] = -1;
-        if (old_r != 0)
+#ifdef CT_DEBUG
+        if (!debug_leaf(T, r, rr, letter))
+            return -1;
+#endif
+        if (old_r != 0) {
             T->sl[old_r] = r;
+#ifdef CT_DEBUG
+            if (!debug_link(T, old_r))
+                return -1;
+#endif
+        }
         old_r = r;
         /* NOTE: s is never -1 here; test_and_split returns -1 on the
          * imaginary node, which ends the loop */
@@ -471,8 +598,13 @@ static int update(ct_tree *T, int *sp, int i, int *kp, int p)
         r = test_and_split(T, s, i, k, p, letter);
     }
 
-    if (old_r != 0)
+    if (old_r != 0) {
         T->sl[old_r] = s;
+#ifdef CT_DEBUG
+        if (!debug_link(T, old_r))
+            return -1;
+#endif
+    }
 
     *sp = s;
     *kp = k;
@@ -509,6 +641,10 @@ static int insert_last(ct_tree *T, int *result)
             return T->broken;
         num_leaves += created;
         canonize(T, &s, i, &k, p + 1);
+#ifdef CT_DEBUG
+        if (!debug_active(T, s, i, k, p + 1))
+            return T->broken;
+#endif
 
         /* halt condition */
         if (num_leaves == l)
@@ -527,7 +663,11 @@ static int insert_last(ct_tree *T, int *result)
     if (num_leaves == 0) {
         pop_word(T);
         *result = -ii;
+#ifdef CT_DEBUG
+        return debug_tree(T);
+#else
         return CT_OK;
+#endif
     }
     if (l % num_leaves) {
         /* the length is not a multiple of the number of new leaves */
@@ -538,7 +678,11 @@ static int insert_last(ct_tree *T, int *result)
         /* NOTE: only store primitive words */
         truncate_last_word(T, num_leaves);
     *result = l / num_leaves;
+#ifdef CT_DEBUG
+    return debug_tree(T);
+#else
     return CT_OK;
+#endif
 }
 
 int ct_process(ct_tree *T, const int *w, int len, int *result)
@@ -592,6 +736,8 @@ int64_t ct_size(const ct_tree *T)
 {
     int64_t ans = 0;
     int s;
+    if (T->nstates == 0)
+        return CT_EINVALID;
     for (s = 0; s < T->nstates; s++) {
         if (T->tend[s] == -1)
             ans += 1;
@@ -808,7 +954,8 @@ int ct_check(const ct_tree *T)
         CHECK(T->tstart[s] >= 0);
         CHECK(T->tend[s] == -1 || T->tend[s] > T->tstart[s]);
         if (T->tend[s] != -1) {
-            CHECK(T->dep[s] == T->dep[T->parent[s]] + T->tend[s] - T->tstart[s]);
+            /* in 64 bits, since a corrupted depth may be close to INT_MAX */
+            CHECK(T->dep[s] == (int64_t) T->dep[T->parent[s]] + T->tend[s] - T->tstart[s]);
             if (T->dep[s] > max_dep)
                 max_dep = T->dep[s];
         }

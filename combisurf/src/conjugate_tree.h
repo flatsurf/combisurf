@@ -124,23 +124,28 @@ int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n
 /* Check the invariants of T; CT_OK or CT_EINTERNAL (or CT_ENOMEM). */
 int ct_check(const ct_tree *T);
 
-/* The k-th letter of the i-th word, read cyclically. */
+/* The k-th letter of the i-th word, read cyclically; CT_EINVALID when there
+ * is no i-th word. */
 int ct_letter(const ct_tree *T, int i, int k);
 
-/* The child of the node s whose label starts with letter, -1 when none. */
+/* The child of the node s whose label starts with letter, -1 when none;
+ * CT_EINVALID when s is not a node or letter not a letter. */
 int ct_child(const ct_tree *T, int s, int letter);
 
 /*
  * Canonize the reference (*s, i, *k, p) of the state reached by reading the
  * letters k, ..., p - 1 of the i-th word from the node s (-1 for the node
- * below the root).
+ * below the root). CT_EINVALID, with *s and *k unchanged, when s is not a
+ * node (or -1), i not a word, when not 0 <= k <= p, or when the letters do not
+ * lead along the tree.
  */
-void ct_canonize(const ct_tree *T, int *s, int i, int *k, int p);
+int ct_canonize(const ct_tree *T, int *s, int i, int *k, int p);
 
 /* The conjugate (*i, *k) of the leaf s: the i-th word shifted by k. */
 int ct_leaf_as_conjugate(const ct_tree *T, int s, int *i, int *k);
 
-/* The number of implicit nodes, where each leaf counts for 1. */
+/* The number of implicit nodes, where each leaf counts for 1; CT_EINVALID on
+ * a tree that was not set up. */
 int64_t ct_size(const ct_tree *T);
 
 /* A short description of an error code. */

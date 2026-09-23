@@ -1014,6 +1014,32 @@ cdef class ConjugateTree:
             1
             sage: T._canonize_state(0, 0, 0, 0)
             (0, 0)
+            sage: T._canonize_state(0, 0, 0, 2)
+            (3, 1)
+            sage: T._canonize_state(-1, 0, 0, 3)
+            (7, 3)
+
+        TESTS::
+
+            sage: T._canonize_state(0, 0, 3, 2)
+            Traceback (most recent call last):
+            ...
+            ValueError: (s, i, k, p) = (0, 0, 3, 2) is not a reference of a state of the tree
+            sage: T._canonize_state(0, 0, -1, 2)
+            Traceback (most recent call last):
+            ...
+            ValueError: (s, i, k, p) = (0, 0, -1, 2) is not a reference of a state of the tree
+            sage: T = ConjugateTree(3)
+            sage: T.process([0, 1])
+            1
+            sage: T._canonize_state(0, 0, 0, 1)
+            (0, 0)
+            sage: T.process([2])
+            1
+            sage: T._canonize_state(1, 1, 0, 1)
+            Traceback (most recent call last):
+            ...
+            ValueError: (s, i, k, p) = (1, 1, 0, 1) is not a reference of a state of the tree
         """
         cdef int ss = s
         cdef int kk = k
@@ -1023,7 +1049,8 @@ cdef class ConjugateTree:
             raise ValueError(f"s (={s}) must be a node")
         if ii < 0 or ii >= self.T.nwords:
             raise ValueError(f"i (={i}) must be the index of a word")
-        ct_canonize(&self.T, &ss, ii, &kk, pp)
+        if ct_canonize(&self.T, &ss, ii, &kk, pp):
+            raise ValueError(f"(s, i, k, p) = {(s, i, k, p)} is not a reference of a state of the tree")
         return (ss, kk)
 
     def process(self, w, check=True):
