@@ -1,3 +1,5 @@
+# distutils: sources = combisurf/src/conjugate_tree.c
+# distutils: include_dirs = combisurf/src
 r"""
 Conjugate trees
 
@@ -33,8 +35,9 @@ takes as argument a word on non-negative integers (given as a list)::
     sage: T.process([0, 1])
     -2
 
-The output value of :meth:`~ConjugateTree.process` is either a pair ``(False,
-exponent)`` if the word is not present or ``(True, position)``.
+The output value of :meth:`~ConjugateTree.process` is an integer: the exponent
+of the word when it is new, and otherwise minus the index of the word of the
+tree it is conjugate to a power of.
 
 To get a hand on the structure of the tree, one can use the following functions
 (the root is always index 0 and is omitted in the output)::
@@ -67,6 +70,10 @@ to expect lets it allocate them all at once::
 
 Neither is required and neither changes an answer; see :class:`ConjugateTree`.
 
+The tree itself is implemented in plain C, in ``combisurf/src/conjugate_tree.c``,
+so that it can be tested and benchmarked from C programs without Python; this
+module wraps it.
+
 .. SEEALSO::
 
     :mod:`combisurf.conjugate_tree_naive` holds
@@ -95,56 +102,22 @@ Neither is required and neither changes an answer; see :class:`ConjugateTree`.
 # ****************************************************************************
 
 from cpython cimport array
-from libc.limits cimport INT_MAX
+from libc.string cimport memcpy, memset
 
 from combisurf.word import word_init
 
 
-cdef enum:
-    # A dense table costs 4 * alphabet bytes per node, where the sibling lists
-    # cost 8 and the rest of a node 24, and every new node clears its row and
-    # every listing of the leaves scans it. Measured on the pair of curves
-    # u, v of the one-vertex map with n half-edges (so an alphabet of n
-    # letters), the dense table makes the pairing slower on short curves and
-    # faster on long ones, by these ratios of dense over sparse time:
-    #
-    #     n = alphabet     32     64    128    256
-    #     length 8       1.03   1.06   1.11   1.20
-    #     length 100     0.91   0.87   0.86   0.88
-    #     length 1000    0.88   0.85   0.77   0.69
-    #
-    # A single word of length 100000 over 128 letters has 225000 nodes, that
-    # is 110 MB of dense table against 1.7 MB of sibling lists. Up to 32
-    # letters the dense table costs at most 3 % on short curves and 128 bytes
-    # per node; past it the loss on short curves, which are the common case,
-    # grows with the alphabet, and so does the memory. So past it we walk
-    # the children of a node instead of indexing them.
-    DENSE_MAX_ALPHABET = 32
+cdef array.array _int_array = array.array('i', [])
 
 
-cdef int _push_sorted(int *stack, int top, int *kids, int *keys, int d) noexcept nogil:
+cdef array.array _as_int_array(w):
     r"""
-    Push ``kids[:d]`` onto ``stack`` by decreasing ``keys``, so that popping
-    them takes them by increasing key.
-
-    An insertion sort is the right one here: the number of children of an
-    internal node is 2 to 10 on average whatever the alphabet and whatever the
-    length of the words.
+    Return ``w`` if it is an array of typecode ``'i'`` and a copy of it as
+    one otherwise.
     """
-    cdef int j, jj, kid, key
-    for j in range(1, d):
-        kid = kids[j]
-        key = keys[j]
-        jj = j - 1
-        while jj >= 0 and keys[jj] < key:
-            kids[jj + 1] = kids[jj]
-            keys[jj + 1] = keys[jj]
-            jj -= 1
-        kids[jj + 1] = kid
-        keys[jj + 1] = key
-    for j in range(d):
-        stack[top + j] = kids[j]
-    return top + d
+    if type(w) is array.array and (<array.array> w).ob_descr.typecode == b'i':
+        return <array.array> w
+    return array.array('i', w)
 
 
 cdef class ConjugateTree:
@@ -196,7 +169,7 @@ cdef class ConjugateTree:
     """
     def __cinit__(self, *args, **kwds):
         r"""
-        Set up empty buffers; ``__init__`` reads the arguments.
+        Set up an empty tree; ``__init__`` reads the arguments.
 
         TESTS::
 
@@ -204,42 +177,12 @@ cdef class ConjugateTree:
             sage: ConjugateTree(2).num_states()
             1
         """
-        self.alphabet_size = 0
-        self.dense = False
-        self.max_letter = -1
+        memset(&self.T, 0, sizeof(ct_tree))
+        # no letter yet, as after ct_init
+        self.T.max_letter = -1
 
-        self.a_wbuf = array.array('i', [])
-        self.wbuf = self.a_wbuf.data.as_ints
-        self.wbuf_size = 0
-        self.wbuf_capacity = 0
-        self.a_wstart = array.array('i', [])
-        self.wstart = self.a_wstart.data.as_ints
-        self.a_wlen = array.array('i', [])
-        self.wlen = self.a_wlen.data.as_ints
-        self.nwords = 0
-        self.words_capacity = 0
-
-        self.nstates = 0
-        self.capacity = 0
-        self.a_dep = array.array('i', [])
-        self.dep = self.a_dep.data.as_ints
-        self.a_sl = array.array('i', [])
-        self.sl = self.a_sl.data.as_ints
-        self.a_parent = array.array('i', [])
-        self.parent = self.a_parent.data.as_ints
-        self.a_tword = array.array('i', [])
-        self.tword = self.a_tword.data.as_ints
-        self.a_tstart = array.array('i', [])
-        self.tstart = self.a_tstart.data.as_ints
-        self.a_tend = array.array('i', [])
-        self.tend = self.a_tend.data.as_ints
-
-        self.a_trans = array.array('i', [])
-        self.trans = self.a_trans.data.as_ints
-        self.a_fchild = array.array('i', [])
-        self.fchild = self.a_fchild.data.as_ints
-        self.a_nsib = array.array('i', [])
-        self.nsib = self.a_nsib.data.as_ints
+    def __dealloc__(self):
+        ct_free(&self.T)
 
     def __init__(self, alphabet=0, reserve=0, algorithm=None):
         r"""
@@ -265,171 +208,65 @@ cdef class ConjugateTree:
         """
         cdef int n = alphabet
         cdef int r = reserve
+        cdef int d
         if n < 0:
             raise ValueError(f"alphabet (={alphabet}) must be a non-negative integer")
         if r < 0:
             raise ValueError(f"reserve (={reserve}) must be a non-negative integer")
-        self.alphabet_size = n
 
         if algorithm is None:
-            self.dense = 0 < n <= DENSE_MAX_ALPHABET
+            d = -1
         elif algorithm == 'dense':
             if n == 0:
                 raise ValueError("the 'dense' algorithm needs the alphabet")
-            self.dense = True
+            d = 1
         elif algorithm == 'sparse':
-            self.dense = False
+            d = 0
         else:
             raise ValueError("algorithm must be None, 'dense' or 'sparse'")
 
-        self._reserve_nodes(r if r > 1 else 1)
-        self._add_node()
-        # NOTE: the root doubles as the transition of length one out of the
-        # imaginary node -1 that _canonize starts from, hence its (-4, -3)
-        self.dep[0] = 0
-        self.sl[0] = -1
-        self.parent[0] = -1
-        self.tword[0] = 0
-        self.tstart[0] = -4
-        self.tend[0] = -3
+        ct_free(&self.T)
+        cdef int err = ct_init(&self.T, n, r, d)
+        if err:
+            self._raise(err, None)
 
     def __repr__(self):
         return "SuffixTree with {} states, {} leaves and {} implicit nodes".format(self.num_states(), len(self.leaves()), self.size())
 
-    # ------------------------------------------------------------------
-    # allocation
-    # ------------------------------------------------------------------
-
-    cdef int _reserve_nodes(self, int capacity) except -1:
+    cdef int _raise(self, int err, array.array w) except -1:
         r"""
-        Make room for ``capacity`` nodes and refresh every C view on the
-        buffers, which ``array.resize`` invalidates.
+        Raise the exception for the error code ``err`` of the C library,
+        returned on the word ``w`` (or ``None``).
         """
-        if capacity <= self.capacity:
-            return 0
-        if self.dense and capacity > INT_MAX // self.alphabet_size:
-            raise OverflowError("conjugate tree too large for a dense transition table")
-
-        array.resize(self.a_dep, capacity)
-        self.dep = self.a_dep.data.as_ints
-        array.resize(self.a_sl, capacity)
-        self.sl = self.a_sl.data.as_ints
-        array.resize(self.a_parent, capacity)
-        self.parent = self.a_parent.data.as_ints
-        array.resize(self.a_tword, capacity)
-        self.tword = self.a_tword.data.as_ints
-        array.resize(self.a_tstart, capacity)
-        self.tstart = self.a_tstart.data.as_ints
-        array.resize(self.a_tend, capacity)
-        self.tend = self.a_tend.data.as_ints
-
-        if self.dense:
-            array.resize(self.a_trans, capacity * self.alphabet_size)
-            self.trans = self.a_trans.data.as_ints
-        else:
-            array.resize(self.a_fchild, capacity)
-            self.fchild = self.a_fchild.data.as_ints
-            array.resize(self.a_nsib, capacity)
-            self.nsib = self.a_nsib.data.as_ints
-
-        self.capacity = capacity
-        return 0
-
-    cdef int _reserve_words(self, int num_words, int num_letters) except -1:
-        r"""
-        Make room for ``num_words`` words and ``num_letters`` letters, and
-        refresh the C views. Either bound may be ``0`` to leave it alone.
-        """
-        if num_words > self.words_capacity:
-            array.resize(self.a_wstart, num_words)
-            self.wstart = self.a_wstart.data.as_ints
-            array.resize(self.a_wlen, num_words)
-            self.wlen = self.a_wlen.data.as_ints
-            self.words_capacity = num_words
-        if num_letters > self.wbuf_capacity:
-            array.resize(self.a_wbuf, num_letters)
-            self.wbuf = self.a_wbuf.data.as_ints
-            self.wbuf_capacity = num_letters
-        return 0
-
-    cdef int _add_node(self) except -1:
-        r"""
-        Append a node with nothing but its transitions initialized and return
-        its index.
-        """
-        cdef int n = self.nstates
-        cdef int c
-        if n == self.capacity:
-            self._reserve_nodes(2 * self.capacity if self.capacity else 8)
-        self.nstates = n + 1
-        # NOTE: -2 is the code for uninitialized, as in ConjugateTreeNaive
-        self.dep[n] = -2
-        self.sl[n] = -2
-        self.parent[n] = -2
-        self.tword[n] = -2
-        self.tstart[n] = -2
-        self.tend[n] = -2
-        if self.dense:
-            for c in range(self.alphabet_size):
-                self.trans[n * self.alphabet_size + c] = -1
-        else:
-            self.fchild[n] = -1
-            self.nsib[n] = -1
-        return n
-
-    cdef int _add_word(self, w) except -1:
-        r"""
-        Append the letters of ``w`` to the word buffer, checking them.
-        """
-        cdef int l = len(w)
-        cdef int j, letter
-        if l == 0:
+        cdef int j, n = self.T.alphabet_size
+        if err == CT_ENOMEM:
+            raise MemoryError
+        if err == CT_EEMPTY:
             raise ValueError("empty word in input")
-        if self.nwords == self.words_capacity:
-            self._reserve_words(2 * self.words_capacity if self.words_capacity else 4, 0)
-        if self.wbuf_size + l > self.wbuf_capacity:
-            self._reserve_words(0, 2 * (self.wbuf_size + l))
-        for j in range(l):
-            letter = w[j]
-            if letter < 0:
-                raise ValueError("invalid word: must be made of non-negative integers")
-            if self.alphabet_size and letter >= self.alphabet_size:
-                raise ValueError(f"invalid word: letter {letter} not in the alphabet "
-                                 f"{{0, 1, ..., {self.alphabet_size - 1}}}")
-            self.wbuf[self.wbuf_size + j] = letter
-            if letter > self.max_letter:
-                self.max_letter = letter
-        self.wstart[self.nwords] = self.wbuf_size
-        self.wlen[self.nwords] = l
-        self.wbuf_size += l
-        self.nwords += 1
-        return 0
-
-    cdef void _pop_word(self) noexcept nogil:
-        r"""
-        Undo the last :meth:`_add_word`.
-        """
-        self.nwords -= 1
-        self.wbuf_size = self.wstart[self.nwords]
-
-    cdef void _truncate_word(self, int i, int size) noexcept nogil:
-        r"""
-        Keep only the first ``size`` letters of the ``i``-th word.
-        """
-        self.wlen[i] = size
-        if i == self.nwords - 1:
-            self.wbuf_size = self.wstart[i] + size
+        if err == CT_ENEGATIVE:
+            raise ValueError("invalid word: must be made of non-negative integers")
+        if err == CT_EALPHABET:
+            # the first offending letter is the first one out of the alphabet,
+            # or failing that the first inverse of a letter out of it, as the
+            # C code checks them in this order
+            letter = next((a for a in w if a >= n), None)
+            if letter is None:
+                letter = next(a ^ 1 for a in w if a ^ 1 >= n)
+            raise ValueError(f"invalid word: letter {letter} not in the alphabet "
+                             f"{{0, 1, ..., {n - 1}}}")
+        if err == CT_ENOTREDUCED:
+            raise ValueError("w must be cyclically reduced")
+        if err == CT_ENOTCLOSED:
+            raise ValueError("the words of this tree are not closed under inverse")
+        if err == CT_ETOOLARGE:
+            raise OverflowError("conjugate tree too large for int indices or for a dense transition table")
+        if err == CT_EINVALID:
+            raise ValueError("invalid argument")
+        raise RuntimeError(f"conjugate tree: {ct_strerror(err).decode()} (error code {err})")
 
     # ------------------------------------------------------------------
     # words
     # ------------------------------------------------------------------
-
-    cdef inline int _letter(self, int i, int k) noexcept nogil:
-        cdef int l = self.wlen[i]
-        k %= l
-        if k < 0:
-            k += l
-        return self.wbuf[self.wstart[i] + k]
 
     def alphabet(self):
         r"""
@@ -444,7 +281,7 @@ cdef class ConjugateTree:
             sage: ConjugateTree(8).alphabet()
             8
         """
-        return self.alphabet_size
+        return self.T.alphabet_size
 
     def algorithm(self):
         r"""
@@ -463,7 +300,7 @@ cdef class ConjugateTree:
             sage: ConjugateTree(256, algorithm='dense').algorithm()
             'dense'
         """
-        return 'dense' if self.dense else 'sparse'
+        return 'dense' if self.T.dense else 'sparse'
 
     def num_words(self):
         r"""
@@ -478,7 +315,7 @@ cdef class ConjugateTree:
             sage: T.num_words()
             1
         """
-        return self.nwords
+        return self.T.nwords
 
     def word(self, i):
         r"""
@@ -494,10 +331,12 @@ cdef class ConjugateTree:
             array('i', [0, 1, 0, 0, 1])
         """
         cdef int j = i
-        if j < 0 or j >= self.nwords:
+        if j < 0 or j >= self.T.nwords:
             raise ValueError(f"i (={i}) must be the index of a word")
-        cdef int start = self.wstart[j]
-        return self.a_wbuf[start: start + self.wlen[j]]
+        cdef int l = self.T.wlen[j]
+        cdef array.array ans = array.clone(_int_array, l, False)
+        memcpy(ans.data.as_ints, self.T.wbuf + self.T.wstart[j], l * sizeof(int))
+        return ans
 
     def word_length(self, i):
         r"""
@@ -514,9 +353,9 @@ cdef class ConjugateTree:
             5
         """
         cdef int j = i
-        if j < 0 or j >= self.nwords:
+        if j < 0 or j >= self.T.nwords:
             raise ValueError(f"i (={i}) must be the index of a word")
-        return self.wlen[j]
+        return self.T.wlen[j]
 
     def words(self):
         r"""
@@ -538,9 +377,9 @@ cdef class ConjugateTree:
             sage: T.words()
             [array('i', [0, 1]), array('i', [0, 1, 0, 0, 1]), array('i', [0, 1, 0, 1, 1])]
         """
-        return [self.word(i) for i in range(self.nwords)]
+        return [self.word(i) for i in range(self.T.nwords)]
 
-    def letter(self, i, k):
+    def _letter_at(self, i, k):
         r"""
         Return the ``k``-th letter of the ``i``-th word, read cyclically.
 
@@ -551,17 +390,17 @@ cdef class ConjugateTree:
             sage: T = ConjugateTree()
             sage: T.process([0, 4, 2, 3])
             1
-            sage: T.letter(0, 1)
+            sage: T._letter_at(0, 1)
             4
-            sage: T.letter(0, 19)
+            sage: T._letter_at(0, 19)
             3
-            sage: T.letter(0, -1)
+            sage: T._letter_at(0, -1)
             3
         """
         cdef int j = i
-        if j < 0 or j >= self.nwords:
+        if j < 0 or j >= self.T.nwords:
             raise ValueError(f"i (={i}) must be the index of a word")
-        return self._letter(j, k)
+        return ct_letter(&self.T, j, k)
 
     def _slice(self, i, k, p):
         r"""
@@ -584,56 +423,14 @@ cdef class ConjugateTree:
         if k < 0 or p < 0:
             raise ValueError(f"k(={k}) and p=({p}) must be non-negative integers")
         cdef int j = i
-        if j < 0 or j >= self.nwords:
+        if j < 0 or j >= self.T.nwords:
             raise ValueError(f"i (={i}) must be the index of a word")
         cdef int a = k, b = p, t
-        return [self._letter(j, t) for t in range(a, b)]
+        return [ct_letter(&self.T, j, t) for t in range(a, b)]
 
     # ------------------------------------------------------------------
     # transitions
     # ------------------------------------------------------------------
-
-    cdef inline int _child(self, int s, int letter) noexcept nogil:
-        cdef int t
-        if self.dense:
-            return self.trans[s * self.alphabet_size + letter]
-        t = self.fchild[s]
-        while t != -1:
-            if self._letter(self.tword[t], self.tstart[t]) == letter:
-                return t
-            t = self.nsib[t]
-        return -1
-
-    cdef inline void _add_child(self, int s, int letter, int t) noexcept nogil:
-        if self.dense:
-            self.trans[s * self.alphabet_size + letter] = t
-        else:
-            self.nsib[t] = self.fchild[s]
-            self.fchild[s] = t
-
-    cdef void _replace_child(self, int s, int letter, int old, int new) noexcept nogil:
-        r"""
-        Put ``new`` where ``old`` sits among the children of ``s``.
-
-        In the sparse representation ``old`` is found by its index and not by
-        its letter, since the letter of a node is read off the label of the
-        edge into it and a caller splitting that edge is about to move it.
-        """
-        cdef int prev, c
-        if self.dense:
-            self.trans[s * self.alphabet_size + letter] = new
-            return
-        prev = -1
-        c = self.fchild[s]
-        while c != old:
-            prev = c
-            c = self.nsib[c]
-        self.nsib[new] = self.nsib[old]
-        if prev == -1:
-            self.fchild[s] = new
-        else:
-            self.nsib[prev] = new
-        self.nsib[old] = -1
 
     def transitions(self, s):
         r"""
@@ -653,23 +450,23 @@ cdef class ConjugateTree:
             {}
         """
         cdef int node = s
-        if node < 0 or node >= self.nstates:
+        if node < 0 or node >= self.T.nstates:
             raise ValueError(f"s (={s}) must be a node")
         cdef int c, t
         ans = {}
-        if self.dense:
-            for c in range(self.alphabet_size):
-                t = self.trans[node * self.alphabet_size + c]
+        if self.T.dense:
+            for c in range(self.T.alphabet_size):
+                t = self.T.trans[node * self.T.alphabet_size + c]
                 if t != -1:
                     ans[c] = t
         else:
             # NOTE: sorted, so that the answer does not depend on the order
             # the siblings happen to sit in
             pairs = []
-            t = self.fchild[node]
+            t = self.T.fchild[node]
             while t != -1:
-                pairs.append((self._letter(self.tword[t], self.tstart[t]), t))
-                t = self.nsib[t]
+                pairs.append((ct_letter(&self.T, self.T.tword[t], self.T.tstart[t]), t))
+                t = self.T.nsib[t]
             pairs.sort()
             ans = dict(pairs)
         return ans
@@ -691,7 +488,7 @@ cdef class ConjugateTree:
             sage: T.num_states()
             7
         """
-        return self.nstates
+        return self.T.nstates
 
     def size(self):
         r"""
@@ -726,16 +523,7 @@ cdef class ConjugateTree:
             sage: T.size()
             29
         """
-        cdef int ans = 0
-        cdef int s, k, p
-        for s in range(self.nstates):
-            k = self.tstart[s]
-            p = self.tend[s]
-            if p == -1:
-                ans += 1
-            else:
-                ans += p - k
-        return ans
+        return ct_size(&self.T)
 
     def internal_states(self):
         r"""
@@ -756,7 +544,7 @@ cdef class ConjugateTree:
             [2, 4]
         """
         cdef int s
-        return [s for s in range(1, self.nstates) if self.tend[s] != -1]
+        return [s for s in range(1, self.T.nstates) if self.T.tend[s] != -1]
 
     def leaves(self):
         r"""
@@ -779,7 +567,7 @@ cdef class ConjugateTree:
             5
         """
         cdef int s
-        return [s for s in range(1, self.nstates) if self.tend[s] == -1]
+        return [s for s in range(1, self.T.nstates) if self.T.tend[s] == -1]
 
     def leaf_as_conjugate(self, s):
         r"""
@@ -799,16 +587,29 @@ cdef class ConjugateTree:
             1
             sage: [T.leaf_as_conjugate(s) for s in T.leaves()] == [(i, k) for i, w in enumerate(T.words()) for k in range(len(w))]
             True
+
+        TESTS::
+
+            sage: T.internal_states()
+            [2, 4, 9, 11, 13, 15, 18, 20, 22]
+            sage: T.leaf_as_conjugate(2)
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=2) must be a leaf
+            sage: T.leaf_as_conjugate(0)
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=0) must be a leaf
+            sage: T.leaf_as_conjugate(T.num_states())
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=24) must be a leaf
         """
         cdef int node = s
-        if node < 0 or node >= self.nstates:
-            raise ValueError
-        cdef int i = self.tword[node]
-        cdef int l = self.wlen[i]
-        cdef int ans = (self.tstart[node] - self.dep[self.parent[node]]) % l
-        if ans < 0:
-            ans += l
-        return (i, ans)
+        cdef int i, k
+        if ct_leaf_as_conjugate(&self.T, node, &i, &k):
+            raise ValueError(f"s (={s}) must be a leaf")
+        return (i, k)
 
     def _leaf_shift(self, s):
         r"""
@@ -864,23 +665,23 @@ cdef class ConjugateTree:
         # NOTE: in the case the transition to s is made of a single letter
         # we have to go through the tree
         cdef int node = s
-        if node < 0 or node >= self.nstates:
+        if node < 0 or node >= self.T.nstates:
             raise ValueError
-        if self.tend[node] != -1:
+        if self.T.tend[node] != -1:
             raise ValueError(f"s(={s}) not a leaf")
-        cdef int i = self.tword[node]
-        cdef int k = self.tstart[node]
-        cdef int letter = self._letter(i, k)
-        cdef int ss = self.sl[self.parent[node]]
+        cdef int i = self.T.tword[node]
+        cdef int k = self.T.tstart[node]
+        cdef int letter = ct_letter(&self.T, i, k)
+        cdef int ss = self.T.sl[self.T.parent[node]]
 
         if ss == -1:
             ss = 0
         else:
-            ss = self._child(ss, letter)
-        while self.tend[ss] != -1:
-            k += self.tend[ss] - self.tstart[ss]
-            letter = self._letter(i, k)
-            ss = self._child(ss, letter)
+            ss = ct_child(&self.T, ss, letter)
+        while self.T.tend[ss] != -1:
+            k += self.T.tend[ss] - self.T.tstart[ss]
+            letter = ct_letter(&self.T, i, k)
+            ss = ct_child(&self.T, ss, letter)
         return ss
 
     def internal_state_word(self, s):
@@ -904,7 +705,7 @@ cdef class ConjugateTree:
             9 [0, 0]
         """
         cdef int node = s
-        if node < 0 or node >= self.nstates:
+        if node < 0 or node >= self.T.nstates:
             raise ValueError("s must be a node")
         # NOTE: no path[-1] here; this module is compiled with
         # wraparound=False, under which a negative index on a list is not
@@ -912,15 +713,15 @@ cdef class ConjugateTree:
         path = []
         while node != 0:
             path.append(node)
-            node = self.parent[node]
+            node = self.T.parent[node]
         ans = []
         cdef int i, k, p
         for node in reversed(path):
-            i = self.tword[node]
-            k = self.tstart[node]
-            p = self.tend[node]
+            i = self.T.tword[node]
+            k = self.T.tstart[node]
+            p = self.T.tend[node]
             if p == -1:
-                p = self.wlen[i]
+                p = self.T.wlen[i]
             ans.extend(self._slice(i, k, p))
         return ans
 
@@ -958,9 +759,13 @@ cdef class ConjugateTree:
             Traceback (most recent call last):
             ...
             ValueError: the letters of this tree do not fit in an alphabet of size 1
+            sage: ConjugateTree.__new__(ConjugateTree).cyclically_sorted_leaves([0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid argument
         """
         cdef array.array a_ang = self._angles_array(angles)
-        cdef array.array a_leaves = array.clone(a_ang, self.nstates, False)
+        cdef array.array a_leaves = array.clone(a_ang, self.T.nstates, False)
         cdef int *out = a_leaves.data.as_ints
         cdef int num = self._sorted_leaves(a_ang.data.as_ints, len(a_ang), out)
         cdef int j
@@ -1022,7 +827,7 @@ cdef class ConjugateTree:
         cdef array.array a_ang = self._angles_array(angles)
         cdef int *ang = a_ang.data.as_ints
         cdef int n = len(a_ang)
-        cdef array.array a_leaves = array.clone(a_ang, self.nstates, False)
+        cdef array.array a_leaves = array.clone(a_ang, self.T.nstates, False)
         cdef int *out = a_leaves.data.as_ints
         cdef int num = self._sorted_leaves(ang, n, out)
 
@@ -1037,13 +842,13 @@ cdef class ConjugateTree:
         for j in range(num):
             s = out[j]
             # the conjugate (i, k) of the leaf, as in leaf_as_conjugate
-            i = self.tword[s]
-            l = self.wlen[i]
-            k = (self.tstart[s] - self.dep[self.parent[s]]) % l
+            i = self.T.tword[s]
+            l = self.T.wlen[i]
+            k = (self.T.tstart[s] - self.T.dep[self.T.parent[s]]) % l
             if k < 0:
                 k += l
-            a = self.wbuf[self.wstart[i] + k]
-            b = self.wbuf[self.wstart[i] + (k - 1 if k else l - 1)] ^ 1
+            a = self.T.wbuf[self.T.wstart[i] + k]
+            b = self.T.wbuf[self.T.wstart[i] + (k - 1 if k else l - 1)] ^ 1
             t = ang[b] - ang[a]
             if t < 0:
                 t += n
@@ -1067,81 +872,22 @@ cdef class ConjugateTree:
         for c in range(n):
             if ang[c] < 0 or ang[c] >= n:
                 raise ValueError("angles must be a permutation of {%s}" % ", ".join(str(j) for j in range(n)))
-        if self.max_letter >= n or (self.max_letter ^ 1) >= n:
+        if self.T.max_letter >= n or (self.T.max_letter ^ 1) >= n:
             raise ValueError(f"the letters of this tree do not fit in an alphabet of size {n}")
         return a_ang
 
     cdef int _sorted_leaves(self, int *ang, int n, int *out) except -1:
         r"""
         Write the leaves in the order of :meth:`cyclically_sorted_leaves` to
-        ``out``, which has room for ``self.nstates`` entries, and return their
-        number.
+        ``out``, which has room for ``self.num_states()`` entries, and return
+        their number.
 
         The angles ``ang[:n]`` must have been checked by :meth:`_angles_array`.
         """
-        cdef array.array a_tmp = array.array('i', [])
-        cdef array.array a_stack = array.clone(a_tmp, self.nstates, False)
-        cdef int *stack = a_stack.data.as_ints
-        cdef array.array a_kids = array.clone(a_tmp, n, False)
-        cdef int *kids = a_kids.data.as_ints
-        cdef array.array a_keys = array.clone(a_tmp, n, False)
-        cdef int *keys = a_keys.data.as_ints
-
-        cdef int top = 0
-        cdef int num = 0
-        cdef int c, s, t, d, key, base
-
-        # the children of the root, ordered by the angle of their first letter
-        d = 0
-        if self.dense:
-            for c in range(self.alphabet_size):
-                t = self.trans[c]
-                if t != -1:
-                    kids[d] = t
-                    keys[d] = ang[c]
-                    d += 1
-        else:
-            t = self.fchild[0]
-            while t != -1:
-                kids[d] = t
-                keys[d] = ang[self._letter(self.tword[t], self.tstart[t])]
-                t = self.nsib[t]
-                d += 1
-        top = _push_sorted(stack, top, kids, keys, d)
-
-        while top:
-            top -= 1
-            s = stack[top]
-            if self.tend[s] == -1:
-                out[num] = s
-                num += 1
-                continue
-            # further down, the angle is measured from the reverse of the last
-            # letter read
-            base = ang[self._letter(self.tword[s], self.tend[s] - 1) ^ 1]
-            d = 0
-            if self.dense:
-                for c in range(self.alphabet_size):
-                    t = self.trans[s * self.alphabet_size + c]
-                    if t != -1:
-                        key = ang[c] - base
-                        if key < 0:
-                            key += n
-                        kids[d] = t
-                        keys[d] = key
-                        d += 1
-            else:
-                t = self.fchild[s]
-                while t != -1:
-                    key = ang[self._letter(self.tword[t], self.tstart[t])] - base
-                    if key < 0:
-                        key += n
-                    kids[d] = t
-                    keys[d] = key
-                    t = self.nsib[t]
-                    d += 1
-            top = _push_sorted(stack, top, kids, keys, d)
-
+        cdef int num
+        cdef int err = ct_sorted_leaves(&self.T, ang, n, out, &num)
+        if err:
+            self._raise(err, None)
         return num
 
     def graph(self):
@@ -1161,9 +907,9 @@ cdef class ConjugateTree:
         from sage.graphs.digraph import DiGraph
         G = DiGraph(self.num_states(), loops=False, multiedges=False)
         cdef int s
-        for s in range(self.nstates):
+        for s in range(self.T.nstates):
             for t in self.transitions(s).values():
-                G.add_edge(s, t, f"({self.tword[t]},{self.tstart[t]},{self.tend[t]})")
+                G.add_edge(s, t, f"({self.T.tword[t]},{self.T.tstart[t]},{self.T.tend[t]})")
         return G
 
     def pprint(self):
@@ -1184,13 +930,13 @@ cdef class ConjugateTree:
         """
         ans = []
         cdef int s, i, k, p
-        for s in range(self.nstates):
+        for s in range(self.T.nstates):
             transitions = self.transitions(s)
             for letter in sorted(transitions):
                 ss = transitions[letter]
-                i = self.tword[ss]
-                k = self.tstart[ss]
-                p = self.tend[ss]
+                i = self.T.tword[ss]
+                k = self.T.tstart[ss]
+                p = self.T.tend[ss]
                 if p != -1:
                     ans.append(f"{s:2} --{letter}({self.word(i)[k:p]})--> {ss:2}")
                 else:
@@ -1201,93 +947,7 @@ cdef class ConjugateTree:
     # construction
     # ------------------------------------------------------------------
 
-    cdef int _test_and_split(self, int s, int i, int k, int p, int letter) except -2:
-        r"""
-        Internal low-level function that checks whether upon reading one should
-        create a branching in the tree.
-
-        Given the canonical reference quadruple ``(s, i, k, p)`` this method tests
-        whether adding ``letter`` creates a branching or whether the transition
-        already exist. If it does not exist, ensure that the corresponding
-        state is explicit.
-
-        Return either ``-1`` if the transition exists or a non-negative integer ``s``
-        corresponding to the node from which one needs to create a new transition.
-        """
-        cdef int t, ii, kk, index, lletter, ss, first
-        if k < p:
-            # implicit state
-            # get the transition from s starting with word[i][k] and test
-            # whether its (p - k)-th letter coincide with letter or not
-            t = self._child(s, self._letter(i, k))
-            ii = self.tword[t]
-            kk = self.tstart[t]
-            index = kk + p - k
-            lletter = self._letter(ii, index)
-            if letter == lletter:
-                # the node already exists
-                return -1
-            # make the node explicit
-            # the new node ss is the node made explicit
-            # s ---> t becomes s --> ss --> t
-            first = self._letter(ii, kk)
-            ss = self._add_node()
-
-            self.tword[ss] = ii
-            self.tstart[ss] = kk
-            self.tend[ss] = index
-            self.parent[ss] = s
-            self.dep[ss] = self.dep[s] + index - kk
-
-            # NOTE: ss takes the place of t under s before the label of t is
-            # shortened, since that label is where its first letter is read
-            self._replace_child(s, first, t, ss)
-            self.tstart[t] = index
-            self.parent[t] = ss
-            self._add_child(ss, lletter, t)
-
-            return ss
-        else:
-            # explicit state
-            if s == -1 or self._child(s, letter) != -1:
-                # the node already exists
-                return -1
-            return s
-
-    cdef void _canonize(self, int *sp, int i, int *kp, int p) noexcept nogil:
-        r"""
-        Canonize the quadruple ``(s, i, k, p)`` representing the (explicit or
-        implicit) state obtained after reading ``word[i][k:p]`` from ``s``.
-
-        Write the answer back into ``sp`` and ``kp``; ``i`` and ``p`` do not
-        change.
-        """
-        cdef int s = sp[0]
-        cdef int k = kp[0]
-        cdef int ss, kk, pp
-        if k >= p:
-            # already explicit
-            kp[0] = p
-            return
-        ss = 0 if s == -1 else self._child(s, self._letter(i, k))
-        kk = self.tstart[ss]
-        pp = self.tend[ss]
-        while pp != -1 and pp - kk < p - k:
-            k += pp - kk
-            s = ss
-            ss = self._child(s, self._letter(i, k))
-            kk = self.tstart[ss]
-            pp = self.tend[ss]
-        if pp != -1 and pp - kk == p - k:
-            # explicit
-            sp[0] = ss
-            kp[0] = p
-        else:
-            # implicit
-            sp[0] = s
-            kp[0] = k
-
-    def canonize(self, s, i, k, p):
+    def _canonize_state(self, s, i, k, p):
         r"""
         Canonize the quadruple ``(s, i, k, p)`` representing
         the (explicit or implicit) state obtained after reading word[i][k:p]
@@ -1301,64 +961,21 @@ cdef class ConjugateTree:
             sage: T = ConjugateTree()
             sage: T.process([0,1,0,0,1])
             1
-            sage: T.canonize(0, 0, 0, 0)
+            sage: T._canonize_state(0, 0, 0, 0)
             (0, 0)
         """
         cdef int ss = s
         cdef int kk = k
         cdef int ii = i
         cdef int pp = p
-        if ss < -1 or ss >= self.nstates:
+        if ss < -1 or ss >= self.T.nstates:
             raise ValueError(f"s (={s}) must be a node")
-        if ii < 0 or ii >= self.nwords:
+        if ii < 0 or ii >= self.T.nwords:
             raise ValueError(f"i (={i}) must be the index of a word")
-        self._canonize(&ss, ii, &kk, pp)
+        ct_canonize(&self.T, &ss, ii, &kk, pp)
         return (ss, kk)
 
-    cdef int _update(self, int *sp, int i, int *kp, int p) except -1:
-        r"""
-        Low-level internal function that updates by reading one letter.
-
-        Here ``(s, i, k, p)`` should be the canonical reference pair of the
-        active state from the previous state. Return the number of leaves
-        that were created.
-        """
-        # (s, k, p): active state which is the first state along the boundary
-        # path which is not an active leaf
-        # r: closest branching from s (r is either s or its ancestor)
-        cdef int s = sp[0]
-        cdef int k = kp[0]
-        cdef int letter = self._letter(i, p)
-        cdef int old_r = 0
-        cdef int created = 0
-        cdef int r, rr
-        r = self._test_and_split(s, i, k, p, letter)
-        while r != -1:
-            # create a leaf
-            rr = self._add_node()
-            created += 1
-            self._add_child(r, letter, rr)
-            self.parent[rr] = r
-            self.tword[rr] = i
-            self.tstart[rr] = p
-            self.tend[rr] = -1
-            if old_r != 0:
-                self.sl[old_r] = r
-            old_r = r
-            # NOTE: s is never -1 here; _test_and_split returns -1 on the
-            # imaginary node, which ends the loop
-            s = self.sl[s]
-            self._canonize(&s, i, &k, p)
-            r = self._test_and_split(s, i, k, p, letter)
-
-        if old_r != 0:
-            self.sl[old_r] = s
-
-        sp[0] = s
-        kp[0] = k
-        return created
-
-    def process(self, w, check=True, hard_check=False):
+    def process(self, w, check=True):
         r"""
         Add the word ``w`` in this conjugate tree.
 
@@ -1371,9 +988,9 @@ cdef class ConjugateTree:
           increases by the period of ``w`` (which is its length divided by the
           exponent).
 
-        - a non-negative ``-index`` if the word ``w``is already present and
-          ``index`` is the index of the leaf corresponding to ``w`` in this
-          conjugate tree
+        - a non-negative ``-index`` if the word ``w`` is already present, that
+          is, if it is conjugate to a power of the word of index ``index`` of
+          this conjugate tree
 
         EXAMPLES::
 
@@ -1403,8 +1020,12 @@ cdef class ConjugateTree:
             raise ValueError("empty word in input")
         if check:
             w = word_init(w)
-        self._add_word(w)
-        return self._insert_last(hard_check)
+        cdef array.array a = _as_int_array(w)
+        cdef int result
+        cdef int err = ct_process(&self.T, a.data.as_ints, len(a), &result)
+        if err:
+            self._raise(err, a)
+        return result
 
     def process_with_inverse(self, w):
         r"""
@@ -1412,9 +1033,10 @@ cdef class ConjugateTree:
         conjugate tree.
 
         The letter ``h ^ 1`` is the inverse of the letter ``h``. The word
-        ``w`` must be cyclically reduced and non-empty, and the words of this
-        tree must be closed under inverse, which holds when they were all
-        added by this method.
+        ``w`` must be cyclically reduced and non-empty, and every word of this
+        tree must have been added by this method, so that the words are closed
+        under inverse: once :meth:`process` has added a word, this method
+        refuses to run.
 
         The output is a pair ``(i, exponent)`` where ``w`` is conjugate to the
         ``exponent``-th power of the ``i``-th word of this tree. If ``w`` is
@@ -1498,6 +1120,8 @@ cdef class ConjugateTree:
             Traceback (most recent call last):
             ...
             ValueError: the words of this tree are not closed under inverse
+            sage: T.num_words(), T.num_states()
+            (1, 2)
 
         With an alphabet of odd size, the inverse of the last letter is not in
         the alphabet::
@@ -1510,121 +1134,12 @@ cdef class ConjugateTree:
             sage: T.num_words(), T.num_states()
             (0, 1)
         """
-        cdef int i = self.nwords
-        cdef int max_letter = self.max_letter
-        self._add_word(w)
-        cdef int l = self.wlen[i]
-        cdef int *u = self.wbuf + self.wstart[i]
-        cdef int j, letter
-        # NOTE: the checks come before any insertion, since a node is never
-        # removed from the tree
-        for j in range(l):
-            letter = u[j] ^ 1
-            if letter == u[j + 1 if j + 1 < l else 0]:
-                self._pop_word()
-                self.max_letter = max_letter
-                raise ValueError("w must be cyclically reduced")
-            if self.alphabet_size and letter >= self.alphabet_size:
-                self._pop_word()
-                self.max_letter = max_letter
-                raise ValueError(f"invalid word: letter {letter} not in the alphabet "
-                                 f"{{0, 1, ..., {self.alphabet_size - 1}}}")
-
-        cdef int status = self._insert_last(False)
-        if status <= 0:
-            # w is conjugate to a power of a word already present
-            j = -status
-            if l % self.wlen[j]:
-                raise RuntimeError(f"the length (={l}) is not a multiple of the one of the word (={self.wlen[j]})")
-            return (j, l // self.wlen[j])
-        self._add_inverse_word(i)
-        if self._insert_last(False) != 1:
-            # NOTE: the inverse of a cyclically reduced word is not conjugate
-            # to a power of it in a free group, so it was present before
-            raise ValueError("the words of this tree are not closed under inverse")
-        return (i, status)
-
-    cdef int _add_inverse_word(self, int i) except -1:
-        r"""
-        Append the inverse of the ``i``-th word to the word buffer, whose
-        letters must have been checked against the alphabet.
-        """
-        cdef int l = self.wlen[i]
-        cdef int j, letter
-        if self.nwords == self.words_capacity:
-            self._reserve_words(2 * self.words_capacity, 0)
-        if self.wbuf_size + l > self.wbuf_capacity:
-            self._reserve_words(0, 2 * (self.wbuf_size + l))
-        # NOTE: read after the reservations, which move the buffer
-        cdef int *src = self.wbuf + self.wstart[i]
-        cdef int *dst = self.wbuf + self.wbuf_size
-        for j in range(l):
-            letter = src[l - 1 - j] ^ 1
-            dst[j] = letter
-            if letter > self.max_letter:
-                self.max_letter = letter
-        self.wstart[self.nwords] = self.wbuf_size
-        self.wlen[self.nwords] = l
-        self.wbuf_size += l
-        self.nwords += 1
-        return 0
-
-    cdef int _insert_last(self, bint hard_check) except? -1:
-        r"""
-        Insert the last word of the word buffer in the tree and return what
-        :meth:`process` returns.
-        """
-        cdef int i = self.nwords - 1
-        cdef int l = self.wlen[i]
-        cdef int s = 0
-        cdef int k = 0
-        cdef int p = 0
-        cdef int num_leaves = 0
-        cdef int ss, ii, pp, exponent
-
-        # To ensure that we find all conjugates we must create as many leaves
-        # as the size of w (assuming it is primitive)
-        while True:
-            if p != k:
-                ss = self._child(s, self._letter(i, k))
-                ii = self.tword[ss]
-                pp = self.tend[ss]
-            else:
-                ii = -1
-                pp = -2
-            num_leaves += self._update(&s, i, &k, p)
-            if hard_check:
-                self._check_structural()
-            self._canonize(&s, i, &k, p + 1)
-
-            # halt condition
-            if num_leaves == l:
-                # w is primitive
-                break
-            elif ii == i and p >= 2 * l:
-                # w is non primitive
-                break
-            elif p >= l and num_leaves == 0 and ii != -1 and pp == -1 and l % self.wlen[ii] == 0:
-                # w is conjugate to a power of the ii-th word
-                break
-
-            p += 1
-
-        if num_leaves == 0:
-            self._pop_word()
-            if hard_check:
-                self._check_bijection()
-            return -ii
-        else:
-            if l % num_leaves:
-                raise RuntimeError(f"the length (={l}) is not a multiple of the number of new leaves (={num_leaves})")
-            exponent = l // num_leaves
-            if exponent != 1:
-                # NOTE: only store primitive words
-                self._truncate_word(i, num_leaves)
-            if hard_check:
-                self._check_bijection()
-            return exponent
+        cdef array.array a = _as_int_array(w)
+        cdef int index, exponent
+        cdef int err = ct_process_with_inverse(&self.T, a.data.as_ints, len(a), &index, &exponent)
+        if err:
+            self._raise(err, a)
+        return (index, exponent)
 
     # ------------------------------------------------------------------
     # self-checks
@@ -1635,7 +1150,7 @@ cdef class ConjugateTree:
         Check the per-node invariants of this conjugate tree.
 
         Unlike :meth:`_check_bijection`, these invariants hold at every
-        intermediate step of :meth:`process`, not only once it returns, since
+        intermediate step of an insertion, not only once it returns, since
         they say nothing about the leaves of the word currently being added.
 
         EXAMPLES::
@@ -1647,42 +1162,42 @@ cdef class ConjugateTree:
             sage: T._check_structural()
         """
         cdef int s, ss, i, k, p, n
-        n = self.nstates
+        n = self.T.nstates
 
-        for i in range(self.nwords):
-            assert self.wlen[i] > 0, i
+        for i in range(self.T.nwords):
+            assert self.T.wlen[i] > 0, i
 
-        assert self.parent[0] == -1
-        assert self.tstart[0] == -4, self.tstart[0]
-        assert self.tend[0] == -3, self.tend[0]
+        assert self.T.parent[0] == -1
+        assert self.T.tstart[0] == -4, self.T.tstart[0]
+        assert self.T.tend[0] == -3, self.T.tend[0]
 
         for s in range(1, n):
-            assert self.parent[s] >= 0, s
-            assert self.tstart[s] >= 0, s
-            assert self.tend[s] > -2, s
-            assert self.tword[s] != -2, s
+            assert self.T.parent[s] >= 0, s
+            assert self.T.tstart[s] >= 0, s
+            assert self.T.tend[s] > -2, s
+            assert self.T.tword[s] != -2, s
 
-            if self.tend[s] != -1:
+            if self.T.tend[s] != -1:
                 # suffix link are only for internal nodes different from the root
-                assert self.sl[s] != -2, s
+                assert self.T.sl[s] != -2, s
 
         for s in range(n):
             transitions = self.transitions(s)
             for letter, ss in transitions.items():
-                assert letter == self._letter(self.tword[ss], self.tstart[ss])
-                assert self.parent[ss] == s
+                assert letter == ct_letter(&self.T, self.T.tword[ss], self.T.tstart[ss])
+                assert self.T.parent[ss] == s
 
             # the leaves should correspond to the -1 states
             if s != 0:
-                k = self.tstart[s]
-                p = self.tend[s]
+                k = self.T.tstart[s]
+                p = self.T.tend[s]
                 assert p == -1 or p - k > 0, (s, k, p)
 
                 assert (p == -1) == (not transitions)
 
                 if p != -1:
                     # branching
-                    ss = self.sl[s]
+                    ss = self.T.sl[s]
                     assert s != ss
                     w0 = self.internal_state_word(ss)
                     w1 = self.internal_state_word(s)
@@ -1710,8 +1225,9 @@ cdef class ConjugateTree:
         r"""
         Check all invariants of this conjugate tree.
 
-        Combines :meth:`_check_structural` and :meth:`_check_bijection`; only
-        valid to call outside of a :meth:`process` call.
+        Runs the checks of the C library and, as an independent second
+        implementation of the same invariants, :meth:`_check_structural` and
+        :meth:`_check_bijection`.
 
         EXAMPLES::
 
@@ -1721,6 +1237,9 @@ cdef class ConjugateTree:
             1
             sage: T._check()
         """
+        cdef int err = ct_check(&self.T)
+        if err:
+            raise AssertionError(f"ct_check failed with error code {err}")
         self._check_structural()
         self._check_bijection()
 
@@ -1748,23 +1267,23 @@ cdef class ConjugateTree:
             sage: T.plot()
             Graphics object consisting of ... graphics primitives
         """
-        children = [self.transitions(s) for s in range(self.nstates)]
+        children = [self.transitions(s) for s in range(self.T.nstates)]
 
         # compute lexicographically sorted leaves
         leaves = []
         queue = [children[0][letter] for letter in sorted(children[0], reverse=reverse)]
         while queue:
             s = queue.pop()
-            if self.tend[s] == -1:
+            if self.T.tend[s] == -1:
                 leaves.append(s)
             else:
                 queue.extend(children[s][letter] for letter in sorted(children[s], reverse=reverse))
 
         pos = {}
         for i, s in enumerate(leaves):
-            pos[s] = (xscale * self.dep[self.parent[s]] + 1, yscale * i)
+            pos[s] = (xscale * self.T.dep[self.T.parent[s]] + 1, yscale * i)
 
-        queue = set(range(self.nstates))
+        queue = set(range(self.T.nstates))
         queue.difference_update(leaves)
         while queue:
             treated = []
@@ -1772,7 +1291,7 @@ cdef class ConjugateTree:
                 assert children[s], "got a leaf!"
                 if any(ss not in pos for ss in children[s].values()):
                     continue
-                x = xscale * self.dep[s]
+                x = xscale * self.T.dep[s]
                 y = sum(pos[ss][1] for ss in children[s].values()) / len(children[s])
                 pos[s] = (x, y)
                 treated.append(s)
@@ -1787,21 +1306,21 @@ cdef class ConjugateTree:
 
         cmap = None
         colors = None
-        if self.nwords == 1:
+        if self.T.nwords == 1:
             colors = ["gainsboro"]
-        if self.nwords <= 10:
+        if self.T.nwords <= 10:
             cmap = mpl.cm.tab10
-        elif self.nwords <= 20:
+        elif self.T.nwords <= 20:
             cmap = mpl.cm.tab20
         else:
             raise NotImplementedError
         if colors is None and cmap is not None:
-            colors = [tuple(row[:3]) for row in cmap(range(self.nwords))]
+            colors = [tuple(row[:3]) for row in cmap(range(self.T.nwords))]
         G = Graphics()
-        for s in range(self.nstates):
-            if self.tend[s] == -1:
+        for s in range(self.T.nstates):
+            if self.T.tend[s] == -1:
                 # leaf
-                G += circle(pos[s], state_size, color=colors[self.tword[s]], fill=True, zorder=1)
+                G += circle(pos[s], state_size, color=colors[self.T.tword[s]], fill=True, zorder=1)
             else:
                 G += circle(pos[s], state_size, color="silver", fill=True, zorder=1)
                 G += circle(pos[s], state_size, color="black", fill=False, zorder=2)
@@ -1809,10 +1328,10 @@ cdef class ConjugateTree:
             for ss in children[s].values():
                 G += line2d([pos[s], pos[ss]], color="grey", zorder=0)
                 mid = ((pos[s][0]+pos[ss][0])/2, (pos[s][1]+pos[ss][1])/2)
-                if self.tend[ss] == -1:
-                    label = str(self._letter(self.tword[ss], self.tstart[ss]))
+                if self.T.tend[ss] == -1:
+                    label = str(ct_letter(&self.T, self.T.tword[ss], self.T.tstart[ss]))
                 else:
-                    label = ''.join(map(str, self._slice(self.tword[ss], self.tstart[ss], self.tend[ss])))
+                    label = ''.join(map(str, self._slice(self.T.tword[ss], self.T.tstart[ss], self.T.tend[ss])))
                 G += text(label, mid, color="blue")
         G.axes(False)
         return G

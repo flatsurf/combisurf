@@ -26,6 +26,21 @@ def make_tree(kind, alphabet, reserve=0):
     return ConjugateTree(alphabet, reserve=reserve, algorithm=kind)
 
 
+def process_and_check(T, w):
+    r"""
+    Process ``w`` in ``T`` and check all invariants of ``T``; the naive tree
+    also checks its structure at each step of the insertion.
+    """
+    from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+
+    if isinstance(T, ConjugateTreeNaive):
+        ans = T.process(w, hard_check=True)
+    else:
+        ans = T.process(w)
+    T._check()
+    return ans
+
+
 def small_binary_lyndon_words():
     return ((0,), (1,),
             (0,1), (0,0,1), (0,1,1),
@@ -139,20 +154,21 @@ def test_leaf_as_conjugate(kind, reserve):
 
 
 @pytest.mark.parametrize("kind", KINDS)
-def test_hard_check(kind):
-    # exercises the three possible outcomes of process() with hard_check=True:
-    # a new primitive word, a new non-primitive word, and a word that is a
-    # conjugate (possibly of a power) of an already registered word.
+def test_checked_process(kind):
+    # exercises the three possible outcomes of process() with the invariants
+    # checked after each of them: a new primitive word, a new non-primitive
+    # word, and a word that is a conjugate (possibly of a power) of an already
+    # registered word.
     T = make_tree(kind, 2)
-    assert T.process([0], hard_check=True) == 1
-    assert T.process([0, 1, 0, 0, 1], hard_check=True) == 1
-    assert T.process([1, 0, 1, 0], hard_check=True) == 2
-    assert T.process([0, 1], hard_check=True) == -2
+    assert process_and_check(T, [0]) == 1
+    assert process_and_check(T, [0, 1, 0, 0, 1]) == 1
+    assert process_and_check(T, [1, 0, 1, 0]) == 2
+    assert process_and_check(T, [0, 1]) == -2
     T._check()
 
 
 @pytest.mark.parametrize("kind", KINDS)
-def test_hard_check_random(kind):
+def test_checked_process_random(kind):
     rng = random.Random(0)
     outcomes = {"primitive": 0, "non_primitive": 0, "conjugate": 0}
     for _ in range(50):
@@ -162,7 +178,7 @@ def test_hard_check_random(kind):
             length = rng.randint(1, 8)
             base = [rng.randrange(alphabet) for _ in range(length)]
             w = base * rng.choice([1, 1, 1, 2, 3])
-            ans = T.process(w, hard_check=True)
+            ans = process_and_check(T, w)
             if ans > 1:
                 outcomes["non_primitive"] += 1
             elif ans == 1:
@@ -172,8 +188,7 @@ def test_hard_check_random(kind):
         T._check()
 
     # all three outcomes of process() must be exercised, otherwise the
-    # bijection check at the end of process() and the structural check
-    # during process() would not both be covered
+    # checks after each of them would not all be covered
     assert all(outcomes.values())
 
 
@@ -357,7 +372,9 @@ def test_against_naive(alphabet):
             w = base * rng.choice([1, 1, 1, 2, 3])
             history.append(w)
             hard = (trial % 8 == 0)
-            assert T0.process(list(w), hard_check=hard) == T1.process(list(w), hard_check=hard), history
+            assert T0.process(list(w)) == T1.process(list(w), hard_check=hard), history
+            if hard:
+                T0._check()
             assert_same_tree(T0, T1)
         T0._check()
         T1._check()
