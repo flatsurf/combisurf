@@ -959,6 +959,9 @@ cdef class ConjugateTree:
         the letters it reads, or by its first letter only if it ends at a
         leaf (such an edge reads an infinite periodic word).
 
+        The letters are separated by commas once the tree has a letter
+        larger than `9`, so that a label can be read back.
+
         EXAMPLES::
 
             sage: from combisurf.conjugate_tree import ConjugateTree
@@ -969,6 +972,23 @@ cdef class ConjugateTree:
             Digraph on 5 vertices
             sage: sorted(T.graph().edges())
             [(0, 1, '0'), (0, 3, '1'), (3, 2, '1'), (3, 4, '0')]
+
+        With a letter larger than `9`::
+
+            sage: T = ConjugateTree()
+            sage: T.process([12,1,2])
+            1
+            sage: T.process([12,1,1])
+            1
+            sage: sorted(T.graph().edges())
+            [(0, 3, '2'),
+             (0, 4, '12,1'),
+             (0, 6, '1'),
+             (4, 1, '2'),
+             (4, 5, '1'),
+             (6, 2, '2'),
+             (6, 7, '1'),
+             (6, 8, '12')]
         """
         from sage.graphs.digraph import DiGraph
         G = DiGraph(self.num_states(), loops=False, multiedges=False)
@@ -982,7 +1002,8 @@ cdef class ConjugateTree:
         r"""
         Return the label of the edge ending at the node ``t``: the letters it
         reads, or only its first letter if ``t`` is a leaf (such an edge
-        reads an infinite periodic word).
+        reads an infinite periodic word). The letters are separated by
+        commas once the tree has a letter larger than `9`.
 
         EXAMPLES::
 
@@ -1015,7 +1036,8 @@ cdef class ConjugateTree:
             raise ValueError(f"t (={t}) must be a node")
         if self.T.tend[node] == -1:
             return str(ct_letter(&self.T, self.T.tword[node], self.T.tstart[node]))
-        return ''.join(map(str, self._slice(self.T.tword[node], self.T.tstart[node], self.T.tend[node])))
+        sep = ',' if self.T.max_letter >= 10 else ''
+        return sep.join(map(str, self._slice(self.T.tword[node], self.T.tstart[node], self.T.tend[node])))
 
     def _pprint(self):
         r"""

@@ -520,6 +520,9 @@ class ConjugateTreeNaive:
         the letters it reads, or by its first letter only if it ends at a
         leaf (such an edge reads an infinite periodic word).
 
+        The letters are separated by commas once the tree has a letter
+        larger than `9`, so that a label can be read back.
+
         EXAMPLES::
 
             sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
@@ -530,6 +533,23 @@ class ConjugateTreeNaive:
             Digraph on 5 vertices
             sage: sorted(T.graph().edges())
             [(0, 1, '0'), (0, 3, '1'), (3, 2, '1'), (3, 4, '0')]
+
+        With a letter larger than `9`::
+
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([12,1,2])
+            1
+            sage: T.process([12,1,1])
+            1
+            sage: sorted(T.graph().edges())
+            [(0, 3, '2'),
+             (0, 4, '12,1'),
+             (0, 6, '1'),
+             (4, 1, '2'),
+             (4, 5, '1'),
+             (6, 2, '2'),
+             (6, 7, '1'),
+             (6, 8, '12')]
         """
         from sage.graphs.digraph import DiGraph
         G = DiGraph(self.num_states(), loops=False, multiedges=False)
@@ -542,7 +562,8 @@ class ConjugateTreeNaive:
         r"""
         Return the label of the edge ending at the node ``t``: the letters it
         reads, or only its first letter if ``t`` is a leaf (such an edge
-        reads an infinite periodic word).
+        reads an infinite periodic word). The letters are separated by
+        commas once the tree has a letter larger than `9`.
 
         EXAMPLES::
 
@@ -574,7 +595,8 @@ class ConjugateTreeNaive:
             raise ValueError(f"t (={t}) must be a node")
         if self._transition_end[t] == -1:
             return str(self._letter(self._transition_word[t], self._transition_start[t]))
-        return ''.join(map(str, self._slice(self._transition_word[t], self._transition_start[t], self._transition_end[t])))
+        sep = ',' if max((max(w) for w in self._words), default=-1) >= 10 else ''
+        return sep.join(map(str, self._slice(self._transition_word[t], self._transition_start[t], self._transition_end[t])))
 
     def _add_node(self):
         r"""
