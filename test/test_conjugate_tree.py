@@ -134,6 +134,20 @@ def test_process_errors(kind):
 
 
 @pytest.mark.parametrize("kind", KINDS)
+@pytest.mark.parametrize("check", [True, False])
+def test_process_copies_its_input(kind, check):
+    # the tree keeps the primitive root of a power, which must not truncate
+    # the list of the caller
+    T = make_tree(kind, 2)
+    w = [0, 1, 0, 1]
+    assert T.process(w, check=check) == 2
+    assert w == [0, 1, 0, 1]
+    assert list(T.words()[0]) == [0, 1]
+    assert T.process((0, 0, 1), check=check) == 1
+    assert [list(u) for u in T.words()] == [[0, 1], [0, 0, 1]]
+
+
+@pytest.mark.parametrize("kind", KINDS)
 @pytest.mark.parametrize("reserve", [0, 1, 1000])
 def test_leaf_as_conjugate(kind, reserve):
     for W, alphabet in [(small_binary_lyndon_words(), 2), (small_ternary_lyndon_words(), 3)]:
@@ -305,6 +319,38 @@ def test_sorted_leaves_as_conjugates(kind):
         assert list(zip(words, shifts)) == expected
 
 
+def test_sorted_leaves_as_conjugates_against_naive():
+    from combisurf.conjugate_tree import ConjugateTree
+    from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+
+    def outcome(T, order, pivot):
+        try:
+            return T.sorted_leaves_as_conjugates(order, pivot)
+        except ValueError as e:
+            return str(e)
+
+    rng = random.Random(20260924)
+    for _ in range(100):
+        n = rng.randint(1, 8)
+        T0 = ConjugateTree(n)
+        T1 = ConjugateTreeNaive()
+        for _ in range(rng.randint(0, 5)):
+            w = [rng.randrange(n) for _ in range(rng.randint(1, 9))]
+            assert T0.process(list(w)) == T1.process(list(w))
+        order, pivot = random_order_and_pivot(rng, n)
+        assert outcome(T0, order, pivot) == outcome(T1, order, pivot)
+        # invalid arguments give the same error
+        m = rng.randint(1, n)
+        order, pivot = random_order_and_pivot(rng, m)
+        if rng.random() < 0.5:
+            pivot[rng.randrange(m)] = rng.choice([-1, m])
+        if rng.random() < 0.3:
+            order[rng.randrange(m)] = order[rng.randrange(m)]
+        if rng.random() < 0.3:
+            pivot = pivot[:-1]
+        assert outcome(T0, order, pivot) == outcome(T1, order, pivot), (T0.words(), order, pivot)
+
+
 def assert_same_tree(T0, T1):
     r"""
     Check that two conjugate trees are the same down to the numbering of
@@ -396,3 +442,28 @@ def test_reserve_is_only_a_hint():
     assert_same_tree(exact, lean)
     # 2 T + 1 is an upper bound on the number of nodes, never reached here
     assert exact.num_states() <= 2 * total + 1
+
+
+def test_pprint_against_naive(capsys):
+    r"""
+    The two implementations print the same transitions, including the labels
+    that wrap around the end of their word.
+    """
+    from combisurf.conjugate_tree import ConjugateTree
+    from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+
+    rng = random.Random(1072)
+    for trial in range(40):
+        words = [[1, 1, 2, 1, 0, 0, 1, 0], [1, 0]]
+        words += [[rng.randrange(3) for _ in range(rng.randint(1, 9))] for _ in range(rng.randint(0, 4))]
+        rng.shuffle(words)
+        T0 = ConjugateTree(3)
+        T1 = ConjugateTreeNaive()
+        for w in words:
+            assert T0.process(list(w)) == T1.process(list(w))
+        T0._pprint()
+        out0 = capsys.readouterr().out
+        T1._pprint()
+        out1 = capsys.readouterr().out
+        assert out0 == out1, words
+        assert "array" not in out0

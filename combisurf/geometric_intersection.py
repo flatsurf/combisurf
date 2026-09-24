@@ -19,9 +19,9 @@ from array import array
 from combisurf.word import word_init, word_is_cyclically_reduced, word_cyclically_reduce, word_free_group_inverse
 from combisurf.oriented_map import OrientedMap
 from combisurf.conjugate_tree import ConjugateTree
-from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, cyclically_sorted_leaf_arcs, _leaf_weights,
-                                     startpoint_sweep_sorted, startpoint_sweep_weighted, tree_add_with_inverse,
-                                     word_arcs)
+from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, _cyclically_sorted_leaf_arcs, _leaf_weights,
+                                     startpoint_sweep_sorted, startpoint_sweep_weighted, _tree_add_with_inverse,
+                                     _word_arcs)
 
 class GeometricIntersection:
     r"""
@@ -126,13 +126,6 @@ class GeometricIntersection:
     def __repr__(self):
         return f"GeometricIntersection({self._cm})"
 
-    def __call__(self, w1, w2=None):
-        r"""
-        Return the self-intersection of ``w1`` or the intersection between
-        ``w1`` and ``w2``.
-        """
-        raise NotImplementedError
-
     # could return
     # [not a permutation]
     # [periods]
@@ -184,7 +177,7 @@ class GeometricIntersection:
 
         return list(word_indices), list(word_shifts)
 
-    def conjugate_plot(self, words):
+    def _conjugate_plot(self, words):
         from sage.rings.complex_double import CDF
         from sage.plot.colors import rainbow
         from sage.plot.text import text
@@ -358,7 +351,7 @@ class GeometricIntersection:
         T = ConjugateTree(n)
         u_multiplicities = []
         v_multiplicities = []
-        # NOTE: tree_add_with_inverse adds a new word together with its inverse,
+        # NOTE: _tree_add_with_inverse adds a new word together with its inverse,
         # the pair getting the indices (2 * slot, 2 * slot + 1) where slot is
         # the next free one
         for u in ulist:
@@ -366,7 +359,7 @@ class GeometricIntersection:
                 u = word_cyclically_reduce(word_init(u))
             if not u:
                 continue
-            i, exponent = tree_add_with_inverse(T, u)
+            i, exponent = _tree_add_with_inverse(T, u)
             if (i >> 1) == len(u_multiplicities):
                 # u added to T
                 u_multiplicities.append(0)
@@ -383,7 +376,7 @@ class GeometricIntersection:
                     v = word_cyclically_reduce(word_init(v))
                 if not v:
                     continue
-                i, exponent = tree_add_with_inverse(T, v)
+                i, exponent = _tree_add_with_inverse(T, v)
                 if (i >> 1) == len(u_multiplicities):
                     # v added to T
                     u_multiplicities.append(0)
@@ -401,7 +394,7 @@ class GeometricIntersection:
         # endpoints. Arcs sharing both endpoints are merged, their weights
         # added up.
         angles = self._angles
-        ukeys, ukey_weights = word_arcs(n, angles, words, u_multiplicities)
+        ukeys, ukey_weights = _word_arcs(n, angles, words, u_multiplicities)
         # NOTE: the sweep is O(n + (len(u) + len(v)) log(n)). The O(n^2)
         # double sum of the same number (test/test_geometric_intersection.py)
         # is slower at every n, so there is no threshold: on the one-vertex
@@ -412,7 +405,7 @@ class GeometricIntersection:
         if self_intersection:
             intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, check=False)
         else:
-            vkeys, vkey_weights = word_arcs(n, angles, words, v_multiplicities)
+            vkeys, vkey_weights = _word_arcs(n, angles, words, v_multiplicities)
             intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, vkeys, vkey_weights, check=False)
             intersections *= 2
 
@@ -421,7 +414,7 @@ class GeometricIntersection:
         # its startpoint to its endpoint and its two multiplicities. Total cost
         # is O(n + (len(u) + len(v)) log(n)), where the n comes from the tables
         # indexed by the angles and the log(n) factor from partial sums.
-        word_index, starts, arc_angles = cyclically_sorted_leaf_arcs(T, angles)
+        word_index, starts, arc_angles = _cyclically_sorted_leaf_arcs(T, angles)
         uweights = _leaf_weights(word_index, u_multiplicities)
         if self_intersection:
             # with the v-weights equal to the u-weights, the sweep counts each
@@ -599,7 +592,7 @@ class GeometricIntersectionMatrix:
         self._slot = []
         for j, w in enumerate(self._curves):
             # 2. the slot of the curve, rejecting the non-primitive ones
-            i, exponent = tree_add_with_inverse(T, w)
+            i, exponent = _tree_add_with_inverse(T, w)
             if exponent != 1:
                 raise NotImplementedError(f"non-primitive curve at index {j}")
             self._slot.append(i >> 1)
@@ -615,7 +608,7 @@ class GeometricIntersectionMatrix:
         ranks = [array('q') for _ in range(num_slots)]
         starts = [array('q') for _ in range(num_slots)]
         arc_angles = [array('q') for _ in range(num_slots)]
-        leaf_word, leaf_start, leaf_angle = cyclically_sorted_leaf_arcs(T, angles)
+        leaf_word, leaf_start, leaf_angle = _cyclically_sorted_leaf_arcs(T, angles)
         for rank in range(len(leaf_word)):
             slot = leaf_word[rank] >> 1
             ranks[slot].append(rank)
@@ -633,7 +626,7 @@ class GeometricIntersectionMatrix:
         self._arc_keys = []
         self._arc_weights = []
         for slot in range(num_slots):
-            keys, weights = word_arcs(n, angles, [words[2 * slot]], [1])
+            keys, weights = _word_arcs(n, angles, [words[2 * slot]], [1])
             self._arc_keys.append(keys)
             self._arc_weights.append(weights)
 

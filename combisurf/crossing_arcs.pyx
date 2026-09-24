@@ -35,8 +35,8 @@ listed together as in
 
 Those leaves are the ones of a conjugate tree holding the curves and their
 inverses in the free group where ``h ^ 1`` is the inverse of the letter
-``h``: :func:`tree_add_with_inverse` adds a curve and its inverse, and
-:func:`cyclically_sorted_leaf_arcs` lists the leaves in their cyclic order at
+``h``: ``_tree_add_with_inverse`` adds a curve and its inverse, and
+``_cyclically_sorted_leaf_arcs`` lists the leaves in their cyclic order at
 infinity.
 
 The sweeps keep their prefix sums in Fenwick trees (:ref:`fenwick1994`).
@@ -79,7 +79,7 @@ EXAMPLES::
 # ****************************************************************************
 
 from cpython cimport array
-from libc.limits cimport INT_MAX
+from libc.limits cimport INT_MAX, LLONG_MAX
 from libc.stdlib cimport calloc, free, malloc, qsort
 
 from combisurf.conjugate_tree cimport ConjugateTree, CT_EALPHABET, CT_ENEGATIVE, CT_ETOOLARGE
@@ -97,7 +97,7 @@ cdef int _cmp_weighted_arcs(const void *x, const void *y) noexcept nogil:
     return (a > b) - (a < b)
 
 
-def word_arcs(int n, angles, list words, weights):
+def _word_arcs(int n, angles, list words, weights):
     r"""
     Return the arcs of the words ``words[0]``, ``words[2]``, ``words[4]``,
     ... as sorted keys and weights, in the format of
@@ -148,12 +148,12 @@ def word_arcs(int n, angles, list words, weights):
     EXAMPLES::
 
         sage: from array import array
-        sage: from combisurf.crossing_arcs import word_arcs
-        sage: word_arcs(4, [0, 2, 1, 3], [array('i', [0, 2]), array('i', [3, 1])], [1])
+        sage: from combisurf.crossing_arcs import _word_arcs
+        sage: _word_arcs(4, [0, 2, 1, 3], [array('i', [0, 2]), array('i', [3, 1])], [1])
         (array('q', [9, 12]), array('q', [1, 1]))
-        sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1], [0], [1]], [3, 2])
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1], [0], [1]], [3, 2])
         (array('q', [8, 9, 12]), array('q', [2, 3, 3]))
-        sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1], [0], [1]], [0, 2])
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1], [0], [1]], [0, 2])
         (array('q', [8]), array('q', [2]))
 
     Feeding the output of two calls to :func:`crossing_arcs_sweep_sorted`
@@ -165,10 +165,10 @@ def word_arcs(int n, angles, list words, weights):
         sage: from combisurf.crossing_arcs import crossing_arcs_sweep_sorted
         sage: n = 6
         sage: angles = list(range(n))
-        sage: ukeys, uweights = word_arcs(n, angles, [array('i', [0, 3])], [1])
+        sage: ukeys, uweights = _word_arcs(n, angles, [array('i', [0, 3])], [1])
         sage: ukeys, uweights
         (array('q', [12, 19]), array('q', [1, 1]))
-        sage: vkeys, vweights = word_arcs(n, angles, [array('i', [1, 4])], [1])
+        sage: vkeys, vweights = _word_arcs(n, angles, [array('i', [1, 4])], [1])
         sage: vkeys, vweights
         (array('q', [24, 31]), array('q', [1, 1]))
         sage: crossing_arcs_sweep_sorted(n, ukeys, uweights, vkeys, vweights)
@@ -176,25 +176,25 @@ def word_arcs(int n, angles, list words, weights):
 
     TESTS::
 
-        sage: word_arcs(4, [0, 2, 1, 3], [], [])
+        sage: _word_arcs(4, [0, 2, 1, 3], [], [])
         (array('q'), array('q'))
-        sage: word_arcs(4, [0, 2, 1, 3], [[0, 1]], [1])
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 1]], [1])
         Traceback (most recent call last):
         ...
         ValueError: degenerate arc in word 0: the letter 1 is followed by its inverse
-        sage: word_arcs(4, [0, 2, 1, 3], [[0, 4]], [1])
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 4]], [1])
         Traceback (most recent call last):
         ...
         ValueError: invalid letter in word 0
-        sage: word_arcs(4, [0, 2, 1], [], [])
+        sage: _word_arcs(4, [0, 2, 1], [], [])
         Traceback (most recent call last):
         ...
         ValueError: angles must have length n
-        sage: word_arcs(4, [0, 2, 1, 4], [], [])
+        sage: _word_arcs(4, [0, 2, 1, 4], [], [])
         Traceback (most recent call last):
         ...
         ValueError: invalid position in angles
-        sage: word_arcs(0, [], [], [])
+        sage: _word_arcs(0, [], [], [])
         Traceback (most recent call last):
         ...
         ValueError: n must be positive
@@ -204,21 +204,35 @@ def word_arcs(int n, angles, list words, weights):
     ``boundscheck=False``, and a longer one points to a mismatch with
     ``words``::
 
-        sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [1, 2])
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [1, 2])
         Traceback (most recent call last):
         ...
         ValueError: weights must have (len(words) + 1) // 2 entries
-        sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]] * 2, [1])
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]] * 2, [1])
         Traceback (most recent call last):
         ...
         ValueError: weights must have (len(words) + 1) // 2 entries
 
     Each weight must fit in a C ``long long``::
 
-        sage: word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [2**63])
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [2**63])
         Traceback (most recent call last):
         ...
         OverflowError: weight 9223372036854775808 does not fit in a long long
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1]], [-1])
+        Traceback (most recent call last):
+        ...
+        ValueError: weight -1 must be non-negative
+
+    The total weight of each arc must fit in a C ``long long`` too; here the
+    two words share their arcs::
+
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1], [2, 0], [1, 3]], [2**62, 2**62 - 1])
+        (array('q', [9, 12]), array('q', [9223372036854775807, 9223372036854775807]))
+        sage: _word_arcs(4, [0, 2, 1, 3], [[0, 2], [3, 1], [2, 0], [1, 3]], [2**62, 2**62])
+        Traceback (most recent call last):
+        ...
+        OverflowError: the total weight of an arc does not fit in a long long
     """
     if n <= 0:
         raise ValueError("n must be positive")
@@ -240,6 +254,8 @@ def word_arcs(int n, angles, list words, weights):
         wt = weights[i >> 1]
         if not -(1 << 63) <= wt < (1 << 63):
             raise OverflowError(f"weight {wt} does not fit in a long long")
+        if wt < 0:
+            raise ValueError(f"weight {wt} must be non-negative")
         if wt:
             total += len(words[i])
 
@@ -293,6 +309,8 @@ def word_arcs(int n, angles, list words, weights):
         key_weights[0] = arcs[0].weight
         for p in range(1, num):
             if arcs[p].key == keys[m]:
+                if key_weights[m] > LLONG_MAX - arcs[p].weight:
+                    raise OverflowError("the total weight of an arc does not fit in a long long")
                 key_weights[m] += arcs[p].weight
             else:
                 m += 1
@@ -390,7 +408,7 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
         sage: crossing_arcs_sweep_sorted(n, array('q', [2 * n + 0, 3 * n + 1]), array('q', [1, 1]))
         2
 
-    On the hexagon of :func:`word_arcs`, ``ukeys`` holds the two arcs
+    On the hexagon of ``_word_arcs``, ``ukeys`` holds the two arcs
     ``(0, 2)`` and ``(1, 3)`` of the word ``[0, 3]``, which already cross
     each other, and ``vkeys`` the two arcs ``(0, 4)`` and ``(1, 5)`` of the
     word ``[1, 4]``, of which only ``(1, 5)`` crosses an arc of ``ukeys``;
@@ -792,7 +810,7 @@ cdef array.array _as_int_array(w):
     return array.array('i', w)
 
 
-def tree_add_with_inverse(ConjugateTree T not None, w):
+def _tree_add_with_inverse(ConjugateTree T not None, w):
     r"""
     Add the free group word ``w`` and, if it is new, its inverse to the
     conjugate tree ``T``.
@@ -822,21 +840,21 @@ def tree_add_with_inverse(ConjugateTree T not None, w):
     EXAMPLES::
 
         sage: from combisurf.conjugate_tree import ConjugateTree
-        sage: from combisurf.crossing_arcs import tree_add_with_inverse
+        sage: from combisurf.crossing_arcs import _tree_add_with_inverse
         sage: T = ConjugateTree(4)
-        sage: tree_add_with_inverse(T, [0, 2, 0, 3])
+        sage: _tree_add_with_inverse(T, [0, 2, 0, 3])
         (0, 1)
         sage: T.words()
         [array('i', [0, 2, 0, 3]), array('i', [2, 1, 3, 1])]
-        sage: tree_add_with_inverse(T, [2, 0, 2, 0])
+        sage: _tree_add_with_inverse(T, [2, 0, 2, 0])
         (2, 2)
         sage: T.words()
         [array('i', [0, 2, 0, 3]), array('i', [2, 1, 3, 1]), array('i', [2, 0]), array('i', [1, 3])]
-        sage: tree_add_with_inverse(T, [0, 3, 0, 2])
+        sage: _tree_add_with_inverse(T, [0, 3, 0, 2])
         (0, 1)
-        sage: tree_add_with_inverse(T, [1, 2, 1, 3])
+        sage: _tree_add_with_inverse(T, [1, 2, 1, 3])
         (1, 1)
-        sage: tree_add_with_inverse(T, [0, 2, 0, 2, 0, 2])
+        sage: _tree_add_with_inverse(T, [0, 2, 0, 2, 0, 2])
         (2, 3)
 
     TESTS:
@@ -844,44 +862,44 @@ def tree_add_with_inverse(ConjugateTree T not None, w):
     A word already present, then a power of a present word::
 
         sage: T = ConjugateTree(4)
-        sage: tree_add_with_inverse(T, [0, 2])
+        sage: _tree_add_with_inverse(T, [0, 2])
         (0, 1)
-        sage: tree_add_with_inverse(T, [2, 0])
+        sage: _tree_add_with_inverse(T, [2, 0])
         (0, 1)
-        sage: tree_add_with_inverse(T, [3, 1])
+        sage: _tree_add_with_inverse(T, [3, 1])
         (1, 1)
-        sage: tree_add_with_inverse(T, [1, 3, 1, 3])
+        sage: _tree_add_with_inverse(T, [1, 3, 1, 3])
         (1, 2)
         sage: T.num_words()
         2
 
     A word of length one, which is its own conjugate only::
 
-        sage: tree_add_with_inverse(T, [1])
+        sage: _tree_add_with_inverse(T, [1])
         (2, 1)
-        sage: tree_add_with_inverse(T, [0, 0])
+        sage: _tree_add_with_inverse(T, [0, 0])
         (3, 2)
 
     Invalid input leaves the tree as it was::
 
         sage: T = ConjugateTree(4)
-        sage: tree_add_with_inverse(T, [0, 2, 3])
+        sage: _tree_add_with_inverse(T, [0, 2, 3])
         Traceback (most recent call last):
         ...
         ValueError: w must be cyclically reduced
-        sage: tree_add_with_inverse(T, [2, 1, 0])
+        sage: _tree_add_with_inverse(T, [2, 1, 0])
         Traceback (most recent call last):
         ...
         ValueError: w must be cyclically reduced
-        sage: tree_add_with_inverse(T, [])
+        sage: _tree_add_with_inverse(T, [])
         Traceback (most recent call last):
         ...
         ValueError: empty word in input
-        sage: tree_add_with_inverse(T, [0, 4])
+        sage: _tree_add_with_inverse(T, [0, 4])
         Traceback (most recent call last):
         ...
         ValueError: invalid word: letter 4 not in the alphabet {0, 1, ..., 3}
-        sage: tree_add_with_inverse(T, [0, -1])
+        sage: _tree_add_with_inverse(T, [0, -1])
         Traceback (most recent call last):
         ...
         ValueError: invalid word: must be made of non-negative integers
@@ -893,7 +911,7 @@ def tree_add_with_inverse(ConjugateTree T not None, w):
         sage: T = ConjugateTree()
         sage: T.process([1])
         1
-        sage: tree_add_with_inverse(T, [0])
+        sage: _tree_add_with_inverse(T, [0])
         Traceback (most recent call last):
         ...
         ValueError: the words of this tree are not closed under inverse
@@ -903,7 +921,7 @@ def tree_add_with_inverse(ConjugateTree T not None, w):
     An alphabet of odd size is not the alphabet of a free group::
 
         sage: T = ConjugateTree(3)
-        sage: tree_add_with_inverse(T, [2])
+        sage: _tree_add_with_inverse(T, [2])
         Traceback (most recent call last):
         ...
         ValueError: the alphabet size (=3) must be even
@@ -914,7 +932,7 @@ def tree_add_with_inverse(ConjugateTree T not None, w):
 
         sage: w = [0, 2] * 50 + [0, 3]
         sage: T = ConjugateTree(4)
-        sage: tree_add_with_inverse(T, w)
+        sage: _tree_add_with_inverse(T, w)
         (0, 1)
         sage: list(T.word(1)) == [h ^^ 1 for h in reversed(w)]
         True
@@ -987,7 +1005,7 @@ def tree_add_with_inverse(ConjugateTree T not None, w):
     return (i, status)
 
 
-def cyclically_sorted_leaf_arcs(ConjugateTree T not None, angles):
+def _cyclically_sorted_leaf_arcs(ConjugateTree T not None, angles):
     r"""
     Return the leaves of the conjugate tree ``T`` in their cyclic order at
     infinity, each one described by its word, its first letter and the angle
@@ -1021,14 +1039,14 @@ def cyclically_sorted_leaf_arcs(ConjugateTree T not None, angles):
     EXAMPLES::
 
         sage: from combisurf.conjugate_tree import ConjugateTree
-        sage: from combisurf.crossing_arcs import cyclically_sorted_leaf_arcs
+        sage: from combisurf.crossing_arcs import _cyclically_sorted_leaf_arcs
         sage: T = ConjugateTree()
         sage: T.process([0, 2, 1, 3])
         1
         sage: T.process([2, 0, 3, 1])
         1
         sage: angles = [0, 2, 1, 3]
-        sage: cyclically_sorted_leaf_arcs(T, angles)
+        sage: _cyclically_sorted_leaf_arcs(T, angles)
         (array('q', [1, 0, 1, 0, 1, 0, 1, 0]),
          array('q', [0, 0, 2, 2, 1, 1, 3, 3]),
          array('q', [2, 0, 2, 0, 2, 0, 2, 0]))
@@ -1043,16 +1061,16 @@ def cyclically_sorted_leaf_arcs(ConjugateTree T not None, angles):
         ....:     i, k = T.leaf_as_conjugate(s)
         ....:     w = T.word(i)
         ....:     ans.append((i, w[k], (angles[w[k - 1] ^^ 1] - angles[w[k]]) % n - 1))
-        sage: list(zip(*cyclically_sorted_leaf_arcs(T, angles))) == ans
+        sage: list(zip(*_cyclically_sorted_leaf_arcs(T, angles))) == ans
         True
 
     TESTS::
 
-        sage: cyclically_sorted_leaf_arcs(T, [0, 1])
+        sage: _cyclically_sorted_leaf_arcs(T, [0, 1])
         Traceback (most recent call last):
         ...
         ValueError: the letters of this tree do not fit in an alphabet of size 2
-        sage: cyclically_sorted_leaf_arcs(T, [0, 2, 1])
+        sage: _cyclically_sorted_leaf_arcs(T, [0, 2, 1])
         Traceback (most recent call last):
         ...
         ValueError: the length of angles (=3) must be even
@@ -1107,7 +1125,7 @@ def _leaf_weights(array.array word_index not None, weights):
 
     This builds the ``uweights`` and ``vweights`` of
     :func:`startpoint_sweep_weighted` from the first array returned by
-    :func:`cyclically_sorted_leaf_arcs`.
+    ``_cyclically_sorted_leaf_arcs``.
 
     INPUT:
 

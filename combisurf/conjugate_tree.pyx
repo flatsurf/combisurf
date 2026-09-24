@@ -105,6 +105,7 @@ module wraps it.
 # ****************************************************************************
 
 from cpython cimport array
+from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memset
 
 from combisurf.word import word_init
@@ -737,10 +738,29 @@ cdef class ConjugateTree:
             5 [0, 1, 0]
             7 [1, 0]
             9 [0, 0]
+
+        TESTS::
+
+            sage: T.internal_state_word(0)
+            []
+            sage: T.leaves()
+            [1, 2, 4, 6, 8, 10]
+            sage: T.internal_state_word(1)
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=1) must be the root or an internal state
+            sage: T.internal_state_word(-1)
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=-1) must be the root or an internal state
+            sage: T.internal_state_word(T.num_states())
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=11) must be the root or an internal state
         """
+        if not 0 <= s < self.T.nstates or self.T.tend[<int> s] == -1:
+            raise ValueError(f"s (={s}) must be the root or an internal state")
         cdef int node = s
-        if node < 0 or node >= self.T.nstates:
-            raise ValueError("s must be a node")
         # NOTE: no path[-1] here; this module is compiled with
         # wraparound=False, under which a negative index on a list is not
         # caught but read out of bounds
@@ -1055,9 +1075,37 @@ cdef class ConjugateTree:
             1
             sage: T._pprint()
              0 --0(i=0, k=0)-->  1
-             0 --1(array('i', [1]))-->  3
+             0 --1([1])-->  3
              3 --0(i=0, k=3)-->  4
              3 --1(i=0, k=2)-->  2
+
+        TESTS:
+
+        The label of the transition from 11 to 15 wraps around the end of
+        the second word::
+
+            sage: T = ConjugateTree()
+            sage: T.process([1, 1, 2, 1, 0, 0, 1, 0])
+            1
+            sage: T.process([1, 0])
+            1
+            sage: T._pprint()
+             0 --0([0])-->  7
+             0 --1([1])-->  2
+             0 --2(i=0, k=2)-->  4
+             2 --0([0])-->  9
+             2 --1(i=0, k=1)-->  1
+             2 --2(i=0, k=2)-->  3
+             7 --0(i=0, k=5)-->  6
+             7 --1([1])--> 11
+             9 --0(i=0, k=5)-->  5
+             9 --1([1])--> 13
+            11 --0([0, 1])--> 15
+            11 --1(i=0, k=9)--> 12
+            13 --0(i=1, k=3)--> 14
+            13 --1(i=0, k=9)--> 10
+            15 --0(i=1, k=5)--> 16
+            15 --1(i=0, k=9)-->  8
         """
         ans = []
         cdef int s, i, k, p
@@ -1069,7 +1117,7 @@ cdef class ConjugateTree:
                 k = self.T.tstart[ss]
                 p = self.T.tend[ss]
                 if p != -1:
-                    ans.append(f"{s:2} --{letter}({self.word(i)[k:p]})--> {ss:2}")
+                    ans.append(f"{s:2} --{letter}({self._slice(i, k, p)})--> {ss:2}")
                 else:
                     ans.append(f"{s:2} --{letter}(i={i}, k={k})--> {ss:2}")
         print("\n".join(ans))
@@ -1085,6 +1133,13 @@ cdef class ConjugateTree:
         from s.
 
         Return a pair ``(s, k)`` (as ``i`` and ``p`` do not change).
+
+        Only part of the reference is checked: that ``s`` is a node or
+        ``-1``, that ``i`` is the index of a word, that ``0 <= k <= p``, and
+        that each transition followed down the tree exists, which tests the
+        first letter of its label only. The other letters of word[i][k:p] are
+        not compared with the labels, and a reference that disagrees with
+        them gives a meaningless answer.
 
         EXAMPLES::
 
@@ -1104,11 +1159,11 @@ cdef class ConjugateTree:
             sage: T._canonize_state(0, 0, 3, 2)
             Traceback (most recent call last):
             ...
-            ValueError: (s, i, k, p) = (0, 0, 3, 2) is not a reference of a state of the tree
+            ValueError: (s, i, k, p) = (0, 0, 3, 2) has k outside of 0..p or follows a missing transition
             sage: T._canonize_state(0, 0, -1, 2)
             Traceback (most recent call last):
             ...
-            ValueError: (s, i, k, p) = (0, 0, -1, 2) is not a reference of a state of the tree
+            ValueError: (s, i, k, p) = (0, 0, -1, 2) has k outside of 0..p or follows a missing transition
             sage: T = ConjugateTree(3)
             sage: T.process([0, 1])
             1
@@ -1119,7 +1174,7 @@ cdef class ConjugateTree:
             sage: T._canonize_state(1, 1, 0, 1)
             Traceback (most recent call last):
             ...
-            ValueError: (s, i, k, p) = (1, 1, 0, 1) is not a reference of a state of the tree
+            ValueError: (s, i, k, p) = (1, 1, 0, 1) has k outside of 0..p or follows a missing transition
         """
         cdef int ss = s
         cdef int kk = k
@@ -1130,7 +1185,7 @@ cdef class ConjugateTree:
         if ii < 0 or ii >= self.T.nwords:
             raise ValueError(f"i (={i}) must be the index of a word")
         if ct_canonize(&self.T, &ss, ii, &kk, pp):
-            raise ValueError(f"(s, i, k, p) = {(s, i, k, p)} is not a reference of a state of the tree")
+            raise ValueError(f"(s, i, k, p) = {(s, i, k, p)} has k outside of 0..p or follows a missing transition")
         return (ss, kk)
 
     def process(self, w, check=True):
@@ -1187,12 +1242,25 @@ cdef class ConjugateTree:
             Traceback (most recent call last):
             ...
             ValueError: invalid word: must be made of non-negative integers
+
+        With ``check=False``, a numpy array is accepted::
+
+            sage: import numpy
+            sage: T.process(numpy.array([0, 1, 0, 0, 1]), check=False)
+            0
+            sage: T.process(numpy.array([], dtype=int), check=False)
+            Traceback (most recent call last):
+            ...
+            ValueError: empty word in input
         """
-        if not w:
-            raise ValueError("empty word in input")
         if check:
             w = word_init(w)
         cdef array.array a = _as_int_array(w)
+        if len(a) == 0:
+            raise ValueError("empty word in input")
+        # ct_process takes the length as a C int
+        if len(a) > INT_MAX:
+            raise OverflowError("the word is too long")
         cdef int result
         cdef int err = ct_process(&self.T, a.data.as_ints, len(a), &result)
         if err:

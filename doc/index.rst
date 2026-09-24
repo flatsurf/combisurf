@@ -27,7 +27,6 @@ Module Reference
    crossing_arcs
    conjugate_tree
    conjugate_tree_naive
-   partial_sums
 
 .. toctree::
    :maxdepth: 1

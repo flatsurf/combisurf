@@ -37,7 +37,7 @@ deterministic words differently each time).
 
 The second form builds a fresh ``ConjugateTree(n)`` and adds every word of
 the file with ``process`` (or, with ``--with-inverse``, with
-``crossing_arcs.tree_add_with_inverse``, which also adds its inverse), and
+``crossing_arcs._tree_add_with_inverse``, which also adds its inverse), and
 prints the best time over the rounds, per tree and per letter.
 """
 import random
@@ -200,12 +200,12 @@ def bench(path, rounds=5, with_inverse=False, min_time=0.01):
     - ``rounds`` -- number of rounds
 
     - ``with_inverse`` -- whether to add each word with its inverse, with
-      ``crossing_arcs.tree_add_with_inverse``; the alphabet must have even size
+      ``crossing_arcs._tree_add_with_inverse``; the alphabet must have even size
 
     - ``min_time`` -- the least duration of a round, in seconds
     """
     from combisurf.conjugate_tree import ConjugateTree
-    from combisurf.crossing_arcs import tree_add_with_inverse
+    from combisurf.crossing_arcs import _tree_add_with_inverse
 
     n, words = read_words(path)
     if with_inverse and n % 2:
@@ -216,7 +216,7 @@ def bench(path, rounds=5, with_inverse=False, min_time=0.01):
         T = ConjugateTree(n)
         if with_inverse:
             for w in words:
-                tree_add_with_inverse(T, w)
+                _tree_add_with_inverse(T, w)
         else:
             process = T.process
             for w in words:

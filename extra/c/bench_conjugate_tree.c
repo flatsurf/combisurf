@@ -186,7 +186,7 @@ static void build(ct_tree *T, int with_inverse, int rec)
             process(T, words[j], lens[j], &status, rec);
             continue;
         }
-        /* as tree_add_with_inverse of crossing_arcs.pyx */
+        /* as _tree_add_with_inverse of crossing_arcs.pyx */
         if (ct_reserve(T, 2, 2 * lens[j]))
             die("ct_reserve failed");
         if (rec)

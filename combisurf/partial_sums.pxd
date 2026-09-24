@@ -1,5 +1,5 @@
-from cpython cimport array
-
+# Inline helpers for a Fenwick tree (binary indexed tree) stored as a flat
+# C array tree[1..size] of long long, used by the sweeps of crossing_arcs.pyx.
 
 cdef inline void fenwick_add(long long *tree, Py_ssize_t size, Py_ssize_t i, long long x) noexcept:
     # add x at position i (0-based, 0 <= i < size; a negative i loops forever)
@@ -27,15 +27,3 @@ cdef inline void fenwick_clear(long long *tree, Py_ssize_t size, Py_ssize_t i) n
     while i <= size:
         tree[i] = 0
         i += i & (-i)
-
-
-cdef class PartialSumsNaive:
-    cdef array.array a_values  # the vector, handed out to Python as a list
-    cdef int *values           # C view on it
-    cdef int n                 # its length
-
-
-cdef class PartialSumsFenwick:
-    cdef array.array a_values  # the Fenwick tree, one flat array of length n + 1
-    cdef long long *values     # C view on it
-    cdef int n                 # the size of the vector

@@ -664,12 +664,12 @@ def test_geometric_intersection_crossing_arcs_paths(monkeypatch):
                 assert answers.count(answers[0]) == 3, (g, length, ulist, vlist, answers)
 
 
-def test_word_arcs_random():
-    # word_arcs against the dictionary of the arcs built in Python, and the
+def test__word_arcs_random():
+    # _word_arcs against the dictionary of the arcs built in Python, and the
     # sweep of its output against the brute force on that dictionary
     import random
     from array import array
-    from combisurf.crossing_arcs import word_arcs, crossing_arcs_sweep_sorted
+    from combisurf.crossing_arcs import _word_arcs, crossing_arcs_sweep_sorted
 
     rng = random.Random(20260926)
     for n in [2, 4, 8, 12, 64, 256]:
@@ -693,8 +693,8 @@ def test_word_arcs_random():
                         weights = arcs.setdefault(last * n + first, [0, 0])
                         weights[0] += uw[i >> 1]
                         weights[1] += vw[i >> 1]
-                ukeys, uweights = word_arcs(n, angles, words, uw)
-                vkeys, vweights = word_arcs(n, array('i', angles), words, vw)
+                ukeys, uweights = _word_arcs(n, angles, words, uw)
+                vkeys, vweights = _word_arcs(n, array('i', angles), words, vw)
                 assert all(a.typecode == 'q' for a in (ukeys, uweights, vkeys, vweights))
                 assert list(ukeys) == sorted(k for k, (u, v) in arcs.items() if u)
                 assert list(vkeys) == sorted(k for k, (u, v) in arcs.items() if v)
@@ -705,17 +705,17 @@ def test_word_arcs_random():
                 assert crossing_arcs_sweep_sorted(n, ukeys, uweights) == crossing_arcs_brute_force(n, sym)
 
 
-def test_word_arcs_degenerate():
-    from combisurf.crossing_arcs import word_arcs
+def test__word_arcs_degenerate():
+    from combisurf.crossing_arcs import _word_arcs
 
     with pytest.raises(ValueError, match="degenerate arc"):
-        word_arcs(4, [0, 2, 1, 3], [[0, 2, 3]], [1])
+        _word_arcs(4, [0, 2, 1, 3], [[0, 2, 3]], [1])
     # a word of weight 0 is not read
-    assert [list(a) for a in word_arcs(4, [0, 2, 1, 3], [[0, 2, 3], [2, 1, 0]], [0])] == [[], []]
+    assert [list(a) for a in _word_arcs(4, [0, 2, 1, 3], [[0, 2, 3], [2, 1, 0]], [0])] == [[], []]
 
 
 # the conjugate tree of curves and their inverses, as built by
-# tree_add_with_inverse and read by cyclically_sorted_leaf_arcs
+# _tree_add_with_inverse and read by _cyclically_sorted_leaf_arcs
 CONJUGATE_TREE_KINDS = ["dense", "sparse", "rows", "auto", "unknown"]
 
 
@@ -741,12 +741,12 @@ def random_cyclically_reduced_word(rng, n, length):
 
 
 @pytest.mark.parametrize("kind", CONJUGATE_TREE_KINDS)
-def test_tree_add_with_inverse_random(kind):
-    # tree_add_with_inverse against process on the word and, when it is new,
+def test__tree_add_with_inverse_random(kind):
+    # _tree_add_with_inverse against process on the word and, when it is new,
     # on the inverse of the word stored; the words are new ones, conjugates,
     # inverses and powers of earlier ones, and powers of new ones
     import random
-    from combisurf.crossing_arcs import tree_add_with_inverse
+    from combisurf.crossing_arcs import _tree_add_with_inverse
     from combisurf.word import word_free_group_inverse
     rng = random.Random(20260924)
     for _ in range(100):
@@ -768,7 +768,7 @@ def test_tree_add_with_inverse_random(kind):
                 w = w * rng.randint(2, 3)
             seen.append(w)
 
-            i, exponent = tree_add_with_inverse(T0, list(w))
+            i, exponent = _tree_add_with_inverse(T0, list(w))
             status = T1.process(list(w))
             if status > 0:
                 assert i == T1.num_words() - 1
@@ -786,12 +786,12 @@ def test_tree_add_with_inverse_random(kind):
 
 
 @pytest.mark.parametrize("kind", CONJUGATE_TREE_KINDS)
-def test_cyclically_sorted_leaf_arcs_random(kind):
-    # the leaves of cyclically_sorted_leaf_arcs are the ones of
+def test__cyclically_sorted_leaf_arcs_random(kind):
+    # the leaves of _cyclically_sorted_leaf_arcs are the ones of
     # cyclically_sorted_leaves with the pivot of the inverse letter,
     # described through leaf_as_conjugate
     import random
-    from combisurf.crossing_arcs import cyclically_sorted_leaf_arcs
+    from combisurf.crossing_arcs import _cyclically_sorted_leaf_arcs
     rng = random.Random(20260923)
     for _ in range(60):
         n = 2 * rng.randint(1, 4)
@@ -807,7 +807,7 @@ def test_cyclically_sorted_leaf_arcs_random(kind):
             i, k = T.leaf_as_conjugate(s)
             w = words[i]
             expected.append((i, w[k], (angles[w[k - 1] ^ 1] - angles[w[k]]) % n - 1))
-        word_index, firsts, turns = cyclically_sorted_leaf_arcs(T, angles)
+        word_index, firsts, turns = _cyclically_sorted_leaf_arcs(T, angles)
         assert all(a.typecode == 'q' for a in (word_index, firsts, turns))
         assert list(zip(word_index, firsts, turns)) == expected, (words, angles)
 

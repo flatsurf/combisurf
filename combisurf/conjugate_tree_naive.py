@@ -55,6 +55,8 @@ Which means that the leaf index ``6`` corresponds to the word number ``1``
 (i.e. ``[0, 1, 0, 0, 1]``) shifted twice.
 """
 
+from array import array
+
 from combisurf.word import word_check, word_init
 
 
@@ -181,7 +183,7 @@ class ConjugateTreeNaive:
             raise ValueError(f"i (={i}) must be the index of a word")
         return len(self._words[i])
 
-    def letter(self, i, k):
+    def _letter_at(self, i, k):
         r"""
         Return the ``k``-th letter of the ``i``-th word, read cyclically.
 
@@ -191,9 +193,9 @@ class ConjugateTreeNaive:
             sage: T = ConjugateTreeNaive()
             sage: T.process([0, 4, 2, 3])
             1
-            sage: T.letter(0, 19)
+            sage: T._letter_at(0, 19)
             3
-            sage: T.letter(0, -1)
+            sage: T._letter_at(0, -1)
             3
         """
         if i < 0 or i >= len(self._words):
@@ -257,9 +259,37 @@ class ConjugateTreeNaive:
             1
             sage: T._pprint()
              0 --0(i=0, k=0)-->  1
-             0 --1(array('i', [1]))-->  3
+             0 --1([1])-->  3
              3 --0(i=0, k=3)-->  4
              3 --1(i=0, k=2)-->  2
+
+        TESTS:
+
+        The label of the transition from 11 to 15 wraps around the end of
+        the second word::
+
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([1, 1, 2, 1, 0, 0, 1, 0])
+            1
+            sage: T.process([1, 0])
+            1
+            sage: T._pprint()
+             0 --0([0])-->  7
+             0 --1([1])-->  2
+             0 --2(i=0, k=2)-->  4
+             2 --0([0])-->  9
+             2 --1(i=0, k=1)-->  1
+             2 --2(i=0, k=2)-->  3
+             7 --0(i=0, k=5)-->  6
+             7 --1([1])--> 11
+             9 --0(i=0, k=5)-->  5
+             9 --1([1])--> 13
+            11 --0([0, 1])--> 15
+            11 --1(i=0, k=9)--> 12
+            13 --0(i=1, k=3)--> 14
+            13 --1(i=0, k=9)--> 10
+            15 --0(i=1, k=5)--> 16
+            15 --1(i=0, k=9)-->  8
         """
         ans = []
         for s, transitions in enumerate(self._transitions):
@@ -269,7 +299,7 @@ class ConjugateTreeNaive:
                 k = self._transition_start[ss]
                 p = self._transition_end[ss]
                 if p != -1:
-                    ans.append(f"{s:2} --{letter}({self._words[i][k:p]})--> {ss:2}")
+                    ans.append(f"{s:2} --{letter}({self._slice(i, k, p)})--> {ss:2}")
                 else:
                     ans.append(f"{s:2} --{letter}(i={i}, k={k})--> {ss:2}")
         print("\n".join(ans))
@@ -374,9 +404,26 @@ class ConjugateTreeNaive:
             1
             sage: [T.leaf_as_conjugate(s) for s in T.leaves()] == [(i, k) for i, w in enumerate(T.words()) for k in range(len(w))]
             True
+
+        TESTS::
+
+            sage: T.internal_states()
+            [2, 4, 9, 11, 13, 15, 18, 20, 22]
+            sage: T.leaf_as_conjugate(2)
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=2) must be a leaf
+            sage: T.leaf_as_conjugate(0)
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=0) must be a leaf
+            sage: T.leaf_as_conjugate(T.num_states())
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=24) must be a leaf
         """
-        if s < 0 or s >= len(self._ancestor):
-            raise ValueError
+        if s <= 0 or s >= len(self._ancestor) or self._transition_end[s] != -1:
+            raise ValueError(f"s (={s}) must be a leaf")
         i = self._transition_word[s]
         k = self._transition_start[s]
         ss = self._ancestor[s]
@@ -513,6 +560,82 @@ class ConjugateTreeNaive:
                 queue.extend(self._transitions[s][letter] for letter in transitions)
 
         return leaves
+
+    def sorted_leaves_as_conjugates(self, order, pivot):
+        r"""
+        Return the conjugates of the leaves in the order of
+        :meth:`cyclically_sorted_leaves`.
+
+        This is a drop-in for
+        :meth:`~combisurf.conjugate_tree.ConjugateTree.sorted_leaves_as_conjugates`,
+        with the same arguments, output and errors, computed from
+        :meth:`cyclically_sorted_leaves` and :meth:`leaf_as_conjugate`.
+
+        INPUT:
+
+        - ``order``, ``pivot`` -- as in
+          :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves`
+
+        OUTPUT: two arrays of typecode ``'i'``, with one entry per leaf: the
+        index ``i`` of its word and its shift ``k``, as in
+        :meth:`leaf_as_conjugate`
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0, 1, 1])
+            1
+            sage: T.process([0, 1])
+            1
+            sage: T.sorted_leaves_as_conjugates([0, 1], [1, 0])
+            (array('i', [1, 0, 1, 0, 0]), array('i', [0, 0, 1, 2, 1]))
+            sage: [T.leaf_as_conjugate(s) for s in T.cyclically_sorted_leaves([0, 1], [1, 0])]
+            [(1, 0), (0, 0), (1, 1), (0, 2), (0, 1)]
+
+        TESTS::
+
+            sage: T.sorted_leaves_as_conjugates([0, 1], [0, 2])
+            Traceback (most recent call last):
+            ...
+            ValueError: pivot must be a sequence of 2 values in {0, 1}
+            sage: T.sorted_leaves_as_conjugates([], [])
+            Traceback (most recent call last):
+            ...
+            ValueError: order must be non-empty
+            sage: T.sorted_leaves_as_conjugates([1, 1], [0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: order must be a permutation of {0, 1}
+            sage: T.sorted_leaves_as_conjugates([0], [0])
+            Traceback (most recent call last):
+            ...
+            ValueError: the letters of this tree do not fit in an alphabet of size 1
+            sage: T.sorted_leaves_as_conjugates([0, 1], [0])
+            Traceback (most recent call last):
+            ...
+            ValueError: pivot must be a sequence of 2 values in {0, 1}
+        """
+        n = len(order)
+        if not n:
+            raise ValueError("order must be non-empty")
+        pivot_error = ValueError(f"pivot must be a sequence of {n} values in "
+                                 "{%s}" % ", ".join(str(j) for j in range(n)))
+        if len(pivot) != n:
+            raise pivot_error
+        if sorted(order) != list(range(n)):
+            raise ValueError("order must be a permutation of {%s}" % ", ".join(str(j) for j in range(n)))
+        if any(letter >= n for w in self._words for letter in w):
+            raise ValueError(f"the letters of this tree do not fit in an alphabet of size {n}")
+        if any(p < 0 or p >= n for p in pivot):
+            raise pivot_error
+        words = array('i')
+        shifts = array('i')
+        for s in self.cyclically_sorted_leaves(order, pivot):
+            i, k = self.leaf_as_conjugate(s)
+            words.append(i)
+            shifts.append(k)
+        return (words, shifts)
 
     def graph(self):
         r"""
@@ -751,34 +874,77 @@ class ConjugateTreeNaive:
             else:
                 return s
 
-    def canonize(self, s, i, k, p):
+    def _canonize_state(self, s, i, k, p):
         r"""
         Canonize the quadruple ``(s, i, k, p)`` representing
         the (explicit or implicit) state obtained after reading word[i][k:p]
         from s.
 
         Return a pair ``(s, k)`` (as ``i`` and ``p`` do not change).
+
+        Only part of the reference is checked: that ``s`` is a node or
+        ``-1``, that ``i`` is the index of a word, that ``0 <= k <= p``, and
+        that each transition followed down the tree exists, which tests the
+        first letter of its label only. The other letters of word[i][k:p] are
+        not compared with the labels, and a reference that disagrees with
+        them gives a meaningless answer.
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0,1,0,0,1])
+            1
+            sage: T._canonize_state(0, 0, 0, 0)
+            (0, 0)
+            sage: T._canonize_state(0, 0, 0, 2)
+            (3, 1)
+            sage: T._canonize_state(-1, 0, 0, 3)
+            (7, 3)
+
+        TESTS::
+
+            sage: T._canonize_state(0, 0, 3, 2)
+            Traceback (most recent call last):
+            ...
+            ValueError: (s, i, k, p) = (0, 0, 3, 2) has k outside of 0..p or follows a missing transition
+            sage: T._canonize_state(0, 0, -1, 2)
+            Traceback (most recent call last):
+            ...
+            ValueError: (s, i, k, p) = (0, 0, -1, 2) has k outside of 0..p or follows a missing transition
+            sage: T = ConjugateTreeNaive(3)
+            sage: T.process([0, 1])
+            1
+            sage: T._canonize_state(0, 0, 0, 1)
+            (0, 0)
+            sage: T.process([2])
+            1
+            sage: T._canonize_state(1, 1, 0, 1)
+            Traceback (most recent call last):
+            ...
+            ValueError: (s, i, k, p) = (1, 1, 0, 1) has k outside of 0..p or follows a missing transition
         """
-        assert s >= -1, s
-        if k >= p:
+        if s < -1 or s >= len(self._ancestor):
+            raise ValueError(f"s (={s}) must be a node")
+        if i < 0 or i >= len(self._words):
+            raise ValueError(f"i (={i}) must be the index of a word")
+        if k < 0 or k > p:
+            raise ValueError(f"(s, i, k, p) = {(s, i, k, p)} has k outside of 0..p or follows a missing transition")
+        if k == p:
             # already explicit
             return (s, p)
-        else:
-            ss = 0 if s == -1 else self._transitions[s][self._letter(i, k)]
-            kk = self._transition_start[ss]
-            pp = self._transition_end[ss]
-            while pp != -1 and pp - kk < p - k:
-                k += pp - kk
-                s = ss
-                ss = self._transitions[s][self._letter(i, k)]
-                kk = self._transition_start[ss]
-                pp = self._transition_end[ss]
-            if pp != -1 and pp - kk == p - k:
-                # explicit
-                return (ss, p)
-            else:
-                # implicit
-                return (s, k)
+        ss = 0 if s == -1 else self._transitions[s].get(self._letter(i, k), -1)
+        while ss != -1 and self._transition_end[ss] != -1 and self._transition_end[ss] - self._transition_start[ss] < p - k:
+            k += self._transition_end[ss] - self._transition_start[ss]
+            s = ss
+            ss = self._transitions[s].get(self._letter(i, k), -1)
+        if ss == -1:
+            raise ValueError(f"(s, i, k, p) = {(s, i, k, p)} has k outside of 0..p or follows a missing transition")
+        if self._transition_end[ss] != -1 and self._transition_end[ss] - self._transition_start[ss] == p - k:
+            # explicit
+            return (ss, p)
+        # implicit
+        return (s, k)
 
     def _update(self, s, i, k, p):
         r"""
@@ -815,7 +981,7 @@ class ConjugateTreeNaive:
                 assert r != old_r
                 self._suffix_link[old_r] = r
             old_r = r
-            s, k = self.canonize(self._suffix_link[s], i, k, p)
+            s, k = self._canonize_state(self._suffix_link[s], i, k, p)
             r = self._test_and_split(s, i, k, p, letter)
 
         if old_r != 0:
@@ -881,11 +1047,69 @@ class ConjugateTreeNaive:
         - a non-positive ``-index`` if the word ``w`` is already present, that
           is, if it is conjugate to a power of the word of index ``index`` of
           this conjugate tree
+
+        INPUT:
+
+        - ``w`` -- a non-empty word
+
+        - ``check`` -- boolean (default: ``True``); whether to convert ``w``
+          with :func:`~combisurf.word.word_init`; with ``check=False``, ``w``
+          can be any iterable of integers. In both cases the tree stores a
+          copy of ``w``, never ``w`` itself
+
+        - ``hard_check`` -- boolean (default: ``False``); whether to check
+          the structure of the tree at each step of the insertion
+
+        EXAMPLES::
+
+            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+            sage: T = ConjugateTreeNaive()
+            sage: T.process([0, 1, 0, 0, 1])
+            1
+            sage: T.process([0, 1, 0, 1])
+            2
+            sage: T.process([1, 0, 0, 1, 0])
+            0
+            sage: T.process([0, 1, 0, 1, 0, 1])
+            -1
+
+        TESTS:
+
+        With ``check=False``, the list given is not modified when the tree
+        keeps only its primitive root, and a tuple or a numpy array is
+        accepted::
+
+            sage: T = ConjugateTreeNaive()
+            sage: w = [0, 1, 0, 1]
+            sage: T.process(w, check=False)
+            2
+            sage: w
+            [0, 1, 0, 1]
+            sage: T.words()
+            [array('i', [0, 1])]
+            sage: T.process((0, 0, 1), check=False)
+            1
+            sage: import numpy
+            sage: T.process(numpy.array([0, 1, 0, 0, 1]), check=False)
+            1
+            sage: T.process(numpy.array([], dtype=int), check=False)
+            Traceback (most recent call last):
+            ...
+            ValueError: empty word in input
+            sage: T.process([])
+            Traceback (most recent call last):
+            ...
+            ValueError: empty word in input
+            sage: T.process([0, -1])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid word: must be made of non-negative integers
         """
-        if not w:
-            raise ValueError("empty word in input")
         if check:
             w = word_init(w)
+        w = array('i', w)
+        if not w:
+            raise ValueError("empty word in input")
         for letter in w:
             if letter < 0:
                 raise ValueError("invalid word: must be made of non-negative integers")
@@ -912,7 +1136,7 @@ class ConjugateTreeNaive:
             num_leaves += len(created_leaves)
             if hard_check:
                 self._check_structural()
-            s, k = self.canonize(s, i, k, p + 1)
+            s, k = self._canonize_state(s, i, k, p + 1)
 
             # halt condition
             if num_leaves == l:
@@ -961,9 +1185,28 @@ class ConjugateTreeNaive:
             5 [0, 1, 0]
             7 [1, 0]
             9 [0, 0]
+
+        TESTS::
+
+            sage: T.internal_state_word(0)
+            []
+            sage: T.leaves()
+            [1, 2, 4, 6, 8, 10]
+            sage: T.internal_state_word(1)
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=1) must be the root or an internal state
+            sage: T.internal_state_word(-1)
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=-1) must be the root or an internal state
+            sage: T.internal_state_word(T.num_states())
+            Traceback (most recent call last):
+            ...
+            ValueError: s (=11) must be the root or an internal state
         """
-        if s < 0:
-            raise ValueError("s must be a node")
+        if s < 0 or s >= len(self._ancestor) or self._transition_end[s] == -1:
+            raise ValueError(f"s (={s}) must be the root or an internal state")
         path = [s]
         while path[-1] != 0:
             path.append(self._ancestor[path[-1]])

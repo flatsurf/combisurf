@@ -86,7 +86,6 @@ inputs = [
     "combisurf/src/conjugate_tree.c",
     "combisurf/src/conjugate_tree.h",
     "combisurf/partial_sums.pxd",
-    "combisurf/partial_sums.pyx",
     "combisurf/crossing_arcs.pyx",
 ]
 
