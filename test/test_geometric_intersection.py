@@ -5,8 +5,8 @@ def test_geometric_intersection():
     from combisurf import OrientedMap
     from combisurf.geometric_intersection import GeometricIntersection
 
-    torus = OrientedMap(fp="(0,1,~0,~1)")
-    octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+    torus = OrientedMap(vp="(0,1,~0,~1)")
+    octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
 
     torus_gi = GeometricIntersection(torus)
     octagon_gi = GeometricIntersection(octagon)
@@ -45,7 +45,7 @@ def test_torus_mcg():
     from combisurf import OrientedMap
     from combisurf.geometric_intersection import GeometricIntersection
 
-    torus = OrientedMap(fp="(0,1,~0,~1)")
+    torus = OrientedMap(vp="(0,1,~0,~1)")
     gi = GeometricIntersection(torus)
 
     f0 = [[2], [3], [0], [1]]
@@ -73,7 +73,7 @@ def test_geometric_intersection_multilinearity():
     from combisurf import OrientedMap
     from combisurf.geometric_intersection import GeometricIntersection
 
-    torus = OrientedMap(fp="(0,1,~0,~1)")
+    torus = OrientedMap(vp="(0,1,~0,~1)")
     gi = GeometricIntersection(torus)
 
     # non-primitivity self-intersections
@@ -97,12 +97,13 @@ def test_geometric_intersection_multilinearity():
 
 def polygon_4g(g):
     r"""
-    Return the one vertex one face map obtained by identifying the sides of a
-    ``4g``-gon, that is a surface of genus ``g`` with ``4 * g`` half-edges.
+    Return the one-vertex one-face map whose vertex sees the sides of a
+    ``4g``-gon in cyclic order, that is a surface of genus ``g`` with one
+    puncture and ``4 * g`` half-edges.
     """
     from combisurf import OrientedMap
     sides = [str(i) for i in range(2 * g)] + ["~%d" % i for i in range(2 * g)]
-    return OrientedMap(fp="(" + ",".join(sides) + ")")
+    return OrientedMap(vp="(" + ",".join(sides) + ")")
 
 
 def random_primitive_curves(n, length, num, rng):
@@ -233,7 +234,7 @@ def test_intersection_matrix_torus_benchmark():
     from combisurf.geometric_intersection import GeometricIntersection
     from combisurf.lyndon_word_family import cyclically_reduced_lyndon_words
 
-    torus = OrientedMap(fp="(0,1,~0,~1)")
+    torus = OrientedMap(vp="(0,1,~0,~1)")
     gi = GeometricIntersection(torus)
     curves = [list(w) for w in cyclically_reduced_lyndon_words(torus.num_edges(), 1, 7, up_to_inverse=True)]
     assert len(curves) == 99
@@ -291,7 +292,7 @@ def test_intersection_matrix_conjugates_and_inverses():
     from combisurf.geometric_intersection import GeometricIntersection
     from combisurf.word import word_init, word_free_group_inverse
 
-    torus = OrientedMap(fp="(0,1,~0,~1)")
+    torus = OrientedMap(vp="(0,1,~0,~1)")
     gi = GeometricIntersection(torus)
 
     w = word_init([0, 0, 2, 0, 3])
@@ -311,7 +312,7 @@ def test_intersection_matrix_non_primitive():
     from combisurf.geometric_intersection import GeometricIntersection
     from combisurf.word import word_init, word_free_group_inverse
 
-    torus = OrientedMap(fp="(0,1,~0,~1)")
+    torus = OrientedMap(vp="(0,1,~0,~1)")
     gi = GeometricIntersection(torus)
 
     # a power of a curve that is not in the list
@@ -334,7 +335,7 @@ def test_intersection_matrix_row_and_matrix():
     from combisurf import OrientedMap
     from combisurf.geometric_intersection import GeometricIntersection
 
-    octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+    octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
     gi = GeometricIntersection(octagon)
     curves = [[0], [3], [0, 3, 6], [0, 2, 2, 5, 2, 2, 5], [0, 4, 1, 5]]
     I = gi.intersection_matrix(curves)
@@ -556,7 +557,7 @@ def test_intersection_matrix_self_intersection():
     from combisurf.lyndon_word_family import cyclically_reduced_lyndon_words
 
     rng = random.Random(20260929)
-    torus = OrientedMap(fp="(0,1,~0,~1)")
+    torus = OrientedMap(vp="(0,1,~0,~1)")
     octagon = polygon_4g(2)
     cases = [(torus, [list(w) for w in cyclically_reduced_lyndon_words(2, 1, 7, up_to_inverse=True)]),
              (octagon, rng.sample([list(w) for w in cyclically_reduced_lyndon_words(4, 1, 6, up_to_inverse=True)], 200)),
@@ -809,3 +810,110 @@ def test_cyclically_sorted_leaf_arcs_random(kind):
         word_index, firsts, turns = cyclically_sorted_leaf_arcs(T, angles)
         assert all(a.typecode == 'q' for a in (word_index, firsts, turns))
         assert list(zip(word_index, firsts, turns)) == expected, (words, angles)
+
+
+def word_image(mor, w):
+    r"""
+    Return the cyclically reduced image of the word ``w`` under the
+    morphism sending the letter ``h`` to the word ``mor[h]``.
+    """
+    from combisurf.word import word_init, word_cyclically_reduce
+    return list(word_cyclically_reduce(word_init([h for g in w for h in mor[g]])))
+
+
+def test_pair_of_pants():
+    # the one-vertex map with three faces; a = 0, a^-1 = 1, b = 2, b^-1 = 3
+    import random
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersection
+
+    P = OrientedMap(fp="(0)(1)(~0,~1)")
+    assert P.num_vertices() == 1 and P.num_faces() == 3
+    assert not P.has_folded_edge()
+    gi = GeometricIntersection(P)
+
+    boundaries = [[0], [2], [1, 3]]
+    for u in boundaries:
+        for v in boundaries:
+            assert gi.geometric_intersection([u], [v]) == 0
+    assert gi.intersection_matrix(boundaries).matrix() == 0
+
+    assert gi.geometric_intersection([[0, 3]]) == 1
+    assert gi.geometric_intersection([[0, 2, 0, 0, 2]]) == 2
+
+    # the exchange of a and b, and the rotation a -> b, b -> a^-1 b^-1
+    mor0 = [[2], [3], [0], [1]]
+    rot = [[2], [3], [1, 3], [2, 0]]
+    for h in range(4):
+        w = [h]
+        for _ in range(3):
+            w = word_image(rot, w)
+        assert w == [h]
+    assert [word_image(rot, b) for b in boundaries] == [boundaries[1], boundaries[2], boundaries[0]]
+
+    rng = random.Random(20260924)
+    for _ in range(200):
+        u = random_cyclically_reduced_word(rng, 4, rng.randint(1, 12))
+        v = random_cyclically_reduced_word(rng, 4, rng.randint(1, 12))
+        iu = gi.geometric_intersection([u])
+        iuv = gi.geometric_intersection([u], [v])
+        for mor in (mor0, rot):
+            mu = word_image(mor, u)
+            mv = word_image(mor, v)
+            assert gi.geometric_intersection([mu]) == iu, (mor, u)
+            assert gi.geometric_intersection([mu], [mv]) == iuv, (mor, u, v)
+
+
+def test_face_boundaries():
+    # on a one-vertex map, the boundaries of the faces are disjoint simple
+    # closed curves
+    import random
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersection
+    from combisurf.word import word_init, word_is_cyclically_reduced
+    from sage.combinat.words.word import Word
+
+    rng = random.Random(20260925)
+    for _ in range(50):
+        e = rng.randint(1, 8)
+        cycle = list(range(2 * e))
+        rng.shuffle(cycle)
+        vp = [None] * (2 * e)
+        for i in range(2 * e):
+            vp[cycle[i]] = cycle[(i + 1) % (2 * e)]
+        m = OrientedMap(vp=vp)
+        assert m.num_vertices() == 1 and not m.has_folded_edge()
+        gi = GeometricIntersection(m)
+
+        faces = []
+        seen = set()
+        for h in range(2 * e):
+            if h in seen:
+                continue
+            w = [h]
+            seen.add(h)
+            while m._fp[w[-1]] != h:
+                w.append(m._fp[w[-1]])
+                seen.add(w[-1])
+            assert word_is_cyclically_reduced(word_init(w)), (vp, w)
+            assert Word(w).is_primitive(), (vp, w)
+            faces.append(w)
+
+        for i, u in enumerate(faces):
+            assert gi.geometric_intersection([u]) == 0, (vp, u)
+            for v in faces[i + 1:]:
+                assert gi.geometric_intersection([u], [v]) == 0, (vp, u, v)
+            for _ in range(3):
+                w = random_cyclically_reduced_word(rng, 2 * e, rng.randint(1, 8))
+                iuw = gi.geometric_intersection([u], [w])
+                assert iuw >= 0 and iuw == gi.geometric_intersection([w], [u]), (vp, u, w)
+
+
+def test_two_vertices():
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersection
+
+    m = OrientedMap(vp="(0,1)(~0,~1)")
+    assert m.num_vertices() == 2 and not m.has_folded_edge()
+    with pytest.raises(NotImplementedError, match="single vertex"):
+        GeometricIntersection(m)

@@ -1,6 +1,15 @@
 r"""
 Geometric intersection numbers of closed curves on punctured surfaces
 
+The surface is given by an :class:`~combisurf.oriented_map.OrientedMap` ``m``
+with a single vertex, whose faces are the punctures (or the boundary
+components) of the surface. Its fundamental group is then free on the edges
+of ``m``, and a closed curve is a cyclically reduced word in the half-edges:
+a closed walk on the map, where the letter ``h`` goes along the half-edge
+``h`` and the letter ``~h`` (that is ``h ^ 1``) goes back along it. The
+boundary of a face, read along the face permutation, is a word of
+self-intersection `0`.
+
 See :ref:`despre-lazarus2019` for the computation of geometric intersection
 numbers of curves given as words.
 """
@@ -15,6 +24,77 @@ from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, cyclically_sort
                                      word_arcs)
 
 class GeometricIntersection:
+    r"""
+    Geometric intersection numbers of closed walks on a one-vertex map.
+
+    INPUT:
+
+    - ``m`` -- an :class:`~combisurf.oriented_map.OrientedMap` with a single
+      vertex and no folded edge
+
+    EXAMPLES:
+
+    The pair of pants is the map with one vertex and three faces. Its
+    half-edges ``0`` and ``2`` are the generators `a` and `b` of its
+    fundamental group, and ``1 = ~0`` and ``3 = ~2`` their inverses::
+
+        sage: from combisurf import OrientedMap
+        sage: from combisurf.geometric_intersection import GeometricIntersection
+        sage: from combisurf.word import word_init, word_cyclically_reduce
+        sage: P = OrientedMap(fp="(0)(1)(~0,~1)")
+        sage: P
+        OrientedMap("(0,~0,1,~1)", "(0)(~0,~1)(1)")
+        sage: P.num_vertices(), P.num_faces()
+        (1, 3)
+        sage: gi = GeometricIntersection(P)
+
+    The three boundaries, read along the faces, are disjoint simple curves::
+
+        sage: boundaries = [[0], [2], [1, 3]]
+        sage: gi.intersection_matrix(boundaries).matrix()
+        [0 0 0]
+        [0 0 0]
+        [0 0 0]
+
+    The figure eight `a b^{-1}` has one self-intersection::
+
+        sage: gi.geometric_intersection([[0, 3]])
+        1
+        sage: gi.geometric_intersection([[0, 2, 0, 0, 2]])
+        2
+
+    The exchange of `a` and `b`, and the rotation of order three that sends
+    `a` to `b` and `b` to `a^{-1} b^{-1}`, are mapping classes. A letter ``h``
+    is sent to the word ``mor[h]``. The rotation permutes the boundaries, and
+    both preserve the intersection numbers::
+
+        sage: mor0 = [[2], [3], [0], [1]]
+        sage: rot = [[2], [3], [1, 3], [2, 0]]
+        sage: def image(mor, w):
+        ....:     return list(word_cyclically_reduce(word_init(sum((mor[h] for h in w), []))))
+        sage: [image(rot, b) for b in boundaries]
+        [[2], [1, 3], [0]]
+        sage: curves = [[0, 3], [0, 0, 3], [0, 2, 0, 0, 2]]
+        sage: M = gi.intersection_matrix(curves).matrix()
+        sage: M
+        [2 2 2]
+        [2 4 2]
+        [2 2 4]
+        sage: gi.intersection_matrix([image(mor0, w) for w in curves]).matrix() == M
+        True
+        sage: gi.intersection_matrix([image(rot, w) for w in curves]).matrix() == M
+        True
+
+    Maps with more than one vertex are not supported::
+
+        sage: m = OrientedMap(vp="(0,1)(~0,~1)")
+        sage: m.num_vertices(), m.has_folded_edge()
+        (2, False)
+        sage: GeometricIntersection(m)
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: geometric intersection is only implemented for maps with a single vertex
+    """
     def __init__(self, m):
         if not isinstance(m, OrientedMap):
             raise ValueError("m must be an oriented map")
@@ -22,13 +102,13 @@ class GeometricIntersection:
         # keeps an immutable copy
         self._cm = m.copy(mutable=False)
 
-        # NOTE: for now we assume that we have a single vertex and that
-        # all faces are punctured
+        # NOTE: the map has a single vertex and its faces are the punctures,
+        # so that the fundamental group is free on the edges
         # TODO: implement reduction and buffering through reducing triangulations for closed surfaces
-        if self._cm.num_vertices() != 1:
-            raise NotImplementedError
         if self._cm.has_folded_edge():
             raise NotImplementedError("geometric intersection is not implemented for maps with folded edges")
+        if self._cm.num_vertices() != 1:
+            raise NotImplementedError("geometric intersection is only implemented for maps with a single vertex")
 
         n = len(self._cm._vp)
         # NOTE: an array rather than a list, since the Cython functions it is
@@ -39,7 +119,7 @@ class GeometricIntersection:
         self._angles[0] = 0
         i = 0
         for _ in range(n - 1):
-            j = self._cm._fp[i]
+            j = self._cm._vp[i]
             self._angles[j] = self._angles[i] + 1
             i = j
 
@@ -65,7 +145,7 @@ class GeometricIntersection:
 
             sage: from combisurf import OrientedMap
             sage: from combisurf.geometric_intersection import GeometricIntersection
-            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
             sage: gi = GeometricIntersection(octagon)
 
         A simple example (that turns out to be equivalent to lexicographic sort
@@ -143,18 +223,16 @@ class GeometricIntersection:
     def geometric_intersection(self, ulist, vlist=None, check=True):
         r"""
         Return the geometric intersection between the multicurves ``ulist``
-        and ``vlist`` given as a list of walks on the half-edges of the
-        underlying map.
+        and ``vlist`` given as lists of closed walks on the underlying map.
 
         If ``vlist`` is not provided, return the self-intersection of
         ``ulist``.
 
         INPUT:
 
-        - ``ulist`` -- a list of walks on the half-edges of the underlying map
+        - ``ulist`` -- a list of closed walks on the underlying map
 
-        - ``vlist`` -- an optional list of walks on the half-edges of the
-          underlying map
+        - ``vlist`` -- an optional list of closed walks on the underlying map
 
         - ``check`` -- boolean (default: ``True``); whether to convert each
           walk with :func:`~combisurf.word.word_init` and cyclically reduce
@@ -168,7 +246,7 @@ class GeometricIntersection:
             sage: from combisurf.word import word_init
             sage: from combisurf.geometric_intersection import GeometricIntersection
 
-            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: torus = OrientedMap(vp="(0,1,~0,~1)")
             sage: gi = GeometricIntersection(torus)
 
             sage: gi.geometric_intersection([[0]], [[2]])
@@ -219,9 +297,11 @@ class GeometricIntersection:
             11
 
         Two examples in genus 2 following :ref:`birman-series1984`, pages
-        336-337::
+        336-337. Their words list the sides of a fundamental octagon crossed
+        by the curve, so they are closed walks on the one-vertex map whose
+        vertex sees these sides in cyclic order, hence the ``vp``::
 
-            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
             sage: gi = GeometricIntersection(octagon)
             sage: w = word_init("0,~1,3")
             sage: gi.geometric_intersection([w])
@@ -264,7 +344,7 @@ class GeometricIntersection:
         A walk that is not cyclically reduced is rejected even with
         ``check=False``::
 
-            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: torus = OrientedMap(vp="(0,1,~0,~1)")
             sage: gi = GeometricIntersection(torus)
             sage: gi.geometric_intersection([[0, 1]], check=False)
             Traceback (most recent call last):
@@ -367,7 +447,7 @@ class GeometricIntersection:
 
         INPUT:
 
-        - ``curves`` -- a list of walks on the half-edges of the underlying map
+        - ``curves`` -- a list of closed walks on the underlying map
 
         - ``check`` -- boolean (default: ``True``); whether to cyclically
           reduce the curves in input. A curve that is not cyclically reduced
@@ -377,7 +457,7 @@ class GeometricIntersection:
 
             sage: from combisurf import OrientedMap
             sage: from combisurf.geometric_intersection import GeometricIntersection
-            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: torus = OrientedMap(vp="(0,1,~0,~1)")
             sage: gi = GeometricIntersection(torus)
             sage: gi.intersection_matrix([[0], [2], [0, 2]]).matrix()
             [0 1 1]
@@ -407,8 +487,8 @@ class GeometricIntersectionMatrix:
     - ``m`` -- an :class:`~combisurf.oriented_map.OrientedMap` or a
       :class:`GeometricIntersection` built on it
 
-    - ``curves`` -- a list of walks on the half-edges of ``m``; each of them
-      must be primitive
+    - ``curves`` -- a list of closed walks on ``m``; each of them must be
+      primitive
 
     - ``check`` -- boolean (default: ``True``); whether to cyclically reduce
       the curves in input. A curve that is not cyclically reduced raises a
@@ -419,7 +499,7 @@ class GeometricIntersectionMatrix:
         sage: from combisurf import OrientedMap
         sage: from combisurf.geometric_intersection import GeometricIntersection, GeometricIntersectionMatrix
 
-        sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+        sage: torus = OrientedMap(vp="(0,1,~0,~1)")
         sage: I = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]])
         sage: I
         GeometricIntersectionMatrix of 4 curves on OrientedMap("(0,1,~0,~1)", "(0,1,~0,~1)")
@@ -577,7 +657,7 @@ class GeometricIntersectionMatrix:
 
             sage: from combisurf import OrientedMap
             sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
-            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: torus = OrientedMap(vp="(0,1,~0,~1)")
             sage: GeometricIntersectionMatrix(torus, [[0, 0, 1, 2], [2]]).curves()
             [array('i', [0, 2]), array('i', [2])]
         """
@@ -597,7 +677,7 @@ class GeometricIntersectionMatrix:
 
             sage: from combisurf import OrientedMap
             sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
-            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
             sage: I = GeometricIntersectionMatrix(octagon, [[0, 3, 6], [0, 2, 2, 5, 2, 2, 5]])
             sage: I._double_sum(0, 1), I._double_sum(1, 0), I._double_sum(1, 1)
             (1, 1, 6)
@@ -631,7 +711,7 @@ class GeometricIntersectionMatrix:
 
             sage: from combisurf import OrientedMap
             sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
-            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
             sage: I = GeometricIntersectionMatrix(octagon, [[0, 3, 6], [0, 2, 2, 5, 2, 2, 5]])
             sage: I._entry_from(0, 1, I._double_sum(0, 1)), I._entry_from(1, 1, I._double_sum(1, 1))
             (2, 8)
@@ -660,7 +740,7 @@ class GeometricIntersectionMatrix:
             sage: from combisurf import OrientedMap
             sage: from combisurf.geometric_intersection import GeometricIntersection, GeometricIntersectionMatrix
             sage: from combisurf.word import word_init
-            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
             sage: gi = GeometricIntersection(octagon)
             sage: curves = [word_init("0"), word_init("~1"), word_init("0,~1,3"),
             ....:           word_init("0,1,1,~2,1,1,~2")]
@@ -683,7 +763,7 @@ class GeometricIntersectionMatrix:
 
             sage: from combisurf import OrientedMap
             sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
-            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: torus = OrientedMap(vp="(0,1,~0,~1)")
             sage: I = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]])
             sage: I.row(1)
             [1, 0, 1, 1]
@@ -710,7 +790,7 @@ class GeometricIntersectionMatrix:
 
             sage: from combisurf import OrientedMap
             sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix
-            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: torus = OrientedMap(vp="(0,1,~0,~1)")
             sage: mat = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]]).matrix()
             sage: mat
             [0 1 1 2]
