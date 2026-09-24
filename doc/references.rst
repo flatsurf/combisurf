@@ -97,3 +97,79 @@ Source of the edge-length-ratio drawing-quality metric
 BFS-depth weighting scheme
 (:func:`~combisurf.layout.tutte_barycentric.bfs_depth_weights`,
 :func:`~combisurf.layout.tutte_barycentric.bfs_depth_layout`).
+
+.. _fenwick1994:
+
+Fenwick (1994)
+--------------
+
+P. M. Fenwick. *A new data structure for cumulative frequency tables*.
+Software: Practice and Experience, 24(3):327-336, 1994.
+
+The binary indexed tree behind the sweeps
+:func:`~combisurf.crossing_arcs.crossing_arcs_sweep_sorted`,
+:func:`~combisurf.crossing_arcs.startpoint_sweep_sorted` and
+:func:`~combisurf.crossing_arcs.startpoint_sweep_weighted`, where it answers
+each prefix sum and each update in logarithmic time.
+
+.. _chazelle1986:
+
+Chazelle (1986)
+---------------
+
+B. Chazelle. *Reporting and counting segment intersections*. Journal of
+Computer and System Sciences, 32:156-182, 1986.
+
+Cited in :mod:`combisurf.crossing_arcs` for where its method comes from:
+counting the crossing chords of a circle is the easy case of counting
+segment intersections, because the cyclic order of the endpoints already
+gives the sweep order.
+
+.. _despre-lazarus2019:
+
+Despré & Lazarus (2019)
+-----------------------
+
+V. Despré and F. Lazarus. *Computing the geometric intersection number of
+curves*. Journal of the ACM, 66(6), Article 45, 2019. arXiv:1511.09327.
+
+Directly on the problem solved by
+:meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`,
+the geometric intersection numbers of curves on a surface given as words.
+
+.. _birman-series1984:
+
+Birman & Series (1984)
+----------------------
+
+J. S. Birman and C. Series. *An algorithm for simple curves on surfaces*.
+Journal of the London Mathematical Society (2), 29:331-342, 1984.
+
+Source of the two genus 2 examples, pages 336-337, in the doctests of
+:meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`.
+
+.. _lapointe2019:
+
+Lapointe (2019)
+---------------
+
+M. Lapointe. *Number of orbits of discrete interval exchanges*. Discrete
+Mathematics & Theoretical Computer Science, 21(3), Paper No. 13, 16 pages,
+2019.
+
+Source of the simplicity criterion checked in the doctests of
+:meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`:
+a primitive positive word gives a simple curve exactly when its
+Burrows-Wheeler transform is non-increasing.
+
+.. _ukkonen1995:
+
+Ukkonen (1995)
+--------------
+
+E. Ukkonen. *On-line construction of suffix trees*. Algorithmica,
+14(3):249-260, 1995.
+
+Source of the construction of :class:`~combisurf.conjugate_tree.ConjugateTree`
+(the active point, ``canonize`` and ``test_and_split``), here applied to
+words read cyclically.

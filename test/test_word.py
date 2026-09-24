@@ -29,6 +29,39 @@ def test_word_reduce():
     assert word_reduce(array('i', [1, 2, 3, 0, 0])) == array('i', [0])
 
 
+def test_word_reduce_random():
+    # exhaustive agreement with a reduction by repeated cancellation of one
+    # pair of adjacent inverse letters, freely and then cyclically
+    from array import array
+    from itertools import product
+    from combisurf.word import word_reduce, word_cyclically_reduce
+
+    def naive_reduce(w, cyclic):
+        w = list(w)
+        while True:
+            for i in range(len(w) - 1):
+                if w[i] ^ 1 == w[i + 1]:
+                    del w[i:i + 2]
+                    break
+            else:
+                if cyclic and len(w) > 1 and w[0] ^ 1 == w[-1]:
+                    del w[-1]
+                    del w[0]
+                else:
+                    return w
+
+    for n in range(8):
+        for ww in product(range(4), repeat=n):
+            w = array('i', ww)
+            assert list(word_reduce(w)) == naive_reduce(w, False), ww
+            assert list(word_cyclically_reduce(w)) == naive_reduce(w, True), ww
+            assert w == array('i', ww)  # the input is untouched
+    # other typecodes are read too
+    assert word_cyclically_reduce(array('l', [0, 2, 3, 0, 1])) == array('i', [0])
+    assert word_cyclically_reduce(array('l', [0, 2, 3, 2, 1])) == array('i', [2])
+    assert word_reduce(array('q', [4, 2, 3, 0])) == array('i', [4, 0])
+
+
 def test_word_is_cyclically_reduced():
     from array import array
     from combisurf.word import word_is_cyclically_reduced
