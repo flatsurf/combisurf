@@ -1,7 +1,7 @@
 r"""
 Homotopy test on maps
 
-This module introduced three classes: :class:`QuadSystems`, :class:`Geodesic` and :class:`Walk`.
+This module introduced two classes: :class:`QuadSystem` and :class:`Geodesic`.
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -26,159 +26,6 @@ This module introduced three classes: :class:`QuadSystems`, :class:`Geodesic` an
 
 from combisurf import OrientedMap
 from collections import deque
-
-
-
-def labels(G):
-    r"""
-    Assign a label (an integer) to each vertex and each face of G.
-    Compute for each half-edge the vertex and the face it belongs. 
-    """
-    vertices = G.vertices()
-    faces = G.faces()
-    hedge_to_vertex = [None for _ in G.half_edges()]
-    hedge_to_face = [None for _ in G.half_edges()]
-    for i in range(len(vertices)):
-        for e in vertices[i]:
-            hedge_to_vertex[e] = i
-    for i in range(len(faces)):
-        for e in faces[i]:
-            hedge_to_face[e] = i
-    return hedge_to_vertex, hedge_to_face
-
-
-def tree_co_tree(G):
-    r"""
-    Compute a tree/co-tree decomposition of G.
-    Return a list res of length the number of edges of G.
-    res[e] is 0 if the edge e is in the tree, 1 if e is in the co-tree and 2 otherwise.
-    """
-    hedge_to_vertex, hedge_to_face = labels(G)
-    vp = G.vertex_permutation(copy=False)
-    T_found = [False for _ in G.vertices()]
-    T_found[0] = True
-    res = [2 for _ in G.edge_indices()]
-    e = 0
-    path = [e]
-
-    if not T_found[hedge_to_vertex[1]]:
-        T_found[hedge_to_vertex[1]]=True
-        res[0]=0
-        path.append(1)
-        e=vp[1]
-    else:
-        e=vp[0]
-    
-    while len(path) > 0:
-        e1 = G._ep(e)
-        if e == path[-1]:
-            path.pop()
-            e = vp[e1]
-        elif not T_found[hedge_to_vertex[e1]]:
-            T_found[hedge_to_vertex[e1]] = True
-            res[e // 2] = 0
-            path.append(e1)
-            e = vp[e1]
-        else:
-            e = vp[e]
-
-    fp = G.face_permutation(copy=False)
-    C_found = [False for _ in G.faces()]
-    C_found[0] = True
-    e = fp[0]
-    path = [0]
-    
-    while len(path) > 0:
-        e1 = G._ep(e)
-        if e == path[-1]:
-            path.pop()
-            e = fp[e1]
-        elif res[e//2] == 0:
-            e = fp[e]
-        elif not C_found[hedge_to_face[e1]]:
-            C_found[hedge_to_face[e1]] = True
-            res[e//2] = 1
-            path.append(e1)
-            e = fp[e1]
-        else:
-            e = fp[e]
-        
-    return res
-
-
-def tree_contraction(G, treecotree):
-    r"""
-    Compute the ``OrientedMap`` ``F`` obtained from ``G`` by:
-
-    - contracting all the edges in the tree of ``treecotree``
-    - removing all the edges in the co-tree of ``treecotree``
-
-    Also compute:
-
-    - a list ``correspondence`` of length the number of half-edges of ``G`` such that ``correspondence[e]`` is:
-
-      - ``None`` if ``e`` is an edge of the tree of ``treecotree``
-      - ``d`` such that ``fp[d] == e`` in ``G`` after contracting the edges of the tree, if ``e`` is an edge of the cotree
-      - the corresponding edge of ``F`` otherwise
-
-    - a list ``recor`` such that ``recor[f]``, for ``f`` a half-edge in ``F``, is the corresponding half-edge in ``G``
-    - a list ``rank`` such that ``rank[e]`` is:
-
-      - ``None`` if ``e`` is an edge of the tree of ``treecotree``
-      - the index of ``e`` around the vertex if ``e`` is an edge of the cotree
-      - the total number of edges of the cotree between ``e`` and the next edge in ``F``
-
-    INPUT:
-
-    - ``treecotree`` -- a list of length the number of edges in ``G`` where ``treecotree[e]`` is:
-
-      - ``0`` if ``e`` is in the tree
-      - ``1`` if ``e`` is in the co-tree
-      - ``2`` otherwise
-    """
-    fp = G.face_permutation(copy=False)
-    correspondence = [None for _ in G.half_edges()]
-    rank = [None for _ in G.half_edges()]
-    nfp = [None for _ in range(4*G.genus())]
-    recor = [None for _ in range(4*G.genus())]
-    i = 0
-    while treecotree[i] != 2:
-        i += 1
-    last=0
-    correspondence[2 * i] = 0
-    correspondence[2 * i + 1] = 1
-    recor[0] = 2 * i
-    recor[1] = 2 * i + 1
-    e = fp[2 * i]
-    free_index = 2
-    r = 0
-    
-    while e != 2 * i:
-        e1 = G._ep(e)
-        if treecotree[e // 2] == 1:
-            correspondence[e] = last
-            rank[e] = r
-            r += 1
-            e = fp[e1]
-            
-        elif treecotree[e//2] == 0:
-            e = fp[e]
-        else:
-            if correspondence[e] == None:
-                correspondence[e] = free_index
-                correspondence[e1] = free_index+1
-                recor[free_index] = e
-                recor[free_index + 1] = e1
-                free_index += 2
-            rank[e] = r
-            r = 0
-            nfp[last] = correspondence[e]
-            last = correspondence[e]
-            e = fp[e]
-    rank[2 * i] = r
-    nfp[last] = 0
-    F = OrientedMap(fp=nfp)
-    return F, correspondence, recor, rank
 
 
 
@@ -232,6 +79,9 @@ def turn_add_left(s, turn, num):
     
 
 def turn_modif(s, mod, d):
+    r"""
+    Modify the last turn of s by mod.
+    """
     if len(s) == 0:
         return
     (t, n) = s.pop()
@@ -243,6 +93,9 @@ def turn_modif(s, mod, d):
         turn_add(s, r, 1)
 
 def turn_modif_left(s, mod, d):
+    r"""
+    Modify the first turn of s by mod.
+    """
     if len(s) == 0:
         return
     (t, n) = s.popleft()
@@ -324,6 +177,7 @@ def bracket_removal_left(Q, geo, s, positive, length, d):
         turn_add_left(s, 2, length)
 
 
+
 def test_KMP(u, v):
     r"""
     Test if ``u`` is a subword of ``v`` in ``O(|u|+|v|)``.
@@ -336,10 +190,10 @@ def test_KMP(u, v):
     T = [-1]
     for i in range(1, len(u)):
         if u[i] == u[cnd]:
-            T.append(u[cnd])
+            T.append(T[cnd])
         else:
             T.append(cnd)
-            while cnd>=0 and u[i] == u[cnd]:
+            while cnd>=0 and u[i] != u[cnd]:
                 cnd = T[cnd]
             cnd += 1
     j = 0
@@ -364,82 +218,50 @@ def test_KMP(u, v):
 
 class QuadSystem:
 
-    #TODO : Documentation
+    r"""
+    A quadsystem associated to an oriented map.
 
-    def __init__(self, G, treecotree=None, check=True):
+    A quadsystem is a reduced form of a map with two vertices and such that all faces have degree 4. The quadsystem is given as the corresponding map and the projection from the original map to the quadsystem.
+
+    """
+
+    def __init__(self, m, forest=None, coforest=None, mutable=False, check=True):
         r"""
-        Methods:
-            _origin_map: the original OrientedMap
-            _genus: the genus of the underlying surface
-            _quad: the quad system
-            _proj: the projection from _origin_map half-edges to path of length 2 of _quad
-            _turn: a list of edges that gives a coefficient to each half-edge around each vertex corresponding at the turn
+        INPUT:
+
+        - ``m`` -- the original oriented map
+
+        - ``treecotree`` -- ``None`` or the tree-cotree decomposition used to construct the quadsystem
+
+        - ``check`` (boolean, default ``True``) -- whether to perform consistency checks of
+          the data
         """
 
         if check:
-            G._check()
-            G._assert_connected()
-            if G.has_folded_edge():
+            m._check()
+            m._assert_connected()
+            if m.has_folded_edge():
                 raise NotImplementedError
-            if G.genus() == 0:
+            if m.genus() == 0:
                 raise ValueError("Cannot look for homotopy in genus 0")
-            elif G.genus() == 1:
+            elif m.genus() == 1:
                 raise ValueError("Quad systems and homotopy are not effective in genus 1")
-
-        if G.is_mutable():
-            G = G.copy(mutable=False)
-
-        self._origin_map = G
-        self._genus = G.genus()
-
-        if treecotree == None:
-            treecotree = tree_co_tree(G)
+            # TODO: we should check that forest and coforest are both forest and coforest if provided.
         
-        F,cor, _, _ = tree_contraction(G,treecotree)
-        vp = F.vertex_permutation(copy=False)
-        fp = F.face_permutation(copy=False)
-        qvp = [None for _ in range(8 * self._genus)]
-        remember = [None for _ in range(4 * self._genus)]
-        remember2 = [None for _ in range(4 * self._genus)]
+        if m.is_mutable():
+            m = m.copy(mutable=False)
         
-        e = fp[0]
-        last_edge = 0
-        next_edge = 1
-        remember[0] = vp[0]
-        remember2[0] = 0
-        while e != 0:
-            qvp[2 * last_edge] = 2 * next_edge
-            remember[next_edge] = vp[e]
-            remember2[e] = next_edge
-            e = fp[e]
-            last_edge = next_edge
-            next_edge += 1
-        qvp[-2] = 0
-        for ne in range(4*self._genus):
-            qvp[2 * ne + 1] = 2 * remember2[remember[ne]] + 1
-        self._quad = OrientedMap(vp=qvp)
-        
-        qfp = self._quad.face_permutation(copy=False)
-        cor2 = []
-        for e in G.half_edges():
-            if treecotree[e//2] == 0:
-                cor2.append([])
-            elif treecotree[e//2] == 1:
-                start = fp[cor[e]]
-                e1 = G._ep(e)
-                end = fp[cor[e1]]
-                das = 2 * remember2[start] + 1
-                dae = 2 * remember2[end]
-                cor2.append([das,dae])
-            else:
-                edge = cor[e]
-                da = 2 * remember2[edge] + 1
-                cor2.append([da, qvp[da - 1]])
-        self._proj = cor2
+        self._origin_map = m
+        self._genus = m.genus()
+
+        quad, proj = m.quad_system(forest=forest, coforest=coforest, relabel=True, mapping=True, mutable=mutable, check=check)
+
+        self._quad = quad
+        self._proj = proj
 
         self._turn = list(self._quad.half_edges())
         label = 0
-        for v in self._quad.vertices():
+        for v in self._quad.vertices(): # we label each edge with a integer such that the difference between label[e] and label[e'] is the number of turns between e and e'.
             for e in v:
                 self._turn[e] = label
                 label += 1
@@ -458,10 +280,13 @@ class QuadSystem:
         return self._quad.__repr__(*args, **kwds)
 
     def turn(self, h1, h2):
+        r"""
+        Compute the number of turns from ``h1`` to ``h2`` around a vertex. Raise an error if ``h1`` and ``h2``do not belong to the same vertex. 
+        """
         l1 = self._turn[h1]
         l2 = self._turn[h2]
         if l1 // (4 * self._genus) != l2 // (4 * self._genus):
-            raise ValueError("The two half_edges does not belong to the same vertex")
+            raise ValueError("The two half_edges do not belong to the same vertex")
         nl1 = l1 % (4 * self._genus)
         nl2 = l2 % (4 * self._genus)
         if nl1 <= nl2:
@@ -470,17 +295,39 @@ class QuadSystem:
             return 4 * self._genus + nl2 - nl1
 
 
+    def rotate_list(self):
+        r"""
+        Compute the rotate_list of the quadsystem, i.e. the list ``rotate`` such that ``rotate[e][t]`` is the half-edge obtained in the quadsystem by turning ``t`` time around a vertex starting from the half-edge ``e``.
+        """
+        res = []
+        d = 4 * self._genus
+        for h in self._quad.half_edges():
+            res.append([])
+            current = h
+            for _ in range(d):
+                res[h].append(current)
+                current = self._quad._vp[current]
+        return res
+            
+
+
 
 class Geodesic:
+    r"""
+    A geodesic in a quadsystem
 
-    # TODO : Documentation + Change name ?
+    A geodesic is a shortest walk in its free homotopy class. A geodesic is seen as a walk encoded by a deque with a given turn sequence.
+    """
 
     def __init__(self, Q, geo=None, turn=None, check=False):
         r"""
-        Methods:
-            _quadsystem: the underlying quad system
-            _geodesic: the canonical geodesic representative in the quad system (as a deque !)
-            _turn_sequence: the turn sequence associated to _geodesic
+        INPUT:
+            
+            - ``Q`` -- the underlying quadsystem
+            - ``geo`` -- ``None`` or the walk corresponding to the geodesic
+            - ``turn`` -- ``None`` or the turn sequence corresponding to ``geo``
+            - ``check`` (boolean, default ``False``) -- whether to perform consistency checks of
+          the data
 
         EXAMPLES::
 
@@ -488,7 +335,7 @@ class Geodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
             sage: p = Geodesic(Q)
             sage: TestSuite(p).run()
         """
@@ -521,13 +368,15 @@ class Geodesic:
 
     def __len__(self):
         r"""
+        Return the length of the geodesic.
+        
         EXAMPLES::
 
             sage: from combisurf import OrientedMap, QuadSystem, Geodesic
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
             sage: p = Geodesic(Q)
             sage: len(p)
             0
@@ -545,7 +394,7 @@ class Geodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
             sage: p = Geodesic(Q)
             sage: list(iter(p))
             []
@@ -565,33 +414,33 @@ class Geodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
             sage: p = Geodesic(Q)
             sage: p.add_edge(12)
-            sage: p.add_edge(5)
-            sage: p.add_edge(8)
-            sage: p.add_edge(1)
-            sage: p
-            Geodesic "deque([12, 5, 8, 1])" with turns "deque([(1, 1), (2, 2)])"
-            sage: p.add_edge(2)
-            sage: p
-            Geodesic "deque([10, 1, 12])" with turns "deque([(6, 2)])"
-            sage: p.add_edge(13)
-            sage: p
-            Geodesic "deque([10, 1])" with turns "deque([(6, 1)])"
-            sage: p.add_edge(14)
+            sage: p.add_edge(9)
+            sage: p.add_edge(6)
             sage: p.add_edge(9)
             sage: p
-            Geodesic "deque([10, 7])" with turns "deque([(7, 1)])"
-            sage: p.add_edge(8)
-            sage: p.add_edge(15)
+            Geodesic "deque([12, 9, 6, 9])" with turns "deque([(1, 1), (2, 2)])"
+            sage: p.add_edge(10)
             sage: p
-            Geodesic "deque([10, 1])" with turns "deque([(6, 1)])"
-            sage: p.add_edge(14)
+            Geodesic "deque([4, 15, 4])" with turns "deque([(6, 2)])"
             sage: p.add_edge(5)
-            sage: p.add_edge(2)
             sage: p
-            Geodesic "deque([10, 7, 10])" with turns "deque([(7, 1), (2, 1)])"
+            Geodesic "deque([4, 15])" with turns "deque([(6, 1)])"
+            sage: p.add_edge(0)
+            sage: p.add_edge(7)
+            sage: p
+            Geodesic "deque([4, 3])" with turns "deque([(5, 1)])"
+            sage: p.add_edge(6)
+            sage: p.add_edge(1)
+            sage: p
+            Geodesic "deque([4, 15])" with turns "deque([(6, 1)])"
+            sage: p.add_edge(12)
+            sage: p.add_edge(1)
+            sage: p.add_edge(14)
+            sage: p
+            Geodesic "deque([4, 11, 2])" with turns "deque([(7, 1), (2, 1)])"
         """
 
         Q = self._quadsystem._quad
@@ -631,33 +480,33 @@ class Geodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
             sage: p = Geodesic(Q)
-            sage: p.add_edge_left(2)
-            sage: p.add_edge_left(1)
-            sage: p.add_edge_left(8)
-            sage: p.add_edge_left(5)
-            Geodesic "deque([5, 8, 1, 2])" with turns "deque([(2, 2), (1, 1)])"
-            sage: p.add_edge_left(12)
-            sage: p
-            Geodesic "deque([10, 1, 12])" with turns "deque([(6, 2)])"
-            sage: p.add_edge_left(11)
-            sage: p
-            Geodesic "deque([1, 12])" with turns "deque([(6, 1)])"
+            sage: p.add_edge_left(10)
+            sage: p.add_edge_left(9)
             sage: p.add_edge_left(6)
             sage: p.add_edge_left(9)
             sage: p
-            Geodesic "deque([15, 12])" with turns "deque([(7, 1)])"
-            sage: p.add_edge_left(8)
+            Geodesic "deque([9, 6, 9, 10])" with turns "deque([(2, 2), (1, 1)])"
+            sage: p.add_edge_left(12)
+            sage: p
+            Geodesic "deque([4, 15, 4])" with turns "deque([(6, 2)])"
+            sage: p.add_edge_left(5)
+            sage: p
+            Geodesic "deque([15, 4])" with turns "deque([(6, 1)])"
+            sage: p.add_edge_left(2)
             sage: p.add_edge_left(7)
             sage: p
-            Geodesic "deque([1, 12])" with turns "deque([(6, 1)])"
-            
+            Geodesic "deque([1, 4])" with turns "deque([(5, 1)])"
             sage: p.add_edge_left(6)
-            sage: p.add_edge_left(11)
-            sage: p.add_edge_left(2)
+            sage: p.add_edge_left(3)
             sage: p
-            Geodesic "deque([4, 15, 12])" with turns "deque([(2, 1), (7, 1)])"
+            Geodesic "deque([15, 4])" with turns "deque([(6, 1)])"
+            sage: p.add_edge_left(10)
+            sage: p.add_edge_left(3)
+            sage: p.add_edge_left(14)
+            sage: p
+            Geodesic "deque([0, 13, 4])" with turns "deque([(2, 1), (7, 1)])"
         """
         
         Q = self._quadsystem._quad
@@ -697,41 +546,15 @@ class Geodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
-            sage: p = Geodesic(Q, [5, 12, 3, 4])
-            sage: p.origin_simplification()
-            sage: p
-            Geodesic "deque([12, 3])" with turns "deque([(7, 1)])"
-            
-            sage: p = Geodesic(Q, [2, 5, 8, 1])
-            sage: p.origin_simplification()
-            sage: p
-            Geodesic "deque([10, 1])" with turns "deque([(6, 1)])"
-            
-            sage: p = Geodesic(Q, [0, 9, 4, 3])
-            sage: p.origin_simplification()
-            sage: p
-            Geodesic "deque([2, 11])" with turns "deque([(2, 1)])"
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
 
-            sage: p = Geodesic(Q, [6, 13, 4, 7, 12, 5])
+            Remove a spur at origin.
+            sage: p = Geodesic(Q, [5, 12, 1, 4])
             sage: p.origin_simplification()
             sage: p
-            Geodesic "deque([13, 4, 7, 10])" with turns "deque([(4, 2), (2, 1)])"
+            Geodesic "deque([12, 1])" with turns "deque([(6, 1)])"
 
-            sage: p = Geodesic(Q, [10, 1, 12, 3, 14, 7, 2, 13])
-            sage: p.origin_simplification()
-            sage: p
-            Geodesic "deque([5, 8, 1, 14, 7, 2])" with turns "deque([(2, 2), (7, 1), (2, 1), (6, 1)])"
-
-            sage: p = Geodesic(Q, [1, 12, 3, 14, 7, 2, 13, 10])
-            sage: p.origin_simplification()
-            sage: p
-            Geodesic "deque([14, 7, 2, 5, 8, 1])" with turns "deque([(2, 1), (6, 1), (2, 3)])"
-
-            sage: p = Geodesic(Q, [0, 11, 14, 1, 4, 15])
-            sage: p.origin_simplification()
-            sage: p
-            Geodesic "deque([4, 11])" with turns "deque([(5, 1)])"
+            TODO: Make new examples and tests.
         """
 
         Q = self._quadsystem._quad
@@ -822,7 +645,7 @@ class Geodesic:
                     turn_remove(s)
                     turn_remove_left(s)
 
-        if first_turn == 1 and len(s) >= 1 and s[0][0] == 1: # bracket starting at the origin
+        elif first_turn == 1 and len(s) >= 1 and s[0][0] == 1: # bracket starting at the origin
             geo.pop()
             turn_remove(s)
             bracket_removal_left(Q, geo, s, True, 0, d)
@@ -870,7 +693,7 @@ class Geodesic:
                     turn_remove(s)
                     turn_remove_left(s)
 
-        if first_turn == 2 and len(s) >= 3: # bracket containing the origin
+        elif first_turn == 2 and (len(s) >= 2 or (len(s) == 1 and s[0][0] != 2)): # bracket containing the origin
             while first_turn == 2:
                 geo.append(geo.popleft())
                 (t, n) = s.popleft()
@@ -883,28 +706,24 @@ class Geodesic:
                     s.append((t2, n2))
                     s.append((2, 1))
                 first_turn = t
-            if first_turn == 1 and s[-2][0] == 1:
-                bracket_removal(Q, geo, s, True, s[-1][1], d)
-                geo.popleft()
-                turn_remove_left(s)
+            if first_turn == 1:
+                self.origin_simplification() # the bracket now starts at the origin so we can recursively call origin_simplification
 
-        elif first_turn == d - 2 and len(s) >= 3: # bracket containing the origin
+        elif first_turn == d - 2 and (len(s) >= 2 or (len(s) == 1 and s[0][0] != d - 2)): # bracket containing the origin
             while first_turn == d - 2:
                 geo.append(geo.popleft())
                 (t, n) = s.popleft()
                 if n != 1:
                     s.appendleft((t, n - 1))
                 (t2, n2) = s.pop()
-                if t2==2:
-                    s.append((2, n2 + 1))
+                if t2==d-2:
+                    s.append((d-2, n2+1))
                 else:
                     s.append((t2, n2))
-                    s.append((2, 1))
+                    s.append((d-2, 1))
                 first_turn = t
-            if first_turn == d - 1 and s[-2][0] == d - 1:
-                bracket_removal(Q, geo, s, False, s[-1][1], d)
-                geo.popleft()
-                turn_remove_left(s)
+            if first_turn == d - 1:
+                self.origin_simplification() # the bracket now starts at the origin so we can recursively call origin_simplification
 
     def canonical(self):
         r"""
@@ -916,22 +735,14 @@ class Geodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
             
-            sage: p = Geodesic(Q, [6, 3])
+            sage: p = Geodesic(Q, [7, 4])
             sage: p.canonical()
             sage: p
-            Geodesic "deque([13, 8])" with turns "deque([(6, 1)])"
+            Geodesic "deque([14, 9])" with turns "deque([(6, 1)])"
             
-            sage: p = Geodesic(Q, [0, 11, 14, 7, 10, 9, 4, 15])
-            sage: p.canonical()
-            sage: p
-            Geodesic "deque([11, 4, 3, 14, 5, 2, 9, 2])" with turns "deque([(5, 1), (6, 3), (7, 1), (3, 1), (5, 1)])"
-
-            sage: p = Geodesic(Q, [0, 11, 14, 7, 10, 15])
-            sage: p.canonical()
-            sage: p
-            Geodesic "deque([9, 4, 3, 14, 5, 2])" with turns "deque([(6, 4), (7, 1)])"
+            TODO: Make new examples and tests.
         """
 
         Q = self._quadsystem._quad
@@ -996,6 +807,7 @@ class Geodesic:
                             turn_add(s, d - 2, n1)
                             l = deque([])
                             e = geo[0]
+                            e1 = Q._ep(e)
                             for j in range(n2):
                                 e = geo[1 + j]
                                 e1 = Q._ep(e)
@@ -1018,6 +830,8 @@ class Geodesic:
                                 turn_add(s, d - 1, 1)
                             turn_add(s, d - 2, n1 - 1)
                             l = deque([])
+                            e = geo[1]
+                            e1 = Q._ep(e)
                             for j in range(n2):
                                 e = geo[1 + j]
                                 e1 = Q._ep(e)
@@ -1071,79 +885,22 @@ class Geodesic:
 
 
 
-class Walk:
-
-    # TODO : Documentation + Change name ?
-
-    def __init__(self, Q, walk):
-        r"""
-        Methods:
-            _quadsystem: the underlying quad system
-            _walk: the walk in the original OrientedMap
-            _geodesic: the canonical geodesic representative of walk
-        """
-
-        self._quadsystem = Q
-        self._walk = walk
-        self._geodesic = Geodesic(Q)
-        for e in self._walk:
-            for f in Q._proj[e]:
-                self._geodesic.add_edge(f)
-        self._geodesic.canonical()
-
-    def __eq__(self, other):
-        return (self._quadsystem == other._quadsystem) and (self._walk == other._walk)
-
-    def is_homotopic(self, other):
-        r"""
-        Return whether self and other are freely homotopic.
-        
-        EXAMPLES::
-        
-            sage: from combisurf import OrientedMap, QuadSystem, Geodesic, Walk
-            sage: m = OrientedMap(vp=[[0, 2, 4, 6],[7, 8, 5], [9, 10, 12, 11], [3, 15, 1, 13, 14]])
-            sage: Q = QuadSystem(m)
-            sage: w1 = Walk(Q, [])
-            sage: w2 = Walk(Q, [4, 8, 11, 9, 7])
-            sage: w3 = Walk(Q, [6, 5])
-            sage: w1.is_homotopic(w2)
-            True
-            sage: w1.is_homotopic(w3)
-            False
-            sage: w4 = Walk(Q, [6, 8, 11, 9, 7])
-            sage: w5 = Walk(Q, [2, 15])
-            sage: w3.is_homotopic(w4)
-            True
-            sage: w3.is_homotopic(w5)
-            False
-            sage: w6 = Walk(Q, [11])
-            sage: w3.is_homotopic(w6)
-            True
-
-        """
-        if self._quadsystem != other._quadsystem:
-            raise ValueError("The quadsystems are different")
-        if len(self._geodesic) != len(other._geodesic):
-            return False
-
-        c = self._geodesic._geodesic.copy()
-        c.extend(c)
-        return test_KMP(other._geodesic._geodesic, c)
-
-
-
-
 class LazyGeodesic:
+    r"""
+    A geodesic in a quadsystem
 
-    # TODO : Documentation. Class of geodesic that contains only the first and the last edge and the sequence of turn. Should not be used to test homotopy ! Only contractibility.
+    A lazy geodesic is a geodesic but only the first and the last edge of the geodesic is maintained together with the turn sequence. It cannot be used to test homotopy but it can be used for contractibility.
+    """
     
     def __init__(self, Q, geo=None, turn=None, check=False):
         r"""
-        Methods:
-            _quadsystem: the underlying quad system
-            _first: the first edge
-            _last: the last edge
-            _turn_sequence: the turn sequence associated to _geodesic
+        INPUT:
+            
+            - ``Q`` -- the underlying quadsystem
+            - ``geo`` -- ``None`` or the walk corresponding to the geodesic
+            - ``turn`` -- ``None`` or the turn sequence corresponding to ``geo``
+            - ``check`` (boolean, default ``False``) -- whether to perform consistency checks of
+          the data
 
         EXAMPLES::
 
@@ -1151,7 +908,7 @@ class LazyGeodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
             sage: p = LazyGeodesic(Q)
             sage: TestSuite(p).run()
         """
@@ -1175,7 +932,7 @@ class LazyGeodesic:
             if check:
                 raise NotImplementedError
             self._first = geo[0]
-            self._first = geo[-1]
+            self._last = geo[-1]
             self._turn_sequence = deque(turn)
                 
 
@@ -1192,11 +949,11 @@ class LazyGeodesic:
         r"""
         EXAMPLES::
 
-            sage: from combisurf import OrientedMap, QuadSystem, Geodesic
+            sage: from combisurf import OrientedMap, QuadSystem, LazyGeodesic
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~3,~5,~1,~6,~2,~4,~7)", "(0,~7,6,~1)(~0,7,~4,3)(1,~5,4,~2)(2,~6,5,~3)")
+            OrientedMap("(0,4,5,3,1,2,6,7)(~0,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,7,~1,3)(2,~5,4,~6)(~3,5,~7,6)")
             sage: p = LazyGeodesic(Q)
             sage: p.length()
             0
@@ -1222,20 +979,8 @@ class LazyGeodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6],[7, 8, 5], [9, 10, 12, 11], [3, 15, 1, 13, 14]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~5,~6,~7,~4,~1,~2,~3)", "(0,~3,2,~1)(~0,7,~6,5)(1,~4,3,~2)(4,~7,6,~5)")
-            sage: p = LazyGeodesic(Q)
-            sage: p.add_edge(12)
-            sage: p.add_edge(5)
-            sage: p.add_edge(6)
-            sage: p.add_edge(11)
-            sage: p
-            LazyGeodesic starting with "12", ending with "11" and with turns "deque([(4, 1), (1, 1), (2, 1)])"
-            sage: p.add_edge(12)
-            sage: p
-            LazyGeodesic starting with "12", ending with "14" and with turns "deque([(3, 1), (6, 1)])"
-            sage: p.add_edge(15)
-            sage: p
-            LazyGeodesic starting with "12", ending with "3" and with turns "deque([(3, 1)])"
+            OrientedMap("(0,3,4,5,1,6,7,2)(~0,~6,~4,~5,~1,~3,~7,~2)", "(0,~2,7,~3)(~0,2,~7,6)(1,~5,4,~6)(~1,5,~4,3)")
+            
         """
 
         Q = self._quadsystem._quad
@@ -1296,20 +1041,8 @@ class LazyGeodesic:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6],[7, 8, 5], [9, 10, 12, 11], [3, 15, 1, 13, 14]])
             sage: Q = QuadSystem(m)
             sage: Q
-            OrientedMap("(0,1,2,3,4,5,6,7)(~0,~5,~6,~7,~4,~1,~2,~3)", "(0,~3,2,~1)(~0,7,~6,5)(1,~4,3,~2)(4,~7,6,~5)")
-            sage: p = LazyGeodesic(Q)
-            sage: p.add_edge_left(12)
-            sage: p.add_edge_left(5)
-            sage: p.add_edge_left(6)
-            sage: p.add_edge_left(11)
-            sage: p
-            LazyGeodesic starting with "11", ending with "12" and with turns "deque([(6, 1), (7, 1), (4, 1)])"
-            sage: p.add_edge_left(12)
-            sage: p
-            LazyGeodesic starting with "14", ending with "12" and with turns "deque([(2, 1), (5, 1)])"
-            sage: p.add_edge_left(15)
-            sage: p
-            LazyGeodesic starting with "3", ending with "12" and with turns "deque([(5, 1)])"
+            OrientedMap("(0,3,4,5,1,6,7,2)(~0,~6,~4,~5,~1,~3,~7,~2)", "(0,~2,7,~3)(~0,2,~7,6)(1,~5,4,~6)(~1,5,~4,3)")
+            
         """
         
         Q = self._quadsystem._quad
@@ -1358,3 +1091,122 @@ class LazyGeodesic:
             else:
                 self._first = e
                 turn_add_left(self._turn_sequence, newturn, 1)
+
+
+class StarShapedSpace:
+    r"""
+    A star shaped space in the universal covering of a quadsystem.
+
+    A star shaped space is a pointed convex set in the universal covering of a quadsystem. It thus contains all geodesics from a point in it to the root. Thus all edges are oriented towards the root.
+
+    """
+
+    def __init__(self, Q, root):
+        r"""
+        INPUT:
+
+            - ``Q`` -- the quadsystem
+            - ``root`` -- the vertex in ``Q`` whose lift is the root of the star shaped space
+
+        """
+
+        self._vertices = [root] # the projection of each vertex of the StarShapedSpace into the quadsystem
+        self._quadsystem = Q # the underlying quadsystem
+        self._inedges = [{}] # for each vertex a dictionary containing the entering edges
+        self._outedges = [[]] # for each vertex the list of (at most 2) outedges
+        self._rotate_list = Q.rotate_list() 
+
+    
+    def add_vertex(self, vertex):
+        r"""
+        Add a vertex to the star shaped space with no edges.
+        """
+        
+        self._vertices.append(vertex)
+        self._inedges.append({})
+        self._outedges.append([])
+        return len(self._vertices) - 1
+
+    
+    def add_edge(self, vertex1, vertex2, edge):
+        r"""
+        Add an edge from vertex1 to vertex2 that project to ``edge``
+        """
+        Q = self._quadsystem
+        if not self.contains_edge(vertex1, edge):
+            self._outedges[vertex1].append((edge, vertex2))
+        if not self.contains_edge(vertex2, Q._quad._ep(edge)):
+            self._inedges[vertex2][Q._quad._ep(edge)] = vertex1
+
+
+    def contains_edge(self, vertex, edge):
+        r"""
+        Test whether the star shaped space contains the edge ``edge`` at vertex ``vertex``.
+        """
+        
+        result = False
+        for elt in self._outedges[vertex]:
+            if elt[0] == edge:
+                result = True
+        return result or (not self._inedges[vertex].get(edge) is None)
+            
+
+    def opposite_vertex(self, vertex, edge):
+        r"""
+        Return the vertex opposite to ``edge`` starting at ``vertex``.
+        """
+        for elt in self._outedges[vertex]:
+            if elt[0] == edge:
+                return elt[1]
+        for elt in self._inedges[vertex]:
+            if elt == edge:
+                return self._inedges[vertex][elt]
+        raise ValueError("There is no such edge")
+
+        
+    def rotate(self, vertex, edge, turn):
+        r"""
+        Rotate around ``vertex`` starting from ``edge`` and starting from ``edge``
+        """
+        if self.contains_edge(vertex, edge):
+            return self._rotate_list[edge][turn]
+        else:
+            raise ValueError("There is no such edge")
+
+    def turn(self, vertex, edge):
+        r"""
+        Return the smallest turn from ``edge`` to an outedge of ``vertex``
+        """
+        turn = None
+        out_edge = None
+        Q = self._quadsystem
+        d = 4 * Q._genus
+        for elt in self._outedges[vertex]:
+            newturn = Q.turn(edge, elt[0])
+            if newturn > d//2:
+                newturn = newturn - d
+            if turn == None or (abs(turn) > abs(newturn)):
+                turn = newturn
+                out_edge = elt[0]
+        return turn, out_edge
+
+
+    def insert_edge(self, vertex, edge):
+        r"""
+        Insert an edge in the star shaped space and add vertices and edges to maintain it star shaped.
+        """
+        
+        if self.contains_edge(vertex, edge):
+            return self.opposite_vertex(vertex, edge)
+        turn, out_edge = self.turn(vertex, edge)
+        opposite_edge = self._quadsystem._quad._ep(edge)
+        new_vertex = self.add_vertex(opposite_edge%2)
+        if turn != None and abs(turn) == 1:
+            old_vertex = self.opposite_vertex(vertex, out_edge)
+            new_edge = self._rotate_list[out_edge][-turn]
+            self.insert_edge(old_vertex, new_edge)
+            square_vertex = self.opposite_vertex(old_vertex, new_edge)
+            square_edge = self.rotate(square_vertex, self._quadsystem._quad._ep(new_edge), -turn)
+            self.add_edge(new_vertex, square_vertex, self._quadsystem._quad._ep(square_edge))
+        self.add_edge(vertex, new_vertex, edge)
+        return new_vertex
