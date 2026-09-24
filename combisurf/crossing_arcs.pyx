@@ -502,7 +502,7 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
 
     cdef long long S = 0
     cdef Py_ssize_t iu, iv, ju, jv, t
-    cdef long long last, first, key
+    cdef long long last, first
 
     if symmetric:
         iu = 0

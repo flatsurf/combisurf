@@ -249,7 +249,7 @@ cdef class ConjugateTree:
         Raise the exception for the error code ``err`` of the C library,
         returned on the word ``w`` (or ``None``).
         """
-        cdef int j, n = self.T.alphabet_size
+        cdef int n = self.T.alphabet_size
         if err == CT_ENOMEM:
             raise MemoryError
         if err == CT_EEMPTY:
