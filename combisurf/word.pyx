@@ -77,7 +77,7 @@ def word_init(data=None):
         array('i', [0, 1, 3, 2, 1])
 
     From a string of edges (``"i"`` means ``2i`` and ``"~i"`` means ``2i+1``) with
-    optional parentesis or bracket::
+    optional parentheses or brackets::
 
         sage: word_init("0,1,~2,~0")
         array('i', [0, 2, 5, 1])
@@ -106,8 +106,9 @@ def word_init(data=None):
 
     if isinstance(data, str):
         data = data.replace(' ', '')
-        if ((data.startswith('(') and data.endswith(')')) or
-            (data.startswith('[') and data.endswith(']'))):
+        wrapped = ((data.startswith('(') and data.endswith(')')) or
+                   (data.startswith('[') and data.endswith(']')))
+        if wrapped:
             data = data[1:len(data) - 1]
         data = [str_to_int(x) for x in data.split(',')]
         data = [2 * x if x >= 0 else (2 * ~x + 1) for x in data]

@@ -39,7 +39,7 @@ inverses in the free group where ``h ^ 1`` is the inverse of the letter
 ``_cyclically_sorted_leaf_arcs`` lists the leaves in their cyclic order at
 infinity.
 
-The sweeps keep their prefix sums in Fenwick trees (:ref:`fenwick1994`).
+The sweeps keep their prefix sums in Fenwick trees (:ref:`fenwick-1994`).
 Counting crossing chords is the easy case of counting segment intersections
 (:ref:`chazelle1986`), the cyclic order of the endpoints giving the sweep
 order.

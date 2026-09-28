@@ -16,7 +16,7 @@ deterministic automaton (where all vertices of degree 2 have been
 removed).
 
 A word is added by the on-line construction of suffix trees of
-:ref:`ukkonen1995`, adapted to words read cyclically.
+:ref:`ukkonen-1995`, adapted to words read cyclically.
 
 EXAMPLES:
 
