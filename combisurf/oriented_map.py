@@ -56,8 +56,9 @@ from combisurf.permutation import (perm_init, perm_check, perm_trim, perm_cycles
                           perm_num_cycles, str_to_cycles, str_to_cycles_and_data, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
                           perm_orbit, perm_orbit_size,
-                          perms_are_transitive, perms_orbits, perm_edge_orbits, edge_relabelling_from)
+                          perms_are_transitive, perms_orbits, perm_edge_orbits)
 from combisurf.word import word_init, word_string
+from combisurf import isomorphism_naive
 
 def check_relabelling(arg, ne):
     r"""
@@ -3950,429 +3951,367 @@ class OrientedMap:
     # Automorphisms #
     #################
 
-    def _relabelling_from(self, root):
+    def _decoration_data(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
         r"""
-        When connected, return a canonical relabelling map obtained from walking
-        along the triangulation starting at ``root``.
+        Return the decorations as a tuple of half-edge arrays, in the order
+        ``half_edge_data``, ``edge_data``, ``vertex_data``, ``face_data``.
 
-        The returned relabelling array maps the current edge to the new
-        labelling.
+        ``half_edge_data`` is a half-edge array, or a tuple of half-edge
+        arrays (a tuple whose entries are all lists, tuples or arrays).
+        ``edge_data`` is indexed by edges and copied to both halves of each
+        edge. ``vertex_data`` and ``face_data`` are half-edge arrays constant
+        on the vertices and on the faces. With ``check=True``, the lengths
+        and the constancy are checked and a violation raises ``ValueError``.
 
         EXAMPLES::
 
-            sage: from veerer import *  # not tested
-            sage: from array import array  # not tested
-
-        The torus example (6 symmetries)::
-
-            sage: fp = array('i', [2, 3, 5, 4, 1, 0])  # not tested
-            sage: vp = array('i', [4, 5, 1, 0, 2, 3])  # not tested
-            sage: T = Triangulation.from_permutations(vp, fp, (array('i', [0]*6),), mutable=True)  # not tested
-            sage: T._relabelling_from(3)  # not tested
-            array('i', [5, 4, 1, 0, 2, 3])
-
-            sage: p = T._relabelling_from(0)  # not tested
-            sage: T.relabel(p)  # not tested
-            sage: for i in range(6):  # not tested
-            ....:     p = T._relabelling_from(i)
-            ....:     S = T.copy()
-            ....:     S.relabel(p)
-            ....:     assert S == T
-
-        The sphere example (3 symmetries)::
-
-            sage: fp = array('i', [2, -1, 4, -1, 0, -1])  # not tested
-            sage: vp = array('i', [4, -1, 0, -1, 2, -1])  # not tested
-            sage: T = Triangulation.from_permutations(vp, fp, (array('i', [0]*6),), mutable=True)  # not tested
-            sage: T._relabelling_from(2)  # not tested
-            array('i', [4, 5, 0, 1, 2, 3])
-            sage: p = T._relabelling_from(0)  # not tested
-            sage: T.relabel(p)  # not tested
-            sage: for i in range(3):  # not tested
-            ....:     p = T._relabelling_from(2 * i)
-            ....:     S = T.copy()
-            ....:     S.relabel(p)
-            ....:     assert S == T
-
-        An example with no automorphism::
-
-            sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)", mutable=True)  # not tested
-            sage: p = T._relabelling_from(0)  # not tested
-            sage: T.relabel(p)  # not tested
-            sage: for i in T.half_edges():  # not tested
-            ....:     if i == 0: continue
-            ....:     p = T._relabelling_from(i)
-            ....:     S = T.copy()
-            ....:     S.relabel(p)
-            ....:     S._check()
-            ....:     assert S != T
-        """
-        root = self._check_half_edge(root)
-        relabelling = array('i', [-1] * len(self._vp))
-        fp_new = array('i', [-1] * len(self._vp))
-        last = edge_relabelling_from(relabelling, fp_new, self._fp, len(self._vp), root, 0)
-        assert fp_new == perm_conjugate(self._fp, relabelling), (fp_new, perm_conjugate(self._fp, relabelling))
-        if last != len(self._vp):
-            raise ValueError("non-connected constellation")
-        return relabelling
-
-    def automorphisms(self):
-        r"""
-        Return the list of automorphisms of this constellation.
-
-        The output is a list of arrays that are permutations acting on the set
-        of half edges.
-
-        For triangulations with boundaries, we allow automorphism to permute
-        boundaries. Though, boundary edge have to be mapped on boundary edge.
-
-        EXAMPLES::
-
-            sage: from veerer import *  # not tested
-
-        An example with 4 symmetries in genus 2::
-
-            sage: T = Triangulation("(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)")  # not tested
-            sage: A = T.automorphisms()  # not tested
-            sage: len(A)  # not tested
-            4
-
-        And the "sphere octagon" has 8::
-
-            sage: s  = "(0,8,~7)(1,9,~0)(2,10,~1)(3,11,~2)(4,12,~3)(5,13,~4)(6,14,~5)(7,15,~6)"  # not tested
-            sage: len(Triangulation(s).automorphisms())  # not tested
-            8
-
-        A veering triangulation with 4 symmetries in genus 2::
-
-            sage: fp = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"  # not tested
-            sage: cols = "BRBBBRRBBBBR"  # not tested
-            sage: V = VeeringTriangulation(fp, cols)  # not tested
-            sage: A = V.automorphisms()  # not tested
-            sage: len(A)  # not tested
-            4
-
-        Examples with boundaries::
-
-            sage: t = Triangulation("(0,1,2)", boundary="(~0:1)(~1:1)(~2:1)")  # not tested
-            sage: len(t.automorphisms())  # not tested
-            3
-            sage: t = Triangulation("(0,1,2)", boundary="(~0:1,~1:1,~2:1)")  # not tested
-            sage: len(t.automorphisms())  # not tested
-            3
-            sage: t = Triangulation("(0,1,2)", boundary="(~0:1,~1:1,~2:2)")  # not tested
-            sage: len(t.automorphisms())  # not tested
-            1
-
-        Linear families::
-
-            sage: s = StrebelGraph("(0,3,7,~6,~2,1)(2,5,~4,~3,~1,~0)(4,8,~5)(6,~8,~7)")  # not tested
-            sage: f = StrebelGraphLinearFamily(s, [(2, 0, 0, 0, 1, 0, 1, 0, 2), (0, 2, 0, 0, 0, 1, 0, 1, 2), (0, 0, 1, 1, 0, 0, 0, 0, 2)])  # not tested
-            sage: len(s.automorphisms())  # not tested
-            2
-            sage: len(f.automorphisms())  # not tested
-            2
-
-        A non-connected example::
-
-            sage: t = Triangulation("(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)")  # not tested
-            sage: len(t.automorphisms())  # not tested
-            36
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1)(~0,~1)")
+            sage: m._decoration_data(half_edge_data=([0, 1, 2, 3], (4, 5, 6, 7)), edge_data=['a', 'b'])
+            ([0, 1, 2, 3], (4, 5, 6, 7), ['a', 'a', 'b', 'b'])
+            sage: m._decoration_data(half_edge_data=(0, 1, 2, 3))
+            ((0, 1, 2, 3),)
 
         TESTS::
 
-            sage: examples = []  # not tested
-            sage: examples.append(Triangulation("(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"))  # not tested
-            sage: examples.append(Triangulation("(0,8,~7)(1,9,~0)(2,10,~1)(3,11,~2)(4,12,~3)(5,13,~4)(6,14,~5)(7,15,~6)"))  # not tested
-            sage: examples.append(Triangulation("(0,1,2)", boundary="(~0:1)(~1:1)(~2:1)"))  # not tested
-            sage: examples.append(Triangulation("(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)"))  # not tested
-
-            sage: examples.append(StrebelGraph("(0,3,7,~6,~2,1)(2,5,~4,~3,~1,~0)(4,8,~5)(6,~8,~7)"))  # not tested
-            sage: for G in examples:  # not tested
-            ....:     H = G.copy(mutable=True)
-            ....:     for a in G.automorphisms():
-            ....:         assert H == G
-            ....:         H.relabel(a)
-            ....:         assert H == G, (G, H, a)
-        """
-        best_relabellings = self.best_relabelling(return_all=True)[0]
-        p0 = perm_invert(best_relabellings[0])
-        return [perm_compose(p, p0) for p in best_relabellings]
-
-    def automorphism_gens(self):
-        return self.automorphisms()
-
-    def best_relabelling(self, return_all=False):
-        r"""
-        Return a pair ``(r, data)`` where ``r`` is a relabelling that
-        brings this constellation to the canonical one.
-
-        EXAMPLES::
-
-            sage: from veerer import Triangulation, VeeringTriangulation, StrebelGraph  # not tested
-            sage: from veerer.permutation import perm_random_centralizer  # not tested
-
-            sage: examples = []  # not tested
-            sage: triangles = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"  # not tested
-            sage: examples.append(Triangulation(triangles, mutable=True))  # not tested
-            sage: examples.append(Triangulation("(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)", mutable=True))  # not tested
-            sage: fp = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"  # not tested
-            sage: cols = "BRBBBRRBBBBR"  # not tested
-            sage: examples.append(VeeringTriangulation(fp, cols, mutable=True))  # not tested
-            sage: fp = "(0,16,~15)(1,19,~18)(2,22,~21)(3,21,~20)(4,20,~19)(5,23,~22)(6,18,~17)(7,17,~16)(8,~1,~23)(9,~2,~8)(10,~3,~9)(11,~4,~10)(12,~5,~11)(13,~6,~12)(14,~7,~13)(15,~0,~14)"  # not tested
-            sage: cols = "RRRRRRRRBBBBBBBBBBBBBBBB"  # not tested
-            sage: examples.append(VeeringTriangulation(fp, cols, mutable=True))  # not tested
-            sage: examples.append(StrebelGraph("(0,6,~5,~3,~1,4,~4,2,~2)(1)(3,~0)(5)(~6)", mutable=True))  # not tested
-            sage: examples.append(StrebelGraph("(0,6,~5,~3,~1,4,~4:3,2,~2:3)(1:2)(3:2,~0)(5:2)(~6)", mutable=True))  # not tested
-
-            sage: for G in examples:  # not tested
-            ....:     print(G)
-            ....:     r, fp, half_edges_data, edges_data = G.best_relabelling()
-            ....:     for _ in range(10):
-            ....:         p = perm_random_centralizer(G.edge_permutation())
-            ....:         G.relabel(p)
-            ....:         r2, fp2, half_edges_data2, edges_data2 = G.best_relabelling()
-            ....:         assert fp2 == fp, G
-            ....:         assert half_edges_data2 == half_edges_data, (G, half_edges_data2, half_edges_data)
-            ....:         assert edges_data2 == edges_data, (G, edges_data2, edges_data)
-            Triangulation("(0,~1,2)(~0,1,~3)(~2,~4,6)(3,4,~5)(5,~9,~7)(~6,8,7)(~8,~10,11)(9,10,~11)")
-            Triangulation("(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)")
-            VeeringTriangulation("(0,~1,2)(~0,1,~3)(~2,~4,6)(3,4,~5)(5,~9,~7)(~6,8,7)(~8,~10,11)(9,10,~11)", "BRBBBRRBBBBR")
-            VeeringTriangulation("(0,16,~15)(~0,~14,15)(1,19,~18)(~1,~23,8)(2,22,~21)(~2,~8,9)(3,21,~20)(~3,~9,10)(4,20,~19)(~4,~10,11)(5,23,~22)(~5,~11,12)(6,18,~17)(~6,~12,13)(7,17,~16)(~7,~13,14)", "RRRRRRRRBBBBBBBBBBBBBBBB")
-            StrebelGraph("(0,6,~5,~3,~1,4,~4,2,~2)(~0,3)(1)(5)(~6)")
-            StrebelGraph("(0,6,~5,~3,~1,4,~4:3,2,~2:3)(~0,3:2)(1:2)(5:2)(~6)")
+            sage: m._decoration_data(edge_data=[0, 1, 2])
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_data must have length 2
+            sage: m._decoration_data(half_edge_data=[0, 1, 2])
+            Traceback (most recent call last):
+            ...
+            ValueError: half_edge_data must have length 4
+            sage: m._decoration_data(vertex_data=[0, 0, 0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: vertex_data must be constant on vertices
+            sage: m._decoration_data(face_data=[0, 0, 1, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: face_data must be constant on faces
+            sage: m._decoration_data(face_data=[0, 0, 1, 1], check=False)
+            ([0, 0, 1, 1],)
         """
         n = len(self._vp)
-        ne = n // 2
+        data = []
+        if half_edge_data is not None:
+            if isinstance(half_edge_data, tuple) and half_edge_data and all(isinstance(d, (list, tuple, array)) for d in half_edge_data):
+                data.extend(half_edge_data)
+            else:
+                data.append(half_edge_data)
+            if check:
+                for d in data:
+                    if len(d) != n:
+                        raise ValueError("half_edge_data must have length {}".format(n))
+        if edge_data is not None:
+            if check and len(edge_data) != n // 2:
+                raise ValueError("edge_data must have length {}".format(n // 2))
+            data.append([edge_data[h // 2] for h in range(n)])
+        for d, p, name, cells in ((vertex_data, self._vp, "vertex_data", "vertices"),
+                                  (face_data, self._fp, "face_data", "faces")):
+            if d is None:
+                continue
+            if check:
+                if len(d) != n:
+                    raise ValueError("{} must have length {}".format(name, n))
+                if any(p[h] != -1 and d[p[h]] != d[h] for h in range(n)):
+                    raise ValueError("{} must be constant on {}".format(name, cells))
+            data.append(d)
+        return tuple(data)
 
-        if not self.is_connected():
-            # each component is labelled with consecutive half-edge labels
-            # we use canonical labels for each of them, and then use a total ordering on the components
-            components = {}
-            for cc in self.connected_components():
-                # TODO: set check to False
-                comp = self.submap(cc, check=True)
-                relabelling_best, fp_best, half_edges_data_best, edges_data_best = comp.best_relabelling(return_all=return_all)
-
-                comp_hashable = [fp_best.tobytes()]
-                comp_hashable.extend(data.tobytes() for data in half_edges_data_best)
-                comp_hashable.extend(data.tobytes() for data in edges_data_best)
-                comp_hashable = tuple(comp_hashable)
-                if comp_hashable not in components:
-                    components[comp_hashable] = []
-                if return_all:
-                    data = (cc, relabelling_best[0], relabelling_best, fp_best, half_edges_data_best, edges_data_best)
-                else:
-                    data = (cc, relabelling_best, None, fp_best, half_edges_data_best, edges_data_best)
-
-                components[comp_hashable].append(data)
-
-            relabelling_best = array('i', [-1] * n)
-            fp_best = array('i', [-1] * n)
-            half_edges_data_best = array('i', [0] * n)
-            edges_data_best = array('i', [0] * n)
-
-            shift = 0
-            for comp_hashable in sorted(components):
-                value = components[comp_hashable]
-                for comp, comp_relabelling_best, _, _, _, _ in components[comp_hashable]:
-                    # NOTE: elements in comp are edges, not half-edges
-                    for i, j in enumerate(comp):
-                        i0 = comp_relabelling_best[2 * i]
-                        i1 = comp_relabelling_best[2 * i + 1]
-                        relabelling_best[2 * j] = shift + i0
-                        relabelling_best[2 * j + 1] = shift + i1
-                    shift += 2 * len(comp)
-
-            fp_best = perm_conjugate(self._fp, relabelling_best)
-            half_edges_data_best = tuple(l[:] for l in self._half_edges_data)
-            for ldest, lsrc in zip(half_edges_data_best, self._half_edges_data):
-                perm_on_array(ldest, lsrc, relabelling_best, n)
-            edges_data_best = tuple(l[:] for l in self._edges_data)
-            for ldest, lsrc in zip(edges_data_best, self._edges_data):
-                perm_on_edge_array(ldest, lsrc, relabelling_best, n)
-
-            if not return_all:
-                return (relabelling_best, fp_best, half_edges_data_best, edges_data_best)
-
-            relabellings = []
-            for oc in itertools.product(*[itertools.permutations(components[comp_hashable]) for comp_hashable in sorted(components)]):
-                # run through all permutations of isomorphic components
-                comps = [data[0] for isom_comps in oc for data in isom_comps]
-                for comp_relabellings in itertools.product(*[data[2] for isom_comps in oc for data in isom_comps]):
-                    # run through products available relabellings
-                    relabelling = array('i', [-1] * n)
-                    shift = 0
-                    for comp, comp_relabelling in zip(comps, comp_relabellings):
-                        # NOTE: elements in comp are edges, not half-edges
-                        for i, j in enumerate(comp):
-                            i0 = comp_relabelling[2 * i]
-                            i1 = comp_relabelling[2 * i + 1]
-                            relabelling[2 * j] = shift + i0
-                            relabelling[2 * j + 1] = shift + i1
-                        shift += 2 * len(comp)
-                    relabellings.append(relabelling)
-
-            return (relabellings, fp_best, half_edges_data_best, edges_data_best)
-
-        else:
-            # connected case
-            fp = self._fp
-            half_edges_data = self._half_edges_data
-            edges_data = self._edges_data
-            relabellings = []
-
-            relabelling_new = array('i', [-1] * n)
-            relabelling_best = array('i', [-1] * n)
-            fp_new = array('i', [-1] * n)
-            fp_best = array('i', [-1] * n)
-            half_edges_data_new = tuple(l[:] for l in half_edges_data)
-            half_edges_data_best = tuple(l[:] for l in half_edges_data)
-            edges_data_new = tuple(l[:] for l in edges_data)
-            edges_data_best = tuple(l[:] for l in edges_data)
-            k_half_edges = len(half_edges_data)
-            k_edges = len(edges_data)
-
-            half_edges = self.half_edges()
-            edge_relabelling_from(relabelling_best, fp_best, self._fp, 2 * ne, next(half_edges), 0)
-            for i in range(k_half_edges):
-                perm_on_array(half_edges_data_best[i], half_edges_data[i], relabelling_best, 2 * ne)
-            for i in range(k_edges):
-                perm_on_edge_array(edges_data_best[i], edges_data[i], relabelling_best, 2 * ne)
-
-            if return_all:
-                relabellings.append(relabelling_best[:])
-
-            for start_half_edge in half_edges:
-                # reinitialize relabelling_new as intended by edge_relabelling_from
-                for i in range(n):
-                    relabelling_new[i] = fp_new[i] = -1
-                end_image = edge_relabelling_from(relabelling_new, fp_new, self._fp, n, start_half_edge, 0)
-                assert end_image == 2 * ne, (end_image, ne)
-                assert sum(x == -1 for x in fp_new) == sum(x == -1 for x in self._fp)
-                assert all(x != -1 for x in relabelling_new)
-
-                c = 0
-                if fp_new < fp_best:
-                    # no need to compare anything else
-                    c = -1
-                elif fp_new > fp_best:
-                    # no need to go further
-                    c = 1
-                    continue
-
-                for i in range(k_half_edges):
-                    perm_on_array(half_edges_data_new[i], half_edges_data[i], relabelling_new, 2 * ne)
-                    if not c:
-                        if half_edges_data_new[i] < half_edges_data_best[i]:
-                            c = -1
-                        elif half_edges_data_new[i] > half_edges_data_best[i]:
-                            c = 1
-                            break
-                if c == 1:
-                    continue
-
-                for i in range(k_edges):
-                    perm_on_edge_array(edges_data_new[i], edges_data[i], relabelling_new, 2 * ne)
-                    if not c:
-                        if edges_data_new[i] < edges_data_best[i]:
-                            c = -1
-                        elif edges_data_new[i] > edges_data_best[i]:
-                            c = 1
-                            break
-                if c == 1:
-                    continue
-
-                # at this stage either c=0 and relabelling is identical or c=-1 and we found something better
-                if c == -1:
-                    fp_best, fp_new = fp_new, fp_best
-                    relabelling_best, relabelling_new = relabelling_new, relabelling_best
-                    half_edges_data_best, half_edges_data_new = half_edges_data_new, half_edges_data_best
-                    edges_data_best, edges_data_new = edges_data_new, edges_data_best
-                    if return_all:
-                        relabellings.clear()
-                        relabellings.append(relabelling_best[:])
-                elif return_all:
-                    assert c == 0
-                    relabellings.append(relabelling_new[:])
-
-            return (relabellings, fp_best, half_edges_data_best, edges_data_best) if return_all else (relabelling_best, fp_best, half_edges_data_best, edges_data_best)
-
-    # TODO: expand and clean documentation
-    def set_canonical_labels(self, mapping=False, check=True):
+    def canonical_labelling(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
         r"""
-        Set labels in a canonical way in its automorphism class.
+        Return the canonical labelling of this map with the given
+        decorations.
+
+        The map must be connected. The decorations are matched exactly.
+
+        INPUT:
+
+        - ``half_edge_data`` -- optional; a list or array indexed by
+          half-edges, or a tuple of such (a tuple whose entries are all
+          lists, tuples or arrays)
+
+        - ``edge_data`` -- optional; a list indexed by edges
+
+        - ``vertex_data``, ``face_data`` -- optional; lists indexed by
+          half-edges, constant on each vertex and on each face respectively
+
+        - ``check`` -- boolean (default ``True``); whether to check the
+          lengths of the decorations and the constancy of ``vertex_data``
+          and ``face_data``
+
+        OUTPUT: an ``array('i')`` that maps each half-edge to its canonical
+        label: a relabelling accepted by :meth:`relabel`, which gives the
+        active edges the labels ``0, 1, ...`` and the inactive edges the
+        following ones. Two maps with decorations are isomorphic if and only
+        if they are equal once relabelled by their canonical labellings.
+        See :mod:`combisurf.isomorphism_naive` for the ordering.
 
         EXAMPLES::
 
-            sage: from veerer import *  # not tested
-            sage: from veerer.permutation import perm_random, perm_random_centralizer  # not tested
+            sage: from combisurf import OrientedMap
+            sage: m1 = OrientedMap(fp="(0,1,2)(~0,~2,~1)", mutable=True)
+            sage: m2 = OrientedMap(fp="(0,2,1)(~0,~1,~2)", mutable=True)
+            sage: m1.canonical_labelling()
+            array('i', [0, 1, 2, 3, 4, 5])
+            sage: m2.canonical_labelling()
+            array('i', [0, 1, 4, 5, 2, 3])
+            sage: m1.relabel(m1.canonical_labelling())
+            sage: m2.relabel(m2.canonical_labelling())
+            sage: m1 == m2
+            True
 
-            sage: t = [(-12, 4, -4), (-11, -1, 11), (-10, 0, 10), (-9, 9, 1),  # not tested
-            ....:      (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)]
-            sage: T = Triangulation(t, mutable=True)  # not tested
-            sage: T  # not tested
-            Triangulation("(0,10,~9)(~0,11,~10)(1,~8,9)(~1,~7,8)(2,~6,7)(~2,~5,6)(3,~4,5)(~3,~11,4)")
-            sage: T._check()  # not tested
-            sage: T.set_canonical_labels()  # not tested
-            sage: T  # not tested
-            Triangulation("(0,1,2)(~0,~2,3)(~1,4,5)(~3,6,7)(~4,8,~5)(~6,9,~7)(~8,10,11)(~9,~11,~10)")
-            sage: T._check()  # not tested
+        An edge colouring gives the same labelling as ``edge_data`` or as
+        ``half_edge_data``::
+
+            sage: m = OrientedMap(fp="(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)")
+            sage: colours = [2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1]
+            sage: r = m.canonical_labelling(edge_data=colours)
+            sage: r == m.canonical_labelling(half_edge_data=[colours[h // 2] for h in range(24)])
+            True
+
+        TESTS:
+
+        A label gap (the edge ``1`` is inactive) and a folded edge::
+
+            sage: m = OrientedMap(fp="(0,2,~2)")
+            sage: m.canonical_labelling()
+            array('i', [2, 3, 4, 5, 0, 1])
+
+        A disconnected map::
+
+            sage: OrientedMap(fp="(0)(~0)(1)(~1)").canonical_labelling()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: disconnected maps are not supported
         """
-        if check:
-            self._assert_mutable()
+        data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
+        return isomorphism_naive.canonical_labelling(self._fp, data)
 
-        r, fp_best, half_edges_data_best, edges_data_best = self.best_relabelling()
-        self._fp = fp_best
-        self._vp = perm_conjugate(self._vp, r)
-        self._half_edges_data = half_edges_data_best
-        self._edges_data = edges_data_best
-        self._set_data_pointers()
-        if mapping:
-            return r
-
-    def _non_isom_easy(self, other):
+    def canonical_form(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
         r"""
-        A quick certificate of non-isomorphism that does not require relabellings.
+        Return the canonical form of this map with the given decorations.
+
+        The map must be connected. The decorations are matched exactly and
+        given as in :meth:`canonical_labelling`.
+
+        OUTPUT: a hashable tuple ``(fp, d_1, d_2, ...)`` of tuples, equal for
+        two decorated maps if and only if they are isomorphic: ``fp`` is the
+        face permutation in the canonical labels and ``d_i`` the values of
+        the ``i``-th decoration (as a half-edge array) read in the increasing
+        order of the canonical labels of the active half-edges.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: m1 = OrientedMap(fp="(0,1,2)(~0,~2,~1)")
+            sage: m2 = OrientedMap(fp="(0,2,1)(~0,~1,~2)")
+            sage: m3 = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: m1.canonical_form()
+            ((2, 5, 4, 1, 0, 3),)
+            sage: m1.canonical_form() == m2.canonical_form()
+            True
+            sage: m1.canonical_form() == m3.canonical_form()
+            False
+
+        With a decoration::
+
+            sage: m1.canonical_form(edge_data=[0, 0, 1])
+            ((2, 5, 4, 1, 0, 3), (0, 0, 0, 0, 1, 1))
         """
-        return (len(self._vp) != len(other._vp) or
-            perm_cycle_type(self._vp) != perm_cycle_type(other._vp) or
-            self.num_folded_edges() != other.num_folded_edges() or
-            perm_cycle_type(self._fp) != perm_cycle_type(other._fp) or
-            any(sorted(l_self) != sorted(l_other) for l_self, l_other in zip(self._half_edges_data, other._half_edges_data)) or
-            any(sorted(l_self) != sorted(l_other) for l_self, l_other in zip(self._edges_data, other._edges_data)))
+        data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
+        return isomorphism_naive.canonical_form(self._fp, data)
 
-    def is_isomorphic(self, other, certificate=False):
+    def automorphisms(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
         r"""
-        Return whether ``self`` is isomorphic to ``other``.
+        Return the automorphisms of this map with the given decorations.
+
+        The map must be connected. The decorations are matched exactly and
+        given as in :meth:`canonical_labelling`.
+
+        OUTPUT: the list of the automorphisms, the identity first, each an
+        ``array('i')`` permutation of the half-edges that commutes with the
+        face and vertex permutations, preserves the edges and the
+        decorations, and is the identity on the inactive edges. It is a
+        relabelling accepted by :meth:`relabel`.
+
+        EXAMPLES:
+
+        A triangulation in genus 2 with 4 automorphisms, and a sphere with 8::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)")
+            sage: A = m.automorphisms()
+            sage: len(A)
+            4
+            sage: for a in A:
+            ....:     mm = m.copy(mutable=True)
+            ....:     mm.relabel(a)
+            ....:     assert mm == m
+            sage: m = OrientedMap(fp="(0,8,~7)(1,9,~0)(2,10,~1)(3,11,~2)(4,12,~3)(5,13,~4)(6,14,~5)(7,15,~6)")
+            sage: len(m.automorphisms())
+            8
+
+        The first map with an edge colouring keeps its 4 automorphisms::
+
+            sage: m = OrientedMap(fp="(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)")
+            sage: len(m.automorphisms(edge_data=[2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1]))
+            4
+
+        Decorations on half-edges::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0)(~1)(~2)")
+            sage: len(m.automorphisms(half_edge_data=[0, 1, 0, 1, 0, 1]))
+            3
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: len(m.automorphisms())
+            6
+            sage: len(m.automorphisms(half_edge_data=[0, 1, 0, 1, 0, 1]))
+            3
+            sage: len(m.automorphisms(half_edge_data=[0, 1, 0, 1, 0, 2]))
+            1
+
+        Distinguishing the two faces (``face_data`` must be constant on
+        faces)::
+
+            sage: len(m.automorphisms(face_data=[0, 1, 0, 1, 0, 1]))
+            3
+            sage: m.automorphisms(face_data=[0, 1, 1, 0, 0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: face_data must be constant on faces
+
+        TESTS:
+
+        Folded edges and label gaps (the edges ``1`` and ``3`` are
+        inactive)::
+
+            sage: m = OrientedMap(fp="(0,2,4)")
+            sage: m.automorphisms()
+            [array('i', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+             array('i', [4, 5, 2, 3, 8, 9, 6, 7, 0, 1]),
+             array('i', [8, 9, 2, 3, 0, 1, 6, 7, 4, 5])]
+
+        A disconnected map::
+
+            sage: OrientedMap(fp="(0)(~0)(1)(~1)").automorphisms()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: disconnected maps are not supported
+        """
+        data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
+        return isomorphism_naive.automorphisms(self._fp, data)
+
+    def automorphism_generators(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+        r"""
+        Return generators of the automorphism group of this map with the
+        given decorations.
+
+        The map must be connected. The decorations are matched exactly and
+        given as in :meth:`canonical_labelling`.
+
+        OUTPUT: a list of automorphisms (as in :meth:`automorphisms`) that
+        generate the group; empty when the group is trivial.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,8,~7)(1,9,~0)(2,10,~1)(3,11,~2)(4,12,~3)(5,13,~4)(6,14,~5)(7,15,~6)")
+            sage: G = m.automorphism_generators()
+            sage: len(G)
+            1
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: m.automorphism_generators(half_edge_data=[0, 1, 0, 1, 0, 1])
+            [array('i', [2, 3, 4, 5, 0, 1])]
+            sage: m.automorphism_generators(half_edge_data=[0, 1, 0, 1, 0, 2])
+            []
+        """
+        data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
+        return isomorphism_naive.automorphism_generators(self._fp, data)
+
+    def is_isomorphic(self, other, certificate=False, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+        r"""
+        Return whether this map is isomorphic to ``other`` with the given
+        decorations.
+
+        Both maps must be connected. The decorations are matched exactly.
 
         INPUT:
 
         - ``other`` -- an :class:`OrientedMap`
 
-        - ``certificate`` -- optional boolean (default ``False``), whether to
-          additionally return the relabelling when ``self`` and ``other`` are
-          isomorphic
+        - ``certificate`` -- boolean (default ``False``); whether to also
+          return an isomorphism
+
+        - ``half_edge_data``, ``edge_data``, ``vertex_data``, ``face_data``
+          -- optional; each a pair ``(decoration of self, decoration of
+          other)``, the decorations as in :meth:`canonical_labelling`
+
+        - ``check`` -- boolean (default ``True``); whether to check the
+          decorations
+
+        OUTPUT: a boolean, or with ``certificate=True`` a pair ``(True, r)``
+        or ``(False, None)``. The isomorphism ``r`` is an ``array('i')`` that
+        sends each half-edge of this map to its image in ``other``: when
+        both maps have the same number of half-edge labels, this map
+        relabelled by ``r`` (see :meth:`relabel`) equals ``other``; otherwise
+        ``r`` is ``-1`` on the inactive edges.
 
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
-            sage: m = OrientedMap(vp="(0,1,2)(~0,~1,~2)")
-            sage: m.is_isomorphic(m)
+            sage: m1 = OrientedMap(fp="(0,1,2)(~0,~2,~1)")
+            sage: m2 = OrientedMap(fp="(0,2,1)(~0,~1,~2)")
+            sage: m3 = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: m1.is_isomorphic(m2)
+            True
+            sage: m1.is_isomorphic(m3)
+            False
+            sage: m1.is_isomorphic(m3, certificate=True)
+            (False, None)
+            sage: ok, r = m1.is_isomorphic(m2, certificate=True)
+            sage: r
+            array('i', [0, 1, 4, 5, 2, 3])
+            sage: mm = m1.copy(mutable=True)
+            sage: mm.relabel(r)
+            sage: mm == m2
+            True
+
+        With decorations, given as pairs::
+
+            sage: m1.is_isomorphic(m2, edge_data=([0, 0, 1], [0, 1, 0]))
+            True
+            sage: m1.is_isomorphic(m2, edge_data=([0, 0, 1], [0, 1, 1]))
+            False
+
+        TESTS::
+
+            sage: m1.is_isomorphic(m2, edge_data=[0, 0, 1])
             Traceback (most recent call last):
             ...
-            NotImplementedError
-
-        .. TODO::
-
-            The implementation relied on :meth:`best_relabelling` which reads
-            the attribute ``_half_edges_data``. That attribute is never
-            assigned on an :class:`OrientedMap`, so the whole canonical
-            labelling machinery raises ``AttributeError``. Rewrite it, or drop
-            the ``_half_edges_data`` / ``_edges_data`` indirection that was
-            inherited from veerer.
+            ValueError: edge_data must be a pair (of self, of other)
+            sage: m1.is_isomorphic("(0,1,2)")
+            Traceback (most recent call last):
+            ...
+            TypeError: other must be an OrientedMap
         """
-        raise NotImplementedError
+        if not isinstance(other, OrientedMap):
+            raise TypeError("other must be an OrientedMap")
+        pairs = {'half_edge_data': half_edge_data, 'edge_data': edge_data,
+                 'vertex_data': vertex_data, 'face_data': face_data}
+        for name, value in pairs.items():
+            if value is None:
+                pairs[name] = (None, None)
+            elif not isinstance(value, (tuple, list)) or len(value) != 2:
+                raise ValueError("{} must be a pair (of self, of other)".format(name))
+        data1 = self._decoration_data(*(pairs[name][0] for name in ('half_edge_data', 'edge_data', 'vertex_data', 'face_data')), check=check)
+        data2 = other._decoration_data(*(pairs[name][1] for name in ('half_edge_data', 'edge_data', 'vertex_data', 'face_data')), check=check)
+        r = isomorphism_naive.isomorphism(self._fp, data1, other._fp, data2)
+        if certificate:
+            return (r is not None, r)
+        return r is not None
 
     def dual(self, mutable=None, check=True):
         r"""
