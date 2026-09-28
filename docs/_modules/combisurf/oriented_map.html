@@ -192,8 +192,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../references.html">References</a></li>
@@ -302,6 +303,19 @@
 
 <span class="sd">The main class in this module is :class:`OrientedMap` which describes a</span>
 <span class="sd">cell decomposition of an oriented surface.</span>
+
+<span class="sd">A *walk* on a map is a word (see :mod:`combisurf.word`) whose letters are</span>
+<span class="sd">active half-edges of the map and such that each half-edge ends at the vertex</span>
+<span class="sd">where the next one starts. It can be given as a string such as ``"0,~1"``, a</span>
+<span class="sd">list of integers or an ``array('i')``. A walk is *closed* if moreover its last</span>
+<span class="sd">half-edge ends at the vertex where its first one starts.</span>
+
+<span class="sd">A *multiwalk* is a finite collection of walks with non-negative integer</span>
+<span class="sd">multiplicities. It can be given as a single walk (with multiplicity one), a</span>
+<span class="sd">list of walks ``[w0, w1, ...]`` (each with multiplicity one) or a list of pairs</span>
+<span class="sd">``[(w0, m0), (w1, m1), ...]``. It is taken as given: backtracking is not</span>
+<span class="sd">simplified, repeated walks are not merged and conjugate closed walks are not</span>
+<span class="sd">identified.</span>
 <span class="sd">"""</span>
 <span class="c1"># ****************************************************************************</span>
 <span class="c1">#  This file is part of combisurf</span>
@@ -343,7 +357,7 @@
                           <span class="n">uint_base64_str</span><span class="p">,</span> <span class="n">uint_from_base64_str</span><span class="p">,</span> <span class="n">perm_base64_str</span><span class="p">,</span>
                           <span class="n">perm_orbit</span><span class="p">,</span> <span class="n">perm_orbit_size</span><span class="p">,</span>
                           <span class="n">perms_are_transitive</span><span class="p">,</span> <span class="n">perms_orbits</span><span class="p">,</span> <span class="n">perm_edge_orbits</span><span class="p">,</span> <span class="n">edge_relabelling_from</span><span class="p">)</span>
-
+<span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span><span class="p">,</span> <span class="n">word_string</span>
 
 <div class="viewcode-block" id="check_relabelling">
 <a class="viewcode-back" href="../../oriented_map.html#combisurf.oriented_map.check_relabelling">[docs]</a>
@@ -743,6 +757,265 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vp</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"inactive edge e=</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">e</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_face_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid face </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">f</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">f</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_faces</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"face number out of range f=</span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">f</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_walk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Check that ``w`` is a walk on this map and return it as an ``array('i')``.</span>
+
+<span class="sd">        See the module documentation for the definition of a walk.</span>
+
+<span class="sd">        INPUT:</span>
+
+<span class="sd">        - ``w`` -- a string, a list of integers or an array</span>
+
+<span class="sd">        - ``closed`` -- boolean (default: ``False``); whether the walk must be closed</span>
+
+<span class="sd">        OUTPUT: the walk as an ``array('i')``. If ``w`` is already an</span>
+<span class="sd">        ``array('i')`` then ``w`` itself is returned, not a copy.</span>
+
+<span class="sd">        Raise a ``ValueError`` if ``w`` is not a walk on this map, or not a</span>
+<span class="sd">        closed one when ``closed=True``.</span>
+
+<span class="sd">        TESTS::</span>
+
+<span class="sd">            sage: from array import array</span>
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: m = OrientedMap(fp="(0,1,~0,~1)")</span>
+
+<span class="sd">            sage: w = array("i", [0, 2])</span>
+<span class="sd">            sage: m._check_walk(w) is w</span>
+<span class="sd">            True</span>
+<span class="sd">            sage: m._check_walk([0, 2])</span>
+<span class="sd">            array('i', [0, 2])</span>
+<span class="sd">            sage: m._check_walk("0,~1")</span>
+<span class="sd">            array('i', [0, 3])</span>
+<span class="sd">            sage: m._check_walk(array("I", [0, 2]))</span>
+<span class="sd">            array('i', [0, 2])</span>
+<span class="sd">            sage: m._check_walk([0, 3, 5])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: invalid walk [0, 3, 5]: half-edge number out of range (=5) at position 2</span>
+
+<span class="sd">            sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")</span>
+<span class="sd">            sage: m._check_walk([0, 2])</span>
+<span class="sd">            array('i', [0, 2])</span>
+<span class="sd">            sage: m._check_walk([0, 0])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: invalid walk [0, 0]: 0 at position 0 ends at vertex 1 but 0 at position 1 starts at vertex 0</span>
+<span class="sd">            sage: m._check_walk([0, 2], closed=True)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: non-closed walk [0, 2]: 2 at position 1 ends at vertex 2 but 0 at position 0 starts at vertex 0</span>
+<span class="sd">        """</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="n">h2v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">half_edge_to_vertex</span><span class="p">()</span>
+
+        <span class="n">hprev</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># previous half-edge</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">w</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_check_half_edge</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid walk </span><span class="si">{</span><span class="n">word_string</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2"> at position </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+            <span class="k">if</span> <span class="n">hprev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">h2v</span><span class="p">[</span><span class="n">hprev</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">h2v</span><span class="p">[</span><span class="n">h</span><span class="p">]:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid walk </span><span class="si">{</span><span class="n">word_string</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">hprev</span><span class="si">}</span><span class="s2"> at position </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> ends at vertex </span><span class="si">{</span><span class="n">h2v</span><span class="p">[</span><span class="n">hprev</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> but </span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2"> at position </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> starts at vertex </span><span class="si">{</span><span class="n">h2v</span><span class="p">[</span><span class="n">h</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">hprev</span> <span class="o">=</span> <span class="n">h</span>
+
+        <span class="k">if</span> <span class="n">w</span> <span class="ow">and</span> <span class="n">closed</span> <span class="ow">and</span> <span class="n">h2v</span><span class="p">[</span><span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">!=</span> <span class="n">h2v</span><span class="p">[</span><span class="n">w</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"non-closed walk </span><span class="si">{</span><span class="n">word_string</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">w</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> at position </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> ends at vertex </span><span class="si">{</span><span class="n">h2v</span><span class="p">[</span><span class="n">w</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> but </span><span class="si">{</span><span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> at position 0 starts at vertex </span><span class="si">{</span><span class="n">h2v</span><span class="p">[</span><span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">w</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_multiwalk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">words</span><span class="p">,</span> <span class="n">multiplicities</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the multiwalk given by ``words`` and ``multiplicities`` in normal form.</span>
+
+<span class="sd">        See the module documentation for the definitions of walks and</span>
+<span class="sd">        multiwalks. The normal form does minimal work: the walks are checked and</span>
+<span class="sd">        converted with :meth:`_check_walk` and the ones with multiplicity zero</span>
+<span class="sd">        are dropped, but backtracking is not simplified, repeated walks are not</span>
+<span class="sd">        merged and conjugate closed walks are not identified.</span>
+
+<span class="sd">        INPUT:</span>
+
+<span class="sd">        - ``words`` -- a single walk, a list of walks ``[w0, w1, ...]`` or a list of</span>
+<span class="sd">          pairs ``[(w0, m0), (w1, m1), ...]`` where ``m0``, ``m1``, ... are</span>
+<span class="sd">          non-negative integers. The items of a list must be either all walks or</span>
+<span class="sd">          all pairs.</span>
+
+<span class="sd">        - ``multiplicities`` -- (optional) a list of non-negative integers with the</span>
+<span class="sd">          same length as ``words``. Only allowed when ``words`` is a list of walks.</span>
+<span class="sd">          If not provided, the multiplicities are taken from the pairs, or set to</span>
+<span class="sd">          `1` for a list of walks.</span>
+
+<span class="sd">        - ``closed`` -- (boolean, default ``False``) whether the walks must be closed</span>
+
+<span class="sd">        OUTPUT: a pair ``(words, multiplicities)`` of lists of the same length,</span>
+<span class="sd">        where ``words`` contains arrays ``array('i')`` and ``multiplicities``</span>
+<span class="sd">        contains positive Python integers. The walks with multiplicity zero in</span>
+<span class="sd">        the input are dropped, so the output can be shorter than the input.</span>
+
+<span class="sd">        Raise a ``TypeError`` or a ``ValueError`` if the input is not a valid</span>
+<span class="sd">        multiwalk.</span>
+
+<span class="sd">        TESTS::</span>
+
+<span class="sd">            sage: from array import array</span>
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: m = OrientedMap(fp="(0,1,~0,~1)")</span>
+
+<span class="sd">        A single walk::</span>
+
+<span class="sd">            sage: m._check_multiwalk(array("i", [0, 2]))</span>
+<span class="sd">            ([array('i', [0, 2])], [1])</span>
+<span class="sd">            sage: m._check_multiwalk([0, 2])</span>
+<span class="sd">            ([array('i', [0, 2])], [1])</span>
+<span class="sd">            sage: m._check_multiwalk("0,~0")</span>
+<span class="sd">            ([array('i', [0, 1])], [1])</span>
+
+<span class="sd">        A list of walks, with or without multiplicities::</span>
+
+<span class="sd">            sage: m._check_multiwalk([])</span>
+<span class="sd">            ([], [])</span>
+<span class="sd">            sage: m._check_multiwalk([[0, 2], [], "0,~1"])</span>
+<span class="sd">            ([array('i', [0, 2]), array('i'), array('i', [0, 3])], [1, 1, 1])</span>
+<span class="sd">            sage: m._check_multiwalk([[0, 2], [1, 3], [0]], [2, 0, 1])</span>
+<span class="sd">            ([array('i', [0, 2]), array('i', [0])], [2, 1])</span>
+<span class="sd">            sage: m._check_multiwalk(iter([[0, 2], [1]]), (3, 4))</span>
+<span class="sd">            ([array('i', [0, 2]), array('i', [1])], [3, 4])</span>
+
+<span class="sd">        A list of pairs (walk, multiplicity)::</span>
+
+<span class="sd">            sage: m._check_multiwalk([([0, 2], 1), ([], 3), ("0,1", 2), ([0, 0], 0)])</span>
+<span class="sd">            ([array('i', [0, 2]), array('i'), array('i', [0, 2])], [1, 3, 2])</span>
+
+<span class="sd">        Closed walks::</span>
+
+<span class="sd">            sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")</span>
+<span class="sd">            sage: m._check_multiwalk([[0, 1], [0, 2]])</span>
+<span class="sd">            ([array('i', [0, 1]), array('i', [0, 2])], [1, 1])</span>
+<span class="sd">            sage: m._check_multiwalk([[0, 1], [0, 2]], closed=True)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: non-closed walk [0, 2]: 2 at position 1 ends at vertex 2 but 0 at position 0 starts at vertex 0</span>
+
+<span class="sd">        Invalid inputs::</span>
+
+<span class="sd">            sage: m = OrientedMap(fp="(0,1,~0,~1)")</span>
+<span class="sd">            sage: m._check_multiwalk([0, 2], [1])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: invalid multiwalk: multiplicities can only be given with a list of walks</span>
+<span class="sd">            sage: m._check_multiwalk([([0, 2], 1)], [1])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: invalid multiwalk: multiplicities can not be given with a list of pairs (walk, multiplicity)</span>
+<span class="sd">            sage: m._check_multiwalk([[0, 2], [1]], [1])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: invalid multiwalk: got 2 walks but 1 multiplicities</span>
+<span class="sd">            sage: m._check_multiwalk([[0, 2], ([0, 2], 2)])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: invalid multiwalk: the item ([0, 2], 2) at position 1 is a pair (walk, multiplicity) but the first item is a walk</span>
+<span class="sd">            sage: m._check_multiwalk([([0, 2], 2), [0, 2]])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: invalid multiwalk: the item [0, 2] at position 1 is a walk but the first item is a pair (walk, multiplicity)</span>
+<span class="sd">            sage: m._check_multiwalk(([0, 2], 3))</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: invalid multiwalk: the input should either be a walk, a list of walks or a list of pairs (walk, multiplicity)</span>
+<span class="sd">            sage: m._check_multiwalk([[0], 3])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: invalid multiwalk: the input should either be a walk, a list of walks or a list of pairs (walk, multiplicity)</span>
+<span class="sd">            sage: m._check_multiwalk([([0], 1), 3])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: invalid multiwalk: the input should either be a walk, a list of walks or a list of pairs (walk, multiplicity)</span>
+<span class="sd">            sage: m._check_multiwalk([([0, 2], "2")])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            TypeError: invalid multiwalk: the multiplicity '2' of type str of the walk [0, 2] at position 0 must be an integer</span>
+<span class="sd">            sage: m._check_multiwalk([[0, 2], [1]], [1, -1])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: invalid multiwalk: the multiplicity -1 of the walk [1] at position 1 must be non-negative</span>
+<span class="sd">            sage: m._check_multiwalk([([0, 3, 1, 7], 2)])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: invalid walk [0, 3, 1, 7]: half-edge number out of range (=7) at position 3</span>
+<span class="sd">        """</span>
+        <span class="c1"># a single walk is a string, an array or a sequence of integers</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">array</span><span class="p">)):</span>
+            <span class="n">single</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                <span class="n">words</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+            <span class="n">single</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">single</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">multiplicities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"invalid multiwalk: multiplicities can only be given with a list of walks"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_check_walk</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="n">closed</span><span class="p">)],</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">is_pair</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+            <span class="c1"># the letters of a walk are integers, so a sequence of length 2</span>
+            <span class="c1"># whose first entry is not an integer is a pair (walk, multiplicity)</span>
+            <span class="k">return</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span>
+                    <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">))</span>
+
+        <span class="c1"># the first item decides whether words is a list of walks or of pairs</span>
+        <span class="n">pairs</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_pair</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="s2">"a pair (walk, multiplicity)"</span> <span class="k">if</span> <span class="n">pairs</span> <span class="k">else</span> <span class="s2">"a walk"</span>
+        <span class="n">unexpected</span> <span class="o">=</span> <span class="s2">"a walk"</span> <span class="k">if</span> <span class="n">pairs</span> <span class="k">else</span> <span class="s2">"a pair (walk, multiplicity)"</span>
+
+        <span class="k">if</span> <span class="n">multiplicities</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">pairs</span><span class="p">:</span>
+                <span class="n">multiplicities</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">pairs</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"invalid multiwalk: multiplicities can not be given with a list of pairs (walk, multiplicity)"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">multiplicities</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">array</span><span class="p">)):</span>
+                <span class="n">multiplicities</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">multiplicities</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">multiplicities</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid multiwalk: got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span><span class="si">}</span><span class="s2"> walks but </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">multiplicities</span><span class="p">)</span><span class="si">}</span><span class="s2"> multiplicities"</span><span class="p">)</span>
+
+        <span class="n">words_clean</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">multiplicities_clean</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"invalid multiwalk: the input should either be a walk, a list of walks or a list of pairs (walk, multiplicity)"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">is_pair</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">!=</span> <span class="n">pairs</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid multiwalk: the item </span><span class="si">{</span><span class="n">item</span><span class="si">!r}</span><span class="s2"> at position </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> is </span><span class="si">{</span><span class="n">unexpected</span><span class="si">}</span><span class="s2"> but the first item is </span><span class="si">{</span><span class="n">expected</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">pairs</span><span class="p">:</span>
+                <span class="n">w</span><span class="p">,</span> <span class="n">m</span> <span class="o">=</span> <span class="n">item</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">w</span><span class="p">,</span> <span class="n">m</span> <span class="o">=</span> <span class="n">item</span><span class="p">,</span> <span class="n">multiplicities</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_walk</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="n">closed</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid multiwalk: the multiplicity </span><span class="si">{</span><span class="n">m</span><span class="si">!r}</span><span class="s2"> of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> of the walk </span><span class="si">{</span><span class="n">word_string</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="si">}</span><span class="s2"> at position </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> must be an integer"</span><span class="p">)</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid multiwalk: the multiplicity </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2"> of the walk </span><span class="si">{</span><span class="n">word_string</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="si">}</span><span class="s2"> at position </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> must be non-negative"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">words_clean</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+            <span class="n">multiplicities_clean</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">words_clean</span><span class="p">,</span> <span class="n">multiplicities_clean</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_subdivide_false</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">half_edge_list</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
@@ -2293,6 +2566,364 @@
         <span class="k">return</span> <span class="n">radial</span><span class="p">,</span> <span class="n">mor</span></div>
 
 
+<div class="viewcode-block" id="OrientedMap.reduced_map">
+<a class="viewcode-back" href="../../oriented_map.html#combisurf.oriented_map.OrientedMap.reduced_map">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reduced_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">forest</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coforest</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">relabel</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mapping</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the map obtained by contracting ``forest`` and deleting ``coforest``.</span>
+
+<span class="sd">        The vertices of the result are the trees of ``forest`` and its faces</span>
+<span class="sd">        are the trees of ``coforest``. Its edges are the complementary edges,</span>
+<span class="sd">        which keep their labels unless ``relabel`` is set. If the pair</span>
+<span class="sd">        (``forest``, ``coforest``) is a tree-cotree decomposition then the</span>
+<span class="sd">        resulting map has a single vertex and a single face.</span>
+
+<span class="sd">        INPUT:</span>
+
+<span class="sd">        - ``forest``, ``coforest`` -- (default: ``None``) the half-edges of the</span>
+<span class="sd">          edges to contract and to delete, in the format returned by</span>
+<span class="sd">          :meth:`forest_coforest_decomposition`; entries equal to ``-1`` are</span>
+<span class="sd">          ignored. When both are ``None`` a decomposition is computed. Listing</span>
+<span class="sd">          the same edge twice raises a ``ValueError``.</span>
+
+<span class="sd">        - ``relabel`` -- boolean (default: ``False``); whether to relabel the</span>
+<span class="sd">          result on ``0, 1, ..., 2 * ne - 1`` so that it has no inactive</span>
+<span class="sd">          half-edge. Contracting and deleting never renumber, so without this</span>
+<span class="sd">          the labels of the complementary edges are kept and are sparse. The</span>
+<span class="sd">          relabelling goes edge by edge, in increasing order, and preserves</span>
+<span class="sd">          the parity of each half-edge inside its edge.</span>
+
+<span class="sd">        - ``mapping`` -- boolean (default: ``False``); whether to also return</span>
+<span class="sd">          the projection, a list indexed by the half-edges of this map giving</span>
+<span class="sd">          for each of them the walk it becomes in the result, as an array of</span>
+<span class="sd">          half-edges of the result (``None`` for inactive half-edges). A</span>
+<span class="sd">          complementary half-edge is sent to itself, a half-edge of a</span>
+<span class="sd">          contracted edge to the empty walk and a half-edge of a deleted edge</span>
+<span class="sd">          to a walk homotopic to it, see below. The walk of ``ep(h)`` is the</span>
+<span class="sd">          reverse of the walk of ``h``.</span>
+
+<span class="sd">        - ``mutable`` -- boolean (default: ``False``); whether the result is</span>
+<span class="sd">          mutable</span>
+
+<span class="sd">        - ``check`` -- boolean (default: ``True``); whether to check that the</span>
+<span class="sd">          half-edges of ``forest`` and ``coforest`` are ones of this map, that</span>
+<span class="sd">          neither contains a cycle, and to check the map built. Listing the</span>
+<span class="sd">          same edge twice is reported whatever its value.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: m = OrientedMap("(0,5,~4,7,4,~5)(~0,~1,~2,3,2,~6)(1,~3,~7,6)")</span>
+<span class="sd">            sage: m</span>
+<span class="sd">            OrientedMap("(0,5,~4,7,4,~5)(~0,~1,~2,3,2,~6)(1,~3,~7,6)", "(0,~6,~7,~4,7,~3,~2,3,1,~0,~5)(~1,6,2)(4,5)")</span>
+<span class="sd">            sage: print(m.genus(), m.num_vertices(), m.num_faces())</span>
+<span class="sd">            2 3 3</span>
+
+<span class="sd">            sage: r = m.reduced_map()</span>
+<span class="sd">            sage: r</span>
+<span class="sd">            OrientedMap("(1,~3,~5,~1,~2,3,2,5)", "(1,~5,2,~1,5,~3,~2,3)")</span>
+<span class="sd">            sage: print(r.genus(), r.num_vertices(), r.num_faces())</span>
+<span class="sd">            2 1 1</span>
+
+<span class="sd">        With a forest and a coforest that are not spanning, the result has one</span>
+<span class="sd">        vertex per tree of the forest and one face per tree of the coforest::</span>
+
+<span class="sd">            sage: f, c, _ = m.forest_coforest_decomposition(root_vertices=[0, 2], root_faces=[1])</span>
+<span class="sd">            sage: r = m.reduced_map(forest=f, coforest=c)</span>
+<span class="sd">            sage: print(r.genus(), r.num_vertices(), r.num_faces())</span>
+<span class="sd">            2 2 1</span>
+
+<span class="sd">        The labels of the complementary edges are kept, and ``relabel`` makes</span>
+<span class="sd">        them consecutive::</span>
+
+<span class="sd">            sage: f, c, comp = m.forest_coforest_decomposition()</span>
+<span class="sd">            sage: comp</span>
+<span class="sd">            array('i', [1, 2, 3, 5])</span>
+<span class="sd">            sage: m.reduced_map(f, c)</span>
+<span class="sd">            OrientedMap("(1,~3,~5,~1,~2,3,2,5)", "(1,~5,2,~1,5,~3,~2,3)")</span>
+<span class="sd">            sage: m.reduced_map(f, c, relabel=True)</span>
+<span class="sd">            OrientedMap("(0,~2,~3,~0,~1,2,1,3)", "(0,~3,1,~0,3,~2,~1,2)")</span>
+
+<span class="sd">        With ``mapping``, the projection is returned as well. A half-edge of a</span>
+<span class="sd">        deleted edge lies on the boundary of a disk, made of the faces of the</span>
+<span class="sd">        coforest beyond it, and its walk goes around the other side of that</span>
+<span class="sd">        disk::</span>
+
+<span class="sd">            sage: r, proj = m.reduced_map(f, c, mapping=True)</span>
+<span class="sd">            sage: proj</span>
+<span class="sd">            [array('i'),</span>
+<span class="sd">             array('i'),</span>
+<span class="sd">             array('i', [2]),</span>
+<span class="sd">             array('i', [3]),</span>
+<span class="sd">             array('i', [4]),</span>
+<span class="sd">             array('i', [5]),</span>
+<span class="sd">             array('i', [6]),</span>
+<span class="sd">             array('i', [7]),</span>
+<span class="sd">             array('i', [11]),</span>
+<span class="sd">             array('i', [10]),</span>
+<span class="sd">             array('i', [10]),</span>
+<span class="sd">             array('i', [11]),</span>
+<span class="sd">             array('i', [2, 5]),</span>
+<span class="sd">             array('i', [4, 3]),</span>
+<span class="sd">             array('i'),</span>
+<span class="sd">             array('i')]</span>
+<span class="sd">            sage: all(list(proj[h ^^ 1]) == [r._ep(x) for x in reversed(proj[h])]</span>
+<span class="sd">            ....:     for h in m.half_edges())</span>
+<span class="sd">            True</span>
+
+<span class="sd">        The radial map of the reduced map is the quad system of :meth:`quad_system`</span>
+<span class="sd">        for the same forest and coforest. The isomorphism between them can be</span>
+<span class="sd">        read on the projections: a complementary half-edge ``h`` becomes the</span>
+<span class="sd">        walk ``proj[h]`` of length two in the quad system and the walk of</span>
+<span class="sd">        ``h`` in the radial map of the reduced map, which gives the image of</span>
+<span class="sd">        the half-edges of these walks::</span>
+
+<span class="sd">            sage: rad_map, rad = r.radial_map(mapping=True)</span>
+<span class="sd">            sage: q, qproj = m.quad_system(f, c, mapping=True)</span>
+<span class="sd">            sage: p = {}</span>
+<span class="sd">            sage: for e in comp:</span>
+<span class="sd">            ....:     for h in (2 * e, 2 * e + 1):</span>
+<span class="sd">            ....:         a, b = rad[h]</span>
+<span class="sd">            ....:         p[a], p[b] = qproj[h]</span>
+
+<span class="sd">        These walks need not go through every edge of the radial map, as the</span>
+<span class="sd">        walk of ``h`` runs through the corners of ``h`` and of</span>
+<span class="sd">        ``next_in_face(h)``, which the walks of other edges may use as well.</span>
+<span class="sd">        But the map being connected, the relabelling extends uniquely along the</span>
+<span class="sd">        face permutation and the edge permutation. It is consistent with the</span>
+<span class="sd">        value read on the walks and conjugates the face permutations::</span>
+
+<span class="sd">            sage: len(p), rad_map.num_half_edges()</span>
+<span class="sd">            (14, 16)</span>
+<span class="sd">            sage: rfp = rad_map.face_permutation()</span>
+<span class="sd">            sage: qfp = q.face_permutation()</span>
+<span class="sd">            sage: todo = list(p)</span>
+<span class="sd">            sage: while todo:</span>
+<span class="sd">            ....:     x = todo.pop()</span>
+<span class="sd">            ....:     for y, z in ((x ^^ 1, p[x] ^^ 1), (rfp[x], qfp[p[x]])):</span>
+<span class="sd">            ....:         if y not in p:</span>
+<span class="sd">            ....:             p[y] = z</span>
+<span class="sd">            ....:             todo.append(y)</span>
+<span class="sd">            ....:         elif p[y] != z:</span>
+<span class="sd">            ....:             raise AssertionError</span>
+<span class="sd">            sage: len(p) == q.num_half_edges()</span>
+<span class="sd">            True</span>
+<span class="sd">            sage: all(qfp[p[x]] == p[rfp[x]] for x in rad_map.half_edges())</span>
+<span class="sd">            True</span>
+
+<span class="sd">        The relabelling also matches the projections on the contracted edges,</span>
+<span class="sd">        that both send to the empty walk. On the deleted edges the two</span>
+<span class="sd">        projections are homotopic walks but differ in general, the quad</span>
+<span class="sd">        system keeping a walk of length two where the reduced map has to go</span>
+<span class="sd">        around a disk::</span>
+
+<span class="sd">            sage: deleted = [h // 2 for h in c if h != -1]</span>
+<span class="sd">            sage: all([p[x] for y in proj[h] for x in rad[y]] == list(qproj[h])</span>
+<span class="sd">            ....:     for h in m.half_edges() if h // 2 not in deleted)</span>
+<span class="sd">            True</span>
+<span class="sd">            sage: [(proj[2 * e], qproj[2 * e]) for e in deleted]</span>
+<span class="sd">            [(array('i', [2, 5]), array('i', [20, 9])),</span>
+<span class="sd">             (array('i', [11]), array('i', [28, 21]))]</span>
+
+<span class="sd">        On a sphere the reduced map is empty::</span>
+
+<span class="sd">            sage: m = OrientedMap("(0,1,2)(~0,~2,~1)")</span>
+<span class="sd">            sage: m.genus()</span>
+<span class="sd">            0</span>
+<span class="sd">            sage: m.reduced_map(mapping=True)</span>
+<span class="sd">            (OrientedMap("", ""),</span>
+<span class="sd">             [array('i'), array('i'), array('i'), array('i'), array('i'), array('i')])</span>
+
+<span class="sd">        Folded edges are allowed, but may be neither contracted nor deleted::</span>
+
+<span class="sd">            sage: m = OrientedMap(vp="(0,2,~2,4)(~4)")</span>
+<span class="sd">            sage: m.reduced_map(mapping=True)</span>
+<span class="sd">            (OrientedMap("(0)", "(0)"),</span>
+<span class="sd">             [array('i', [0]),</span>
+<span class="sd">              None,</span>
+<span class="sd">              None,</span>
+<span class="sd">              None,</span>
+<span class="sd">              array('i'),</span>
+<span class="sd">              array('i'),</span>
+<span class="sd">              None,</span>
+<span class="sd">              None,</span>
+<span class="sd">              array('i'),</span>
+<span class="sd">              array('i')])</span>
+
+<span class="sd">        TESTS::</span>
+
+<span class="sd">            sage: m = OrientedMap("(0,5,~4,7,4,~5)(~0,~1,~2,3,2,~6)(1,~3,~7,6)")</span>
+<span class="sd">            sage: f, c, _ = m.forest_coforest_decomposition()</span>
+<span class="sd">            sage: m.reduced_map(f, None)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: forest and coforest must be given together</span>
+<span class="sd">            sage: m.reduced_map(f, [2, 12])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: coforest contains a cycle</span>
+<span class="sd">            sage: m.reduced_map([1, 15, 5], c)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: forest contains a cycle</span>
+<span class="sd">            sage: m.reduced_map(f, [1, 12])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: the edge of the half-edge 1 is listed twice</span>
+
+<span class="sd">        .. SEEALSO::</span>
+
+<span class="sd">            :meth:`forest_coforest_decomposition`, :meth:`quad_system`,</span>
+<span class="sd">            :meth:`radial_map`, :meth:`contract_edge`, :meth:`delete_edge`</span>
+
+<span class="sd">        ALGORITHM:</span>
+
+<span class="sd">        The face permutation of the result is obtained by following, from each</span>
+<span class="sd">        complementary half-edge, the face permutation composed with the</span>
+<span class="sd">        involution that exchanges the two half-edges of each deleted edge,</span>
+<span class="sd">        until the next complementary half-edge. Each half-edge is visited once.</span>
+
+<span class="sd">        For the projection, the faces are processed children first in the</span>
+<span class="sd">        coforest, so that the walk of a deleted half-edge is obtained by</span>
+<span class="sd">        concatenating the walks already computed on the boundary of its face.</span>
+<span class="sd">        The cost is linear in the size of the output.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">forest</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">coforest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">forest</span><span class="p">,</span> <span class="n">coforest</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forest_coforest_decomposition</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">forest</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">coforest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"forest and coforest must be given together"</span><span class="p">)</span>
+
+        <span class="n">vp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vp</span>
+        <span class="n">fp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fp</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vp</span><span class="p">)</span>
+
+        <span class="c1"># kind[e] is 0 for an edge that stays, 1 for a contracted edge and 2</span>
+        <span class="c1"># for a deleted one</span>
+        <span class="n">kind</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">contracted</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">deleted</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">edges</span><span class="p">,</span> <span class="n">listed</span> <span class="ow">in</span> <span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">forest</span><span class="p">,</span> <span class="n">contracted</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">coforest</span><span class="p">,</span> <span class="n">deleted</span><span class="p">)):</span>
+            <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">edges</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">h</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
+                    <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_half_edge</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">kind</span><span class="p">[</span><span class="n">h</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"the edge of the half-edge </span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2"> is listed twice"</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">vp</span><span class="p">[</span><span class="n">h</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"the half-edge </span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2"> is folded"</span><span class="p">)</span>
+                <span class="n">kind</span><span class="p">[</span><span class="n">h</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
+                <span class="n">listed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
+            <span class="c1"># a contracted cycle or a deleted cocycle would not give a map of</span>
+            <span class="c1"># the same surface; union-find on the vertices, then on the faces</span>
+            <span class="k">for</span> <span class="n">h2c</span><span class="p">,</span> <span class="n">listed</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">half_edge_to_vertex</span><span class="p">(),</span> <span class="n">contracted</span><span class="p">,</span> <span class="s2">"forest"</span><span class="p">),</span>
+                                      <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">half_edge_to_face</span><span class="p">(),</span> <span class="n">deleted</span><span class="p">,</span> <span class="s2">"coforest"</span><span class="p">)):</span>
+                <span class="n">root</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">h2c</span><span class="p">,</span> <span class="n">default</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">listed</span><span class="p">:</span>
+                    <span class="n">u</span> <span class="o">=</span> <span class="n">h2c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+                    <span class="k">while</span> <span class="n">root</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">!=</span> <span class="n">u</span><span class="p">:</span>
+                        <span class="n">root</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span> <span class="o">=</span> <span class="n">root</span><span class="p">[</span><span class="n">root</span><span class="p">[</span><span class="n">u</span><span class="p">]]</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="n">h2c</span><span class="p">[</span><span class="n">h</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span>
+                    <span class="k">while</span> <span class="n">root</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">!=</span> <span class="n">v</span><span class="p">:</span>
+                        <span class="n">root</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span> <span class="o">=</span> <span class="n">root</span><span class="p">[</span><span class="n">root</span><span class="p">[</span><span class="n">v</span><span class="p">]]</span>
+                    <span class="k">if</span> <span class="n">u</span> <span class="o">==</span> <span class="n">v</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> contains a cycle"</span><span class="p">)</span>
+                    <span class="n">root</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="c1"># contracting an edge removes its two half-edges from their faces and</span>
+        <span class="c1"># deleting it glues the face of each half-edge to that of the other.</span>
+        <span class="c1"># So the next half-edge in the face of the reduced map is reached by</span>
+        <span class="c1"># skipping the contracted half-edges and crossing the deleted ones.</span>
+        <span class="c1"># That is following fp composed with the involution swapping the two</span>
+        <span class="c1"># half-edges of each deleted edge, a permutation whose orbit from a</span>
+        <span class="c1"># kept half-edge gets to the next kept one, and each skipped half-edge</span>
+        <span class="c1"># is visited once overall.</span>
+        <span class="n">rfp</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">vp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">kind</span><span class="p">[</span><span class="n">h</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]:</span>
+                <span class="k">continue</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">fp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+            <span class="k">while</span> <span class="n">kind</span><span class="p">[</span><span class="n">y</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">fp</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="k">if</span> <span class="n">kind</span><span class="p">[</span><span class="n">y</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">fp</span><span class="p">[</span><span class="n">y</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">rfp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span>
+
+        <span class="n">relabelling</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">relabel</span><span class="p">:</span>
+            <span class="n">relabelling</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+            <span class="n">ne</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">vp</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">kind</span><span class="p">[</span><span class="n">e</span><span class="p">]:</span>
+                    <span class="n">relabelling</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">ne</span>
+                    <span class="n">relabelling</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">ne</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="n">ne</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">fp_new</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">ne</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">rfp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">fp_new</span><span class="p">[</span><span class="n">relabelling</span><span class="p">[</span><span class="n">h</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relabelling</span><span class="p">[</span><span class="n">rfp</span><span class="p">[</span><span class="n">h</span><span class="p">]]</span>
+            <span class="n">rfp</span> <span class="o">=</span> <span class="n">fp_new</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">perm_trim</span><span class="p">(</span><span class="n">rfp</span><span class="p">)</span>
+        <span class="n">reduced</span> <span class="o">=</span> <span class="n">OrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="n">rfp</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="n">mutable</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="n">check</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mapping</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">reduced</span>
+
+        <span class="c1"># A deleted half-edge c on the face g has its reverse on the parent</span>
+        <span class="c1"># face of g, that is it lies on the child side of its edge. Pushing c</span>
+        <span class="c1"># across the disk made of g and its descendants in the coforest gives</span>
+        <span class="c1"># the walk of ep(c): the boundary of g read after c, in which a deleted</span>
+        <span class="c1"># half-edge is itself replaced by the walk around its child. Filling</span>
+        <span class="c1"># in the walks children first makes the whole of it linear in the</span>
+        <span class="c1"># size of the output.</span>
+        <span class="n">h2f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">half_edge_to_face</span><span class="p">()</span>
+        <span class="n">nf</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">h2f</span><span class="p">,</span> <span class="n">default</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">child_edge</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">nf</span><span class="p">)</span>
+        <span class="n">num_children</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">nf</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">deleted</span><span class="p">:</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">h2f</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">child_edge</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"the face of the half-edge </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2"> is the child of two edges of coforest"</span><span class="p">)</span>
+            <span class="n">child_edge</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+            <span class="n">num_children</span><span class="p">[</span><span class="n">h2f</span><span class="p">[</span><span class="n">c</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nf</span><span class="p">)</span> <span class="k">if</span> <span class="n">child_edge</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">num_children</span><span class="p">[</span><span class="n">g</span><span class="p">]]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">h2f</span><span class="p">[</span><span class="n">child_edge</span><span class="p">[</span><span class="n">order</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">num_children</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">num_children</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="ow">and</span> <span class="n">child_edge</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">deleted</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"coforest contains a cycle"</span><span class="p">)</span>
+
+        <span class="n">proj</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">vp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">kind</span><span class="p">[</span><span class="n">h</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">proj</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">kind</span><span class="p">[</span><span class="n">h</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span> <span class="k">else</span> <span class="p">[</span><span class="n">h</span><span class="p">])</span>
+        <span class="n">walk</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">nf</span>
+        <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">order</span><span class="p">:</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">child_edge</span><span class="p">[</span><span class="n">g</span><span class="p">]</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">fp</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
+            <span class="k">while</span> <span class="n">y</span> <span class="o">!=</span> <span class="n">c</span><span class="p">:</span>
+                <span class="n">k</span> <span class="o">=</span> <span class="n">kind</span><span class="p">[</span><span class="n">y</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">w</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">w</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">walk</span><span class="p">[</span><span class="n">h2f</span><span class="p">[</span><span class="n">y</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]])</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">fp</span><span class="p">[</span><span class="n">y</span><span class="p">]</span>
+            <span class="n">walk</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="n">w</span>
+            <span class="n">proj</span><span class="p">[</span><span class="n">c</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">w</span>
+            <span class="n">proj</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_ep</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">w</span><span class="p">)])</span>
+
+        <span class="k">if</span> <span class="n">relabelling</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">proj</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="n">relabelling</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">p</span><span class="p">])</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">proj</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">reduced</span><span class="p">,</span> <span class="n">proj</span></div>
+
+
 <div class="viewcode-block" id="OrientedMap.quad_system">
 <a class="viewcode-back" href="../../oriented_map.html#combisurf.oriented_map.OrientedMap.quad_system">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">quad_system</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">forest</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coforest</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">relabel</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mapping</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
@@ -2558,7 +3189,111 @@
                 <span class="n">proj</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]))</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">proj</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="n">relabelling</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">relabelling</span><span class="p">[</span><span class="n">b</span><span class="p">]]))</span>
-        <span class="k">return</span> <span class="n">quad</span><span class="p">,</span> <span class="n">proj</span>
+        <span class="k">return</span> <span class="n">quad</span><span class="p">,</span> <span class="n">proj</span></div>
+
+
+<div class="viewcode-block" id="OrientedMap.geometric_intersection">
+<a class="viewcode-back" href="../../oriented_map.html#combisurf.oriented_map.OrientedMap.geometric_intersection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">geometric_intersection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the geometric intersection between two multiwalks or the self-intersection</span>
+<span class="sd">        of a single one.</span>
+
+<span class="sd">        INPUT:</span>
+
+<span class="sd">        - ``u`` -- a multiwalk of closed walks, given in one of the following forms</span>
+<span class="sd">          (see the module documentation):</span>
+
+<span class="sd">          - a single walk ``w``</span>
+<span class="sd">          - a list of walks ``[w0, w1, ...]``</span>
+<span class="sd">          - a list of pairs (walk, multiplicity) ``[(w0, m0), (w1, m1), ...]``</span>
+
+<span class="sd">        - ``v`` -- (default ``None``) an optional multiwalk of closed walks, in one</span>
+<span class="sd">          of the same forms</span>
+
+<span class="sd">        - ``punctured_faces`` -- either a boolean (default ``False``) or a list of</span>
+<span class="sd">          face indices. If set to ``False`` or ``True`` then respectively no face or</span>
+<span class="sd">          all faces are considered as punctured. If a list of integers is provided,</span>
+<span class="sd">          then the faces corresponding to them are considered as punctured.</span>
+
+<span class="sd">        OUTPUT: integer. Either the self-intersection of ``u`` if ``v`` is not</span>
+<span class="sd">        provided or the geometric intersection between ``u`` and ``v``.</span>
+
+<span class="sd">        The self-intersection counts each crossing once, while the intersection</span>
+<span class="sd">        of ``u`` with itself counts it twice: for a closed curve ``c`` one has</span>
+<span class="sd">        `i(c, c) = 2 i(c)`.</span>
+
+<span class="sd">        EXAMPLES:</span>
+
+<span class="sd">        A sample of curves on a pair of pants::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: P = OrientedMap(fp="(0)(1)(~0,~1)")</span>
+<span class="sd">            sage: P.num_vertices(), P.num_faces()</span>
+<span class="sd">            (1, 3)</span>
+<span class="sd">            sage: w0 = [0, 3]</span>
+<span class="sd">            sage: w1 = [0, 2, 0, 0, 2]</span>
+<span class="sd">            sage: w2 = [0, 2, 1, 2]</span>
+<span class="sd">            sage: P.geometric_intersection(w0, punctured_faces=True)</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: P.geometric_intersection([w0], [w2], punctured_faces=True)</span>
+<span class="sd">            2</span>
+<span class="sd">            sage: P.geometric_intersection([(w0, 1), (w1, 3)], [(w2, 2)], punctured_faces=True)</span>
+<span class="sd">            28</span>
+
+<span class="sd">        The self-intersection against the intersection with itself::</span>
+
+<span class="sd">            sage: P.geometric_intersection(w1, punctured_faces=True)</span>
+<span class="sd">            2</span>
+<span class="sd">            sage: P.geometric_intersection(w1, w1, punctured_faces=True)</span>
+<span class="sd">            4</span>
+
+<span class="sd">        .. SEEALSO::</span>
+
+<span class="sd">            Each call builds a new</span>
+<span class="sd">            :class:`~combisurf.geometric_intersection.GeometricIntersectionPairing`,</span>
+<span class="sd">            which computes a reduced map. To compute many intersection numbers on</span>
+<span class="sd">            the same map, build the pairing once and call it instead, and to</span>
+<span class="sd">            compute all the intersection numbers among a fixed list of curves use</span>
+<span class="sd">            :meth:`~combisurf.geometric_intersection.GeometricIntersectionPairing.intersection_matrix`.</span>
+<span class="sd">        """</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.geometric_intersection</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeometricIntersectionPairing</span>
+        <span class="k">return</span> <span class="n">GeometricIntersectionPairing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">punctured_faces</span><span class="p">)(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OrientedMap.geometric_intersection_matrix">
+<a class="viewcode-back" href="../../oriented_map.html#combisurf.oriented_map.OrientedMap.geometric_intersection_matrix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">geometric_intersection_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wlist</span><span class="p">,</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the ``GeometricIntersectionMatrix`` of ``wlist``.</span>
+
+<span class="sd">        The :class:`~combisurf.geometric_intersection.GeometricIntersectionMatrix` is a</span>
+<span class="sd">        lazy object that can be queried to answer pairwise intersections among the curves</span>
+<span class="sd">        represented by the walks in ``wlist``. It is much faster than repeated calls</span>
+<span class="sd">        to :meth:`geometric_intersection`.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.lyndon_word_family import cyclically_reduced_lyndon_words</span>
+<span class="sd">            sage: torus = OrientedMap(fp="(0,1,~0,~1)")</span>
+<span class="sd">            sage: I = torus.geometric_intersection_matrix(cyclically_reduced_lyndon_words(2, 1, 4, up_to_inverse=True), punctured_faces=True)</span>
+<span class="sd">            sage: I</span>
+<span class="sd">            GeometricIntersectionMatrix of 8 curves on OrientedMap("(0,1,~0,~1)", "(0,1,~0,~1)")</span>
+<span class="sd">            sage: print(I.row(3))</span>
+<span class="sd">            [1, 1, 2, 0, 3, 1, 3, 1]</span>
+<span class="sd">            sage: print(I.matrix())</span>
+<span class="sd">            [0 1 1 1 1 1 2 2]</span>
+<span class="sd">            [1 0 1 1 2 2 1 1]</span>
+<span class="sd">            [1 1 0 2 1 3 1 3]</span>
+<span class="sd">            [1 1 2 0 3 1 3 1]</span>
+<span class="sd">            [1 2 1 3 0 4 3 5]</span>
+<span class="sd">            [1 2 3 1 4 0 5 3]</span>
+<span class="sd">            [2 1 1 3 3 5 0 4]</span>
+<span class="sd">            [2 1 3 1 5 3 4 0]</span>
+<span class="sd">        """</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.geometric_intersection</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeometricIntersectionPairing</span>
+        <span class="k">return</span> <span class="n">GeometricIntersectionPairing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">punctured_faces</span><span class="p">)</span><span class="o">.</span><span class="n">matrix</span><span class="p">(</span><span class="n">wlist</span><span class="p">)</span>
 
     <span class="c1">#############</span>
     <span class="c1"># Mutations #</span>

@@ -1,0 +1,976 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>conjugate_tree_naive &#8212; combisurf 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=a1637f0b"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'conjugate_tree_naive';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="References" href="references.html" />
+    <link rel="prev" title="conjugate_tree" href="conjugate_tree.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">combisurf 0.1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://flatsurf.github.io" title="flatsurf" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://flatsurf.github.io/assets/logo.svg" class="icon-link-image" alt="flatsurf"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/flatsurf/combisurf" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://sagemath.zulipchat.com/#narrow/channel/271193-flatsurf" title="Zulip" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-regular fa-comments fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Zulip</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="oriented_map.html"><code class="docutils literal notranslate"><span class="pre">oriented_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word_family.html"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="lyndon_word_family.html"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/flatsurf/combisurf/edit/master/doc/conjugate_tree_naive.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button"
+   title="Suggest edit"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/conjugate_tree_naive.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>conjugate_tree_naive</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.algorithm"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.algorithm()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.alphabet"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.alphabet()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.cyclically_sorted_leaves()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.graph"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.graph()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_state_word"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.internal_state_word()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_states"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.internal_states()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.leaf_as_conjugate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaves"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.leaves()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_states"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.num_states()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_words"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.num_words()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.plot"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.plot()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.process()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.size"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.size()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.sorted_leaves_as_conjugates"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.sorted_leaves_as_conjugates()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.transitions"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.transitions()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.word()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word_length"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.word_length()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.words"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.words()</span></code></a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-combisurf.conjugate_tree_naive">
+<span id="conjugate-tree-naive"></span><h1><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code><a class="headerlink" href="#module-combisurf.conjugate_tree_naive" title="Link to this heading">#</a></h1>
+<p>Conjugate trees, reference implementation</p>
+<p>This module holds <a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConjugateTreeNaive</span></code></a>, the pure Python conjugate
+tree. It is the reference against which the fast Cython
+<a class="reference internal" href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree" title="combisurf.conjugate_tree.ConjugateTree"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConjugateTree</span></code></a> of
+<a class="reference internal" href="conjugate_tree.html#module-combisurf.conjugate_tree" title="combisurf.conjugate_tree"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.conjugate_tree</span></code></a> is tested; everything else in the package
+uses the fast one. See <a class="reference internal" href="conjugate_tree.html#module-combisurf.conjugate_tree" title="combisurf.conjugate_tree"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.conjugate_tree</span></code></a> for what a conjugate
+tree is.</p>
+<p>The two classes answer the same questions with the same node numbering, so
+either can be substituted for the other. This one stores the children of a
+node in a dictionary and the per-node data in parallel Python lists, which
+makes it easy to read and about twenty times slower.</p>
+<p>EXAMPLES:</p>
+<p>The main class from this module is <a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConjugateTreeNaive</span></code></a> which is initialized
+with no argument:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To populate a conjugate tree one uses the function <a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.process"><code class="xref py py-meth docutils literal notranslate"><span class="pre">process()</span></code></a> that
+takes as argument a word on non-negative integers (given as a list):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="mi">2</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="o">-</span><span class="mi">2</span>
+</pre></div>
+</div>
+<p>The output value of <a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.process"><code class="xref py py-meth docutils literal notranslate"><span class="pre">process()</span></code></a> is an integer: the
+exponent of the word when it is new, and otherwise minus the index of the word
+of the tree that it is conjugate to a power of.</p>
+<p>To get a hand on the structure of the tree, one can use the following functions
+(the root is always index 0 and is omitted in the output):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">leaves</span><span class="p">()</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">14</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">internal_states</span><span class="p">()</span>
+<span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>To convert the index of a leaf to a conjugate of the words used to populate
+one uses:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">leaf_as_conjugate</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+<span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Which means that the leaf index <code class="docutils literal notranslate"><span class="pre">6</span></code> corresponds to the word number <code class="docutils literal notranslate"><span class="pre">1</span></code>
+(i.e. <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1,</span> <span class="pre">0,</span> <span class="pre">0,</span> <span class="pre">1]</span></code>) shifted twice.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.conjugate_tree_naive.</span></span><span class="sig-name descname"><span class="pre">ConjugateTreeNaive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alphabet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reserve</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algorithm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive" title="Link to this definition">#</a></dt>
+<dd><p>Tree structure to store all conjugates of a finite set of primitive words.</p>
+<p>The data structure works with words over non-negative integers.  The nodes
+are encoded with integers from 0 to the number of nodes minus one. The root
+always gets the index <code class="docutils literal notranslate"><span class="pre">0</span></code> and created nodes get the first available index
+(nodes are never deleted). In all algorithms, a node index is often denoted
+by a variable <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p>
+<p>Attributes</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_words</span></code> – the list of (non-pairwise conjugate) primitive words that
+define this conjugate tree. This list might be updated when
+<a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.process"><code class="xref py py-meth docutils literal notranslate"><span class="pre">process()</span></code></a> is called</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_depth</span></code> – list of depths of states</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_transitions</span></code> – list of dictionaries that store children of each
+node. The keys are the first letter of the transition label and values are
+the target nodes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_suffix_link</span></code> – pointer from internal states different from the root
+to their suffix obtained by removing the first letter</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_ancestor</span></code> – list of ancestors</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_transition_word</span></code>, <code class="docutils literal notranslate"><span class="pre">_transition_start</span></code>, <code class="docutils literal notranslate"><span class="pre">_transition_end</span></code> – lists
+that encode the information on a transition to a node <code class="docutils literal notranslate"><span class="pre">s</span></code>. The
+associated variables are often denoted <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code> and <code class="docutils literal notranslate"><span class="pre">p</span></code> in the
+algorithms.</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.algorithm">
+<span class="sig-name descname"><span class="pre">algorithm</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.algorithm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.algorithm" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">'dict'</span></code>: this class holds the children of a node in a
+dictionary.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span><span class="o">.</span><span class="n">algorithm</span><span class="p">()</span>
+<span class="s1">'dict'</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.alphabet">
+<span class="sig-name descname"><span class="pre">alphabet</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.alphabet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.alphabet" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">0</span></code>: this class is not told the alphabet.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">ConjugateTreeNaive</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span><span class="o">.</span><span class="n">alphabet</span><span class="p">()</span>
+<span class="mi">0</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves">
+<span class="sig-name descname"><span class="pre">cyclically_sorted_leaves</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">order</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pivot</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.cyclically_sorted_leaves"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves" title="Link to this definition">#</a></dt>
+<dd><p>Return the leaves sorted by the order of the letters <code class="docutils literal notranslate"><span class="pre">order</span></code>, the
+order below a node being turned by <code class="docutils literal notranslate"><span class="pre">pivot</span></code>.</p>
+<p>See
+<a class="reference internal" href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves" title="combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cyclically_sorted_leaves()</span></code></a>:
+the children of the root are visited by increasing <code class="docutils literal notranslate"><span class="pre">order[c]</span></code> and
+the children of an internal node whose label ends with the letter
+<code class="docutils literal notranslate"><span class="pre">b</span></code> by increasing <code class="docutils literal notranslate"><span class="pre">(order[c]</span> <span class="pre">-</span> <span class="pre">pivot[b])</span> <span class="pre">%</span> <span class="pre">n</span></code>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">cyclically_sorted_leaves</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.graph">
+<span class="sig-name descname"><span class="pre">graph</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.graph" title="Link to this definition">#</a></dt>
+<dd><p>Return this conjugate tree as a directed graph, each edge labelled by
+the letters it reads, or by its first letter only if it ends at a
+leaf (such an edge reads an infinite periodic word).</p>
+<p>The letters are separated by commas once the tree has a letter
+larger than <cite>9</cite>, so that a label can be read back.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">graph</span><span class="p">()</span>
+<span class="n">Digraph</span> <span class="n">on</span> <span class="mi">5</span> <span class="n">vertices</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">graph</span><span class="p">()</span><span class="o">.</span><span class="n">edges</span><span class="p">())</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'0'</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'1'</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'1'</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'0'</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>With a letter larger than <cite>9</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">12</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">12</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">graph</span><span class="p">()</span><span class="o">.</span><span class="n">edges</span><span class="p">())</span>
+<span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'2'</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'12,1'</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'1'</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'2'</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">'1'</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'2'</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="s1">'1'</span><span class="p">),</span>
+ <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'12'</span><span class="p">)]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_state_word">
+<span class="sig-name descname"><span class="pre">internal_state_word</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.internal_state_word"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_state_word" title="Link to this definition">#</a></dt>
+<dd><p>Return the word corresponding to the explicit state <code class="docutils literal notranslate"><span class="pre">s</span></code></p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">T</span><span class="o">.</span><span class="n">internal_states</span><span class="p">():</span>
+<span class="o">....</span><span class="p">:</span>     <span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">T</span><span class="o">.</span><span class="n">internal_state_word</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+<span class="mi">3</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="mi">5</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="mi">7</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="mi">9</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_states">
+<span class="sig-name descname"><span class="pre">internal_states</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.internal_states"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_states" title="Link to this definition">#</a></dt>
+<dd><p>Return the internal states in this conjugate tree.</p>
+<p>Note that any further call to <a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.process"><code class="xref py py-meth docutils literal notranslate"><span class="pre">process()</span></code></a> might change the
+structure of the tree but not the word encoded by a given state. In
+particular, internal states remain internal states.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">internal_states</span><span class="p">()</span>
+<span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate">
+<span class="sig-name descname"><span class="pre">leaf_as_conjugate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.leaf_as_conjugate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate" title="Link to this definition">#</a></dt>
+<dd><p>Return the pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">k)</span></code> such that the leaf <code class="docutils literal notranslate"><span class="pre">s</span></code> corresponds to the
+<code class="docutils literal notranslate"><span class="pre">i</span></code>-th word shifted by <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="n">T</span><span class="o">.</span><span class="n">leaf_as_conjugate</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">T</span><span class="o">.</span><span class="n">leaves</span><span class="p">()]</span> <span class="o">==</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">words</span><span class="p">())</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">))]</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaves">
+<span class="sig-name descname"><span class="pre">leaves</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.leaves"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaves" title="Link to this definition">#</a></dt>
+<dd><p>Return the leaves in this conjugate tree.</p>
+<p>Note that any further call to <a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.process"><code class="xref py py-meth docutils literal notranslate"><span class="pre">process()</span></code></a> might change the
+structure of the tree but not the word encoded by a given state. In
+particular, leaves remain leaves after an update.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_states">
+<span class="sig-name descname"><span class="pre">num_states</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.num_states"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_states" title="Link to this definition">#</a></dt>
+<dd><p>Return the number of states.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_words">
+<span class="sig-name descname"><span class="pre">num_words</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.num_words"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_words" title="Link to this definition">#</a></dt>
+<dd><p>Return the number of primitive words that define this conjugate tree.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">2</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">num_words</span><span class="p">()</span>
+<span class="mi">1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xscale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yscale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.plot" title="Link to this definition">#</a></dt>
+<dd><p>Return a plot of this conjugate tree.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">Graphics</span> <span class="nb">object</span> <span class="n">consisting</span> <span class="n">of</span> <span class="o">...</span> <span class="n">graphics</span> <span class="n">primitives</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xscale</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span> <span class="n">yscale</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+<span class="n">Graphics</span> <span class="nb">object</span> <span class="n">consisting</span> <span class="n">of</span> <span class="o">...</span> <span class="n">graphics</span> <span class="n">primitives</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">Graphics</span> <span class="nb">object</span> <span class="n">consisting</span> <span class="n">of</span> <span class="o">...</span> <span class="n">graphics</span> <span class="n">primitives</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.process">
+<span class="sig-name descname"><span class="pre">process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hard_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process" title="Link to this definition">#</a></dt>
+<dd><p>Add the word <code class="docutils literal notranslate"><span class="pre">w</span></code> in this conjugate tree.</p>
+<p>The output value is an integer. Depending on its sign it encodes
+different information.</p>
+<ul class="simple">
+<li><p>a positive <code class="docutils literal notranslate"><span class="pre">exponent</span></code> if the word <code class="docutils literal notranslate"><span class="pre">w</span></code> is not already present
+and <code class="docutils literal notranslate"><span class="pre">exponent</span></code> is the exponent of <code class="docutils literal notranslate"><span class="pre">w</span></code> (which is <code class="docutils literal notranslate"><span class="pre">1</span></code> if and only
+if <code class="docutils literal notranslate"><span class="pre">w</span></code> is primitive). In that case, the number of leaves in the tree
+increases by the period of <code class="docutils literal notranslate"><span class="pre">w</span></code> (which is its length divided by the
+exponent).</p></li>
+<li><p>a non-positive <code class="docutils literal notranslate"><span class="pre">-index</span></code> if the word <code class="docutils literal notranslate"><span class="pre">w</span></code> is already present, that
+is, if it is conjugate to a power of the word of index <code class="docutils literal notranslate"><span class="pre">index</span></code> of
+this conjugate tree</p></li>
+</ul>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">w</span></code> – a non-empty word</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">check</span></code> – boolean (default: <code class="docutils literal notranslate"><span class="pre">True</span></code>); whether to convert <code class="docutils literal notranslate"><span class="pre">w</span></code>
+with <a class="reference internal" href="word.html#combisurf.word.word_init" title="combisurf.word.word_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">word_init()</span></code></a>; with <code class="docutils literal notranslate"><span class="pre">check=False</span></code>, <code class="docutils literal notranslate"><span class="pre">w</span></code>
+can be any iterable of integers. In both cases the tree stores a
+copy of <code class="docutils literal notranslate"><span class="pre">w</span></code>, never <code class="docutils literal notranslate"><span class="pre">w</span></code> itself</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hard_check</span></code> – boolean (default: <code class="docutils literal notranslate"><span class="pre">False</span></code>); whether to check
+the structure of the tree at each step of the insertion</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="mi">2</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="mi">0</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="o">-</span><span class="mi">1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.size">
+<span class="sig-name descname"><span class="pre">size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.size" title="Link to this definition">#</a></dt>
+<dd><p>Return the size of this conjugate tree.</p>
+<p>The size is the number of implicit states where each leaf accounts for
+1.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="mi">9</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="mi">29</span>
+</pre></div>
+</div>
+<p>The total size is the same if we input the two words in the opposite order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="mi">7</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="mi">29</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.sorted_leaves_as_conjugates">
+<span class="sig-name descname"><span class="pre">sorted_leaves_as_conjugates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">order</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pivot</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.sorted_leaves_as_conjugates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.sorted_leaves_as_conjugates" title="Link to this definition">#</a></dt>
+<dd><p>Return the conjugates of the leaves in the order of
+<a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cyclically_sorted_leaves()</span></code></a>.</p>
+<p>This is a drop-in for
+<a class="reference internal" href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.sorted_leaves_as_conjugates" title="combisurf.conjugate_tree.ConjugateTree.sorted_leaves_as_conjugates"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sorted_leaves_as_conjugates()</span></code></a>,
+with the same arguments, output and errors, computed from
+<a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cyclically_sorted_leaves()</span></code></a> and <a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">leaf_as_conjugate()</span></code></a>.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">order</span></code>, <code class="docutils literal notranslate"><span class="pre">pivot</span></code> – as in
+<a class="reference internal" href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves" title="combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cyclically_sorted_leaves()</span></code></a></p></li>
+</ul>
+<p>OUTPUT: two arrays of typecode <code class="docutils literal notranslate"><span class="pre">'i'</span></code>, with one entry per leaf: the
+index <code class="docutils literal notranslate"><span class="pre">i</span></code> of its word and its shift <code class="docutils literal notranslate"><span class="pre">k</span></code>, as in
+<a class="reference internal" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate" title="combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">leaf_as_conjugate()</span></code></a></p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">sorted_leaves_as_conjugates</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="p">(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="n">T</span><span class="o">.</span><span class="n">leaf_as_conjugate</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">T</span><span class="o">.</span><span class="n">cyclically_sorted_leaves</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])]</span>
+<span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.transitions">
+<span class="sig-name descname"><span class="pre">transitions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.transitions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.transitions" title="Link to this definition">#</a></dt>
+<dd><p>Return the children of the node <code class="docutils literal notranslate"><span class="pre">s</span></code> as a dictionary mapping the
+first letter of a transition to its target, ordered by letter.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">transitions</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">transitions</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="p">{}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.word">
+<span class="sig-name descname"><span class="pre">word</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.word"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word" title="Link to this definition">#</a></dt>
+<dd><p>Return the <code class="docutils literal notranslate"><span class="pre">i</span></code>-th primitive word of this conjugate tree.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">word</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.word_length">
+<span class="sig-name descname"><span class="pre">word_length</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.word_length"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word_length" title="Link to this definition">#</a></dt>
+<dd><p>Return the length of the <code class="docutils literal notranslate"><span class="pre">i</span></code>-th primitive word of this conjugate
+tree.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">word_length</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="mi">5</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.conjugate_tree_naive.ConjugateTreeNaive.words">
+<span class="sig-name descname"><span class="pre">words</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/conjugate_tree_naive.html#ConjugateTreeNaive.words"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.words" title="Link to this definition">#</a></dt>
+<dd><p>Return the list of primitive words that define this conjugate tree.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree_naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTreeNaive</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTreeNaive</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">2</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">0</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">T</span><span class="o">.</span><span class="n">words</span><span class="p">()</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="conjugate_tree.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="references.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">References</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.algorithm"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.algorithm()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.alphabet"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.alphabet()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.cyclically_sorted_leaves()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.graph"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.graph()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_state_word"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.internal_state_word()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_states"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.internal_states()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.leaf_as_conjugate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaves"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.leaves()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_states"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.num_states()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_words"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.num_words()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.plot"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.plot()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.process()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.size"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.size()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.sorted_leaves_as_conjugates"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.sorted_leaves_as_conjugates()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.transitions"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.transitions()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.word()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word_length"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.word_length()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.conjugate_tree_naive.ConjugateTreeNaive.words"><code class="docutils literal notranslate"><span class="pre">ConjugateTreeNaive.words()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the combisurf authors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, the combisurf authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

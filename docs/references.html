@@ -52,7 +52,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'references';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="partial_sums" href="partial_sums.html" />
+    <link rel="prev" title="conjugate_tree_naive" href="conjugate_tree_naive.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
@@ -192,8 +192,9 @@
 <li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
-<li class="toctree-l1"><a class="reference internal" href="partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
 </ul>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">References</a></li>
@@ -365,6 +366,14 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#eades-garvan-1996">Eades &amp; Garvan (1996)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#floater-2003">Floater (2003)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#chiu-eppstein-goodrich-2023">Chiu, Eppstein &amp; Goodrich (2023)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fenwick-1994">Fenwick (1994)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#chazelle-1986">Chazelle (1986)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#despre-lazarus-2019">Despré &amp; Lazarus (2019)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#birman-series-1984">Birman &amp; Series (1984)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lapointe-2019">Lapointe (2019)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ukkonen-1995">Ukkonen (1995)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cohen-lustig-1987">Cohen Lustig (1987)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dubois-2024">Dubois (2024)</a></li>
 </ul>
             </nav>
         </div>
@@ -445,6 +454,68 @@ BFS-depth weighting scheme
 (<code class="xref py py-func docutils literal notranslate"><span class="pre">bfs_depth_weights()</span></code>,
 <code class="xref py py-func docutils literal notranslate"><span class="pre">bfs_depth_layout()</span></code>).</p>
 </section>
+<section id="fenwick-1994">
+<span id="id1"></span><h2>Fenwick (1994)<a class="headerlink" href="#fenwick-1994" title="Link to this heading">#</a></h2>
+<p>P. M. Fenwick. <em>A new data structure for cumulative frequency tables</em>.
+Software: Practice and Experience, 24(3):327-336, 1994.</p>
+<p>The binary indexed tree behind the sweeps
+<a class="reference internal" href="crossing_arcs.html#combisurf.crossing_arcs.crossing_arcs_sweep_sorted" title="combisurf.crossing_arcs.crossing_arcs_sweep_sorted"><code class="xref py py-func docutils literal notranslate"><span class="pre">crossing_arcs_sweep_sorted()</span></code></a>,
+<a class="reference internal" href="crossing_arcs.html#combisurf.crossing_arcs.startpoint_sweep_sorted" title="combisurf.crossing_arcs.startpoint_sweep_sorted"><code class="xref py py-func docutils literal notranslate"><span class="pre">startpoint_sweep_sorted()</span></code></a> and
+<a class="reference internal" href="crossing_arcs.html#combisurf.crossing_arcs.startpoint_sweep_weighted" title="combisurf.crossing_arcs.startpoint_sweep_weighted"><code class="xref py py-func docutils literal notranslate"><span class="pre">startpoint_sweep_weighted()</span></code></a>, where it answers
+each prefix sum and each update in logarithmic time.</p>
+</section>
+<section id="chazelle-1986">
+<span id="chazelle1986"></span><h2>Chazelle (1986)<a class="headerlink" href="#chazelle-1986" title="Link to this heading">#</a></h2>
+<p>B. Chazelle. <em>Reporting and counting segment intersections</em>. Journal of
+Computer and System Sciences, 32:156-182, 1986.</p>
+<p>Cited in <a class="reference internal" href="crossing_arcs.html#module-combisurf.crossing_arcs" title="combisurf.crossing_arcs"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.crossing_arcs</span></code></a> for where its method comes from:
+counting the crossing chords of a circle is the easy case of counting
+segment intersections, because the cyclic order of the endpoints already
+gives the sweep order.</p>
+</section>
+<section id="despre-lazarus-2019">
+<span id="id2"></span><h2>Despré &amp; Lazarus (2019)<a class="headerlink" href="#despre-lazarus-2019" title="Link to this heading">#</a></h2>
+<p>V. Despré and F. Lazarus. <em>Computing the geometric intersection number of
+curves</em>. Journal of the ACM, 66(6), Article 45, 2019. arXiv:1511.09327.</p>
+<p>Directly on the problem solved by
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">geometric_intersection()</span></code>,
+the geometric intersection numbers of curves on a surface given as words.</p>
+</section>
+<section id="birman-series-1984">
+<span id="birman-series1984"></span><h2>Birman &amp; Series (1984)<a class="headerlink" href="#birman-series-1984" title="Link to this heading">#</a></h2>
+<p>J. S. Birman and C. Series. <em>An algorithm for simple curves on surfaces</em>.
+Journal of the London Mathematical Society (2), 29:331-342, 1984.</p>
+<p>Source of the two genus 2 examples, pages 336-337, in the doctests of
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">geometric_intersection()</span></code>.</p>
+</section>
+<section id="lapointe-2019">
+<span id="lapointe2019"></span><h2>Lapointe (2019)<a class="headerlink" href="#lapointe-2019" title="Link to this heading">#</a></h2>
+<p>M. Lapointe. <em>Number of orbits of discrete interval exchanges</em>. Discrete
+Mathematics &amp; Theoretical Computer Science, 21(3), Paper No. 13, 16 pages,
+2019.</p>
+<p>Source of the simplicity criterion checked in the doctests of
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">geometric_intersection()</span></code>:
+a primitive positive word gives a simple curve exactly when its
+Burrows-Wheeler transform is non-increasing.</p>
+</section>
+<section id="ukkonen-1995">
+<span id="id3"></span><h2>Ukkonen (1995)<a class="headerlink" href="#ukkonen-1995" title="Link to this heading">#</a></h2>
+<p>E. Ukkonen. <em>On-line construction of suffix trees</em>. Algorithmica,
+14(3):249-260, 1995.</p>
+<p>Source of the construction of <a class="reference internal" href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree" title="combisurf.conjugate_tree.ConjugateTree"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConjugateTree</span></code></a>
+(the active point, <code class="docutils literal notranslate"><span class="pre">canonize</span></code> and <code class="docutils literal notranslate"><span class="pre">test_and_split</span></code>), here applied to
+words read cyclically.</p>
+</section>
+<section id="cohen-lustig-1987">
+<span id="id4"></span><h2>Cohen Lustig (1987)<a class="headerlink" href="#cohen-lustig-1987" title="Link to this heading">#</a></h2>
+<p>M. Cohen, M. Lustig. <em>Paths of geodesics and geometric intersection numbers. I</em>.
+Combinatorial group theory and topology, Sel. Pap. Conf., Alta/Utah 1984, Ann. Math. Stud. (111):479-500 1987.</p>
+</section>
+<section id="dubois-2024">
+<span id="id5"></span><h2>Dubois (2024)<a class="headerlink" href="#dubois-2024" title="Link to this heading">#</a></h2>
+<p>L. Dubois. <em>Making Multicurves Cross Minimally on Surfaces</em>
+ESA 2024: 50:1-50:15</p>
+</section>
 </section>
 
 
@@ -459,12 +530,12 @@ BFS-depth weighting scheme
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="partial_sums.html"
+       href="conjugate_tree_naive.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></p>
       </div>
     </a>
 </div>
@@ -493,6 +564,14 @@ BFS-depth weighting scheme
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#eades-garvan-1996">Eades &amp; Garvan (1996)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#floater-2003">Floater (2003)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#chiu-eppstein-goodrich-2023">Chiu, Eppstein &amp; Goodrich (2023)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fenwick-1994">Fenwick (1994)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#chazelle-1986">Chazelle (1986)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#despre-lazarus-2019">Despré &amp; Lazarus (2019)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#birman-series-1984">Birman &amp; Series (1984)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lapointe-2019">Lapointe (2019)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ukkonen-1995">Ukkonen (1995)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cohen-lustig-1987">Cohen Lustig (1987)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dubois-2024">Dubois (2024)</a></li>
 </ul>
   </nav></div>
 

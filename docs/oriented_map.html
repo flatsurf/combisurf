@@ -193,8 +193,9 @@
 <li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
-<li class="toctree-l1"><a class="reference internal" href="partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
@@ -384,6 +385,8 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.folded_half_edges"><code class="docutils literal notranslate"><span class="pre">OrientedMap.folded_half_edges()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.forest_coforest_decomposition"><code class="docutils literal notranslate"><span class="pre">OrientedMap.forest_coforest_decomposition()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.genus"><code class="docutils literal notranslate"><span class="pre">OrientedMap.genus()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.geometric_intersection"><code class="docutils literal notranslate"><span class="pre">OrientedMap.geometric_intersection()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.geometric_intersection_matrix"><code class="docutils literal notranslate"><span class="pre">OrientedMap.geometric_intersection_matrix()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.graph"><code class="docutils literal notranslate"><span class="pre">OrientedMap.graph()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.half_edge_to_face"><code class="docutils literal notranslate"><span class="pre">OrientedMap.half_edge_to_face()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.half_edge_to_vertex"><code class="docutils literal notranslate"><span class="pre">OrientedMap.half_edge_to_vertex()</span></code></a></li>
@@ -410,6 +413,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.quad_system"><code class="docutils literal notranslate"><span class="pre">OrientedMap.quad_system()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.quotient"><code class="docutils literal notranslate"><span class="pre">OrientedMap.quotient()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.radial_map"><code class="docutils literal notranslate"><span class="pre">OrientedMap.radial_map()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.reduced_map"><code class="docutils literal notranslate"><span class="pre">OrientedMap.reduced_map()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.relabel"><code class="docutils literal notranslate"><span class="pre">OrientedMap.relabel()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.reverse_orientation"><code class="docutils literal notranslate"><span class="pre">OrientedMap.reverse_orientation()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.set_canonical_labels"><code class="docutils literal notranslate"><span class="pre">OrientedMap.set_canonical_labels()</span></code></a></li>
@@ -443,6 +447,17 @@
 <p>Combinatorial maps on oriented surfaces</p>
 <p>The main class in this module is <a class="reference internal" href="#combisurf.oriented_map.OrientedMap" title="combisurf.oriented_map.OrientedMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">OrientedMap</span></code></a> which describes a
 cell decomposition of an oriented surface.</p>
+<p>A <em>walk</em> on a map is a word (see <a class="reference internal" href="word.html#module-combisurf.word" title="combisurf.word"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.word</span></code></a>) whose letters are
+active half-edges of the map and such that each half-edge ends at the vertex
+where the next one starts. It can be given as a string such as <code class="docutils literal notranslate"><span class="pre">&quot;0,~1&quot;</span></code>, a
+list of integers or an <code class="docutils literal notranslate"><span class="pre">array('i')</span></code>. A walk is <em>closed</em> if moreover its last
+half-edge ends at the vertex where its first one starts.</p>
+<p>A <em>multiwalk</em> is a finite collection of walks with non-negative integer
+multiplicities. It can be given as a single walk (with multiplicity one), a
+list of walks <code class="docutils literal notranslate"><span class="pre">[w0,</span> <span class="pre">w1,</span> <span class="pre">...]</span></code> (each with multiplicity one) or a list of pairs
+<code class="docutils literal notranslate"><span class="pre">[(w0,</span> <span class="pre">m0),</span> <span class="pre">(w1,</span> <span class="pre">m1),</span> <span class="pre">...]</span></code>. It is taken as given: backtracking is not
+simplified, repeated walks are not merged and conjugate closed walks are not
+identified.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="combisurf.oriented_map.OrientedMap">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">combisurf.oriented_map.</span></span><span class="sig-name descname"><span class="pre">OrientedMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/oriented_map.html#OrientedMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.oriented_map.OrientedMap" title="Link to this definition">#</a></dt>
@@ -1400,6 +1415,98 @@ argument <code class="docutils literal notranslate"><span class="pre">connected<
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="combisurf.oriented_map.OrientedMap.geometric_intersection">
+<span class="sig-name descname"><span class="pre">geometric_intersection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">punctured_faces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/oriented_map.html#OrientedMap.geometric_intersection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.oriented_map.OrientedMap.geometric_intersection" title="Link to this definition">#</a></dt>
+<dd><p>Return the geometric intersection between two multiwalks or the self-intersection
+of a single one.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">u</span></code> – a multiwalk of closed walks, given in one of the following forms
+(see the module documentation):</p>
+<ul>
+<li><p>a single walk <code class="docutils literal notranslate"><span class="pre">w</span></code></p></li>
+<li><p>a list of walks <code class="docutils literal notranslate"><span class="pre">[w0,</span> <span class="pre">w1,</span> <span class="pre">...]</span></code></p></li>
+<li><p>a list of pairs (walk, multiplicity) <code class="docutils literal notranslate"><span class="pre">[(w0,</span> <span class="pre">m0),</span> <span class="pre">(w1,</span> <span class="pre">m1),</span> <span class="pre">...]</span></code></p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">v</span></code> – (default <code class="docutils literal notranslate"><span class="pre">None</span></code>) an optional multiwalk of closed walks, in one
+of the same forms</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">punctured_faces</span></code> – either a boolean (default <code class="docutils literal notranslate"><span class="pre">False</span></code>) or a list of
+face indices. If set to <code class="docutils literal notranslate"><span class="pre">False</span></code> or <code class="docutils literal notranslate"><span class="pre">True</span></code> then respectively no face or
+all faces are considered as punctured. If a list of integers is provided,
+then the faces corresponding to them are considered as punctured.</p></li>
+</ul>
+<p>OUTPUT: integer. Either the self-intersection of <code class="docutils literal notranslate"><span class="pre">u</span></code> if <code class="docutils literal notranslate"><span class="pre">v</span></code> is not
+provided or the geometric intersection between <code class="docutils literal notranslate"><span class="pre">u</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code>.</p>
+<p>The self-intersection counts each crossing once, while the intersection
+of <code class="docutils literal notranslate"><span class="pre">u</span></code> with itself counts it twice: for a closed curve <code class="docutils literal notranslate"><span class="pre">c</span></code> one has
+<cite>i(c, c) = 2 i(c)</cite>.</p>
+<p>EXAMPLES:</p>
+<p>A sample of curves on a pair of pants:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">P</span> <span class="o">=</span> <span class="n">OrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0)(1)(~0,~1)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">(),</span> <span class="n">P</span><span class="o">.</span><span class="n">num_faces</span><span class="p">()</span>
+<span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">w0</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">w1</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">w2</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">geometric_intersection</span><span class="p">(</span><span class="n">w0</span><span class="p">,</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="mi">1</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">geometric_intersection</span><span class="p">([</span><span class="n">w0</span><span class="p">],</span> <span class="p">[</span><span class="n">w2</span><span class="p">],</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="mi">2</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">geometric_intersection</span><span class="p">([(</span><span class="n">w0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="n">w1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)],</span> <span class="p">[(</span><span class="n">w2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)],</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="mi">28</span>
+</pre></div>
+</div>
+<p>The self-intersection against the intersection with itself:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">geometric_intersection</span><span class="p">(</span><span class="n">w1</span><span class="p">,</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="mi">2</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">geometric_intersection</span><span class="p">(</span><span class="n">w1</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="mi">4</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>Each call builds a new
+<a class="reference internal" href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionPairing" title="combisurf.geometric_intersection.GeometricIntersectionPairing"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometricIntersectionPairing</span></code></a>,
+which computes a reduced map. To compute many intersection numbers on
+the same map, build the pairing once and call it instead, and to
+compute all the intersection numbers among a fixed list of curves use
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">intersection_matrix()</span></code>.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.oriented_map.OrientedMap.geometric_intersection_matrix">
+<span class="sig-name descname"><span class="pre">geometric_intersection_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wlist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">punctured_faces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/oriented_map.html#OrientedMap.geometric_intersection_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.oriented_map.OrientedMap.geometric_intersection_matrix" title="Link to this definition">#</a></dt>
+<dd><p>Return the <code class="docutils literal notranslate"><span class="pre">GeometricIntersectionMatrix</span></code> of <code class="docutils literal notranslate"><span class="pre">wlist</span></code>.</p>
+<p>The <a class="reference internal" href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix" title="combisurf.geometric_intersection.GeometricIntersectionMatrix"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometricIntersectionMatrix</span></code></a> is a
+lazy object that can be queried to answer pairwise intersections among the curves
+represented by the walks in <code class="docutils literal notranslate"><span class="pre">wlist</span></code>. It is much faster than repeated calls
+to <a class="reference internal" href="#combisurf.oriented_map.OrientedMap.geometric_intersection" title="combisurf.oriented_map.OrientedMap.geometric_intersection"><code class="xref py py-meth docutils literal notranslate"><span class="pre">geometric_intersection()</span></code></a>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.lyndon_word_family</span><span class="w"> </span><span class="kn">import</span> <span class="n">cyclically_reduced_lyndon_words</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">torus</span> <span class="o">=</span> <span class="n">OrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,~0,~1)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">I</span> <span class="o">=</span> <span class="n">torus</span><span class="o">.</span><span class="n">geometric_intersection_matrix</span><span class="p">(</span><span class="n">cyclically_reduced_lyndon_words</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">up_to_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">I</span>
+<span class="n">GeometricIntersectionMatrix</span> <span class="n">of</span> <span class="mi">8</span> <span class="n">curves</span> <span class="n">on</span> <span class="n">OrientedMap</span><span class="p">(</span><span class="s2">"(0,1,~0,~1)"</span><span class="p">,</span> <span class="s2">"(0,1,~0,~1)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">I</span><span class="o">.</span><span class="n">row</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">I</span><span class="o">.</span><span class="n">matrix</span><span class="p">())</span>
+<span class="p">[</span><span class="mi">0</span> <span class="mi">1</span> <span class="mi">1</span> <span class="mi">1</span> <span class="mi">1</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">2</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">1</span> <span class="mi">0</span> <span class="mi">1</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">2</span> <span class="mi">1</span> <span class="mi">1</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">1</span> <span class="mi">1</span> <span class="mi">0</span> <span class="mi">2</span> <span class="mi">1</span> <span class="mi">3</span> <span class="mi">1</span> <span class="mi">3</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">1</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">0</span> <span class="mi">3</span> <span class="mi">1</span> <span class="mi">3</span> <span class="mi">1</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">1</span> <span class="mi">2</span> <span class="mi">1</span> <span class="mi">3</span> <span class="mi">0</span> <span class="mi">4</span> <span class="mi">3</span> <span class="mi">5</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="mi">1</span> <span class="mi">4</span> <span class="mi">0</span> <span class="mi">5</span> <span class="mi">3</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">2</span> <span class="mi">1</span> <span class="mi">1</span> <span class="mi">3</span> <span class="mi">3</span> <span class="mi">5</span> <span class="mi">0</span> <span class="mi">4</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">2</span> <span class="mi">1</span> <span class="mi">3</span> <span class="mi">1</span> <span class="mi">5</span> <span class="mi">3</span> <span class="mi">4</span> <span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="combisurf.oriented_map.OrientedMap.graph">
 <span class="sig-name descname"><span class="pre">graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subdivide</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/oriented_map.html#OrientedMap.graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.oriented_map.OrientedMap.graph" title="Link to this definition">#</a></dt>
 <dd><p>Return the sage graph, the embedding and the root edge associated to this map.</p>
@@ -2072,6 +2179,199 @@ mutable</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="combisurf.oriented_map.OrientedMap.reduced_map">
+<span class="sig-name descname"><span class="pre">reduced_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">forest</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coforest</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapping</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/oriented_map.html#OrientedMap.reduced_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.oriented_map.OrientedMap.reduced_map" title="Link to this definition">#</a></dt>
+<dd><p>Return the map obtained by contracting <code class="docutils literal notranslate"><span class="pre">forest</span></code> and deleting <code class="docutils literal notranslate"><span class="pre">coforest</span></code>.</p>
+<p>The vertices of the result are the trees of <code class="docutils literal notranslate"><span class="pre">forest</span></code> and its faces
+are the trees of <code class="docutils literal notranslate"><span class="pre">coforest</span></code>. Its edges are the complementary edges,
+which keep their labels unless <code class="docutils literal notranslate"><span class="pre">relabel</span></code> is set. If the pair
+(<code class="docutils literal notranslate"><span class="pre">forest</span></code>, <code class="docutils literal notranslate"><span class="pre">coforest</span></code>) is a tree-cotree decomposition then the
+resulting map has a single vertex and a single face.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">forest</span></code>, <code class="docutils literal notranslate"><span class="pre">coforest</span></code> – (default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) the half-edges of the
+edges to contract and to delete, in the format returned by
+<a class="reference internal" href="#combisurf.oriented_map.OrientedMap.forest_coforest_decomposition" title="combisurf.oriented_map.OrientedMap.forest_coforest_decomposition"><code class="xref py py-meth docutils literal notranslate"><span class="pre">forest_coforest_decomposition()</span></code></a>; entries equal to <code class="docutils literal notranslate"><span class="pre">-1</span></code> are
+ignored. When both are <code class="docutils literal notranslate"><span class="pre">None</span></code> a decomposition is computed. Listing
+the same edge twice raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">relabel</span></code> – boolean (default: <code class="docutils literal notranslate"><span class="pre">False</span></code>); whether to relabel the
+result on <code class="docutils literal notranslate"><span class="pre">0,</span> <span class="pre">1,</span> <span class="pre">...,</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">ne</span> <span class="pre">-</span> <span class="pre">1</span></code> so that it has no inactive
+half-edge. Contracting and deleting never renumber, so without this
+the labels of the complementary edges are kept and are sparse. The
+relabelling goes edge by edge, in increasing order, and preserves
+the parity of each half-edge inside its edge.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mapping</span></code> – boolean (default: <code class="docutils literal notranslate"><span class="pre">False</span></code>); whether to also return
+the projection, a list indexed by the half-edges of this map giving
+for each of them the walk it becomes in the result, as an array of
+half-edges of the result (<code class="docutils literal notranslate"><span class="pre">None</span></code> for inactive half-edges). A
+complementary half-edge is sent to itself, a half-edge of a
+contracted edge to the empty walk and a half-edge of a deleted edge
+to a walk homotopic to it, see below. The walk of <code class="docutils literal notranslate"><span class="pre">ep(h)</span></code> is the
+reverse of the walk of <code class="docutils literal notranslate"><span class="pre">h</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mutable</span></code> – boolean (default: <code class="docutils literal notranslate"><span class="pre">False</span></code>); whether the result is
+mutable</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">check</span></code> – boolean (default: <code class="docutils literal notranslate"><span class="pre">True</span></code>); whether to check that the
+half-edges of <code class="docutils literal notranslate"><span class="pre">forest</span></code> and <code class="docutils literal notranslate"><span class="pre">coforest</span></code> are ones of this map, that
+neither contains a cycle, and to check the map built. Listing the
+same edge twice is reported whatever its value.</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">OrientedMap</span><span class="p">(</span><span class="s2">"(0,5,~4,7,4,~5)(~0,~1,~2,3,2,~6)(1,~3,~7,6)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span>
+<span class="n">OrientedMap</span><span class="p">(</span><span class="s2">"(0,5,~4,7,4,~5)(~0,~1,~2,3,2,~6)(1,~3,~7,6)"</span><span class="p">,</span> <span class="s2">"(0,~6,~7,~4,7,~3,~2,3,1,~0,~5)(~1,6,2)(4,5)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">genus</span><span class="p">(),</span> <span class="n">m</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">(),</span> <span class="n">m</span><span class="o">.</span><span class="n">num_faces</span><span class="p">())</span>
+<span class="mi">2</span> <span class="mi">3</span> <span class="mi">3</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">r</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">reduced_map</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">r</span>
+<span class="n">OrientedMap</span><span class="p">(</span><span class="s2">"(1,~3,~5,~1,~2,3,2,5)"</span><span class="p">,</span> <span class="s2">"(1,~5,2,~1,5,~3,~2,3)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">genus</span><span class="p">(),</span> <span class="n">r</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">(),</span> <span class="n">r</span><span class="o">.</span><span class="n">num_faces</span><span class="p">())</span>
+<span class="mi">2</span> <span class="mi">1</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>With a forest and a coforest that are not spanning, the result has one
+vertex per tree of the forest and one face per tree of the coforest:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">f</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">forest_coforest_decomposition</span><span class="p">(</span><span class="n">root_vertices</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">root_faces</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">r</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">reduced_map</span><span class="p">(</span><span class="n">forest</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">coforest</span><span class="o">=</span><span class="n">c</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">genus</span><span class="p">(),</span> <span class="n">r</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">(),</span> <span class="n">r</span><span class="o">.</span><span class="n">num_faces</span><span class="p">())</span>
+<span class="mi">2</span> <span class="mi">2</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>The labels of the complementary edges are kept, and <code class="docutils literal notranslate"><span class="pre">relabel</span></code> makes
+them consecutive:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">f</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">comp</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">forest_coforest_decomposition</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">comp</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">reduced_map</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+<span class="n">OrientedMap</span><span class="p">(</span><span class="s2">"(1,~3,~5,~1,~2,3,2,5)"</span><span class="p">,</span> <span class="s2">"(1,~5,2,~1,5,~3,~2,3)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">reduced_map</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">relabel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">OrientedMap</span><span class="p">(</span><span class="s2">"(0,~2,~3,~0,~1,2,1,3)"</span><span class="p">,</span> <span class="s2">"(0,~3,1,~0,3,~2,~1,2)"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With <code class="docutils literal notranslate"><span class="pre">mapping</span></code>, the projection is returned as well. A half-edge of a
+deleted edge lies on the boundary of a disk, made of the faces of the
+coforest beyond it, and its walk goes around the other side of that
+disk:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">r</span><span class="p">,</span> <span class="n">proj</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">reduced_map</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">proj</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">5</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">6</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">7</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">11</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">10</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">10</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">11</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span>
+ <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">all</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">proj</span><span class="p">[</span><span class="n">h</span> <span class="o">^^</span> <span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">_ep</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">proj</span><span class="p">[</span><span class="n">h</span><span class="p">])]</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">half_edges</span><span class="p">())</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+<p>The radial map of the reduced map is the quad system of <a class="reference internal" href="#combisurf.oriented_map.OrientedMap.quad_system" title="combisurf.oriented_map.OrientedMap.quad_system"><code class="xref py py-meth docutils literal notranslate"><span class="pre">quad_system()</span></code></a>
+for the same forest and coforest. The isomorphism between them can be
+read on the projections: a complementary half-edge <code class="docutils literal notranslate"><span class="pre">h</span></code> becomes the
+walk <code class="docutils literal notranslate"><span class="pre">proj[h]</span></code> of length two in the quad system and the walk of
+<code class="docutils literal notranslate"><span class="pre">h</span></code> in the radial map of the reduced map, which gives the image of
+the half-edges of these walks:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">rad_map</span><span class="p">,</span> <span class="n">rad</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">radial_map</span><span class="p">(</span><span class="n">mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="n">qproj</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">quad_system</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">p</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">sage</span><span class="p">:</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">comp</span><span class="p">:</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">e</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+<span class="o">....</span><span class="p">:</span>         <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">rad</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+<span class="o">....</span><span class="p">:</span>         <span class="n">p</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">qproj</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>These walks need not go through every edge of the radial map, as the
+walk of <code class="docutils literal notranslate"><span class="pre">h</span></code> runs through the corners of <code class="docutils literal notranslate"><span class="pre">h</span></code> and of
+<code class="docutils literal notranslate"><span class="pre">next_in_face(h)</span></code>, which the walks of other edges may use as well.
+But the map being connected, the relabelling extends uniquely along the
+face permutation and the edge permutation. It is consistent with the
+value read on the walks and conjugates the face permutations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">rad_map</span><span class="o">.</span><span class="n">num_half_edges</span><span class="p">()</span>
+<span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">rfp</span> <span class="o">=</span> <span class="n">rad_map</span><span class="o">.</span><span class="n">face_permutation</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">qfp</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">face_permutation</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">todo</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="k">while</span> <span class="n">todo</span><span class="p">:</span>
+<span class="o">....</span><span class="p">:</span>     <span class="n">x</span> <span class="o">=</span> <span class="n">todo</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">for</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="ow">in</span> <span class="p">((</span><span class="n">x</span> <span class="o">^^</span> <span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">^^</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="n">rfp</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">qfp</span><span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="n">x</span><span class="p">]])):</span>
+<span class="o">....</span><span class="p">:</span>         <span class="k">if</span> <span class="n">y</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+<span class="o">....</span><span class="p">:</span>             <span class="n">p</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="n">z</span>
+<span class="o">....</span><span class="p">:</span>             <span class="n">todo</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+<span class="o">....</span><span class="p">:</span>         <span class="k">elif</span> <span class="n">p</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">!=</span> <span class="n">z</span><span class="p">:</span>
+<span class="o">....</span><span class="p">:</span>             <span class="k">raise</span> <span class="ne">AssertionError</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">==</span> <span class="n">q</span><span class="o">.</span><span class="n">num_half_edges</span><span class="p">()</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">all</span><span class="p">(</span><span class="n">qfp</span><span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="n">x</span><span class="p">]]</span> <span class="o">==</span> <span class="n">p</span><span class="p">[</span><span class="n">rfp</span><span class="p">[</span><span class="n">x</span><span class="p">]]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">rad_map</span><span class="o">.</span><span class="n">half_edges</span><span class="p">())</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+<p>The relabelling also matches the projections on the contracted edges,
+that both send to the empty walk. On the deleted edges the two
+projections are homotopic walks but differ in general, the quad
+system keeping a walk of length two where the reduced map has to go
+around a disk:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">deleted</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span> <span class="o">//</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">c</span> <span class="k">if</span> <span class="n">h</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">all</span><span class="p">([</span><span class="n">p</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">proj</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">rad</span><span class="p">[</span><span class="n">y</span><span class="p">]]</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="n">qproj</span><span class="p">[</span><span class="n">h</span><span class="p">])</span>
+<span class="o">....</span><span class="p">:</span>     <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">half_edges</span><span class="p">()</span> <span class="k">if</span> <span class="n">h</span> <span class="o">//</span> <span class="mi">2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">deleted</span><span class="p">)</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[(</span><span class="n">proj</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">],</span> <span class="n">qproj</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">])</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">deleted</span><span class="p">]</span>
+<span class="p">[(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">9</span><span class="p">])),</span>
+ <span class="p">(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">11</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">28</span><span class="p">,</span> <span class="mi">21</span><span class="p">]))]</span>
+</pre></div>
+</div>
+<p>On a sphere the reduced map is empty:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">OrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">genus</span><span class="p">()</span>
+<span class="mi">0</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">reduced_map</span><span class="p">(</span><span class="n">mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">(</span><span class="n">OrientedMap</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+ <span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)])</span>
+</pre></div>
+</div>
+<p>Folded edges are allowed, but may be neither contracted nor deleted:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">OrientedMap</span><span class="p">(</span><span class="n">vp</span><span class="o">=</span><span class="s2">"(0,2,~2,4)(~4)"</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">reduced_map</span><span class="p">(</span><span class="n">mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">(</span><span class="n">OrientedMap</span><span class="p">(</span><span class="s2">"(0)"</span><span class="p">,</span> <span class="s2">"(0)"</span><span class="p">),</span>
+ <span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+  <span class="kc">None</span><span class="p">,</span>
+  <span class="kc">None</span><span class="p">,</span>
+  <span class="kc">None</span><span class="p">,</span>
+  <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span>
+  <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span>
+  <span class="kc">None</span><span class="p">,</span>
+  <span class="kc">None</span><span class="p">,</span>
+  <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">),</span>
+  <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)])</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#combisurf.oriented_map.OrientedMap.forest_coforest_decomposition" title="combisurf.oriented_map.OrientedMap.forest_coforest_decomposition"><code class="xref py py-meth docutils literal notranslate"><span class="pre">forest_coforest_decomposition()</span></code></a>, <a class="reference internal" href="#combisurf.oriented_map.OrientedMap.quad_system" title="combisurf.oriented_map.OrientedMap.quad_system"><code class="xref py py-meth docutils literal notranslate"><span class="pre">quad_system()</span></code></a>,
+<a class="reference internal" href="#combisurf.oriented_map.OrientedMap.radial_map" title="combisurf.oriented_map.OrientedMap.radial_map"><code class="xref py py-meth docutils literal notranslate"><span class="pre">radial_map()</span></code></a>, <a class="reference internal" href="#combisurf.oriented_map.OrientedMap.contract_edge" title="combisurf.oriented_map.OrientedMap.contract_edge"><code class="xref py py-meth docutils literal notranslate"><span class="pre">contract_edge()</span></code></a>, <a class="reference internal" href="#combisurf.oriented_map.OrientedMap.delete_edge" title="combisurf.oriented_map.OrientedMap.delete_edge"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete_edge()</span></code></a></p>
+</div>
+<p>ALGORITHM:</p>
+<p>The face permutation of the result is obtained by following, from each
+complementary half-edge, the face permutation composed with the
+involution that exchanges the two half-edges of each deleted edge,
+until the next complementary half-edge. Each half-edge is visited once.</p>
+<p>For the projection, the faces are processed children first in the
+coforest, so that the walk of a deleted half-edge is obtained by
+concatenating the walks already computed on the boundary of its face.
+The cost is linear in the size of the output.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="combisurf.oriented_map.OrientedMap.relabel">
 <span class="sig-name descname"><span class="pre">relabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/oriented_map.html#OrientedMap.relabel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.oriented_map.OrientedMap.relabel" title="Link to this definition">#</a></dt>
 <dd><p>Relabel this triangulation inplace.</p>
@@ -2548,6 +2848,8 @@ sage: m.vertex_turn(3, 7)
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.folded_half_edges"><code class="docutils literal notranslate"><span class="pre">OrientedMap.folded_half_edges()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.forest_coforest_decomposition"><code class="docutils literal notranslate"><span class="pre">OrientedMap.forest_coforest_decomposition()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.genus"><code class="docutils literal notranslate"><span class="pre">OrientedMap.genus()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.geometric_intersection"><code class="docutils literal notranslate"><span class="pre">OrientedMap.geometric_intersection()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.geometric_intersection_matrix"><code class="docutils literal notranslate"><span class="pre">OrientedMap.geometric_intersection_matrix()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.graph"><code class="docutils literal notranslate"><span class="pre">OrientedMap.graph()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.half_edge_to_face"><code class="docutils literal notranslate"><span class="pre">OrientedMap.half_edge_to_face()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.half_edge_to_vertex"><code class="docutils literal notranslate"><span class="pre">OrientedMap.half_edge_to_vertex()</span></code></a></li>
@@ -2574,6 +2876,7 @@ sage: m.vertex_turn(3, 7)
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.quad_system"><code class="docutils literal notranslate"><span class="pre">OrientedMap.quad_system()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.quotient"><code class="docutils literal notranslate"><span class="pre">OrientedMap.quotient()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.radial_map"><code class="docutils literal notranslate"><span class="pre">OrientedMap.radial_map()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.reduced_map"><code class="docutils literal notranslate"><span class="pre">OrientedMap.reduced_map()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.relabel"><code class="docutils literal notranslate"><span class="pre">OrientedMap.relabel()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.reverse_orientation"><code class="docutils literal notranslate"><span class="pre">OrientedMap.reverse_orientation()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.oriented_map.OrientedMap.set_canonical_labels"><code class="docutils literal notranslate"><span class="pre">OrientedMap.set_canonical_labels()</span></code></a></li>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>combisurf.conjugate_tree &#8212; combisurf 0.1.0 documentation</title>
+    <title>combisurf.conjugate_tree_naive &#8212; combisurf 0.1.0 documentation</title>
   
   
   
@@ -48,7 +48,7 @@
     <script src="../../_static/thebelab-helper.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/combisurf/conjugate_tree';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/combisurf/conjugate_tree_naive';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -192,8 +192,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../references.html">References</a></li>
@@ -296,31 +297,31 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <h1>Source code for combisurf.conjugate_tree</h1><div class="highlight"><pre>
+  <h1>Source code for combisurf.conjugate_tree_naive</h1><div class="highlight"><pre>
 <span></span><span class="sa">r</span><span class="sd">"""</span>
-<span class="sd">Conjugate trees</span>
+<span class="sd">Conjugate trees, reference implementation</span>
 
-<span class="sd">A conjugate tree is a generalization of suffix trees from word combinatorics.</span>
-<span class="sd">It is a compact data-structure that contains all factors of all conjugates</span>
-<span class="sd">of a finite list of words.</span>
+<span class="sd">This module holds :class:`ConjugateTreeNaive`, the pure Python conjugate</span>
+<span class="sd">tree. It is the reference against which the fast Cython</span>
+<span class="sd">:class:`~combisurf.conjugate_tree.ConjugateTree` of</span>
+<span class="sd">:mod:`combisurf.conjugate_tree` is tested; everything else in the package</span>
+<span class="sd">uses the fast one. See :mod:`combisurf.conjugate_tree` for what a conjugate</span>
+<span class="sd">tree is.</span>
 
-<span class="sd">The data structures and algorithms in this module are crucial to compute the</span>
-<span class="sd">geometric intersection numbers of curves and multicurves on surfaces.</span>
-
-<span class="sd">More precisely, the leaves of a conjugate tree are in bijection with the</span>
-<span class="sd">conjugates. And each edge is labeled with a finite word that makes it a</span>
-<span class="sd">deterministic automaton (where all vertices of degree 2 have been</span>
-<span class="sd">removed).</span>
+<span class="sd">The two classes answer the same questions with the same node numbering, so</span>
+<span class="sd">either can be substituted for the other. This one stores the children of a</span>
+<span class="sd">node in a dictionary and the per-node data in parallel Python lists, which</span>
+<span class="sd">makes it easy to read and about twenty times slower.</span>
 
 <span class="sd">EXAMPLES:</span>
 
-<span class="sd">The main class from this module is :class:`ConjugateTree` which is initialized</span>
+<span class="sd">The main class from this module is :class:`ConjugateTreeNaive` which is initialized</span>
 <span class="sd">with no argument::</span>
 
-<span class="sd">    sage: from combisurf.conjugate_tree import ConjugateTree</span>
-<span class="sd">    sage: T = ConjugateTree()</span>
+<span class="sd">    sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">    sage: T = ConjugateTreeNaive()</span>
 
-<span class="sd">To populate a conjugate tree one uses the function :meth:`~ConjugateTree.process` that</span>
+<span class="sd">To populate a conjugate tree one uses the function :meth:`~ConjugateTreeNaive.process` that</span>
 <span class="sd">takes as argument a word on non-negative integers (given as a list)::</span>
 
 <span class="sd">    sage: T.process([0])</span>
@@ -332,8 +333,9 @@
 <span class="sd">    sage: T.process([0, 1])</span>
 <span class="sd">    -2</span>
 
-<span class="sd">The output value of :meth:`~ConjugateTree.process` is either a pair ``(False,</span>
-<span class="sd">exponent)`` if the word is not present or ``(True, position)``.</span>
+<span class="sd">The output value of :meth:`~ConjugateTreeNaive.process` is an integer: the</span>
+<span class="sd">exponent of the word when it is new, and otherwise minus the index of the word</span>
+<span class="sd">of the tree that it is conjugate to a power of.</span>
 
 <span class="sd">To get a hand on the structure of the tree, one can use the following functions</span>
 <span class="sd">(the root is always index 0 and is omitted in the output)::</span>
@@ -349,24 +351,24 @@
 <span class="sd">    sage: T.leaf_as_conjugate(6)</span>
 <span class="sd">    (1, 2)</span>
 
-<span class="sd">Which means that the leaf index ``6`` coressponds to the word number ``1``</span>
-<span class="sd">(ie ``[0, 1, 0, 0, 1]``) shifted twice.</span>
+<span class="sd">Which means that the leaf index ``6`` corresponds to the word number ``1``</span>
+<span class="sd">(i.e. ``[0, 1, 0, 0, 1]``) shifted twice.</span>
 <span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">array</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_check</span><span class="p">,</span> <span class="n">word_init</span>
 
 
-<span class="n">VERBOSE</span> <span class="o">=</span> <span class="kc">False</span>
-<span class="n">INDENT</span> <span class="o">=</span> <span class="mi">0</span>
-<div class="viewcode-block" id="ConjugateTree">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ConjugateTree</span><span class="p">:</span>
+<div class="viewcode-block" id="ConjugateTreeNaive">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConjugateTreeNaive</span><span class="p">:</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">    Tree structure to store all conjugates of a finite set of primitive words.</span>
 
 <span class="sd">    The data structure works with words over non-negative integers.  The nodes</span>
 <span class="sd">    are encoded with integers from 0 to the number of nodes minus one. The root</span>
-<span class="sd">    always get the index ``0`` and created nodes gets the first available index</span>
+<span class="sd">    always gets the index ``0`` and created nodes get the first available index</span>
 <span class="sd">    (nodes are never deleted). In all algorithms, a node index is often denoted</span>
 <span class="sd">    by a variable ``s``.</span>
 
@@ -392,7 +394,15 @@
 <span class="sd">      associated variables are often denoted ``i``, ``k`` and ``p`` in the</span>
 <span class="sd">      algorithms.</span>
 <span class="sd">    """</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alphabet</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reserve</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        INPUT:</span>
+
+<span class="sd">        - ``alphabet``, ``reserve``, ``algorithm`` -- ignored; they are</span>
+<span class="sd">          accepted so that this class is a drop-in replacement for the</span>
+<span class="sd">          Cython :class:`~combisurf.conjugate_tree.ConjugateTree`, which</span>
+<span class="sd">          uses them to pick and to size its transition table.</span>
+<span class="sd">        """</span>
         <span class="c1"># NOTE: -2 is a special code for uninitialized (see _add_node), when adding a node we reallocate accordingly</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_words</span> <span class="o">=</span> <span class="p">[]</span>            <span class="c1"># (primitive) words defining the tree</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_depth</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>           <span class="c1"># internal state -&gt; word length</span>
@@ -402,19 +412,18 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># state -&gt; word index</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_max_read</span> <span class="o">=</span> <span class="p">[]</span>
 
-<div class="viewcode-block" id="ConjugateTree.words">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.words">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.words">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.words">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">words</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Return the list of primitive words that define this conjugate tree.</span>
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,1,0,1])</span>
 <span class="sd">            2</span>
 <span class="sd">            sage: T.process([0,1,0,0,1])</span>
@@ -429,9 +438,182 @@
         <span class="k">return</span> <span class="p">[</span><span class="n">w</span><span class="p">[:]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">]</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.pprint">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.pprint">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">pprint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="ConjugateTreeNaive.num_words">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_words">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">num_words</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the number of primitive words that define this conjugate tree.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0,1,0,1])</span>
+<span class="sd">            2</span>
+<span class="sd">            sage: T.num_words()</span>
+<span class="sd">            1</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConjugateTreeNaive.word">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">word</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the ``i``-th primitive word of this conjugate tree.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0,1,0,0,1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.word(0)</span>
+<span class="sd">            array('i', [0, 1, 0, 0, 1])</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"i (=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">) must be the index of a word"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">][:]</span></div>
+
+
+<div class="viewcode-block" id="ConjugateTreeNaive.word_length">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word_length">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">word_length</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the length of the ``i``-th primitive word of this conjugate</span>
+<span class="sd">        tree.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0,1,0,0,1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.word_length(0)</span>
+<span class="sd">            5</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"i (=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">) must be the index of a word"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">])</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_letter_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the ``k``-th letter of the ``i``-th word, read cyclically.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0, 4, 2, 3])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T._letter_at(0, 19)</span>
+<span class="sd">            3</span>
+<span class="sd">            sage: T._letter_at(0, -1)</span>
+<span class="sd">            3</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"i (=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">) must be the index of a word"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ConjugateTreeNaive.alphabet">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.alphabet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">alphabet</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return ``0``: this class is not told the alphabet.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: ConjugateTreeNaive(8).alphabet()</span>
+<span class="sd">            0</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="ConjugateTreeNaive.algorithm">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.algorithm">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">algorithm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return ``'dict'``: this class holds the children of a node in a</span>
+<span class="sd">        dictionary.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: ConjugateTreeNaive().algorithm()</span>
+<span class="sd">            'dict'</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="s1">'dict'</span></div>
+
+
+<div class="viewcode-block" id="ConjugateTreeNaive.transitions">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.transitions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the children of the node ``s`` as a dictionary mapping the</span>
+<span class="sd">        first letter of a transition to its target, ordered by letter.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0,1,1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.transitions(0)</span>
+<span class="sd">            {0: 1, 1: 3}</span>
+<span class="sd">            sage: T.transitions(1)</span>
+<span class="sd">            {}</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"s (=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">) must be a node"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_pprint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Print the transitions of this conjugate tree.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0,1,1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T._pprint()</span>
+<span class="sd">             0 --0(i=0, k=0)--&gt;  1</span>
+<span class="sd">             0 --1([1])--&gt;  3</span>
+<span class="sd">             3 --0(i=0, k=3)--&gt;  4</span>
+<span class="sd">             3 --1(i=0, k=2)--&gt;  2</span>
+
+<span class="sd">        TESTS:</span>
+
+<span class="sd">        The label of the transition from 11 to 15 wraps around the end of</span>
+<span class="sd">        the second word::</span>
+
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([1, 1, 2, 1, 0, 0, 1, 0])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.process([1, 0])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T._pprint()</span>
+<span class="sd">             0 --0([0])--&gt;  7</span>
+<span class="sd">             0 --1([1])--&gt;  2</span>
+<span class="sd">             0 --2(i=0, k=2)--&gt;  4</span>
+<span class="sd">             2 --0([0])--&gt;  9</span>
+<span class="sd">             2 --1(i=0, k=1)--&gt;  1</span>
+<span class="sd">             2 --2(i=0, k=2)--&gt;  3</span>
+<span class="sd">             7 --0(i=0, k=5)--&gt;  6</span>
+<span class="sd">             7 --1([1])--&gt; 11</span>
+<span class="sd">             9 --0(i=0, k=5)--&gt;  5</span>
+<span class="sd">             9 --1([1])--&gt; 13</span>
+<span class="sd">            11 --0([0, 1])--&gt; 15</span>
+<span class="sd">            11 --1(i=0, k=9)--&gt; 12</span>
+<span class="sd">            13 --0(i=1, k=3)--&gt; 14</span>
+<span class="sd">            13 --1(i=0, k=9)--&gt; 10</span>
+<span class="sd">            15 --0(i=1, k=5)--&gt; 16</span>
+<span class="sd">            15 --1(i=0, k=9)--&gt;  8</span>
+<span class="sd">        """</span>
         <span class="n">ans</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">transitions</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">transitions</span><span class="p">):</span>
@@ -440,21 +622,20 @@
                 <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
                 <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
                 <span class="k">if</span> <span class="n">p</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
-                    <span class="n">ans</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2"> --</span><span class="si">{</span><span class="n">letter</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">k</span><span class="p">:</span><span class="n">p</span><span class="p">]</span><span class="si">}</span><span class="s2">)--&gt; </span><span class="si">{</span><span class="n">ss</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                    <span class="n">ans</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2"> --</span><span class="si">{</span><span class="n">letter</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_slice</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">)</span><span class="si">}</span><span class="s2">)--&gt; </span><span class="si">{</span><span class="n">ss</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">ans</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2"> --</span><span class="si">{</span><span class="n">letter</span><span class="si">}</span><span class="s2">(i=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">)--&gt; </span><span class="si">{</span><span class="n">ss</span><span class="si">:</span><span class="s2">2</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ans</span><span class="p">))</span></div>
-
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ans</span><span class="p">))</span>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">"SuffixTree with </span><span class="si">{}</span><span class="s2"> states, </span><span class="si">{}</span><span class="s2"> leaves and </span><span class="si">{}</span><span class="s2"> implicit nodes"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">(),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">leaves</span><span class="p">()),</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">())</span>
+        <span class="k">return</span> <span class="s2">"ConjugateTreeNaive with </span><span class="si">{}</span><span class="s2"> states, </span><span class="si">{}</span><span class="s2"> leaves and </span><span class="si">{}</span><span class="s2"> implicit nodes"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">(),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">leaves</span><span class="p">()),</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">())</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_leaf_shift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Given a leaf with index ``s`` return the leaf corresponding to its shifted word.</span>
 
-<span class="sd">        The function ``leaf_shift`` is a permutation of the leaves of this conjugate</span>
+<span class="sd">        This function is a permutation of the leaves of this conjugate</span>
 <span class="sd">        tree whose orbits represent conjugate words. There is no need for this function</span>
 <span class="sd">        as each processing of a word provides a cycle of the created leaves (by</span>
 <span class="sd">        increasing order).</span>
@@ -463,9 +644,9 @@
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 
 <span class="sd">        Get the orbit `(1,2,4,5,6,8,10)` from the first word::</span>
 
@@ -501,8 +682,8 @@
 <span class="sd">            12 -&gt; 14</span>
 <span class="sd">            14 -&gt; 12</span>
 <span class="sd">        """</span>
-        <span class="c1"># NOTE: in the case the transition to s is made of a single letter</span>
-        <span class="c1"># we have to go through the tree</span>
+        <span class="c1"># NOTE: the shifted leaf is reached from the suffix link of the parent</span>
+        <span class="c1"># of s by reading down the rest of the label of s</span>
         <span class="k">if</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ancestor</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
@@ -528,8 +709,8 @@
             <span class="n">ss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">ss</span><span class="p">][</span><span class="n">letter</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">ss</span>
 
-<div class="viewcode-block" id="ConjugateTree.leaf_as_conjugate">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.leaf_as_conjugate">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.leaf_as_conjugate">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">leaf_as_conjugate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Return the pair ``(i, k)`` such that the leaf ``s`` corresponds to the</span>
@@ -537,9 +718,9 @@
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,0,0,1,0,2])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T.process([1,2,1,2,1,1,2])</span>
@@ -548,9 +729,26 @@
 <span class="sd">            1</span>
 <span class="sd">            sage: [T.leaf_as_conjugate(s) for s in T.leaves()] == [(i, k) for i, w in enumerate(T.words()) for k in range(len(w))]</span>
 <span class="sd">            True</span>
+
+<span class="sd">        TESTS::</span>
+
+<span class="sd">            sage: T.internal_states()</span>
+<span class="sd">            [2, 4, 9, 11, 13, 15, 18, 20, 22]</span>
+<span class="sd">            sage: T.leaf_as_conjugate(2)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: s (=2) must be a leaf</span>
+<span class="sd">            sage: T.leaf_as_conjugate(0)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: s (=0) must be a leaf</span>
+<span class="sd">            sage: T.leaf_as_conjugate(T.num_states())</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: s (=24) must be a leaf</span>
 <span class="sd">        """</span>
-        <span class="k">if</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ancestor</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ancestor</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"s (=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">) must be a leaf"</span><span class="p">)</span>
         <span class="n">i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
         <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
         <span class="n">ss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ancestor</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
@@ -558,8 +756,8 @@
         <span class="k">return</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">ans</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.size">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.size">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.size">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.size">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Return the size of this conjugate tree.</span>
@@ -569,9 +767,9 @@
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,0,0,0,1])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T.size()</span>
@@ -583,7 +781,7 @@
 
 <span class="sd">        The total size is the same if we input the two words in the opposite order::</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,0,0,1])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T.size()</span>
@@ -605,8 +803,8 @@
         <span class="k">return</span> <span class="n">ans</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.num_states">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.num_states">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.num_states">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_states">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">num_states</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Return the number of states.</span>
@@ -614,8 +812,8 @@
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.internal_states">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.internal_states">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.internal_states">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_states">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">internal_states</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Return the internal states in this conjugate tree.</span>
@@ -626,20 +824,19 @@
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,0,0,1])</span>
 <span class="sd">            1</span>
-<span class="sd">            sage: T.size()</span>
-<span class="sd">            7</span>
-
+<span class="sd">            sage: T.internal_states()</span>
+<span class="sd">            [2, 4]</span>
 <span class="sd">        """</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">())</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]]</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.leaves">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.leaves">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.leaves">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaves">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">leaves</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Return the leaves in this conjugate tree.</span>
@@ -650,9 +847,9 @@
 
 <span class="sd">        TESTS::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,1,1])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T.process([0,1])</span>
@@ -663,27 +860,34 @@
         <span class="k">return</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">())</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]]</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.cyclically_sorted_leaves">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">cyclically_sorted_leaves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angles</span><span class="p">):</span>
+<div class="viewcode-block" id="ConjugateTreeNaive.cyclically_sorted_leaves">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cyclically_sorted_leaves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">pivot</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
-<span class="sd">        Return the leaves sorted using a cyclic ordering of the alphabet given by ``angles``.</span>
+<span class="sd">        Return the leaves sorted by the order of the letters ``order``, the</span>
+<span class="sd">        order below a node being turned by ``pivot``.</span>
+
+<span class="sd">        See</span>
+<span class="sd">        :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves`:</span>
+<span class="sd">        the children of the root are visited by increasing ``order[c]`` and</span>
+<span class="sd">        the children of an internal node whose label ends with the letter</span>
+<span class="sd">        ``b`` by increasing ``(order[c] - pivot[b]) % n``.</span>
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,1,1])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T.process([0,1])</span>
 <span class="sd">            1</span>
-<span class="sd">            sage: T.cyclically_sorted_leaves([0, 1])</span>
+<span class="sd">            sage: T.cyclically_sorted_leaves([0, 1], [1, 0])</span>
 <span class="sd">            [6, 1, 8, 4, 2]</span>
 <span class="sd">        """</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
         <span class="n">leaves</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">queue</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">letter</span><span class="p">]</span> <span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">letter</span><span class="p">:</span> <span class="n">angles</span><span class="p">[</span><span class="n">letter</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+        <span class="n">queue</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">letter</span><span class="p">]</span> <span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">letter</span><span class="p">:</span> <span class="n">order</span><span class="p">[</span><span class="n">letter</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
         <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
             <span class="n">s</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
@@ -691,30 +895,182 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
                 <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
-                <span class="n">last_letter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">^</span> <span class="mi">1</span>
-                <span class="n">transitions</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">letter</span><span class="p">:</span> <span class="p">(</span><span class="n">angles</span><span class="p">[</span><span class="n">letter</span><span class="p">]</span> <span class="o">-</span> <span class="n">angles</span><span class="p">[</span><span class="n">last_letter</span><span class="p">])</span> <span class="o">%</span>  <span class="n">n</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">base</span> <span class="o">=</span> <span class="n">pivot</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+                <span class="n">transitions</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">letter</span><span class="p">:</span> <span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="n">letter</span><span class="p">]</span> <span class="o">-</span> <span class="n">base</span><span class="p">)</span> <span class="o">%</span> <span class="n">n</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 <span class="n">queue</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="n">letter</span><span class="p">]</span> <span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">transitions</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">leaves</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.graph">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.graph">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.sorted_leaves_as_conjugates">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.sorted_leaves_as_conjugates">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sorted_leaves_as_conjugates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">pivot</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the conjugates of the leaves in the order of</span>
+<span class="sd">        :meth:`cyclically_sorted_leaves`.</span>
+
+<span class="sd">        This is a drop-in for</span>
+<span class="sd">        :meth:`~combisurf.conjugate_tree.ConjugateTree.sorted_leaves_as_conjugates`,</span>
+<span class="sd">        with the same arguments, output and errors, computed from</span>
+<span class="sd">        :meth:`cyclically_sorted_leaves` and :meth:`leaf_as_conjugate`.</span>
+
+<span class="sd">        INPUT:</span>
+
+<span class="sd">        - ``order``, ``pivot`` -- as in</span>
+<span class="sd">          :meth:`~combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves`</span>
+
+<span class="sd">        OUTPUT: two arrays of typecode ``'i'``, with one entry per leaf: the</span>
+<span class="sd">        index ``i`` of its word and its shift ``k``, as in</span>
+<span class="sd">        :meth:`leaf_as_conjugate`</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0, 1, 1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.process([0, 1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.sorted_leaves_as_conjugates([0, 1], [1, 0])</span>
+<span class="sd">            (array('i', [1, 0, 1, 0, 0]), array('i', [0, 0, 1, 2, 1]))</span>
+<span class="sd">            sage: [T.leaf_as_conjugate(s) for s in T.cyclically_sorted_leaves([0, 1], [1, 0])]</span>
+<span class="sd">            [(1, 0), (0, 0), (1, 1), (0, 2), (0, 1)]</span>
+
+<span class="sd">        TESTS::</span>
+
+<span class="sd">            sage: T.sorted_leaves_as_conjugates([0, 1], [0, 2])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: pivot must be a sequence of 2 values in {0, 1}</span>
+<span class="sd">            sage: T.sorted_leaves_as_conjugates([], [])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: order must be non-empty</span>
+<span class="sd">            sage: T.sorted_leaves_as_conjugates([1, 1], [0, 1])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: order must be a permutation of {0, 1}</span>
+<span class="sd">            sage: T.sorted_leaves_as_conjugates([0], [0])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: the letters of this tree do not fit in an alphabet of size 1</span>
+<span class="sd">            sage: T.sorted_leaves_as_conjugates([0, 1], [0])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: pivot must be a sequence of 2 values in {0, 1}</span>
+<span class="sd">        """</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"order must be non-empty"</span><span class="p">)</span>
+        <span class="n">pivot_error</span> <span class="o">=</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"pivot must be a sequence of </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> values in "</span>
+                                 <span class="s2">"{</span><span class="si">%s</span><span class="s2">}"</span> <span class="o">%</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pivot</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">pivot_error</span>
+        <span class="k">if</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"order must be a permutation of {</span><span class="si">%s</span><span class="s2">}"</span> <span class="o">%</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">letter</span> <span class="o">&gt;=</span> <span class="n">n</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_words</span> <span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">w</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"the letters of this tree do not fit in an alphabet of size </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">p</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">&gt;=</span> <span class="n">n</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pivot</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">pivot_error</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)</span>
+        <span class="n">shifts</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cyclically_sorted_leaves</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">pivot</span><span class="p">):</span>
+            <span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">leaf_as_conjugate</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+            <span class="n">words</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">shifts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">shifts</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConjugateTreeNaive.graph">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.graph">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return this conjugate tree as a directed graph, each edge labelled by</span>
+<span class="sd">        the letters it reads, or by its first letter only if it ends at a</span>
+<span class="sd">        leaf (such an edge reads an infinite periodic word).</span>
+
+<span class="sd">        The letters are separated by commas once the tree has a letter</span>
+<span class="sd">        larger than `9`, so that a label can be read back.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0,1,1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.graph()</span>
+<span class="sd">            Digraph on 5 vertices</span>
+<span class="sd">            sage: sorted(T.graph().edges())</span>
+<span class="sd">            [(0, 1, '0'), (0, 3, '1'), (3, 2, '1'), (3, 4, '0')]</span>
+
+<span class="sd">        With a letter larger than `9`::</span>
+
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([12,1,2])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.process([12,1,1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: sorted(T.graph().edges())</span>
+<span class="sd">            [(0, 3, '2'),</span>
+<span class="sd">             (0, 4, '12,1'),</span>
+<span class="sd">             (0, 6, '1'),</span>
+<span class="sd">             (4, 1, '2'),</span>
+<span class="sd">             (4, 5, '1'),</span>
+<span class="sd">             (6, 2, '2'),</span>
+<span class="sd">             (6, 7, '1'),</span>
+<span class="sd">             (6, 8, '12')]</span>
+<span class="sd">        """</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.graphs.digraph</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiGraph</span>
         <span class="n">G</span> <span class="o">=</span> <span class="n">DiGraph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">(),</span> <span class="n">loops</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">multiedges</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">()):</span>
             <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-                <span class="c1"># w = self._words[self._transition_word[t]]</span>
-                <span class="n">i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
-                <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
-                <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
-                <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+                <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edge_label</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">G</span></div>
 
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_edge_label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the label of the edge ending at the node ``t``: the letters it</span>
+<span class="sd">        reads, or only its first letter if ``t`` is a leaf (such an edge</span>
+<span class="sd">        reads an infinite periodic word). The letters are separated by</span>
+<span class="sd">        commas once the tree has a letter larger than `9`.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0,1,1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T._edge_label(1)</span>
+<span class="sd">            '0'</span>
+<span class="sd">            sage: T._edge_label(3)</span>
+<span class="sd">            '1'</span>
+
+<span class="sd">        TESTS::</span>
+
+<span class="sd">            sage: T._edge_label(0)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: t (=0) must be a node</span>
+<span class="sd">            sage: T._edge_label(-1)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: t (=-1) must be a node</span>
+<span class="sd">            sage: T._edge_label(T.num_states())</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: t (=5) must be a node</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">t</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"t (=</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">) must be a node"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">t</span><span class="p">]))</span>
+        <span class="n">sep</span> <span class="o">=</span> <span class="s1">','</span> <span class="k">if</span> <span class="nb">max</span><span class="p">((</span><span class="nb">max</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">),</span> <span class="n">default</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10</span> <span class="k">else</span> <span class="s1">''</span>
+        <span class="k">return</span> <span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">t</span><span class="p">])))</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_add_node</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
-<span class="sd">        Internal low-level function that add a nodes and return its index.</span>
+<span class="sd">        Internal low-level function that adds a node and returns its index.</span>
 
 <span class="sd">        The function performs the necessary reallocation so that one can</span>
 <span class="sd">        access ``self._transitions[i]``, etc where ``i`` is the index</span>
@@ -730,7 +1086,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">n</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_structural</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Check the per-node invariants of this conjugate tree.</span>
+
+<span class="sd">        Unlike :meth:`_check_bijection`, these invariants hold at every</span>
+<span class="sd">        intermediate step of :meth:`process`, not only once it returns, since</span>
+<span class="sd">        they say nothing about the leaves of the word currently being added.</span>
+<span class="sd">        """</span>
         <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">:</span>
             <span class="k">assert</span> <span class="n">word_check</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
         <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">)</span>
@@ -764,6 +1127,8 @@
 
             <span class="c1"># the leaves should correspond to the -1 states</span>
             <span class="k">if</span> <span class="n">s</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
                 <span class="k">assert</span> <span class="n">p</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">-</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
 
                 <span class="k">assert</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">])</span>
@@ -776,11 +1141,29 @@
                     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
                     <span class="n">ss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_suffix_link</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
                     <span class="k">assert</span> <span class="n">s</span> <span class="o">!=</span> <span class="n">ss</span>
-                    <span class="n">w0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">word</span><span class="p">(</span><span class="n">ss</span><span class="p">)</span>
-                    <span class="n">w1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">word</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+                    <span class="n">w0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">internal_state_word</span><span class="p">(</span><span class="n">ss</span><span class="p">)</span>
+                    <span class="n">w1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">internal_state_word</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
                     <span class="k">assert</span> <span class="n">w0</span> <span class="o">==</span> <span class="n">w1</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="p">(</span><span class="n">ss</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">w1</span><span class="p">)</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_bijection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Check that the leaves of this conjugate tree are in bijection with</span>
+<span class="sd">        the conjugates of the words in :meth:`words`.</span>
+
+<span class="sd">        This only holds once :meth:`process` has returned; while it is</span>
+<span class="sd">        running, the word being added does not yet have all of its leaves.</span>
+<span class="sd">        """</span>
         <span class="k">assert</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">leaf_as_conjugate</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">leaves</span><span class="p">()]</span> <span class="o">==</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">())</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">))]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Check all invariants of this conjugate tree.</span>
+
+<span class="sd">        Combines :meth:`_check_structural` and :meth:`_check_bijection`; only</span>
+<span class="sd">        valid to call outside of a :meth:`process` call.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_structural</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_bijection</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_test_and_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">letter</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
@@ -800,20 +1183,13 @@
             <span class="c1"># get the transition from s starting with word[i][k] and test</span>
             <span class="c1"># whether its (p - k)-th letter coincide with letter or not</span>
             <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[_test_and_split] _test_and_split(s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">, i=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">, p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">, letter=</span><span class="si">{</span><span class="n">letter</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[_test_and_split] implicit with target t=</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="n">ii</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
             <span class="c1"># w = self._words[ii]</span>
             <span class="n">kk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
             <span class="k">assert</span> <span class="n">kk</span> <span class="o">&gt;=</span> <span class="mi">0</span>
             <span class="n">index</span> <span class="o">=</span> <span class="n">kk</span> <span class="o">+</span> <span class="n">p</span> <span class="o">-</span> <span class="n">k</span>
             <span class="k">assert</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-            <span class="c1"># TODO: remove check</span>
-            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
             <span class="n">lletter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">ii</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[_test_and_split] letter=</span><span class="si">{</span><span class="n">letter</span><span class="si">}</span><span class="s2"> lletter=</span><span class="si">{</span><span class="n">lletter</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">letter</span> <span class="o">==</span> <span class="n">lletter</span><span class="p">:</span>
                 <span class="c1"># the node already exists</span>
                 <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
@@ -836,77 +1212,86 @@
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">_depth</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depth</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">+</span> <span class="n">index</span> <span class="o">-</span> <span class="n">kk</span>
 
-                <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[_test_and_split] new node </span><span class="si">{</span><span class="n">ss</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">word</span><span class="p">(</span><span class="n">ss</span><span class="p">)</span><span class="si">}</span><span class="s2">) from split between </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">word</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="si">}</span><span class="s2">) and </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">word</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
                 <span class="k">return</span> <span class="n">ss</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># explicit state</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[_test_and_split] _test_and_split(s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">, i=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">, p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">, letter=</span><span class="si">{</span><span class="n">letter</span><span class="si">}</span><span class="s2">): explicit"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">letter</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]:</span>
                 <span class="c1"># the node already exists</span>
                 <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">s</span>
 
-<div class="viewcode-block" id="ConjugateTree.canonize">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.canonize">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">canonize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_canonize_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Canonize the quadruple ``(s, i, k, p)`` representing</span>
 <span class="sd">        the (explicit or implicit) state obtained after reading word[i][k:p]</span>
 <span class="sd">        from s.</span>
 
 <span class="sd">        Return a pair ``(s, k)`` (as ``i`` and ``p`` do not change).</span>
+
+<span class="sd">        Only part of the reference is checked: that ``s`` is a node or</span>
+<span class="sd">        ``-1``, that ``i`` is the index of a word, that ``0 &lt;= k &lt;= p``, and</span>
+<span class="sd">        that each transition followed down the tree exists, which tests the</span>
+<span class="sd">        first letter of its label only. The other letters of word[i][k:p] are</span>
+<span class="sd">        not compared with the labels, and a reference that disagrees with</span>
+<span class="sd">        them gives a meaningless answer.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0,1,0,0,1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T._canonize_state(0, 0, 0, 0)</span>
+<span class="sd">            (0, 0)</span>
+<span class="sd">            sage: T._canonize_state(0, 0, 0, 2)</span>
+<span class="sd">            (3, 1)</span>
+<span class="sd">            sage: T._canonize_state(-1, 0, 0, 3)</span>
+<span class="sd">            (7, 3)</span>
+
+<span class="sd">        TESTS::</span>
+
+<span class="sd">            sage: T._canonize_state(0, 0, 3, 2)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: (s, i, k, p) = (0, 0, 3, 2) has k outside of 0..p or follows a missing transition</span>
+<span class="sd">            sage: T._canonize_state(0, 0, -1, 2)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: (s, i, k, p) = (0, 0, -1, 2) has k outside of 0..p or follows a missing transition</span>
+<span class="sd">            sage: T = ConjugateTreeNaive(3)</span>
+<span class="sd">            sage: T.process([0, 1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T._canonize_state(0, 0, 0, 1)</span>
+<span class="sd">            (0, 0)</span>
+<span class="sd">            sage: T.process([2])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T._canonize_state(1, 1, 0, 1)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: (s, i, k, p) = (1, 1, 0, 1) has k outside of 0..p or follows a missing transition</span>
 <span class="sd">        """</span>
-        <span class="k">assert</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">s</span>
-        <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[canonize] canonize(s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">, i=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">, p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">k</span> <span class="o">&gt;=</span> <span class="n">p</span><span class="p">:</span>
-            <span class="c1"># already explicit</span>
-            <span class="c1"># return (s, p)</span>
-            <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">ss</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
-            <span class="n">kk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
-            <span class="n">pp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
-            <span class="k">while</span> <span class="n">pp</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">pp</span> <span class="o">-</span> <span class="n">kk</span> <span class="o">&lt;</span> <span class="n">p</span> <span class="o">-</span> <span class="n">k</span><span class="p">:</span>
-                <span class="n">k</span> <span class="o">+=</span> <span class="n">pp</span> <span class="o">-</span> <span class="n">kk</span>
-                <span class="n">s</span> <span class="o">=</span> <span class="n">ss</span>
-                <span class="n">ss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
-                <span class="n">kk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
-                <span class="n">pp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">pp</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">pp</span> <span class="o">-</span> <span class="n">kk</span> <span class="o">==</span> <span class="n">p</span> <span class="o">-</span> <span class="n">k</span><span class="p">:</span>
-                <span class="c1"># explicit</span>
-                <span class="c1"># return (ss, p)</span>
-                <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[canonize] 1: s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2"> ss=</span><span class="si">{</span><span class="n">ss</span><span class="si">}</span><span class="s2"> kk=</span><span class="si">{</span><span class="n">kk</span><span class="si">}</span><span class="s2"> pp=</span><span class="si">{</span><span class="n">pp</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-                <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">ss</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># implicit</span>
-                <span class="c1"># return (s, k)</span>
-                <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[canonize] 2: s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2"> ss=</span><span class="si">{</span><span class="n">ss</span><span class="si">}</span><span class="s2"> kk=</span><span class="si">{</span><span class="n">kk</span><span class="si">}</span><span class="s2"> pp=</span><span class="si">{</span><span class="n">pp</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-                <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[canonize] out=</span><span class="si">{</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-        <span class="c1"># TODO: remove check</span>
-        <span class="n">s</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">out</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ancestor</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"s (=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">) must be a node"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"i (=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">) must be the index of a word"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="n">p</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"(s, i, k, p) = </span><span class="si">{</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">)</span><span class="si">}</span><span class="s2"> has k outside of 0..p or follows a missing transition"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="n">p</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">out</span>
-        <span class="k">elif</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="n">p</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="n">s</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span>
-            <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
-            <span class="n">kk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
-            <span class="n">pp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
-            <span class="k">assert</span> <span class="n">pp</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">-</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="n">pp</span> <span class="o">-</span> <span class="n">kk</span><span class="p">,</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">kk</span><span class="p">,</span> <span class="n">pp</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">out</span></div>
-
+            <span class="c1"># already explicit</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="n">ss</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">ss</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">p</span> <span class="o">-</span> <span class="n">k</span><span class="p">:</span>
+            <span class="n">k</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">ss</span>
+            <span class="n">ss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ss</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"(s, i, k, p) = </span><span class="si">{</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">)</span><span class="si">}</span><span class="s2"> has k outside of 0..p or follows a missing transition"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">==</span> <span class="n">p</span> <span class="o">-</span> <span class="n">k</span><span class="p">:</span>
+            <span class="c1"># explicit</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">ss</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="c1"># implicit</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
@@ -924,50 +1309,29 @@
         <span class="c1"># (s, k, p): active state which is the first state along the boundary</span>
         <span class="c1"># path which is not an active leaf</span>
         <span class="c1"># r: closest branching from s (r is either s or its ancestor)</span>
-        <span class="k">global</span> <span class="n">VERBOSE</span><span class="p">,</span> <span class="n">INDENT</span>
-
         <span class="n">letter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
         <span class="n">old_r</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">created_leaves</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[update] process letter w[</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">]=</span><span class="si">{</span><span class="n">letter</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[update] going through boundary path from active state s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-            <span class="n">INDENT</span> <span class="o">+=</span> <span class="mi">2</span>
         <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_and_split</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">letter</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-            <span class="n">INDENT</span> <span class="o">-=</span> <span class="mi">2</span>
         <span class="k">while</span> <span class="n">r</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
             <span class="k">assert</span> <span class="n">k</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">p</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
             <span class="k">assert</span> <span class="n">r</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">old_r</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">old_r</span><span class="p">)</span>
             <span class="c1"># create a leaf</span>
             <span class="n">rr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_node</span><span class="p">()</span>
             <span class="n">created_leaves</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[update]   r=</span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2"> s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[update]   new leaf rr=</span><span class="si">{</span><span class="n">rr</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">letter</span><span class="p">]</span> <span class="o">=</span> <span class="n">rr</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_ancestor</span><span class="p">[</span><span class="n">rr</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">rr</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">rr</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">rr</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
             <span class="k">if</span> <span class="n">old_r</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[update]   create suffix link </span><span class="si">{</span><span class="n">old_r</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
                 <span class="k">assert</span> <span class="n">r</span> <span class="o">!=</span> <span class="n">old_r</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_suffix_link</span><span class="p">[</span><span class="n">old_r</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
             <span class="n">old_r</span> <span class="o">=</span> <span class="n">r</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="n">INDENT</span> <span class="o">+=</span> <span class="mi">2</span>
-            <span class="n">s</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">canonize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_suffix_link</span><span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+            <span class="n">s</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_canonize_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_suffix_link</span><span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
             <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_and_split</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">letter</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="n">INDENT</span> <span class="o">-=</span> <span class="mi">2</span>
-        <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[update] end of loop: s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2"> old_r=</span><span class="si">{</span><span class="n">old_r</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">old_r</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">" "</span> <span class="o">*</span> <span class="n">INDENT</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"[update] create suffix link </span><span class="si">{</span><span class="n">old_r</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">assert</span> <span class="n">old_r</span> <span class="o">!=</span> <span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="n">old_r</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_suffix_link</span><span class="p">[</span><span class="n">old_r</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
 
@@ -979,9 +1343,9 @@
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,1,2])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T._slice(0, 15, 19)</span>
@@ -1002,9 +1366,9 @@
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0, 4, 2, 3])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T._letter(0, 1)</span>
@@ -1012,11 +1376,10 @@
 <span class="sd">            sage: T._letter(0, 19)</span>
 <span class="sd">            3</span>
 <span class="sd">        """</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_max_read</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_max_read</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">k</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">k</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">])]</span>
 
-<div class="viewcode-block" id="ConjugateTree.process">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.process">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.process">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hard_check</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Add the word ``w`` in this conjugate tree.</span>
@@ -1030,58 +1393,103 @@
 <span class="sd">          increases by the period of ``w`` (which is its length divided by the</span>
 <span class="sd">          exponent).</span>
 
-<span class="sd">        - a non-negative ``-index`` if the word ``w``is already present and</span>
-<span class="sd">          ``index`` is the index of the leaf corresponding to ``w`` in this</span>
-<span class="sd">          conjugate tree</span>
+<span class="sd">        - a non-positive ``-index`` if the word ``w`` is already present, that</span>
+<span class="sd">          is, if it is conjugate to a power of the word of index ``index`` of</span>
+<span class="sd">          this conjugate tree</span>
+
+<span class="sd">        INPUT:</span>
+
+<span class="sd">        - ``w`` -- a non-empty word</span>
+
+<span class="sd">        - ``check`` -- boolean (default: ``True``); whether to convert ``w``</span>
+<span class="sd">          with :func:`~combisurf.word.word_init`; with ``check=False``, ``w``</span>
+<span class="sd">          can be any iterable of integers. In both cases the tree stores a</span>
+<span class="sd">          copy of ``w``, never ``w`` itself</span>
+
+<span class="sd">        - ``hard_check`` -- boolean (default: ``False``); whether to check</span>
+<span class="sd">          the structure of the tree at each step of the insertion</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: T.process([0, 1, 0, 0, 1])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.process([0, 1, 0, 1])</span>
+<span class="sd">            2</span>
+<span class="sd">            sage: T.process([1, 0, 0, 1, 0])</span>
+<span class="sd">            0</span>
+<span class="sd">            sage: T.process([0, 1, 0, 1, 0, 1])</span>
+<span class="sd">            -1</span>
+
+<span class="sd">        TESTS:</span>
+
+<span class="sd">        With ``check=False``, the list given is not modified when the tree</span>
+<span class="sd">        keeps only its primitive root, and a tuple or a numpy array is</span>
+<span class="sd">        accepted::</span>
+
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
+<span class="sd">            sage: w = [0, 1, 0, 1]</span>
+<span class="sd">            sage: T.process(w, check=False)</span>
+<span class="sd">            2</span>
+<span class="sd">            sage: w</span>
+<span class="sd">            [0, 1, 0, 1]</span>
+<span class="sd">            sage: T.words()</span>
+<span class="sd">            [array('i', [0, 1])]</span>
+<span class="sd">            sage: T.process((0, 0, 1), check=False)</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: import numpy</span>
+<span class="sd">            sage: T.process(numpy.array([0, 1, 0, 0, 1]), check=False)</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: T.process(numpy.array([], dtype=int), check=False)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: empty word in input</span>
+<span class="sd">            sage: T.process([])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: empty word in input</span>
+<span class="sd">            sage: T.process([0, -1])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: invalid word: must be made of non-negative integers</span>
 <span class="sd">        """</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">w</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"empty word in input"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
             <span class="n">w</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">w</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"empty word in input"</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">w</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">letter</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"invalid word: must be made of non-negative integers"</span><span class="p">)</span>
-        <span class="k">global</span> <span class="n">VERBOSE</span><span class="p">,</span> <span class="n">INDENT</span>
         <span class="n">i</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">)</span>
         <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_max_read</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># To ensure that we find all conjugates we must create as many leaves</span>
-        <span class="c1"># as the size rof w (assuming it is primitive)</span>
+        <span class="c1"># as the length of w (assuming it is primitive)</span>
         <span class="n">num_leaves</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">p</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[process] new loop with active state s=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> i=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-                <span class="n">INDENT</span> <span class="o">+=</span> <span class="mi">2</span>
             <span class="k">if</span> <span class="n">p</span> <span class="o">!=</span> <span class="n">k</span><span class="p">:</span>
                 <span class="n">ss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
                 <span class="n">ii</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
                 <span class="n">kk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
                 <span class="n">pp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span>
-                <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[process] endpoint of active state ss=</span><span class="si">{</span><span class="n">ss</span><span class="si">}</span><span class="s2"> ii=</span><span class="si">{</span><span class="n">ii</span><span class="si">}</span><span class="s2"> kk=</span><span class="si">{</span><span class="n">kk</span><span class="si">}</span><span class="s2"> pp=</span><span class="si">{</span><span class="n">pp</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">ii</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
             <span class="n">s</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">created_leaves</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
             <span class="n">num_leaves</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">created_leaves</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[process] </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">created_leaves</span><span class="p">)</span><span class="si">}</span><span class="s2"> new leaves, total=</span><span class="si">{</span><span class="n">num_leaves</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">hard_check</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_check</span><span class="p">()</span>
-            <span class="n">s</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">canonize</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                <span class="n">INDENT</span> <span class="o">-=</span> <span class="mi">2</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_check_structural</span><span class="p">()</span>
+            <span class="n">s</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_canonize_state</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 
             <span class="c1"># halt condition</span>
             <span class="k">if</span> <span class="n">num_leaves</span> <span class="o">==</span> <span class="n">l</span><span class="p">:</span>
                 <span class="c1"># w is primitive</span>
-                <span class="k">if</span> <span class="n">VERBOSE</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[process] enough leaves to determine conjugates at p=</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2"> (i=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> ii=</span><span class="si">{</span><span class="n">ii</span><span class="si">}</span><span class="s2"> len(w)=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
                 <span class="k">break</span>
             <span class="k">elif</span> <span class="n">ii</span> <span class="o">==</span> <span class="n">i</span> <span class="ow">and</span> <span class="n">p</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">l</span><span class="p">:</span>
                 <span class="c1"># w is non primitive</span>
@@ -1094,7 +1502,8 @@
 
         <span class="k">if</span> <span class="n">num_leaves</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_max_read</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">hard_check</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_check_bijection</span><span class="p">()</span>
             <span class="k">return</span> <span class="o">-</span><span class="n">ii</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">%</span> <span class="n">num_leaves</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">),</span> <span class="n">num_leaves</span><span class="p">)</span>
@@ -1102,20 +1511,22 @@
             <span class="k">if</span> <span class="n">exponent</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="c1"># NOTE: only store primitive words</span>
                 <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">l</span><span class="o">//</span><span class="n">exponent</span><span class="p">:]</span>
+            <span class="k">if</span> <span class="n">hard_check</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_check_bijection</span><span class="p">()</span>
             <span class="k">return</span> <span class="n">exponent</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.internal_state_word">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.internal_state_word">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.internal_state_word">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_state_word">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">internal_state_word</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Return the word corresponding to the explicit state ``s``</span>
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([0,1,0,0,1])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T.process([0])</span>
@@ -1126,9 +1537,28 @@
 <span class="sd">            5 [0, 1, 0]</span>
 <span class="sd">            7 [1, 0]</span>
 <span class="sd">            9 [0, 0]</span>
+
+<span class="sd">        TESTS::</span>
+
+<span class="sd">            sage: T.internal_state_word(0)</span>
+<span class="sd">            []</span>
+<span class="sd">            sage: T.leaves()</span>
+<span class="sd">            [1, 2, 4, 6, 8, 10]</span>
+<span class="sd">            sage: T.internal_state_word(1)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: s (=1) must be the root or an internal state</span>
+<span class="sd">            sage: T.internal_state_word(-1)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: s (=-1) must be the root or an internal state</span>
+<span class="sd">            sage: T.internal_state_word(T.num_states())</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            ValueError: s (=11) must be the root or an internal state</span>
 <span class="sd">        """</span>
-        <span class="k">if</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"s must be a node"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ancestor</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"s (=</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">) must be the root or an internal state"</span><span class="p">)</span>
         <span class="n">path</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="p">]</span>
         <span class="k">while</span> <span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ancestor</span><span class="p">[</span><span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
@@ -1144,17 +1574,17 @@
         <span class="k">return</span> <span class="n">ans</span></div>
 
 
-<div class="viewcode-block" id="ConjugateTree.plot">
-<a class="viewcode-back" href="../../conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.plot">[docs]</a>
+<div class="viewcode-block" id="ConjugateTreeNaive.plot">
+<a class="viewcode-back" href="../../conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.plot">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_size</span><span class="o">=</span><span class="mf">.25</span><span class="p">,</span> <span class="n">xscale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">yscale</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
 <span class="sd">        Return a plot of this conjugate tree.</span>
 
 <span class="sd">        EXAMPLES::</span>
 
-<span class="sd">            sage: from combisurf.conjugate_tree import ConjugateTree</span>
+<span class="sd">            sage: from combisurf.conjugate_tree_naive import ConjugateTreeNaive</span>
 
-<span class="sd">            sage: T = ConjugateTree()</span>
+<span class="sd">            sage: T = ConjugateTreeNaive()</span>
 <span class="sd">            sage: T.process([1,0,0,1,0,1,1,0])</span>
 <span class="sd">            1</span>
 <span class="sd">            sage: T.plot()</span>
@@ -1226,11 +1656,7 @@
             <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
                 <span class="n">G</span> <span class="o">+=</span> <span class="n">line2d</span><span class="p">([</span><span class="n">pos</span><span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="n">ss</span><span class="p">]],</span> <span class="n">color</span><span class="o">=</span><span class="s2">"grey"</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
                 <span class="n">mid</span> <span class="o">=</span> <span class="p">((</span><span class="n">pos</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">pos</span><span class="p">[</span><span class="n">ss</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">pos</span><span class="p">[</span><span class="n">ss</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
-                    <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_letter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">ss</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">]))</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">label</span> <span class="o">=</span> <span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transition_word</span><span class="p">[</span><span class="n">ss</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_start</span><span class="p">[</span><span class="n">ss</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transition_end</span><span class="p">[</span><span class="n">ss</span><span class="p">])))</span>
-                <span class="n">G</span> <span class="o">+=</span> <span class="n">text</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"blue"</span><span class="p">)</span>
+                <span class="n">G</span> <span class="o">+=</span> <span class="n">text</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_edge_label</span><span class="p">(</span><span class="n">ss</span><span class="p">),</span> <span class="n">mid</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"blue"</span><span class="p">)</span>
         <span class="n">G</span><span class="o">.</span><span class="n">axes</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">G</span></div>
 </div>

@@ -192,8 +192,9 @@
 <li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
-<li class="toctree-l1"><a class="reference internal" href="partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
@@ -332,12 +333,24 @@
         <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.add_edge">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
       </ul></li>
+      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.algorithm">algorithm() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.algorithm">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
+</li>
+      </ul></li>
+      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.alphabet">alphabet() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.alphabet">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.argmin">argmin() (in module combisurf.permutation)</a>
 </li>
       <li><a href="misc.html#combisurf.misc.array_hash">array_hash() (in module combisurf.misc)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map_builder.html#combisurf.oriented_map_builder.atomic">atomic() (in module combisurf.oriented_map_builder)</a>
 </li>
       <li><a href="colored_map_builder.html#combisurf.colored_map_builder.atomic_3colmap">atomic_3colmap() (in module combisurf.colored_map_builder)</a>
@@ -370,8 +383,6 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.canonize">canonize() (combisurf.conjugate_tree.ConjugateTree method)</a>
-</li>
       <li><a href="oriented_map.html#combisurf.oriented_map.check_relabelling">check_relabelling() (in module combisurf.oriented_map)</a>
 </li>
       <li><a href="oriented_map_builder.html#combisurf.oriented_map_builder.close_face">close_face() (in module combisurf.oriented_map_builder)</a>
@@ -397,6 +408,20 @@
 
       <ul>
         <li><a href="conjugate_tree.html#module-combisurf.conjugate_tree">module</a>
+</li>
+      </ul></li>
+      <li>
+    combisurf.conjugate_tree_naive
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#module-combisurf.conjugate_tree_naive">module</a>
+</li>
+      </ul></li>
+      <li>
+    combisurf.crossing_arcs
+
+      <ul>
+        <li><a href="crossing_arcs.html#module-combisurf.crossing_arcs">module</a>
 </li>
       </ul></li>
       <li>
@@ -437,13 +462,6 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li>
-    combisurf.partial_sums
-
-      <ul>
-        <li><a href="partial_sums.html#module-combisurf.partial_sums">module</a>
-</li>
-      </ul></li>
-      <li>
     combisurf.permutation
 
       <ul>
@@ -464,11 +482,9 @@
         <li><a href="word_family.html#module-combisurf.word_family">module</a>
 </li>
       </ul></li>
-      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection.conjugate_plot">conjugate_plot() (combisurf.geometric_intersection.GeometricIntersection method)</a>
-</li>
-      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection.conjugate_sort">conjugate_sort() (combisurf.geometric_intersection.GeometricIntersection method)</a>
-</li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree">ConjugateTree (class in combisurf.conjugate_tree)</a>
+</li>
+      <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive">ConjugateTreeNaive (class in combisurf.conjugate_tree_naive)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.connected_components">connected_components() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
@@ -488,10 +504,18 @@
       </ul></li>
       <li><a href="word_family.html#combisurf.word_family.WordFamily.count">count() (combisurf.word_family.WordFamily method)</a>
 </li>
+      <li><a href="crossing_arcs.html#combisurf.crossing_arcs.crossing_arcs_sweep_sorted">crossing_arcs_sweep_sorted() (in module combisurf.crossing_arcs)</a>
+</li>
+      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.curves">curves() (combisurf.geometric_intersection.GeometricIntersectionMatrix method)</a>
+</li>
       <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.cyclically_reduced_lyndon_words">cyclically_reduced_lyndon_words() (in module combisurf.lyndon_word_family)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.cyclically_sorted_leaves">cyclically_sorted_leaves() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.cyclically_sorted_leaves">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
+      </ul></li>
       <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.CyclicallyReducedLyndonWordFamily">CyclicallyReducedLyndonWordFamily (class in combisurf.lyndon_word_family)</a>
 </li>
   </ul></td>
@@ -536,6 +560,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.edge_relabelling_from">edge_relabelling_from() (in module combisurf.permutation)</a>
 </li>
+      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.entry">entry() (combisurf.geometric_intersection.GeometricIntersectionMatrix method)</a>
+</li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.euler_characteristic">euler_characteristic() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
       <li><a href="colored_map_builder.html#combisurf.colored_map_builder.expand_vertex_3col">expand_vertex_3col() (in module combisurf.colored_map_builder)</a>
@@ -576,15 +602,21 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.genus">genus() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
-      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection.geometric_intersection">geometric_intersection() (combisurf.geometric_intersection.GeometricIntersection method)</a>
+      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.geometric_intersection">geometric_intersection() (combisurf.oriented_map.OrientedMap method)</a>
+</li>
+      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.geometric_intersection_matrix">geometric_intersection_matrix() (combisurf.oriented_map.OrientedMap method)</a>
+</li>
+      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix">GeometricIntersectionMatrix (class in combisurf.geometric_intersection)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection">GeometricIntersection (class in combisurf.geometric_intersection)</a>
+      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionPairing">GeometricIntersectionPairing (class in combisurf.geometric_intersection)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.graph">graph() (combisurf.conjugate_tree.ConjugateTree method)</a>
 
       <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.graph">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
+</li>
         <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.graph">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
       </ul></li>
@@ -610,8 +642,6 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsBinarySplitting.index_to_interval">index_to_interval() (combisurf.partial_sums.PartialSumsBinarySplitting method)</a>
-</li>
       <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.insert_edge">insert_edge() (combisurf.colored_map.ColoredOrientedMap method)</a>
 
       <ul>
@@ -619,13 +649,19 @@
 </li>
       </ul></li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.internal_state_word">internal_state_word() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_state_word">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.internal_states">internal_states() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_states">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
-      <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsBinarySplitting.interval_to_index">interval_to_index() (combisurf.partial_sums.PartialSumsBinarySplitting method)</a>
-</li>
+      </ul></li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.is_connected">is_connected() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.is_isomorphic">is_isomorphic() (combisurf.oriented_map.OrientedMap method)</a>
@@ -639,15 +675,23 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.leaf_as_conjugate">leaf_as_conjugate() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaf_as_conjugate">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
+      </ul></li>
       <li><a href="permutation.html#combisurf.permutation.least_rotation">least_rotation() (in module combisurf.permutation)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.leaves">leaves() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.leaves">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
-      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.LexCyclicallyReducedLyndonWordFamily">LexCyclicallyReducedLyndonWordFamily (class in combisurf.lyndon_word_family)</a>
-</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.LexCyclicallyReducedLyndonWordFamily">LexCyclicallyReducedLyndonWordFamily (class in combisurf.lyndon_word_family)</a>
+</li>
       <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.LexLyndonWordFamily">LexLyndonWordFamily (class in combisurf.lyndon_word_family)</a>
 </li>
       <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.LexWordFamily">LexWordFamily (class in combisurf.lyndon_word_family)</a>
@@ -664,6 +708,12 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.matrix">matrix() (combisurf.geometric_intersection.GeometricIntersectionMatrix method)</a>
+
+      <ul>
+        <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionPairing.matrix">(combisurf.geometric_intersection.GeometricIntersectionPairing method)</a>
+</li>
+      </ul></li>
       <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.merge_vertices">merge_vertices() (combisurf.colored_map.ColoredOrientedMap method)</a>
 
       <ul>
@@ -680,6 +730,10 @@
 </li>
         <li><a href="conjugate_tree.html#module-combisurf.conjugate_tree">combisurf.conjugate_tree</a>
 </li>
+        <li><a href="conjugate_tree_naive.html#module-combisurf.conjugate_tree_naive">combisurf.conjugate_tree_naive</a>
+</li>
+        <li><a href="crossing_arcs.html#module-combisurf.crossing_arcs">combisurf.crossing_arcs</a>
+</li>
         <li><a href="geometric_intersection.html#module-combisurf.geometric_intersection">combisurf.geometric_intersection</a>
 </li>
         <li><a href="lyndon_word_family.html#module-combisurf.lyndon_word_family">combisurf.lyndon_word_family</a>
@@ -689,8 +743,6 @@
         <li><a href="oriented_map.html#module-combisurf.oriented_map">combisurf.oriented_map</a>
 </li>
         <li><a href="oriented_map_builder.html#module-combisurf.oriented_map_builder">combisurf.oriented_map_builder</a>
-</li>
-        <li><a href="partial_sums.html#module-combisurf.partial_sums">combisurf.partial_sums</a>
 </li>
         <li><a href="permutation.html#module-combisurf.permutation">combisurf.permutation</a>
 </li>
@@ -721,18 +773,28 @@
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_edges">num_edges() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_faces">num_faces() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_folded_edges">num_folded_edges() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_half_edges">num_half_edges() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.num_states">num_states() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_states">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
+      </ul></li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_vertices">num_vertices() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
+      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.num_words">num_words() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.num_words">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -747,18 +809,6 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsBinarySplitting.partial_sum">partial_sum() (combisurf.partial_sums.PartialSumsBinarySplitting method)</a>
-
-      <ul>
-        <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsNaive.partial_sum">(combisurf.partial_sums.PartialSumsNaive method)</a>
-</li>
-      </ul></li>
-      <li><a href="partial_sums.html#combisurf.partial_sums.PartialSums">PartialSums (in module combisurf.partial_sums)</a>
-</li>
-      <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsBinarySplitting">PartialSumsBinarySplitting (class in combisurf.partial_sums)</a>
-</li>
-      <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsNaive">PartialSumsNaive (class in combisurf.partial_sums)</a>
-</li>
       <li><a href="oriented_map_builder.html#combisurf.oriented_map_builder.peninsula">peninsula() (in module combisurf.oriented_map_builder)</a>
 </li>
       <li><a href="colored_map_builder.html#combisurf.colored_map_builder.peninsula_3col">peninsula_3col() (in module combisurf.colored_map_builder)</a>
@@ -811,14 +861,14 @@
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_is_involution">perm_is_involution() (in module combisurf.permutation)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.perm_is_one">perm_is_one() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_num_cycles">perm_num_cycles() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_on_array">perm_on_array() (in module combisurf.permutation)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.perm_on_edge_array">perm_on_edge_array() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_on_edge_list">perm_on_edge_list() (in module combisurf.permutation)</a>
@@ -862,12 +912,12 @@
       <ul>
         <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.plot">(combisurf.conjugate_tree.ConjugateTree method)</a>
 </li>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.plot">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
+</li>
         <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.plot">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
       </ul></li>
       <li><a href="colored_map_builder.html#combisurf.colored_map_builder.plot_3col">plot_3col() (in module combisurf.colored_map_builder)</a>
-</li>
-      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.pprint">pprint() (combisurf.conjugate_tree.ConjugateTree method)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.previous_at_vertex">previous_at_vertex() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
@@ -876,7 +926,11 @@
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.previous_in_face">previous_in_face() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.process">process() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.process">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -897,6 +951,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.radial_map">radial_map() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
+      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.reduced_map">reduced_map() (combisurf.oriented_map.OrientedMap method)</a>
+</li>
       <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.relabel">relabel() (combisurf.colored_map.ColoredOrientedMap method)</a>
 
       <ul>
@@ -905,18 +961,14 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsBinarySplitting.reset">reset() (combisurf.partial_sums.PartialSumsBinarySplitting method)</a>
-
-      <ul>
-        <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsNaive.reset">(combisurf.partial_sums.PartialSumsNaive method)</a>
-</li>
-      </ul></li>
       <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.reverse_orientation">reverse_orientation() (combisurf.colored_map.ColoredOrientedMap method)</a>
 
       <ul>
         <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.reverse_orientation">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
       </ul></li>
+      <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.row">row() (combisurf.geometric_intersection.GeometricIntersectionMatrix method)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -934,16 +986,30 @@
       <li><a href="colored_map_builder.html#combisurf.colored_map_builder.sew_face_3col">sew_face_3col() (in module combisurf.colored_map_builder)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.size">size() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.size">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
+      </ul></li>
       <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.smoothing">smoothing() (combisurf.colored_map.ColoredOrientedMap method)</a>
 
       <ul>
         <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.smoothing">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
       </ul></li>
+      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.sorted_leaves_as_conjugates">sorted_leaves_as_conjugates() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.sorted_leaves_as_conjugates">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map_builder.html#combisurf.oriented_map_builder.split_vertex">split_vertex() (in module combisurf.oriented_map_builder)</a>
+</li>
+      <li><a href="crossing_arcs.html#combisurf.crossing_arcs.startpoint_sweep_sorted">startpoint_sweep_sorted() (in module combisurf.crossing_arcs)</a>
+</li>
+      <li><a href="crossing_arcs.html#combisurf.crossing_arcs.startpoint_sweep_weighted">startpoint_sweep_weighted() (in module combisurf.crossing_arcs)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.str_to_cycles">str_to_cycles() (in module combisurf.permutation)</a>
 </li>
@@ -965,10 +1031,16 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.tree_cotree_decomposition">tree_cotree_decomposition() (combisurf.oriented_map.OrientedMap method)</a>
+      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.transitions">transitions() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.transitions">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.tree_cotree_decomposition">tree_cotree_decomposition() (combisurf.oriented_map.OrientedMap method)</a>
+</li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.triangulate">triangulate() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.turn_around_vertex">turn_around_vertex() (combisurf.oriented_map.OrientedMap method)</a>
@@ -981,16 +1053,10 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.uint_base64_str">uint_base64_str() (in module combisurf.permutation)</a>
 </li>
-      <li><a href="permutation.html#combisurf.permutation.uint_from_base64_str">uint_from_base64_str() (in module combisurf.permutation)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsBinarySplitting.update">update() (combisurf.partial_sums.PartialSumsBinarySplitting method)</a>
-
-      <ul>
-        <li><a href="partial_sums.html#combisurf.partial_sums.PartialSumsNaive.update">(combisurf.partial_sums.PartialSumsNaive method)</a>
+      <li><a href="permutation.html#combisurf.permutation.uint_from_base64_str">uint_from_base64_str() (in module combisurf.permutation)</a>
 </li>
-      </ul></li>
       <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.UpToInverseWordFamily">UpToInverseWordFamily (class in combisurf.lyndon_word_family)</a>
 </li>
   </ul></td>
@@ -1019,7 +1085,17 @@
 <h2 id="W">W</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.word">word() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
+</li>
+      </ul></li>
+      <li><a href="word.html#combisurf.word.word_apply_morphism">word_apply_morphism() (in module combisurf.word)</a>
+</li>
       <li><a href="word.html#combisurf.word.word_border_table">word_border_table() (in module combisurf.word)</a>
+</li>
+      <li><a href="word.html#combisurf.word.word_cancel_ends">word_cancel_ends() (in module combisurf.word)</a>
 </li>
       <li><a href="word.html#combisurf.word.word_check">word_check() (in module combisurf.word)</a>
 </li>
@@ -1033,16 +1109,24 @@
 </li>
       <li><a href="word.html#combisurf.word.word_free_group_mul">word_free_group_mul() (in module combisurf.word)</a>
 </li>
-      <li><a href="word.html#combisurf.word.word_init">word_init() (in module combisurf.word)</a>
+      <li><a href="word.html#combisurf.word.word_free_group_mul_inplace">word_free_group_mul_inplace() (in module combisurf.word)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="word.html#combisurf.word.word_init">word_init() (in module combisurf.word)</a>
+</li>
       <li><a href="word.html#combisurf.word.word_is_cyclically_reduced">word_is_cyclically_reduced() (in module combisurf.word)</a>
 </li>
       <li><a href="word.html#combisurf.word.word_is_factor">word_is_factor() (in module combisurf.word)</a>
 </li>
       <li><a href="word.html#combisurf.word.word_is_reduced">word_is_reduced() (in module combisurf.word)</a>
 </li>
+      <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.word_length">word_length() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.word_length">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
+</li>
+      </ul></li>
       <li><a href="word.html#combisurf.word.word_reduce">word_reduce() (in module combisurf.word)</a>
 </li>
       <li><a href="word.html#combisurf.word.word_string">word_string() (in module combisurf.word)</a>
@@ -1052,7 +1136,11 @@
       <li><a href="word_family.html#combisurf.word_family.WordFamilyIterator">WordFamilyIterator (class in combisurf.word_family)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.words">words() (combisurf.conjugate_tree.ConjugateTree method)</a>
+
+      <ul>
+        <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.words">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
+      </ul></li>
   </ul></td>
 </tr></table>
 

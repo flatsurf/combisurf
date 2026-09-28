@@ -193,8 +193,9 @@
 <li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
-<li class="toctree-l1"><a class="reference internal" href="partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
@@ -358,13 +359,16 @@
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_apply_morphism"><code class="docutils literal notranslate"><span class="pre">word_apply_morphism()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_border_table"><code class="docutils literal notranslate"><span class="pre">word_border_table()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_cancel_ends"><code class="docutils literal notranslate"><span class="pre">word_cancel_ends()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_check"><code class="docutils literal notranslate"><span class="pre">word_check()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_cyclically_reduce"><code class="docutils literal notranslate"><span class="pre">word_cyclically_reduce()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_failure_table"><code class="docutils literal notranslate"><span class="pre">word_failure_table()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_find"><code class="docutils literal notranslate"><span class="pre">word_find()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_free_group_inverse"><code class="docutils literal notranslate"><span class="pre">word_free_group_inverse()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_free_group_mul"><code class="docutils literal notranslate"><span class="pre">word_free_group_mul()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_free_group_mul_inplace"><code class="docutils literal notranslate"><span class="pre">word_free_group_mul_inplace()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_init"><code class="docutils literal notranslate"><span class="pre">word_init()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_is_cyclically_reduced"><code class="docutils literal notranslate"><span class="pre">word_is_cyclically_reduced()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_is_factor"><code class="docutils literal notranslate"><span class="pre">word_is_factor()</span></code></a></li>
@@ -388,6 +392,26 @@
 <p>The alphabet is always the non-negative integers. For words seen
 as free group element, the letter <cite>i ^ 1</cite> is the inverse of <cite>i</cite>
 (that is <cite>2i</cite> and <cite>2i+1</cite> are inverses of each other).</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.word.word_apply_morphism">
+<span class="sig-prename descclassname"><span class="pre">combisurf.word.</span></span><span class="sig-name descname"><span class="pre">word_apply_morphism</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word.word_apply_morphism" title="Link to this definition">#</a></dt>
+<dd><p>Apply the free group morphism <code class="docutils literal notranslate"><span class="pre">mor</span></code> on the word <code class="docutils literal notranslate"><span class="pre">w</span></code>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span><span class="p">,</span> <span class="n">word_apply_morphism</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">fib</span> <span class="o">=</span> <span class="p">[</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">]),</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">1</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_apply_morphism</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">fib</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">mor</span> <span class="o">=</span> <span class="p">[</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">1</span><span class="p">]),</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_apply_morphism</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">mor</span><span class="p">,</span> <span class="n">reduce</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_apply_morphism</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">mor</span><span class="p">,</span> <span class="n">reduce</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="combisurf.word.word_border_table">
 <span class="sig-prename descclassname"><span class="pre">combisurf.word.</span></span><span class="sig-name descname"><span class="pre">word_border_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word.word_border_table" title="Link to this definition">#</a></dt>
@@ -431,6 +455,39 @@ trivial border table:</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="combisurf.word.word_cancel_ends">
+<span class="sig-prename descclassname"><span class="pre">combisurf.word.</span></span><span class="sig-name descname"><span class="pre">word_cancel_ends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word.word_cancel_ends" title="Link to this definition">#</a></dt>
+<dd><p>Return the word <code class="docutils literal notranslate"><span class="pre">w</span></code> with its ends cancelled against each other.</p>
+<p>Write <code class="docutils literal notranslate"><span class="pre">w</span> <span class="pre">=</span> <span class="pre">u</span> <span class="pre">v</span> <span class="pre">u^{-1}</span></code> with <code class="docutils literal notranslate"><span class="pre">u</span></code> as long as possible and return <code class="docutils literal notranslate"><span class="pre">v</span></code>.
+Only the letters at both ends are compared, the cancellations inside <code class="docutils literal notranslate"><span class="pre">w</span></code>
+are left untouched. If <code class="docutils literal notranslate"><span class="pre">w</span></code> is freely reduced then the output is cyclically
+reduced (see <a class="reference internal" href="#combisurf.word.word_cyclically_reduce" title="combisurf.word.word_cyclically_reduce"><code class="xref py py-func docutils literal notranslate"><span class="pre">word_cyclically_reduce()</span></code></a> for arbitrary words).</p>
+<p>If nothing cancels, <code class="docutils literal notranslate"><span class="pre">w</span></code> itself is returned when it has typecode <code class="docutils literal notranslate"><span class="pre">'i'</span></code>
+(no copy).</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span><span class="p">,</span> <span class="n">word_cancel_ends</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_cancel_ends</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_cancel_ends</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">w</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_cancel_ends</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="ow">is</span> <span class="n">w</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+<p>The cancellations inside a word that is not freely reduced are left
+untouched:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">word_cancel_ends</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_cancel_ends</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_cancel_ends</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="combisurf.word.word_check">
 <span class="sig-prename descclassname"><span class="pre">combisurf.word.</span></span><span class="sig-name descname"><span class="pre">word_check</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word.word_check" title="Link to this definition">#</a></dt>
 <dd><p>Check that <code class="docutils literal notranslate"><span class="pre">w</span></code> is a valid word.</p>
@@ -456,6 +513,8 @@ trivial border table:</p>
 <dt class="sig sig-object py" id="combisurf.word.word_cyclically_reduce">
 <span class="sig-prename descclassname"><span class="pre">combisurf.word.</span></span><span class="sig-name descname"><span class="pre">word_cyclically_reduce</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word.word_cyclically_reduce" title="Link to this definition">#</a></dt>
 <dd><p>Return a cyclic reduction of <code class="docutils literal notranslate"><span class="pre">w</span></code> in the free group.</p>
+<p>This is the free reduction (<a class="reference internal" href="#combisurf.word.word_reduce" title="combisurf.word.word_reduce"><code class="xref py py-func docutils literal notranslate"><span class="pre">word_reduce()</span></code></a>) followed by the
+cancellation of the ends (<a class="reference internal" href="#combisurf.word.word_cancel_ends" title="combisurf.word.word_cancel_ends"><code class="xref py py-func docutils literal notranslate"><span class="pre">word_cancel_ends()</span></code></a>), done in a single pass.</p>
 <p>EXAMPLES:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span><span class="p">,</span> <span class="n">word_cyclically_reduce</span>
 <span class="n">sage</span><span class="p">:</span> <span class="n">w</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
@@ -469,6 +528,12 @@ trivial border table:</p>
 <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 <span class="n">sage</span><span class="p">:</span> <span class="n">word_cyclically_reduce</span><span class="p">(</span><span class="n">word_init</span><span class="p">())</span>
 <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The cancellations inside the word matter even when its ends do not
+cancel:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">word_cyclically_reduce</span><span class="p">(</span><span class="n">word_init</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -649,20 +714,60 @@ whenever both inputs <code class="docutils literal notranslate"><span class="pre
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="combisurf.word.word_free_group_mul_inplace">
+<span class="sig-prename descclassname"><span class="pre">combisurf.word.</span></span><span class="sig-name descname"><span class="pre">word_free_group_mul_inplace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word.word_free_group_mul_inplace" title="Link to this definition">#</a></dt>
+<dd><p>Update <code class="docutils literal notranslate"><span class="pre">u</span></code> by adding <code class="docutils literal notranslate"><span class="pre">v</span></code> to it and reducing.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span><span class="p">,</span> <span class="n">word_free_group_mul_inplace</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">u</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">v</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_free_group_mul_inplace</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">u</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+<span class="n">sage</span><span class="p">:</span> <span class="n">u</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">v</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_free_group_mul_inplace</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">u</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="combisurf.word.word_init">
 <span class="sig-prename descclassname"><span class="pre">combisurf.word.</span></span><span class="sig-name descname"><span class="pre">word_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word.word_init" title="Link to this definition">#</a></dt>
 <dd><p>Initialize a word from <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p>
+<p>Return <code class="docutils literal notranslate"><span class="pre">data</span></code> itself if it is already an array of integers.</p>
 <p>EXAMPLES:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>From a list:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
 <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">word_init</span><span class="p">(</span><span class="s2">"0,1,~2,~0"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>From a string of edges (<code class="docutils literal notranslate"><span class="pre">&quot;i&quot;</span></code> means <code class="docutils literal notranslate"><span class="pre">2i</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;~i&quot;</span></code> means <code class="docutils literal notranslate"><span class="pre">2i+1</span></code>) with
+optional parentheses or brackets:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">word_init</span><span class="p">(</span><span class="s2">"0,1,~2,~0"</span><span class="p">)</span>
 <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_init</span><span class="p">(</span><span class="s2">"[3,~7,0,1]"</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_init</span><span class="p">(</span><span class="s2">"(2)"</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">])</span>
 </pre></div>
 </div>
 <p>With no argument, returns the empty word:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">word_init</span><span class="p">()</span>
 <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An array of integers is returned identically (no copy):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">array</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">w</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s2">"i"</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">word_init</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="ow">is</span> <span class="n">w</span>
+<span class="kc">True</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -767,7 +872,8 @@ concatenation of <code class="docutils literal notranslate"><span class="pre">v<
 <dl class="py function">
 <dt class="sig sig-object py" id="combisurf.word.word_reduce">
 <span class="sig-prename descclassname"><span class="pre">combisurf.word.</span></span><span class="sig-name descname"><span class="pre">word_reduce</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.word.word_reduce" title="Link to this definition">#</a></dt>
-<dd><p>EXAMPLES:</p>
+<dd><p>Return the free reduction of <code class="docutils literal notranslate"><span class="pre">w</span></code>.</p>
+<p>EXAMPLES:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span><span class="p">,</span> <span class="n">word_reduce</span>
 
 <span class="n">sage</span><span class="p">:</span> <span class="n">w</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
@@ -866,13 +972,16 @@ in <code class="docutils literal notranslate"><span class="pre">w</span></code><
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_apply_morphism"><code class="docutils literal notranslate"><span class="pre">word_apply_morphism()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_border_table"><code class="docutils literal notranslate"><span class="pre">word_border_table()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_cancel_ends"><code class="docutils literal notranslate"><span class="pre">word_cancel_ends()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_check"><code class="docutils literal notranslate"><span class="pre">word_check()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_cyclically_reduce"><code class="docutils literal notranslate"><span class="pre">word_cyclically_reduce()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_failure_table"><code class="docutils literal notranslate"><span class="pre">word_failure_table()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_find"><code class="docutils literal notranslate"><span class="pre">word_find()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_free_group_inverse"><code class="docutils literal notranslate"><span class="pre">word_free_group_inverse()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_free_group_mul"><code class="docutils literal notranslate"><span class="pre">word_free_group_mul()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_free_group_mul_inplace"><code class="docutils literal notranslate"><span class="pre">word_free_group_mul_inplace()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_init"><code class="docutils literal notranslate"><span class="pre">word_init()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_is_cyclically_reduced"><code class="docutils literal notranslate"><span class="pre">word_is_cyclically_reduced()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.word.word_is_factor"><code class="docutils literal notranslate"><span class="pre">word_is_factor()</span></code></a></li>

@@ -192,8 +192,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../partial_sums.html"><code class="docutils literal notranslate"><span class="pre">partial_sums</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../references.html">References</a></li>
@@ -298,198 +299,325 @@
                   
   <h1>Source code for combisurf.geometric_intersection</h1><div class="highlight"><pre>
 <span></span><span class="sa">r</span><span class="sd">"""</span>
-<span class="sd">Geometric intersection of arcs and geodesics on punctured and closed surfaces</span>
+<span class="sd">Geometric intersection numbers of closed curves on punctured surfaces</span>
+
+<span class="sd">The surface is given by an :class:`~combisurf.oriented_map.OrientedMap` ``m``</span>
+<span class="sd">without folded edges, together with a non-empty list of its faces that are</span>
+<span class="sd">punctures (or boundary components); the other faces are filled in. A closed</span>
+<span class="sd">curve is a closed walk on ``m`` (see :mod:`~combisurf.oriented_map`).</span>
+
+<span class="sd">The computation happens on a reduced map (see</span>
+<span class="sd">:meth:`~combisurf.oriented_map.OrientedMap.reduced_map`) that has a single</span>
+<span class="sd">vertex and whose faces are exactly the punctures. It is obtained from ``m`` by</span>
+<span class="sd">contracting a spanning forest and deleting the edges of a coforest in which</span>
+<span class="sd">the unpunctured faces get merged into the punctured ones. The fundamental group of</span>
+<span class="sd">the surface is then free on the edges of the reduced map, and a closed curve</span>
+<span class="sd">becomes a cyclically reduced word in its half-edges.</span>
+
+<span class="sd">The algorithm uses the description from :ref:`cohen-lustig-1987` that</span>
+<span class="sd">reduces the problem of geometric intersection to word combinatorics. To</span>
+<span class="sd">make such procedure efficient, some specific data structures and algorithms</span>
+<span class="sd">should be used:</span>
+
+<span class="sd">- a little extension of the standard *suffix tree* that is called *conjugate</span>
+<span class="sd">  tree* (see :mod:`~combisurf.conjugate_tree`). A conjugate tree is used to</span>
+<span class="sd">  encode the ordering of endpoints of the lifts of the curve to the universal</span>
+<span class="sd">  cover. A standard reference for suffix trees is :ref:`ukkonen-1995`.</span>
+
+<span class="sd">- the Fenwick sweep (:ref:`fenwick-1994`) that is used to compute prefix sums</span>
+<span class="sd">  and allows to compute the geometric intersections from the conjugate ordering</span>
+<span class="sd">  obtained from the conjugate tree.</span>
+
+<span class="sd">Different approaches with precise time complexities for computing intersections</span>
+<span class="sd">were designed for closed surfaces by V. Despre and F. Lazarus</span>
+<span class="sd">:ref:`despre-lazarus-2019` (quadratic in the length) and more recently</span>
+<span class="sd">:ref:`dubois-2024` (linear in the length and linear in the map size). The functions</span>
+<span class="sd">in this module make the geometric intersection computation linear in the length</span>
+<span class="sd">and logarithmic in the map size.</span>
 <span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">array</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span><span class="p">,</span> <span class="n">word_is_cyclically_reduced</span><span class="p">,</span> <span class="n">word_cyclically_reduce</span><span class="p">,</span> <span class="n">word_free_group_inverse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.word</span><span class="w"> </span><span class="kn">import</span> <span class="n">word_init</span><span class="p">,</span> <span class="n">word_cyclically_reduce</span><span class="p">,</span> <span class="n">word_cancel_ends</span><span class="p">,</span> <span class="n">word_apply_morphism</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.permutation</span><span class="w"> </span><span class="kn">import</span> <span class="n">perm_dense_cycle_positions</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.oriented_map</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrientedMap</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.conjugate_tree</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConjugateTree</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.partial_sums</span><span class="w"> </span><span class="kn">import</span> <span class="n">PartialSums</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.crossing_arcs</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">crossing_arcs_sweep_sorted</span><span class="p">,</span> <span class="n">_cyclically_sorted_leaf_arcs</span><span class="p">,</span> <span class="n">_leaf_weights</span><span class="p">,</span>
+                                     <span class="n">startpoint_sweep_sorted</span><span class="p">,</span> <span class="n">startpoint_sweep_weighted</span><span class="p">,</span> <span class="n">_tree_add_with_inverse</span><span class="p">,</span>
+                                     <span class="n">_word_arcs</span><span class="p">)</span>
 
-<div class="viewcode-block" id="GeometricIntersection">
-<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GeometricIntersection</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+
+<div class="viewcode-block" id="GeometricIntersectionPairing">
+<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionPairing">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GeometricIntersectionPairing</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Geometric intersection pairing on a surface.</span>
+
+<span class="sd">    The geometric intersection pairing associates to each pair of closed curves</span>
+<span class="sd">    on a surface a non-negative integer. This function is actually defined on</span>
+<span class="sd">    free homotopy classes of curves. Curves here are encoded as walks on an</span>
+<span class="sd">    :class:`~combisurf.oriented_map.OrientedMap`, that is a sequence of</span>
+<span class="sd">    half-edges.</span>
+
+<span class="sd">    INPUT:</span>
+
+<span class="sd">    - ``m`` -- an :class:`~combisurf.oriented_map.OrientedMap`</span>
+
+<span class="sd">    - ``punctured_faces`` -- either a boolean (default ``False``) or a list of</span>
+<span class="sd">      face indices. If set to ``False`` or ``True`` then respectively no face or</span>
+<span class="sd">      all faces are considered as punctured. If a list of integers is provided,</span>
+<span class="sd">      then the faces corresponding to them are considered as punctured.</span>
+
+<span class="sd">    EXAMPLES:</span>
+
+<span class="sd">    The pair of pants is the map with one vertex and three faces. Its</span>
+<span class="sd">    half-edges ``0`` and ``2`` are the generators `a` and `b` of its</span>
+<span class="sd">    fundamental group, and ``1 = ~0`` and ``3 = ~2`` their inverses::</span>
+
+<span class="sd">        sage: from combisurf import OrientedMap</span>
+<span class="sd">        sage: from combisurf.geometric_intersection import GeometricIntersectionPairing</span>
+<span class="sd">        sage: from combisurf.word import word_init, word_cyclically_reduce</span>
+<span class="sd">        sage: P = OrientedMap(fp="(0)(1)(~0,~1)")</span>
+<span class="sd">        sage: P</span>
+<span class="sd">        OrientedMap("(0,~0,1,~1)", "(0)(~0,~1)(1)")</span>
+<span class="sd">        sage: P.num_vertices(), P.num_faces()</span>
+<span class="sd">        (1, 3)</span>
+<span class="sd">        sage: gi = GeometricIntersectionPairing(P, punctured_faces=True)</span>
+
+<span class="sd">    The three boundaries, read along the faces, are disjoint simple curves::</span>
+
+<span class="sd">        sage: boundaries = [[0], [2], [1, 3]]</span>
+<span class="sd">        sage: gi.matrix(boundaries).matrix()</span>
+<span class="sd">        [0 0 0]</span>
+<span class="sd">        [0 0 0]</span>
+<span class="sd">        [0 0 0]</span>
+
+<span class="sd">    The figure eight `a b^{-1}` has one self-intersection::</span>
+
+<span class="sd">        sage: gi([[0, 3]])</span>
+<span class="sd">        1</span>
+<span class="sd">        sage: gi([[0, 2, 0, 0, 2]])</span>
+<span class="sd">        2</span>
+
+<span class="sd">    The exchange of `a` and `b`, and the rotation of order three that sends</span>
+<span class="sd">    `a` to `b` and `b` to `a^{-1} b^{-1}`, are mapping classes. A letter ``h``</span>
+<span class="sd">    is sent to the word ``mor[h]``. The rotation permutes the boundaries, and</span>
+<span class="sd">    both preserve the intersection numbers::</span>
+
+<span class="sd">        sage: mor0 = [[2], [3], [0], [1]]</span>
+<span class="sd">        sage: rot = [[2], [3], [1, 3], [2, 0]]</span>
+<span class="sd">        sage: def image(mor, w):</span>
+<span class="sd">        ....:     return list(word_cyclically_reduce(word_init(sum((mor[h] for h in w), []))))</span>
+<span class="sd">        sage: [image(rot, b) for b in boundaries]</span>
+<span class="sd">        [[2], [1, 3], [0]]</span>
+<span class="sd">        sage: curves = [[0, 3], [0, 0, 3], [0, 2, 0, 0, 2]]</span>
+<span class="sd">        sage: M = gi.matrix(curves).matrix()</span>
+<span class="sd">        sage: M</span>
+<span class="sd">        [2 2 2]</span>
+<span class="sd">        [2 4 2]</span>
+<span class="sd">        [2 2 4]</span>
+<span class="sd">        sage: gi.matrix([image(mor0, w) for w in curves]).matrix() == M</span>
+<span class="sd">        True</span>
+<span class="sd">        sage: gi.matrix([image(rot, w) for w in curves]).matrix() == M</span>
+<span class="sd">        True</span>
+
+<span class="sd">    Works with multiple vertices::</span>
+
+<span class="sd">        sage: m = OrientedMap(vp="(0,1)(~0,~1)")</span>
+<span class="sd">        sage: m.num_vertices(), m.has_folded_edge()</span>
+<span class="sd">        (2, False)</span>
+<span class="sd">        sage: GeometricIntersectionPairing(m, punctured_faces=True)</span>
+<span class="sd">        GeometricIntersectionPairing(OrientedMap("(0,1)(~0,~1)", "(0,~1)(~0,1)"), [0, 1])</span>
+
+<span class="sd">    But at least one face has to be punctured::</span>
+
+<span class="sd">        sage: m = OrientedMap(vp="(0,1)(~0,~1)")</span>
+<span class="sd">        sage: m.num_vertices(), m.has_folded_edge()</span>
+<span class="sd">        (2, False)</span>
+<span class="sd">        sage: GeometricIntersectionPairing(m, punctured_faces=False)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        NotImplementedError: geometric intersection is not implemented on closed surfaces</span>
+
+<span class="sd">    On a sphere with four faces, a figure eight around boundaries 0 and 1 is a</span>
+<span class="sd">    boundary component if either 0 or 1 is not punctured and has</span>
+<span class="sd">    self-intersection 1 otherwise::</span>
+
+<span class="sd">        sage: from combisurf.word import word_init</span>
+<span class="sd">        sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")</span>
+<span class="sd">        sage: gi = GeometricIntersectionPairing(m, punctured_faces=[0,1,2,3])</span>
+<span class="sd">        sage: gi0 = GeometricIntersectionPairing(m, punctured_faces=[1,2,3])</span>
+<span class="sd">        sage: gi1 = GeometricIntersectionPairing(m, punctured_faces=[0,2,3])</span>
+<span class="sd">        sage: gi2 = GeometricIntersectionPairing(m, punctured_faces=[0,1,3])</span>
+<span class="sd">        sage: gi3 = GeometricIntersectionPairing(m, punctured_faces=[0,1,2])</span>
+<span class="sd">        sage: eight01 = word_init("0,1,2,0,~4,~3")</span>
+<span class="sd">        sage: gi([eight01])</span>
+<span class="sd">        1</span>
+<span class="sd">        sage: gi0([eight01])</span>
+<span class="sd">        0</span>
+<span class="sd">        sage: gi1([eight01])</span>
+<span class="sd">        0</span>
+<span class="sd">        sage: gi2([eight01])</span>
+<span class="sd">        1</span>
+<span class="sd">        sage: gi3([eight01])</span>
+<span class="sd">        1</span>
+
+<span class="sd">    TESTS:</span>
+
+<span class="sd">    Repeated face indices count once::</span>
+
+<span class="sd">        sage: P = OrientedMap(fp="(0)(1)(~0,~1)")</span>
+<span class="sd">        sage: GeometricIntersectionPairing(P, punctured_faces=[0, 0, 1])</span>
+<span class="sd">        GeometricIntersectionPairing(OrientedMap("(0,~0,1,~1)", "(0)(~0,~1)(1)"), [0, 1])</span>
+<span class="sd">        sage: GeometricIntersectionPairing(P, punctured_faces=[0, 0, 1])([[0, 0, 2, 2]])</span>
+<span class="sd">        1</span>
+<span class="sd">        sage: GeometricIntersectionPairing(P, punctured_faces=True)([[0, 0, 2, 2]])</span>
+<span class="sd">        2</span>
+
+<span class="sd">    A map with a folded edge is rejected::</span>
+
+<span class="sd">        sage: m = OrientedMap(fp="(0,1,~0,~1,2)")</span>
+<span class="sd">        sage: GeometricIntersectionPairing(m)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        NotImplementedError: geometric intersection is not implemented for maps with folded edges</span>
+<span class="sd">    """</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">punctured_faces</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">OrientedMap</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"m must be an oriented map"</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"m must be an oriented map"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">punctured_faces</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">punctured_faces</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"punctured_faces must either be a boolean or a list of face indices (got </span><span class="si">{</span><span class="n">punctured_faces</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 
-        <span class="c1"># keeps an immutable copy</span>
+        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">has_folded_edge</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"geometric intersection is not implemented for maps with folded edges"</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">mutable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
-        <span class="c1"># NOTE: for now we assume that we have a single vertex and that</span>
-        <span class="c1"># all faces are punctured</span>
-        <span class="c1"># TODO: implement reduction and buffering through reducing triangulations for closed surfaces</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">punctured_faces</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
+            <span class="n">punctured_faces</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">_check_face_index</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">punctured_faces</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">punctured_faces</span><span class="p">:</span>
+            <span class="n">punctured_faces</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">num_faces</span><span class="p">()))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">punctured_faces</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">_vp</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
-            <span class="n">j</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">_fp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
-            <span class="n">i</span> <span class="o">=</span> <span class="n">j</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_punctured_faces</span> <span class="o">=</span> <span class="n">punctured_faces</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_closed_walk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">):</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
-            <span class="n">w</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s2">"i"</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_punctured_faces</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"geometric intersection is not implemented on closed surfaces"</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">typecode</span> <span class="o">!=</span> <span class="s2">"i"</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_punctured_faces</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">num_faces</span><span class="p">():</span>
+            <span class="n">f</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">forest_coforest_decomposition</span><span class="p">(</span><span class="n">root_faces</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_punctured_faces</span><span class="p">)</span>
+            <span class="n">r</span><span class="p">,</span> <span class="n">mor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">reduced_map</span><span class="p">(</span><span class="n">forest</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">coforest</span><span class="o">=</span><span class="n">c</span><span class="p">,</span> <span class="n">relabel</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mapping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_r</span> <span class="o">=</span> <span class="n">r</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_mor</span> <span class="o">=</span> <span class="n">mor</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_mor</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># NOTE: angles are the absolute angles made by half-edges around the unique</span>
+        <span class="c1"># vertex of self._r</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span> <span class="o">=</span> <span class="n">perm_dense_cycle_positions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_r</span><span class="o">.</span><span class="n">_vp</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reduce</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">_check_walk</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">word_cyclically_reduce</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+
+        <span class="c1"># NOTE: the images of the letters under self._mor are freely reduced so</span>
+        <span class="c1"># that the output of word_apply_morphism is freely reduced as well</span>
+        <span class="k">return</span> <span class="n">word_cancel_ends</span><span class="p">(</span><span class="n">word_apply_morphism</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mor</span><span class="p">,</span> <span class="n">reduce</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">"GeometricIntersection(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"GeometricIntersectionPairing(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_punctured_faces</span><span class="si">}</span><span class="s2">)"</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">w2</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
-<span class="sd">        Return the self-intersection of ``w1`` or the intersection between</span>
-<span class="sd">        ``w1`` and ``w2``.</span>
-<span class="sd">        """</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+<span class="sd">        Return the geometric intersection between the multiwalks ``u`` and ``v``.</span>
 
-    <span class="c1"># could return</span>
-    <span class="c1"># [not a permutation]</span>
-    <span class="c1"># [periods]</span>
-<div class="viewcode-block" id="GeometricIntersection.conjugate_sort">
-<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection.conjugate_sort">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">conjugate_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">words</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
-<span class="sd">        Given a list of distinct words return their cyclic ordering on the</span>
-<span class="sd">        boundary at infinity.</span>
+<span class="sd">        If ``v`` is not provided, return the self-intersection of ``u``.</span>
 
-<span class="sd">        EXAMPLES::</span>
+<span class="sd">        INPUT:</span>
 
-<span class="sd">            sage: from combisurf import OrientedMap</span>
-<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersection</span>
-<span class="sd">            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")</span>
-<span class="sd">            sage: gi = GeometricIntersection(octagon)</span>
+<span class="sd">        - ``u`` -- a multiwalk of closed walks on the underlying map (see</span>
+<span class="sd">          :mod:`~combisurf.oriented_map`)</span>
 
-<span class="sd">        A simple example (that turns out to be equivalent to lexicographic sort</span>
-<span class="sd">        of conjugates)::</span>
-
-<span class="sd">            sage: w = [0, 2, 0, 0, 2]</span>
-<span class="sd">            sage: words, shifts = gi.conjugate_sort([w])</span>
-<span class="sd">            sage: words</span>
-<span class="sd">            [0, 0, 0, 0, 0]</span>
-<span class="sd">            sage: shifts</span>
-<span class="sd">            [2, 0, 3, 1, 4]</span>
-<span class="sd">            sage: for k in shifts:</span>
-<span class="sd">            ....:     print(w[k:] + w[:k])</span>
-<span class="sd">            [0, 0, 2, 0, 2]</span>
-<span class="sd">            [0, 2, 0, 0, 2]</span>
-<span class="sd">            [0, 2, 0, 2, 0]</span>
-<span class="sd">            [2, 0, 0, 2, 0]</span>
-<span class="sd">            [2, 0, 2, 0, 0]</span>
-<span class="sd">        """</span>
-        <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTree</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
-                <span class="n">w</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">check</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">word_is_cyclically_reduced</span><span class="p">(</span><span class="n">w</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span>
-            <span class="n">ans</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
-            <span class="k">if</span> <span class="n">ans</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="c1"># was already given in T</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"conjugate words at position </span><span class="si">{</span><span class="o">-</span><span class="n">ans</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-        <span class="n">word_indices</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">word_shifts</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">T</span><span class="o">.</span><span class="n">cyclically_sorted_leaves</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">):</span>
-            <span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">leaf_as_conjugate</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-            <span class="n">word_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-            <span class="n">word_shifts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">word_indices</span><span class="p">,</span> <span class="n">word_shifts</span></div>
-
-
-<div class="viewcode-block" id="GeometricIntersection.conjugate_plot">
-<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection.conjugate_plot">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">conjugate_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">words</span><span class="p">):</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.rings.complex_double</span><span class="w"> </span><span class="kn">import</span> <span class="n">CDF</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.plot.colors</span><span class="w"> </span><span class="kn">import</span> <span class="n">rainbow</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.plot.text</span><span class="w"> </span><span class="kn">import</span> <span class="n">text</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.plot.point</span><span class="w"> </span><span class="kn">import</span> <span class="n">point2d</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.plot.circle</span><span class="w"> </span><span class="kn">import</span> <span class="n">circle</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.plot.line</span><span class="w"> </span><span class="kn">import</span> <span class="n">line2d</span>
-
-        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
-        <span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
-        <span class="n">words_with_inverse</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">word_free_group_inverse</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
-        <span class="n">l</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words_with_inverse</span><span class="p">)</span>
-        <span class="c1"># print(f"words_with_inverse={words_with_inverse}")</span>
-        <span class="n">colors</span> <span class="o">=</span> <span class="n">rainbow</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="s1">'rgbtuple'</span><span class="p">)</span>
-        <span class="n">word_indices</span><span class="p">,</span> <span class="n">word_shifts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conjugate_sort</span><span class="p">(</span><span class="n">words_with_inverse</span><span class="p">)</span>
-        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">word_indices</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">word_shifts</span><span class="p">)</span> <span class="o">==</span> <span class="n">l</span>
-        <span class="c1"># print(f"word_indices={word_indices} word_shifts={word_shifts}")</span>
-        <span class="n">conj_to_pos</span> <span class="o">=</span> <span class="p">[[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words_with_inverse</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">word_indices</span><span class="p">,</span> <span class="n">word_shifts</span><span class="p">)):</span>
-            <span class="n">conj_to_pos</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">pos</span>
-
-        <span class="n">G</span> <span class="o">=</span> <span class="n">circle</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span><span class="mi">1</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">'black'</span><span class="p">)</span>
-        <span class="n">z</span> <span class="o">=</span> <span class="n">CDF</span><span class="o">.</span><span class="n">zeta</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">positions</span><span class="p">,</span> <span class="n">color</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">),</span> <span class="n">words_with_inverse</span><span class="p">,</span> <span class="n">conj_to_pos</span><span class="p">,</span> <span class="n">colors</span> <span class="o">*</span> <span class="mi">2</span><span class="p">):</span>
-            <span class="n">G</span> <span class="o">+=</span> <span class="n">point2d</span><span class="p">([</span><span class="n">z</span> <span class="o">**</span> <span class="n">pos</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">positions</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">pointsize</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">pos</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">positions</span><span class="p">):</span>
-                <span class="n">zz</span> <span class="o">=</span> <span class="n">z</span><span class="o">**</span><span class="n">pos</span>
-                <span class="n">G</span> <span class="o">+=</span> <span class="n">text</span><span class="p">(</span><span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">w</span><span class="p">[</span><span class="n">k</span><span class="p">:]</span> <span class="o">+</span> <span class="n">w</span><span class="p">[:</span><span class="n">k</span><span class="p">])),</span> <span class="p">(</span><span class="mf">1.2</span><span class="o">*</span><span class="n">zz</span><span class="o">.</span><span class="n">real</span><span class="p">(),</span> <span class="mf">1.2</span><span class="o">*</span><span class="n">zz</span><span class="o">.</span><span class="n">imag</span><span class="p">()),</span> <span class="n">rotation</span><span class="o">=</span><span class="mf">360.</span> <span class="o">*</span> <span class="n">pos</span> <span class="o">/</span> <span class="n">l</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)):</span>
-                <span class="n">endpoint</span> <span class="o">=</span> <span class="n">conj_to_pos</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">k</span><span class="p">]</span>
-                <span class="n">startpoint</span> <span class="o">=</span> <span class="n">conj_to_pos</span><span class="p">[</span><span class="n">n</span><span class="o">+</span><span class="n">i</span><span class="p">][</span><span class="o">-</span><span class="n">k</span><span class="p">]</span>
-                <span class="n">G</span> <span class="o">+=</span> <span class="n">line2d</span><span class="p">([</span><span class="n">z</span><span class="o">**</span><span class="n">startpoint</span><span class="p">,</span> <span class="n">z</span><span class="o">**</span><span class="n">endpoint</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-        <span class="n">G</span><span class="o">.</span><span class="n">set_aspect_ratio</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">G</span><span class="o">.</span><span class="n">axes</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">G</span></div>
-
-
-<div class="viewcode-block" id="GeometricIntersection.geometric_intersection">
-<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersection.geometric_intersection">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">geometric_intersection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ulist</span><span class="p">,</span> <span class="n">vlist</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
-<span class="sd">        Return the geometric intersection between the multicurves ``ulist``</span>
-<span class="sd">        and ``vlist`` given as a list of walks on the half-edges of the</span>
-<span class="sd">        underlying map.</span>
-
-<span class="sd">        If ``vlist`` is not provided, return the self-intersection of</span>
-<span class="sd">        ``ulist``.</span>
+<span class="sd">        - ``v`` -- an optional multiwalk of closed walks on the underlying map</span>
 
 <span class="sd">        EXAMPLES::</span>
 
 <span class="sd">            sage: from combisurf import OrientedMap</span>
 <span class="sd">            sage: from combisurf.word import word_init</span>
-<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersection</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionPairing</span>
 
-<span class="sd">            sage: torus = OrientedMap(fp="(0,1,~0,~1)")</span>
-<span class="sd">            sage: gi = GeometricIntersection(torus)</span>
+<span class="sd">            sage: torus = OrientedMap(vp="(0,1,~0,~1)")</span>
+<span class="sd">            sage: gi = GeometricIntersectionPairing(torus, punctured_faces=True)</span>
 
-<span class="sd">            sage: gi.geometric_intersection([[0]], [[2]])</span>
+<span class="sd">            sage: gi([[0]], [[2]])</span>
 <span class="sd">            1</span>
-<span class="sd">            sage: gi.geometric_intersection([[0, 0, 2, 2]])</span>
-<span class="sd">            1</span>
-
-<span class="sd">            sage: gi.geometric_intersection([[0]], [[0, 2]])</span>
-<span class="sd">            1</span>
-<span class="sd">            sage: gi.geometric_intersection([[0, 2]], [[0, 2, 0]])</span>
-<span class="sd">            1</span>
-<span class="sd">            sage: gi.geometric_intersection([[0, 2, 0]], [[0, 2, 0, 0, 2]])</span>
+<span class="sd">            sage: gi([[0, 0, 2, 2]])</span>
 <span class="sd">            1</span>
 
-<span class="sd">        Two examples in genus 2 following Birman-Series p336-337::</span>
+<span class="sd">            sage: gi([[0]], [[0, 2]])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: gi([[0, 2]], [[0, 2, 0]])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: gi([[0, 2, 0]], [[0, 2, 0, 0, 2]])</span>
+<span class="sd">            1</span>
 
-<span class="sd">            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")</span>
-<span class="sd">            sage: gi = GeometricIntersection(octagon)</span>
+<span class="sd">        Intersection is multilinear::</span>
+
+<span class="sd">            sage: ulist = [[0], [0, 2], [0, 0, 2]]</span>
+<span class="sd">            sage: vlist = [[0, 2, 2, 0, 2], [2]]</span>
+<span class="sd">            sage: gi(ulist, vlist)</span>
+<span class="sd">            12</span>
+<span class="sd">            sage: gi(ulist * 2, vlist)</span>
+<span class="sd">            24</span>
+<span class="sd">            sage: gi(ulist, vlist * 3)</span>
+<span class="sd">            36</span>
+<span class="sd">            sage: gi(ulist * 5, vlist * 3)</span>
+<span class="sd">            180</span>
+
+<span class="sd">        For intersection of two multicurves, non-primitivity plays the same role as multiplicity::</span>
+
+<span class="sd">            sage: u0 = [0, 0, 2, 0, 3]</span>
+<span class="sd">            sage: u1 = [0, 0, 2, 2, 1, 1, 3, 3]</span>
+<span class="sd">            sage: gi([u0, u0, u1], [u1, u1, u1])</span>
+<span class="sd">            108</span>
+<span class="sd">            sage: gi([u0 * 2, u1], [u1, u1 * 2])</span>
+<span class="sd">            108</span>
+<span class="sd">            sage: gi([u0 * 2, u1], [u1 * 3])</span>
+<span class="sd">            108</span>
+
+<span class="sd">        For self-intersection, the ``k``-th power of a primitive curve ``u`` has</span>
+<span class="sd">        self-intersection `k^2 i(u, u) + k - 1`::</span>
+
+<span class="sd">            sage: u = [0, 0, 2, 2]</span>
+<span class="sd">            sage: gi([u])</span>
+<span class="sd">            1</span>
+<span class="sd">            sage: gi([u * 2])</span>
+<span class="sd">            5</span>
+<span class="sd">            sage: gi([u * 3])</span>
+<span class="sd">            11</span>
+
+<span class="sd">        Two examples in genus 2 following :ref:`birman-series1984`, pages</span>
+<span class="sd">        336-337. Their words list the sides of a fundamental octagon crossed</span>
+<span class="sd">        by the curve, so they are closed walks on the one-vertex map whose</span>
+<span class="sd">        vertex sees these sides in cyclic order, hence the ``vp``::</span>
+
+<span class="sd">            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")</span>
+<span class="sd">            sage: gi = GeometricIntersectionPairing(octagon, punctured_faces=True)</span>
 <span class="sd">            sage: w = word_init("0,~1,3")</span>
-<span class="sd">            sage: gi.geometric_intersection([w])</span>
+<span class="sd">            sage: gi([w])</span>
 <span class="sd">            0</span>
 <span class="sd">            sage: w = word_init("0,1,1,~2,1,1,~2")</span>
-<span class="sd">            sage: gi.geometric_intersection([w])</span>
+<span class="sd">            sage: gi([w])</span>
 <span class="sd">            4</span>
 
-<span class="sd">        Testing the simplicity criterion of Lapointe on positive words::</span>
+<span class="sd">        Testing the simplicity criterion of :ref:`lapointe2019` on positive</span>
+<span class="sd">        words::</span>
 
 <span class="sd">            sage: W = Words([0, 2, 4, 6])</span>
 <span class="sd">            sage: for l in range(2, 7):</span>
@@ -498,255 +626,536 @@
 <span class="sd">            ....:             continue</span>
 <span class="sd">            ....:         bwt = w.BWT()</span>
 <span class="sd">            ....:         ans1 = all(bwt[i + 1] &lt;= bwt[i] for i in range(l - 1))</span>
-<span class="sd">            ....:         ans2 = gi.geometric_intersection([list(w)]) == 0</span>
+<span class="sd">            ....:         ans2 = gi([list(w)]) == 0</span>
 <span class="sd">            ....:         assert ans1 == ans2</span>
 
-<span class="sd">            sage: ulist = [[0], [0, 2], [0, 0, 2]]</span>
-<span class="sd">            sage: vlist = [[0, 2, 2, 0, 2], [2]]</span>
-<span class="sd">            sage: gi.geometric_intersection(ulist, vlist)</span>
-<span class="sd">            12</span>
-<span class="sd">            sage: gi.geometric_intersection([[0, 0, 2, 2]])</span>
-<span class="sd">            1</span>
-
-<span class="sd">            sage: gi.geometric_intersection([[0]], [[0, 2]])</span>
-<span class="sd">            1</span>
-<span class="sd">            sage: gi.geometric_intersection([[0, 2]], [[0, 2, 0]])</span>
-<span class="sd">            1</span>
-<span class="sd">            sage: gi.geometric_intersection([[0, 2, 0]], [[0, 2, 0, 0, 2]])</span>
-<span class="sd">            1</span>
-
 <span class="sd">            sage: for u in [[0], [0, 2], [0, 2, 0], [0, 2, 0, 0, 2],  [0, 2, 0, 0, 2, 0, 2, 0]]:</span>
-<span class="sd">            ....:     assert gi.geometric_intersection([u]) == 0</span>
+<span class="sd">            ....:     assert gi([u]) == 0</span>
 <span class="sd">            sage: for u in [[0, 0, 2, 2], [0, 2, 0, 2, 0, 0], [0, 2, 0, 0, 2, 0, 0, 2, 0, 2],</span>
 <span class="sd">            ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0],</span>
 <span class="sd">            ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2]]:</span>
-<span class="sd">            ....:     assert gi.geometric_intersection([u]) == 1</span>
+<span class="sd">            ....:     assert gi([u]) == 1</span>
+<span class="sd">        """</span>
+        <span class="n">uwords</span><span class="p">,</span> <span class="n">umult</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">_check_multiwalk</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">vwords</span> <span class="o">=</span> <span class="n">vmult</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">vwords</span><span class="p">,</span> <span class="n">vmult</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">_check_multiwalk</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">closed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-<span class="sd">        Two examples in genus 2 following Birman-Series p336-337::</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call</span><span class="p">(</span><span class="n">uwords</span><span class="p">,</span> <span class="n">umult</span><span class="p">,</span> <span class="n">vwords</span><span class="p">,</span> <span class="n">vmult</span><span class="p">)</span>
 
-<span class="sd">            sage: octagon = OrientedMap(fp="(0,1,2,3,~0,~1,~2,~3)")</span>
-<span class="sd">            sage: gi = GeometricIntersection(octagon)</span>
-<span class="sd">            sage: w = word_init("0,~1,3")</span>
-<span class="sd">            sage: gi.geometric_intersection([w])</span>
-<span class="sd">            0</span>
-<span class="sd">            sage: w = word_init("0,1,1,~2,1,1,~2")</span>
-<span class="sd">            sage: gi.geometric_intersection([w])</span>
-<span class="sd">            4</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uwords</span><span class="p">,</span> <span class="n">umult</span><span class="p">,</span> <span class="n">vwords</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmult</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the geometric intersection of the multiwalks ``(uwords, umult)``</span>
+<span class="sd">        and ``(vwords, vmult)``, without checking the input.</span>
 
-<span class="sd">        Testing the simplicity criterion of Lapointe on positive words::</span>
+<span class="sd">        This is the fast path of ``__call__``. The input must be as returned by</span>
+<span class="sd">        :meth:`~combisurf.oriented_map.OrientedMap._check_multiwalk` with</span>
+<span class="sd">        ``closed=True`` on the original map ``self._cm``: ``uwords`` and</span>
+<span class="sd">        ``vwords`` are lists of closed walks given as ``array('i')`` and</span>
+<span class="sd">        ``umult`` and ``vmult`` are lists of positive integers of the same</span>
+<span class="sd">        lengths. Nothing is checked.</span>
 
-<span class="sd">            sage: W = Words([0, 2, 4, 6])</span>
-<span class="sd">            sage: for l in range(3, 6):</span>
-<span class="sd">            ....:     for w in W.iterate_by_length(l):</span>
-<span class="sd">            ....:         if not w.is_primitive():</span>
-<span class="sd">            ....:             continue</span>
-<span class="sd">            ....:         bwt = w.BWT()</span>
-<span class="sd">            ....:         ans1 = all(bwt[i + 1] &lt;= bwt[i] for i in range(l - 1))</span>
-<span class="sd">            ....:         ans2 = gi.geometric_intersection([list(w)]) == 0</span>
-<span class="sd">            ....:         assert ans1 == ans2</span>
+<span class="sd">        TESTS::</span>
 
-<span class="sd">        Intersection is multilinear::</span>
-
-<span class="sd">            sage: torus = OrientedMap(fp="(0,1,~0,~1)")</span>
-<span class="sd">            sage: gi = GeometricIntersection(torus)</span>
-<span class="sd">            sage: ulist = [[0], [0, 2], [0, 0, 2]]</span>
-<span class="sd">            sage: vlist = [[0, 2, 2, 0, 2], [2]]</span>
-<span class="sd">            sage: gi.geometric_intersection(ulist, vlist)</span>
-<span class="sd">            12</span>
-<span class="sd">            sage: gi.geometric_intersection(ulist * 2, vlist)</span>
-<span class="sd">            24</span>
-<span class="sd">            sage: gi.geometric_intersection(ulist, vlist * 3)</span>
-<span class="sd">            36</span>
-<span class="sd">            sage: gi.geometric_intersection(ulist * 5, vlist * 3)</span>
-<span class="sd">            180</span>
-
-<span class="sd">        For intersection of two multicurves, non-primitivity plays the same role as multiplicity::</span>
-
-<span class="sd">            sage: u0 = [0, 0, 2, 0, 3]</span>
-<span class="sd">            sage: u1 = [0, 0, 2, 2, 1, 1, 3, 3]</span>
-<span class="sd">            sage: gi.geometric_intersection([u0, u0, u1], [u1, u1, u1])</span>
-<span class="sd">            108</span>
-<span class="sd">            sage: gi.geometric_intersection([u0 * 2, u1], [u1, u1 * 2])</span>
-<span class="sd">            108</span>
-<span class="sd">            sage: gi.geometric_intersection([u0 * 2, u1], [u1 * 3])</span>
-<span class="sd">            108</span>
-
-<span class="sd">        For self-intersection, non-primitivty adds a factor equal to the exponent minus one::</span>
-
-<span class="sd">            sage: u = [0, 0, 2, 2]</span>
-<span class="sd">            sage: gi.geometric_intersection([u])</span>
-<span class="sd">            1</span>
-<span class="sd">            sage: gi.geometric_intersection([u * 2])</span>
-<span class="sd">            5</span>
-<span class="sd">            sage: gi.geometric_intersection([u * 3])</span>
-<span class="sd">            11</span>
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionPairing</span>
+<span class="sd">            sage: from combisurf.word import word_init</span>
+<span class="sd">            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")</span>
+<span class="sd">            sage: gi = GeometricIntersectionPairing(octagon, punctured_faces=True)</span>
+<span class="sd">            sage: uwords = [word_init([0, 2, 5, 1, 2]), word_init([3])]</span>
+<span class="sd">            sage: umult = [2, 1]</span>
+<span class="sd">            sage: vwords = [word_init([2]), word_init([3, 7]), word_init([0])]</span>
+<span class="sd">            sage: vmult = [1, 1, 1]</span>
+<span class="sd">            sage: gi._call(uwords, umult)</span>
+<span class="sd">            6</span>
+<span class="sd">            sage: gi._call(uwords, umult, vwords, vmult)</span>
+<span class="sd">            14</span>
 <span class="sd">        """</span>
         <span class="c1"># For general multicurves where u and v might have common components, each primitive</span>
         <span class="c1"># word (and hence each arc) has an associated u-multiplicity and v-multiplicity.</span>
         <span class="n">intersections</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># result</span>
-        <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTree</span><span class="p">()</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_r</span><span class="o">.</span><span class="n">_vp</span><span class="p">)</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">ConjugateTree</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
         <span class="n">u_multiplicities</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">v_multiplicities</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">ulist</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
-                <span class="n">u</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
-                <span class="n">u</span> <span class="o">=</span> <span class="n">word_cyclically_reduce</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+        <span class="c1"># NOTE: _tree_add_with_inverse adds a new word together with its inverse,</span>
+        <span class="c1"># the pair getting the indices (2 * slot, 2 * slot + 1) where slot is</span>
+        <span class="c1"># the next free one</span>
+        <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">uwords</span><span class="p">,</span> <span class="n">umult</span><span class="p">):</span>
+            <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reduce</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">u</span><span class="p">:</span>
                 <span class="k">continue</span>
-            <span class="n">status</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">status</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="c1"># u (or conjugate) already present</span>
-                <span class="n">i</span> <span class="o">=</span> <span class="o">-</span><span class="n">status</span>
-                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span>
-                <span class="n">exponent</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-            <span class="k">else</span><span class="p">:</span>
+            <span class="n">i</span><span class="p">,</span> <span class="n">exponent</span> <span class="o">=</span> <span class="n">_tree_add_with_inverse</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">u_multiplicities</span><span class="p">):</span>
                 <span class="c1"># u added to T</span>
                 <span class="n">u_multiplicities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">vlist</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">v_multiplicities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-                <span class="n">i</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
-                <span class="n">exponent</span> <span class="o">=</span> <span class="n">status</span>
-                <span class="n">ans</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">word_free_group_inverse</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
-                <span class="k">assert</span> <span class="n">ans</span> <span class="o">==</span> <span class="mi">1</span>
-            <span class="n">u_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">exponent</span>
-            <span class="k">if</span> <span class="n">vlist</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">v_multiplicities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">u_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">m</span> <span class="o">*</span> <span class="n">exponent</span>
+            <span class="k">if</span> <span class="n">vwords</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="c1"># NOTE: non-primitive contribution to self-intersection</span>
-                <span class="n">intersections</span> <span class="o">+=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">exponent</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">intersections</span> <span class="o">+=</span> <span class="n">m</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">exponent</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">vlist</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">vwords</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">self_intersection</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vlist</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
-                    <span class="n">v</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-                    <span class="n">v</span> <span class="o">=</span> <span class="n">word_cyclically_reduce</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">vwords</span><span class="p">,</span> <span class="n">vmult</span><span class="p">):</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reduce</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="p">:</span>
                     <span class="k">continue</span>
-                <span class="n">status</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">status</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="c1"># v (or conjugate) already present</span>
-                    <span class="n">i</span> <span class="o">=</span> <span class="o">-</span><span class="n">status</span>
-                    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">==</span> <span class="mi">0</span>
-                    <span class="n">exponent</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-                <span class="k">else</span><span class="p">:</span>
+                <span class="n">i</span><span class="p">,</span> <span class="n">exponent</span> <span class="o">=</span> <span class="n">_tree_add_with_inverse</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">u_multiplicities</span><span class="p">):</span>
                     <span class="c1"># v added to T</span>
                     <span class="n">u_multiplicities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
                     <span class="n">v_multiplicities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-                    <span class="n">i</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
-                    <span class="n">exponent</span> <span class="o">=</span> <span class="n">status</span>
-                    <span class="n">ans</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">word_free_group_inverse</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
-                    <span class="k">assert</span> <span class="n">ans</span> <span class="o">==</span> <span class="mi">1</span>
-                <span class="n">v_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">exponent</span>
+                <span class="n">v_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">m</span> <span class="o">*</span> <span class="n">exponent</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">self_intersection</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="n">v_multiplicities</span> <span class="o">=</span> <span class="n">u_multiplicities</span>
 
-        <span class="c1"># print(f"u_multiplicities={u_multiplicities} v_multiplicities={v_multiplicities}")</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">_vp</span><span class="p">)</span>
+        <span class="c1"># NOTE: the words are read many times below, so they are taken out</span>
+        <span class="c1"># of the tree once rather than through an accessor at every letter</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">words</span><span class="p">()</span>
 
-        <span class="c1"># Essential intersection coming from pairs of conjugates with four</span>
-        <span class="c1"># distinct 1-order intervals associated to their startpoints and endpoints</span>
-        <span class="c1"># NOTE: O(n^2 + len(u) + len(v)) cost</span>
-        <span class="n">Nu</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
-        <span class="n">Nv</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">),</span> <span class="mi">2</span><span class="p">):</span>
-            <span class="n">w</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)):</span>
-                <span class="n">first</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">[</span><span class="n">w</span><span class="p">[</span><span class="n">p</span><span class="p">]]</span>
-                <span class="n">last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">[</span><span class="n">w</span><span class="p">[(</span><span class="n">p</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)]</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span>
-                <span class="k">assert</span> <span class="n">first</span> <span class="o">!=</span> <span class="n">last</span>
-                <span class="k">if</span> <span class="n">last</span> <span class="o">&lt;</span> <span class="n">first</span><span class="p">:</span>
-                    <span class="n">first</span><span class="p">,</span> <span class="n">last</span> <span class="o">=</span> <span class="n">last</span><span class="p">,</span> <span class="n">first</span>
-                <span class="n">Nu</span><span class="p">[</span><span class="n">first</span><span class="p">][</span><span class="n">last</span><span class="p">]</span> <span class="o">+=</span> <span class="n">u_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">]</span>
-                <span class="n">Nv</span><span class="p">[</span><span class="n">first</span><span class="p">][</span><span class="n">last</span><span class="p">]</span> <span class="o">+=</span> <span class="n">v_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">]</span>
-
-        <span class="c1"># NOTE: below is a O(n^2) time version of the two following O(n^4) time sums</span>
-        <span class="c1">#     sum(Nu[i0][j0] * Nv[i1][j1]</span>
-        <span class="c1">#         for i0 in range(n)</span>
-        <span class="c1">#         for j0 in range(i0 + 1, n)</span>
-        <span class="c1">#         for i1 in range(i0 + 1, j0)</span>
-        <span class="c1">#         for j1 in range(j0 + 1, n))</span>
-        <span class="c1">#</span>
-        <span class="c1">#     sum(Nu[i1][j1] * Nv[i0][j0]</span>
-        <span class="c1">#         for i0 in range(n)</span>
-        <span class="c1">#         for j0 in range(i0 + 1, n)</span>
-        <span class="c1">#         for i1 in range(i0 + 1, j0)</span>
-        <span class="c1">#         for j1 in range(j0 + 1, n))</span>
-        <span class="c1">#</span>
-        <span class="c1"># We optimize the computation of the first sum by transforming Nu and</span>
-        <span class="c1"># Nv to contain partial sums in respectively i0 and j1 respectively</span>
-        <span class="c1"># (O(n^2) time).  Then we do a double sum in i1, j0 (O(n^2) time). We</span>
-        <span class="c1"># reverse the role of Nu and Nv to handle the second sum.</span>
-        <span class="n">Nu1</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span><span class="p">[:]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">Nu</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
-                <span class="n">Nu1</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Nu1</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
-        <span class="n">Nv1</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span><span class="p">[:]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">Nv</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
-                <span class="n">Nv1</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Nv1</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
-
-        <span class="n">Nv2</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span><span class="p">[:]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">Nv</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
-                <span class="n">Nv2</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Nv2</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
-        <span class="n">Nu2</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span><span class="p">[:]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">Nu</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
-                <span class="n">Nu2</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Nu2</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
-
-        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
-                <span class="n">Nu</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Nu</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
-                <span class="n">Nv</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Nv</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
-
-        <span class="n">intersections</span> <span class="o">+=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">Nu1</span><span class="p">[</span><span class="n">i1</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">j0</span><span class="p">]</span> <span class="o">*</span> <span class="n">Nv1</span><span class="p">[</span><span class="n">i1</span><span class="p">][</span><span class="n">j0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">Nv2</span><span class="p">[</span><span class="n">i1</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">j0</span><span class="p">]</span> <span class="o">*</span> <span class="n">Nu2</span><span class="p">[</span><span class="n">i1</span><span class="p">][</span><span class="n">j0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
-                             <span class="k">for</span> <span class="n">i1</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">j0</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">self_intersection</span><span class="p">:</span>
+        <span class="c1"># Essential intersection coming from pairs of arcs with four distinct</span>
+        <span class="c1"># endpoints. Arcs sharing both endpoints are merged, their weights</span>
+        <span class="c1"># added up.</span>
+        <span class="n">angles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span>
+        <span class="n">ukeys</span><span class="p">,</span> <span class="n">ukey_weights</span> <span class="o">=</span> <span class="n">_word_arcs</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">angles</span><span class="p">,</span> <span class="n">words</span><span class="p">,</span> <span class="n">u_multiplicities</span><span class="p">)</span>
+        <span class="c1"># NOTE: the sweep is O(n + (len(u) + len(v)) log(n)). The O(n^2)</span>
+        <span class="c1"># double sum of the same number (test/test_geometric_intersection.py)</span>
+        <span class="c1"># is slower at every n, so there is no threshold: on the one-vertex</span>
+        <span class="c1"># 4g-gon with two random curves of length 8, the sweep takes 0.3 us</span>
+        <span class="c1"># against 5.2 us at n = 4 and 1.0 us against 8000 us at n = 256; when</span>
+        <span class="c1"># the arcs fill the n^2 / 2 possible pairs (n = 64, curves of length</span>
+        <span class="c1"># 4000) it takes 260 us against 620 us.</span>
+        <span class="k">if</span> <span class="n">self_intersection</span><span class="p">:</span>
+            <span class="n">intersections</span> <span class="o">+=</span> <span class="n">crossing_arcs_sweep_sorted</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">ukeys</span><span class="p">,</span> <span class="n">ukey_weights</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">vkeys</span><span class="p">,</span> <span class="n">vkey_weights</span> <span class="o">=</span> <span class="n">_word_arcs</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">angles</span><span class="p">,</span> <span class="n">words</span><span class="p">,</span> <span class="n">v_multiplicities</span><span class="p">)</span>
+            <span class="n">intersections</span> <span class="o">+=</span> <span class="n">crossing_arcs_sweep_sorted</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">ukeys</span><span class="p">,</span> <span class="n">ukey_weights</span><span class="p">,</span> <span class="n">vkeys</span><span class="p">,</span> <span class="n">vkey_weights</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
             <span class="n">intersections</span> <span class="o">*=</span> <span class="mi">2</span>
 
         <span class="c1"># Essential intersections coming from pairs of conjugates with identical</span>
-        <span class="c1"># start. Total cost is (len(u) + len(v)) * log(n)</span>
-        <span class="c1"># where the log(n) factor comes from partial sums</span>
-        <span class="n">word_indices</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">word_shifts</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">T</span><span class="o">.</span><span class="n">cyclically_sorted_leaves</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">):</span>
-            <span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">leaf_as_conjugate</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-            <span class="n">word_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-            <span class="n">word_shifts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
-
-        <span class="n">letter</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># current letter that is looked at</span>
-        <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>     <span class="c1"># pointer in the list cs</span>
-        <span class="n">Nu</span> <span class="o">=</span> <span class="n">PartialSums</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">Nv</span> <span class="o">=</span> <span class="n">PartialSums</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="k">while</span> <span class="n">pos</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">word_indices</span><span class="p">):</span>
-            <span class="n">Nu</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-            <span class="n">Nv</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-            <span class="n">startpoint</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">word_indices</span><span class="p">[</span><span class="n">pos</span><span class="p">]][</span><span class="n">word_shifts</span><span class="p">[</span><span class="n">pos</span><span class="p">]]</span>
-            <span class="n">startangle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">[</span><span class="n">startpoint</span><span class="p">]</span>
-            <span class="k">while</span> <span class="n">pos</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">word_indices</span><span class="p">)</span> <span class="ow">and</span> <span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">word_indices</span><span class="p">[</span><span class="n">pos</span><span class="p">]][</span><span class="n">word_shifts</span><span class="p">[</span><span class="n">pos</span><span class="p">]]</span> <span class="o">==</span> <span class="n">startpoint</span><span class="p">:</span>
-                <span class="c1"># print(f"pos={pos} intersections={intersections} Nu={Nu} Nv={Nv}")</span>
-                <span class="n">i</span> <span class="o">=</span> <span class="n">word_indices</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span>
-                <span class="n">w</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">_words</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-                <span class="n">k</span> <span class="o">=</span> <span class="n">word_shifts</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span>
-                <span class="n">endpoint</span> <span class="o">=</span> <span class="n">w</span><span class="p">[(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)]</span> <span class="o">^</span> <span class="mi">1</span>
-                <span class="k">assert</span> <span class="n">startpoint</span> <span class="o">!=</span> <span class="n">endpoint</span>
-                <span class="n">endangle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_angles</span><span class="p">[</span><span class="n">endpoint</span><span class="p">]</span>
-                <span class="n">angle</span> <span class="o">=</span> <span class="p">(</span><span class="n">endangle</span> <span class="o">-</span> <span class="n">startangle</span><span class="p">)</span> <span class="o">%</span> <span class="n">n</span>
-                <span class="k">assert</span> <span class="n">angle</span> <span class="o">&gt;=</span> <span class="mi">1</span>
-                <span class="n">angle</span> <span class="o">-=</span> <span class="mi">1</span>
-                <span class="n">intersections</span> <span class="o">+=</span> <span class="n">u_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">Nv</span><span class="o">.</span><span class="n">partial_sum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">angle</span><span class="p">)</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">self_intersection</span><span class="p">:</span>
-                    <span class="n">intersections</span> <span class="o">+=</span> <span class="n">v_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">Nu</span><span class="o">.</span><span class="n">partial_sum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">angle</span><span class="p">)</span>
-                <span class="n">Nu</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">u_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">])</span>
-                <span class="n">Nv</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">v_multiplicities</span><span class="p">[</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">])</span>
-                <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># start, each leaf being described by its startpoint, the angle from</span>
+        <span class="c1"># its startpoint to its endpoint and its two multiplicities. Total cost</span>
+        <span class="c1"># is O(n + (len(u) + len(v)) log(n)), where the n comes from the tables</span>
+        <span class="c1"># indexed by the angles and the log(n) factor from partial sums.</span>
+        <span class="n">word_index</span><span class="p">,</span> <span class="n">starts</span><span class="p">,</span> <span class="n">arc_angles</span> <span class="o">=</span> <span class="n">_cyclically_sorted_leaf_arcs</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span>
+        <span class="n">uweights</span> <span class="o">=</span> <span class="n">_leaf_weights</span><span class="p">(</span><span class="n">word_index</span><span class="p">,</span> <span class="n">u_multiplicities</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">self_intersection</span><span class="p">:</span>
+            <span class="c1"># with the v-weights equal to the u-weights, the sweep counts each</span>
+            <span class="c1"># pair of leaves in both orders</span>
+            <span class="n">intersections</span> <span class="o">+=</span> <span class="n">startpoint_sweep_weighted</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">starts</span><span class="p">,</span> <span class="n">arc_angles</span><span class="p">,</span> <span class="n">uweights</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">vweights</span> <span class="o">=</span> <span class="n">_leaf_weights</span><span class="p">(</span><span class="n">word_index</span><span class="p">,</span> <span class="n">v_multiplicities</span><span class="p">)</span>
+            <span class="n">intersections</span> <span class="o">+=</span> <span class="n">startpoint_sweep_weighted</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">starts</span><span class="p">,</span> <span class="n">arc_angles</span><span class="p">,</span> <span class="n">uweights</span><span class="p">,</span> <span class="n">vweights</span><span class="p">)</span>
 
         <span class="c1"># we got twice the geometric intersection because we register all arcs and their inverses</span>
-        <span class="k">assert</span> <span class="n">pos</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">word_indices</span><span class="p">),</span> <span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">word_indices</span><span class="p">))</span>
         <span class="k">assert</span> <span class="n">intersections</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
-        <span class="k">return</span> <span class="n">intersections</span> <span class="o">//</span> <span class="mi">2</span></div>
+        <span class="k">return</span> <span class="n">intersections</span> <span class="o">//</span> <span class="mi">2</span>
+
+<div class="viewcode-block" id="GeometricIntersectionPairing.matrix">
+<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionPairing.matrix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">curves</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return a :class:`GeometricIntersectionMatrix` for the primitive curves</span>
+<span class="sd">        ``curves``.</span>
+
+<span class="sd">        The :class:`GeometricIntersectionMatrix` is built on the reduced map</span>
+<span class="sd">        of this object. It is much faster than calling this object on each</span>
+<span class="sd">        pair, at the cost of fixing the list of curves once and for all.</span>
+
+<span class="sd">        INPUT:</span>
+
+<span class="sd">        - ``curves`` -- a list of closed walks on the underlying map</span>
+
+<span class="sd">        - ``check`` -- boolean (default: ``True``); whether to check that the</span>
+<span class="sd">          curves are closed walks on the underlying map. With ``check=False``</span>
+<span class="sd">          they must already be given as ``array('i')``</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionPairing</span>
+<span class="sd">            sage: torus = OrientedMap(vp="(0,1,~0,~1)")</span>
+<span class="sd">            sage: gi = GeometricIntersectionPairing(torus, punctured_faces=True)</span>
+<span class="sd">            sage: gi.matrix([[0], [2], [0, 2]]).matrix()</span>
+<span class="sd">            [0 1 1]</span>
+<span class="sd">            [1 0 1]</span>
+<span class="sd">            [1 1 0]</span>
+<span class="sd">        """</span>
+        <span class="n">curves</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_reduce</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="n">check</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">curves</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">GeometricIntersectionMatrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_r</span><span class="p">,</span> <span class="n">curves</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GeometricIntersectionMatrix">
+<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GeometricIntersectionMatrix</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    The geometric intersection numbers of a fixed list of curves.</span>
+
+<span class="sd">    The list of curves is given once and for all at construction time. All the</span>
+<span class="sd">    conjugates of all the curves (and of their inverses) are stored in a single</span>
+<span class="sd">    :class:`~combisurf.conjugate_tree.ConjugateTree` and ordered on the boundary</span>
+<span class="sd">    at infinity once. An intersection number is then a merge of two rank-sorted</span>
+<span class="sd">    lists rather than a fresh tree, which is what makes this much faster than</span>
+<span class="sd">    calling a :class:`GeometricIntersectionPairing` on each pair.</span>
+<span class="sd">    Each curve keeps data of size proportional to its length, and an entry</span>
+<span class="sd">    costs `O((|u| + |v|) \log(n))` where `n` is the number of half-edges.</span>
+
+<span class="sd">    Asking for a curve outside of ``curves`` means building another object.</span>
+
+<span class="sd">    INPUT:</span>
+
+<span class="sd">    - ``m`` -- an :class:`~combisurf.oriented_map.OrientedMap` or a</span>
+<span class="sd">      :class:`GeometricIntersectionPairing` built on it</span>
+
+<span class="sd">    - ``curves`` -- a list of closed walks on ``m``; each of them must be</span>
+<span class="sd">      primitive</span>
+
+<span class="sd">    - ``check`` -- boolean (default: ``True``); whether to cyclically reduce</span>
+<span class="sd">      the curves in input. A curve that is not cyclically reduced raises a</span>
+<span class="sd">      ``ValueError`` even with ``check=False``</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf import OrientedMap</span>
+<span class="sd">        sage: from combisurf.geometric_intersection import GeometricIntersectionPairing, GeometricIntersectionMatrix</span>
+
+<span class="sd">        sage: torus = OrientedMap(vp="(0,1,~0,~1)")</span>
+<span class="sd">        sage: I = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]])</span>
+<span class="sd">        sage: I</span>
+<span class="sd">        GeometricIntersectionMatrix of 4 curves on OrientedMap("(0,1,~0,~1)", "(0,1,~0,~1)")</span>
+<span class="sd">        sage: I.matrix()</span>
+<span class="sd">        [0 1 1 2]</span>
+<span class="sd">        [1 0 1 1]</span>
+<span class="sd">        [1 1 0 1]</span>
+<span class="sd">        [2 1 1 0]</span>
+
+<span class="sd">    The same object is reachable from an existing</span>
+<span class="sd">    :class:`GeometricIntersectionPairing`::</span>
+
+<span class="sd">        sage: gi = GeometricIntersectionPairing(torus, punctured_faces=True)</span>
+<span class="sd">        sage: gi.matrix([[0], [2]]).matrix()</span>
+<span class="sd">        [0 1]</span>
+<span class="sd">        [1 0]</span>
+
+<span class="sd">    An entry is the intersection of the two corresponding one-element</span>
+<span class="sd">    multicurves, so the diagonal is ``i(c, c) = 2 i(c)`` rather than the</span>
+<span class="sd">    self-intersection ``i(c)``::</span>
+
+<span class="sd">        sage: c = [0, 0, 2, 0, 3]</span>
+<span class="sd">        sage: I = GeometricIntersectionMatrix(torus, [c])</span>
+<span class="sd">        sage: I.entry(0, 0)</span>
+<span class="sd">        4</span>
+<span class="sd">        sage: gi([c], [c])</span>
+<span class="sd">        4</span>
+<span class="sd">        sage: gi([c])</span>
+<span class="sd">        2</span>
+
+<span class="sd">    Curves that are conjugate or inverse to one another share the same internal</span>
+<span class="sd">    data, which is correct since they have the same intersection numbers with</span>
+<span class="sd">    everything::</span>
+
+<span class="sd">        sage: from combisurf.word import word_init, word_free_group_inverse</span>
+<span class="sd">        sage: w = word_init([0, 0, 2, 0, 3])</span>
+<span class="sd">        sage: I = GeometricIntersectionMatrix(torus, [w, w[2:] + w[:2], word_free_group_inverse(w), [0, 2]])</span>
+<span class="sd">        sage: I.matrix()</span>
+<span class="sd">        [4 4 4 3]</span>
+<span class="sd">        [4 4 4 3]</span>
+<span class="sd">        [4 4 4 3]</span>
+<span class="sd">        [3 3 3 0]</span>
+
+<span class="sd">    Non-primitive curves are not supported. They are detected both when the</span>
+<span class="sd">    primitive root is already known and when it is not::</span>
+
+<span class="sd">        sage: GeometricIntersectionMatrix(torus, [[0, 2], [0, 2, 0, 2]])</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        NotImplementedError: non-primitive curve at index 1</span>
+<span class="sd">        sage: GeometricIntersectionMatrix(torus, [[0, 2, 0, 2]])</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        NotImplementedError: non-primitive curve at index 0</span>
+
+<span class="sd">    TESTS:</span>
+
+<span class="sd">    A map with a folded edge is rejected already by the underlying</span>
+<span class="sd">    :class:`GeometricIntersectionPairing`::</span>
+
+<span class="sd">        sage: m = OrientedMap(fp="(0,1,~0,~1,2)")</span>
+<span class="sd">        sage: GeometricIntersectionMatrix(m, [[0]])</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        NotImplementedError: geometric intersection is not implemented for maps with folded edges</span>
+<span class="sd">    """</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">curves</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">check</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">OrientedMap</span><span class="p">)</span> <span class="ow">or</span> <span class="n">m</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"m must be an OrientedMap with a single vertex"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">has_folded_edge</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"geometric intersection is not implemented for maps with folded edges"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"the map must have a single vertex"</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cm</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">mutable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">angles</span> <span class="o">=</span> <span class="n">perm_dense_cycle_positions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="o">.</span><span class="n">_vp</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n</span> <span class="o">=</span> <span class="n">n</span>
+
+        <span class="c1"># 1. all the curves and their inverses in a single tree, a curve and</span>
+        <span class="c1"># its inverse sitting at the consecutive indices (2 * slot, 2 * slot + 1)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_curves</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">curves</span><span class="p">):</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">word_init</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">word_cyclically_reduce</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">w</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"trivial curve at index </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_curves</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+
+        <span class="c1"># NOTE: the tree holds every curve and its inverse, so it stores twice</span>
+        <span class="c1"># as many letters as the curves have, and a conjugate tree over T</span>
+        <span class="c1"># letters has at most 2 T + 1 nodes. Reserving that makes the</span>
+        <span class="c1"># construction below allocation-free.</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_curves</span><span class="p">)</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree</span> <span class="o">=</span> <span class="n">ConjugateTree</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">reserve</span><span class="o">=</span><span class="mi">4</span> <span class="o">*</span> <span class="n">total</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_slot</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_curves</span><span class="p">):</span>
+            <span class="c1"># 2. the slot of the curve, rejecting the non-primitive ones</span>
+            <span class="n">i</span><span class="p">,</span> <span class="n">exponent</span> <span class="o">=</span> <span class="n">_tree_add_with_inverse</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">exponent</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"non-primitive curve at index </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_slot</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">num_slots</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">num_words</span><span class="p">()</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="c1"># NOTE: read once rather than through an accessor at every letter</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">words</span><span class="p">()</span>
+
+        <span class="c1"># 3. the cyclic order at infinity of all the leaves, once. For each</span>
+        <span class="c1"># slot we keep its own leaves in increasing order of rank, each of them</span>
+        <span class="c1"># described by its rank, its startpoint and the angle from its</span>
+        <span class="c1"># startpoint to its endpoint.</span>
+        <span class="n">ranks</span> <span class="o">=</span> <span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'q'</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_slots</span><span class="p">)]</span>
+        <span class="n">starts</span> <span class="o">=</span> <span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'q'</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_slots</span><span class="p">)]</span>
+        <span class="n">arc_angles</span> <span class="o">=</span> <span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'q'</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_slots</span><span class="p">)]</span>
+        <span class="n">leaf_word</span><span class="p">,</span> <span class="n">leaf_start</span><span class="p">,</span> <span class="n">leaf_angle</span> <span class="o">=</span> <span class="n">_cyclically_sorted_leaf_arcs</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">angles</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">rank</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">leaf_word</span><span class="p">)):</span>
+            <span class="n">slot</span> <span class="o">=</span> <span class="n">leaf_word</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span>
+            <span class="n">ranks</span><span class="p">[</span><span class="n">slot</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rank</span><span class="p">)</span>
+            <span class="n">starts</span><span class="p">[</span><span class="n">slot</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">leaf_start</span><span class="p">[</span><span class="n">rank</span><span class="p">])</span>
+            <span class="n">arc_angles</span><span class="p">[</span><span class="n">slot</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">leaf_angle</span><span class="p">[</span><span class="n">rank</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span> <span class="o">=</span> <span class="n">ranks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_starts</span> <span class="o">=</span> <span class="n">starts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arc_angles</span> <span class="o">=</span> <span class="n">arc_angles</span>
+
+        <span class="c1"># 4. the arcs of each slot for the crossing arcs term of an entry: the</span>
+        <span class="c1"># consecutive pairs of letters of the curve, each an arc between two</span>
+        <span class="c1"># angles first &lt; last, keyed by last * n + first. We keep the distinct</span>
+        <span class="c1"># keys in increasing order and their multiplicities, in the layout</span>
+        <span class="c1"># that crossing_arcs_sweep_sorted reads (see _double_sum).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arc_keys</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arc_weights</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_slots</span><span class="p">):</span>
+            <span class="n">keys</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="n">_word_arcs</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">angles</span><span class="p">,</span> <span class="p">[</span><span class="n">words</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">slot</span><span class="p">]],</span> <span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_arc_keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_arc_weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+
+        <span class="c1"># Scratch space for the two sweeps of an entry, allocated once.</span>
+        <span class="c1"># NOTE: the sweeps leave it filled with zeros, which saves an</span>
+        <span class="c1"># allocation per entry: 0.32 us against 0.42 us per call of</span>
+        <span class="c1"># crossing_arcs_sweep_sorted at n = 1000 with curves of length 8.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arc_scratch</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'q'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"GeometricIntersectionMatrix of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_curves</span><span class="p">)</span><span class="si">}</span><span class="s2"> curves on </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm</span><span class="si">}</span><span class="s2">"</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_curves</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GeometricIntersectionMatrix.curves">
+<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.curves">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">curves</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the list of curves of this matrix, cyclically reduced.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix</span>
+<span class="sd">            sage: torus = OrientedMap(vp="(0,1,~0,~1)")</span>
+<span class="sd">            sage: GeometricIntersectionMatrix(torus, [[0, 0, 1, 2], [2]]).curves()</span>
+<span class="sd">            [array('i', [0, 2]), array('i', [2])]</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">w</span><span class="p">[:]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_curves</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_double_sum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the contribution of the pairs of arcs whose four endpoints are</span>
+<span class="sd">        pairwise distinct, for the slots ``sx`` and ``sy``.</span>
+
+<span class="sd">        This is :func:`~combisurf.crossing_arcs.crossing_arcs_sweep_sorted` on</span>
+<span class="sd">        the arcs of the two slots built at construction time, with the</span>
+<span class="sd">        `u`-weights from ``sx`` and the `v`-weights from ``sy``. It costs</span>
+<span class="sd">        `O((|u| + |v|) \log(n))` where `n` is the number of half-edges.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix</span>
+<span class="sd">            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")</span>
+<span class="sd">            sage: I = GeometricIntersectionMatrix(octagon, [[0, 3, 6], [0, 2, 2, 5, 2, 2, 5]])</span>
+<span class="sd">            sage: I._double_sum(0, 1), I._double_sum(1, 0), I._double_sum(1, 1)</span>
+<span class="sd">            (1, 1, 6)</span>
+<span class="sd">        """</span>
+        <span class="c1"># NOTE: the O(n^2) double sum (test/test_geometric_intersection.py)</span>
+        <span class="c1"># computes the same number, from two flat vectors of length</span>
+        <span class="c1"># (n - 3)(n - 2) / 2 per curve. It is slower at every n, so there is</span>
+        <span class="c1"># no threshold: with 100 random curves of length 8 on the one-vertex</span>
+        <span class="c1"># 4g-gon, the sweep takes 0.25 us per pair against 0.46 us at n = 4</span>
+        <span class="c1"># and 0.87 us against 350 us at n = 128. Evaluating all the double</span>
+        <span class="c1"># sums at once as a float64 matrix product was faster per pair, but</span>
+        <span class="c1"># not on the whole matrix(), and it needed O(n^2) memory per curve.</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arc_keys</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arc_weights</span>
+        <span class="k">if</span> <span class="n">sx</span> <span class="o">==</span> <span class="n">sy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">crossing_arcs_sweep_sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="p">,</span> <span class="n">keys</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span> <span class="n">weights</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                                              <span class="bp">self</span><span class="o">.</span><span class="n">_arc_scratch</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">crossing_arcs_sweep_sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="p">,</span> <span class="n">keys</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span> <span class="n">weights</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span> <span class="n">keys</span><span class="p">[</span><span class="n">sy</span><span class="p">],</span> <span class="n">weights</span><span class="p">[</span><span class="n">sy</span><span class="p">],</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">_arc_scratch</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_entry_from</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="n">double_sum</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the intersection number of the slots ``sx`` and ``sy``, given</span>
+<span class="sd">        the value ``double_sum`` of ``self._double_sum(sx, sy)``.</span>
+
+<span class="sd">        The other term, coming from the pairs of arcs with identical</span>
+<span class="sd">        startpoint, is :func:`~combisurf.crossing_arcs.startpoint_sweep_sorted`</span>
+<span class="sd">        on the leaves of the two slots built at construction time.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix</span>
+<span class="sd">            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")</span>
+<span class="sd">            sage: I = GeometricIntersectionMatrix(octagon, [[0, 3, 6], [0, 2, 2, 5, 2, 2, 5]])</span>
+<span class="sd">            sage: I._entry_from(0, 1, I._double_sum(0, 1)), I._entry_from(1, 1, I._double_sum(1, 1))</span>
+<span class="sd">            (2, 8)</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">sx</span> <span class="o">==</span> <span class="n">sy</span><span class="p">:</span>
+            <span class="c1"># a slot against itself is swept once, merging it with a copy of</span>
+            <span class="c1"># itself is wrong</span>
+            <span class="n">sweep</span> <span class="o">=</span> <span class="n">startpoint_sweep_sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starts</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arc_angles</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span>
+                                            <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arc_scratch</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sweep</span> <span class="o">=</span> <span class="n">startpoint_sweep_sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starts</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arc_angles</span><span class="p">[</span><span class="n">sx</span><span class="p">],</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">_ranks</span><span class="p">[</span><span class="n">sy</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starts</span><span class="p">[</span><span class="n">sy</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arc_angles</span><span class="p">[</span><span class="n">sy</span><span class="p">],</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">_arc_scratch</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="c1"># the two arcs of a crossing are counted once in each direction</span>
+        <span class="n">ans</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">double_sum</span> <span class="o">+</span> <span class="n">sweep</span>
+        <span class="k">assert</span> <span class="n">ans</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">ans</span> <span class="o">//</span> <span class="mi">2</span>
+
+<div class="viewcode-block" id="GeometricIntersectionMatrix.entry">
+<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.entry">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the geometric intersection number of the curves of indices ``x``</span>
+<span class="sd">        and ``y``.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionPairing, GeometricIntersectionMatrix</span>
+<span class="sd">            sage: from combisurf.word import word_init</span>
+<span class="sd">            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")</span>
+<span class="sd">            sage: gi = GeometricIntersectionPairing(octagon, punctured_faces=True)</span>
+<span class="sd">            sage: curves = [word_init("0"), word_init("~1"), word_init("0,~1,3"),</span>
+<span class="sd">            ....:           word_init("0,1,1,~2,1,1,~2")]</span>
+<span class="sd">            sage: I = GeometricIntersectionMatrix(octagon, curves)</span>
+<span class="sd">            sage: [I.entry(3, y) for y in range(4)]</span>
+<span class="sd">            [2, 3, 2, 8]</span>
+<span class="sd">            sage: [gi([curves[3]], [v]) for v in curves]</span>
+<span class="sd">            [2, 3, 2, 8]</span>
+<span class="sd">        """</span>
+        <span class="n">sx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slot</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">sy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slot</span><span class="p">[</span><span class="n">y</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entry_from</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_double_sum</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="GeometricIntersectionMatrix.row">
+<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.row">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the list of the geometric intersection numbers of the curve of</span>
+<span class="sd">        index ``x`` with all the curves.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix</span>
+<span class="sd">            sage: torus = OrientedMap(vp="(0,1,~0,~1)")</span>
+<span class="sd">            sage: I = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]])</span>
+<span class="sd">            sage: I.row(1)</span>
+<span class="sd">            [1, 0, 1, 1]</span>
+
+<span class="sd">        It agrees with the entries taken one at a time::</span>
+
+<span class="sd">            sage: all(I.row(x) == [I.entry(x, y) for y in range(len(I))] for x in range(len(I)))</span>
+<span class="sd">            True</span>
+<span class="sd">        """</span>
+        <span class="n">sx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slot</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">entry_from</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entry_from</span>
+        <span class="n">double_sum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_double_sum</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">entry_from</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="n">double_sum</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">))</span> <span class="k">for</span> <span class="n">sy</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slot</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="GeometricIntersectionMatrix.matrix">
+<a class="viewcode-back" href="../../geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.matrix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the full symmetric matrix of geometric intersection numbers over</span>
+<span class="sd">        the integers.</span>
+
+<span class="sd">        Only the entries with ``x &lt;= y`` are computed, the others being</span>
+<span class="sd">        obtained by symmetry.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import OrientedMap</span>
+<span class="sd">            sage: from combisurf.geometric_intersection import GeometricIntersectionMatrix</span>
+<span class="sd">            sage: torus = OrientedMap(vp="(0,1,~0,~1)")</span>
+<span class="sd">            sage: mat = GeometricIntersectionMatrix(torus, [[0], [2], [0, 2], [0, 2, 2]]).matrix()</span>
+<span class="sd">            sage: mat</span>
+<span class="sd">            [0 1 1 2]</span>
+<span class="sd">            [1 0 1 1]</span>
+<span class="sd">            [1 1 0 1]</span>
+<span class="sd">            [2 1 1 0]</span>
+<span class="sd">            sage: mat.is_symmetric()</span>
+<span class="sd">            True</span>
+<span class="sd">            sage: mat.base_ring()</span>
+<span class="sd">            Integer Ring</span>
+<span class="sd">        """</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.matrix.constructor</span><span class="w"> </span><span class="kn">import</span> <span class="n">matrix</span> <span class="k">as</span> <span class="n">sage_matrix</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">sage.rings.integer_ring</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZZ</span>
+
+        <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_curves</span><span class="p">)</span>
+        <span class="n">slot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slot</span>
+        <span class="n">entry_from</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entry_from</span>
+        <span class="n">double_sum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_double_sum</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">N</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+            <span class="n">sx</span> <span class="o">=</span> <span class="n">slot</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">N</span><span class="p">):</span>
+                <span class="n">sy</span> <span class="o">=</span> <span class="n">slot</span><span class="p">[</span><span class="n">y</span><span class="p">]</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="n">entry_from</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="n">double_sum</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">))</span>
+                <span class="n">rows</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="n">e</span>
+                <span class="n">rows</span><span class="p">[</span><span class="n">y</span><span class="p">][</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">e</span>
+        <span class="k">return</span> <span class="n">sage_matrix</span><span class="p">(</span><span class="n">ZZ</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span></div>
 </div>
 
 </pre></div>
