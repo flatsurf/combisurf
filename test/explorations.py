@@ -7,7 +7,7 @@ triangulations) and surface-dynamics (the generators ``L`` and ``I`` of
 ``GL(2, Z)`` acting on origamis), written as functions on lists, together
 with :func:`explore` that counts the classes of the states reached from a
 seed. They are not methods of :class:`OrientedMap`: they belong to those
-automata. The benchmark script ``bench.py`` holds the same code.
+automata.
 
 A face permutation ``fp`` is a list over the half-edges, the edge ``e``
 having the half-edges ``2e`` and ``2e + 1``; ``fp[2e + 1] == -1`` when ``e``
