@@ -15,6 +15,16 @@ offer yet (disconnected maps, decorations matched up to relabelling of
 their values, subspaces, tuples of permutations), and the tests that need
 it are expected to fail with that exception.
 
+Regular maps of ``S_5`` and ``PSL(2, 7)`` (built with Sage groups) and
+origamis as maps (decorated by ``h % 4``) give automorphism counts that
+follow from their construction. Every automorphism count is also compared
+with a brute-force count that uses neither the canonical key of the
+reference implementation nor :class:`OrientedMap`.
+
+The sizes of the collections explored by the automata of veerer (flip graph
+of triangulations, reduced core automaton) are checked with the mutations
+of :mod:`explorations`.
+
 The last tests check the reference implementation
 :mod:`combisurf.isomorphism_naive` against the defining properties of
 isomorphisms and canonical forms on random connected maps.
@@ -26,6 +36,12 @@ import pytest
 
 from combisurf import OrientedMap
 from combisurf import isomorphism_naive
+
+from explorations import (BLUE, RED, combisurf_key, explore, flip_neighbours,
+                          gl2z_neighbours, origami_decoration,
+                          origami_face_permutation, origami_i, origami_l,
+                          parse_colours, reduced_core_neighbours,
+                          reduced_core_seed)
 
 NOT_IMPLEMENTED = pytest.mark.xfail(raises=NotImplementedError, strict=True)
 
@@ -514,6 +530,84 @@ def test_automorphism_count(build, expected):
     assert automorphism_count(build()) == expected
 
 
+def regular_face_permutation(G, vg, eg, fg):
+    r"""
+    Return the face permutation of the regular map of the group ``G`` with
+    vertex automorphism ``vg``, edge automorphism ``eg`` (an involution)
+    and face automorphism ``fg = (vg * eg)^-1``.
+
+    Half-edges are the elements of ``G`` in the order of ``list(G)``,
+    acted on by right multiplication; the result is relabelled so that the
+    ``c``-th cycle of the edge permutation (right multiplication by
+    ``eg``) becomes the edge ``(2c, 2c+1)``. The left multiplication by
+    ``G`` commutes with these right multiplications: it acts on the map by
+    automorphisms, transitively on the half-edges.
+    """
+    from combisurf.permutation import perm_compose, perm_conjugate, perm_cycles, perm_is_one
+
+    elements = list(G)
+    n = len(elements)
+    to_int = {g: i for i, g in enumerate(elements)}
+    vgp = array('i', [to_int[elements[i] * vg] for i in range(n)])
+    egp = array('i', [to_int[elements[i] * eg] for i in range(n)])
+    fgp = array('i', [to_int[elements[i] * fg] for i in range(n)])
+    if not perm_is_one(perm_compose(perm_compose(vgp, egp), fgp)):
+        raise RuntimeError('vg * eg * fg is not the identity')
+    r = array('i', [-1] * n)
+    for c, (i, j) in enumerate(perm_cycles(egp)):
+        r[i] = 2 * c
+        r[j] = 2 * c + 1
+    return perm_conjugate(fgp, r)
+
+
+def regular_map_S5():
+    r"""
+    Return the regular map of ``S_5`` with 120 half-edges (a quadrangulation
+    of a surface of genus 6).
+    """
+    from sage.all import SymmetricGroup
+
+    S = SymmetricGroup(5)
+    vg = S("(1,2,4)(3,5)")
+    eg = S("(1,2)(3,4)")
+    fg = (vg * eg).inverse()
+    return OrientedMap(fp=list(regular_face_permutation(S, vg, eg, fg)))
+
+
+def regular_map_PSL27():
+    r"""
+    Return the regular triangulation of genus 3 of ``PSL(2, 7)`` with 168
+    half-edges (Klein's map: vertices of degree 7).
+    """
+    from sage.all import PSL
+
+    G = PSL(2, 7)
+    L = list(G)
+    rng = random.Random(0)
+    eg = fg = None
+    while (eg is None or eg.order() != 2 or fg.order() != 3
+           or (eg * fg).order() != 7 or G.subgroup([eg, fg]).order() != len(L)):
+        eg = rng.choice(L)
+        fg = rng.choice(L)
+    vg = (eg * fg).inverse()
+    return OrientedMap(fp=list(regular_face_permutation(G, vg, eg, fg)))
+
+
+@pytest.mark.parametrize("build, expected", [
+    (regular_map_S5, 120),      # the order of S_5
+    (regular_map_PSL27, 168),   # the order of PSL(2, 7)
+], ids=["O22", "O23"])
+def test_automorphism_count_regular_map(build, expected):
+    # the left multiplication by the group is a family of automorphisms
+    # that is regular on the half-edges
+    m = build()
+    assert m.num_half_edges() == expected
+    automorphisms = m.automorphisms()
+    assert len(automorphisms) == expected
+    h0 = next(m.half_edges())
+    assert sorted(g[h0] for g in automorphisms) == sorted(m.half_edges())
+
+
 def face_indices(m):
     r"""
     Return the list that gives to each half-edge of ``m`` the index of its
@@ -576,6 +670,87 @@ def test_automorphism_group_I8():
 ], ids=["O5", "O6", "O7", "O8", "O9", "O20", "O21"])
 def test_automorphism_count_decorated(build, decorations, expected):
     assert automorphism_count(build(), **decorations) == expected
+
+
+def origami_map(r, u):
+    r"""
+    Return the map of the origami ``(r, u)`` and its half-edge decoration
+    ``h % 4``.
+    """
+    n = len(r)
+    return (OrientedMap(fp=origami_face_permutation(r, u)),
+            origami_decoration(n))
+
+
+# The decorated count is the number of translations of the origami:
+# surface-dynamics/origami_dense.pyx:2838-2850 for the first two (in origami
+# order), and the n translations of a torus of n squares for the last two.
+# The undecorated counts (map automorphisms may rotate the squares) were
+# measured with the naive implementation and are not independent.
+@pytest.mark.parametrize("r, u, undecorated, decorated", [
+    ([1, 0, 2], [2, 1, 0], 4, 1),
+    ([1, 0, 3, 2], [0, 2, 1, 3], 4, 2),
+    ([1, 2, 3, 4, 5, 0], [0, 1, 2, 3, 4, 5], None, 6),
+    ([1, 2, 0, 4, 5, 3], [3, 4, 5, 1, 2, 0], None, 6),
+], ids=["O24", "O25", "O26-cylinder", "O26-sheared"])
+def test_automorphism_count_origami(r, u, undecorated, decorated):
+    m, d = origami_map(r, u)
+    assert automorphism_count(m, half_edge_data=d) == decorated
+    if undecorated is not None:
+        assert automorphism_count(m) == undecorated
+
+
+def half_edge_array_of_edges(m, values):
+    r"""
+    Return the half-edge array of the edge array ``values``.
+    """
+    return [values[h // 2] for h in range(m.num_half_edges())]
+
+
+BRUTE_FORCE_CASES = [
+    (lambda: map_from_fp(O1), {}),
+    (lambda: map_from_fp(O2), {}),
+    (lambda: map_from_fp(O4), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['O10']), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['O11']), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['O12']), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['O13']), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['O14']), {}),
+    (lambda: map_from_darts(*DARTS['O16']), {}),
+    (lambda: map_from_darts(*DARTS['O17']), {}),
+    (lambda: map_from_darts(*DARTS['O18']), {}),
+    (lambda: map_from_darts(*DARTS['O19']), {}),
+    (lambda: map_from_fp(O1), {'edge_data': O5_EDGE_DATA}),
+    (lambda: map_from_fp(O6), {'half_edge_data': [0, 1, 0, 1, 0, 1]}),
+    (lambda: map_from_fp(O7), {'half_edge_data': [0, 1, 0, 1, 0, 1]}),
+    (lambda: map_from_fp(O7), {'half_edge_data': [0, 1, 0, 1, 0, 2]}),
+    (regular_map_S5, {}),
+    (regular_map_PSL27, {}),
+    (lambda: origami_map([1, 0, 2], [2, 1, 0])[0], {}),
+    (lambda: origami_map([1, 0, 3, 2], [0, 2, 1, 3])[0], {}),
+    (lambda: origami_map([1, 2, 3, 4, 5, 0], [0, 1, 2, 3, 4, 5])[0], {}),
+    (lambda: origami_map([1, 2, 0, 4, 5, 3], [3, 4, 5, 1, 2, 0])[0], {}),
+    (lambda: origami_map([1, 0, 2], [2, 1, 0])[0], 'origami'),
+    (lambda: origami_map([1, 0, 3, 2], [0, 2, 1, 3])[0], 'origami'),
+    (lambda: origami_map([1, 2, 3, 4, 5, 0], [0, 1, 2, 3, 4, 5])[0], 'origami'),
+    (lambda: origami_map([1, 2, 0, 4, 5, 3], [3, 4, 5, 1, 2, 0])[0], 'origami'),
+]
+
+
+@pytest.mark.parametrize("build, decorations", BRUTE_FORCE_CASES,
+                         ids=list(range(len(BRUTE_FORCE_CASES))))
+def test_brute_force_count_agrees(build, decorations):
+    m = build()
+    if decorations == 'origami':
+        decorations = {'half_edge_data': origami_decoration(m.num_half_edges() // 4)}
+    fp = list(m.face_permutation())
+    data = []
+    if 'half_edge_data' in decorations:
+        data.append(decorations['half_edge_data'])
+    if 'edge_data' in decorations:
+        data.append(half_edge_array_of_edges(m, decorations['edge_data']))
+    expected = automorphism_count(m, **decorations)
+    assert brute_force_automorphism_count(fp, tuple(data)) == expected
 
 
 # Isomorphism verdicts
@@ -689,6 +864,35 @@ def test_canonical_form_invariance(build, decorations):
 ], ids=["origami-3", "origami-4"])
 def test_tuple_automorphism_count(perms, expected):
     assert tuple_automorphism_count(perms) == expected
+
+
+# Sizes of collections up to isomorphism, explored by local mutations
+
+def test_explore_flip_graph():
+    # veerer/automata.py, triangulation_flip_graph_small: 236 states
+    seed = "(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)"
+    start = list(OrientedMap(fp=seed)._fp)
+    assert explore(start, flip_neighbours, combisurf_key) == 236
+
+
+def test_explore_reduced_core_automaton():
+    # veerer/automata.py, core_automaton_small: 234 states
+    seed = "(0,8,~7)(~0,~6,7)(1,11,~10)(~1,~11,4)(2,10,~9)(~2,~4,5)(3,9,~8)(~3,~5,6)"
+    colours = parse_colours("RRRRBBBBBBBB")
+    assert colours[:4] == [RED] * 4 and colours[4:] == [BLUE] * 8
+    start = reduced_core_seed(list(OrientedMap(fp=seed)._fp), colours)
+    count = explore(start, lambda s: reduced_core_neighbours(*s),
+                    lambda s: combisurf_key(s[0], edge_data=s[1]))
+    assert count == 234
+
+
+def test_origami_mutations():
+    r, u = [1, 0, 2], [2, 1, 0]
+    for image in (origami_l(r, u), origami_i(r, u)):
+        assert len(image) == 2
+        for p in image:
+            assert sorted(p) == list(range(len(r)))
+    assert len(gl2z_neighbours((r, u))) == 2
 
 
 # Properties of the reference implementation on random connected maps
@@ -844,16 +1048,58 @@ def check_automorphism(fp, data, g):
                 assert d[g[h]] == d[h]
 
 
-def num_minimal_roots(fp, data):
+def extends_to_automorphism(fp, data, h0, x0):
     r"""
-    Return the number of active roots of minimal key.
+    Return whether the map ``h0 -> x0`` extends to an automorphism of ``fp``
+    decorated by ``data``.
+
+    The image of every half-edge is forced by propagation along ``fp`` and
+    the twins of non-folded edges (a folded edge must go to a folded edge),
+    since ``fp`` is connected; the extension is then checked to be a
+    bijection of the active half-edges that commutes with ``fp`` and keeps
+    every array of ``data``.
     """
-    keys = []
-    for root in range(len(fp)):
-        if fp[root] != -1:
-            r, k = isomorphism_naive.relabelling_from(fp, root)
-            keys.append(isomorphism_naive._key(fp, data, r, k))
-    return keys.count(min(keys))
+    g = {}
+    inverse = {}
+    todo = [(h0, x0)]
+    while todo:
+        h, x = todo.pop()
+        if h in g:
+            if g[h] != x:
+                return False
+            continue
+        if x in inverse or fp[x] == -1:
+            return False
+        if any(d[h] != d[x] for d in data):
+            return False
+        g[h] = x
+        inverse[x] = h
+        todo.append((fp[h], fp[x]))
+        if fp[h ^ 1] != -1:
+            if fp[x ^ 1] == -1:
+                return False
+            todo.append((h ^ 1, x ^ 1))
+        elif fp[x ^ 1] != -1:
+            return False
+    active = [h for h in range(len(fp)) if fp[h] != -1]
+    if sorted(g) != active or sorted(g.values()) != active:
+        return False
+    return all(g[fp[h]] == fp[g[h]] for h in active)
+
+
+def brute_force_automorphism_count(fp, data):
+    r"""
+    Return the number of automorphisms of the connected face permutation
+    ``fp`` decorated by the tuple of half-edge arrays ``data``.
+
+    An automorphism is determined by the image of one active half-edge
+    ``h0``: every active ``x`` is tried as its image. This uses neither the
+    canonical key of :mod:`combisurf.isomorphism_naive` nor
+    :class:`OrientedMap`.
+    """
+    active = [h for h in range(len(fp)) if fp[h] != -1]
+    h0 = active[0]
+    return sum(extends_to_automorphism(fp, data, h0, x) for x in active)
 
 
 def test_random_connected_fp():
@@ -900,7 +1146,7 @@ def test_naive_automorphisms(seed):
         assert len({tuple(g) for g in automorphisms}) == len(automorphisms)
         for g in automorphisms:
             check_automorphism(fp, data, g)
-        assert len(automorphisms) == num_minimal_roots(fp, data)
+        assert len(automorphisms) == brute_force_automorphism_count(fp, data)
         gens = isomorphism_naive.automorphism_generators(fp, data)
         assert group_closure(gens, len(fp)) == {tuple(g) for g in automorphisms}
 
