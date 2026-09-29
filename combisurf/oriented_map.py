@@ -45,6 +45,7 @@ identified.
 import collections
 import itertools
 import numbers
+import operator
 from array import array
 
 from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
@@ -56,7 +57,7 @@ from combisurf.permutation import (perm_init, perm_check, perm_trim, perm_cycles
                           perm_num_cycles, str_to_cycles, str_to_cycles_and_data, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
                           perm_orbit, perm_orbit_size,
-                          perms_are_transitive, perms_orbits, perm_edge_orbits)
+                          perms_are_transitive, perm_edge_orbits)
 from combisurf.word import word_init, word_string
 from combisurf import isomorphism_naive
 
@@ -3846,107 +3847,6 @@ class OrientedMap:
             i += 1
             j -= 1
 
-    # TODO: consider listing all quotients by looking at blocks under the monodromy group
-    def automorphism_quotient(self, mapping=False, mutable=False, check=True):
-        r"""
-        Return the quotient under the automorphism group.
-
-        EXAMPLES::
-
-            sage: from veerer import *  # not tested
-
-        Veering triangulation example::
-
-            sage: vt = VeeringTriangulation("(0,1,2)(3,4,~0)(5,6,~1)(7,~2,8)(9,~3,~6)(10,~7,~4)(11,~5,12)(13,14,~8)(15,~9,16)(17,18,~10)(19,~17,~11)(20,~13,~12)(21,~14,~18)(22,~21,~15)(23,24,~16)(25,~23,~19)(26,~20,~25)(~26,~24,~22)", "RBBRBRBRRBRBBRBBRRBRRRBBRRB")  # not tested
-            sage: len(vt.automorphisms())  # not tested
-            2
-            sage: qvt = vt.automorphism_quotient()  # not tested
-            sage: qvt  # not tested
-            VeeringTriangulation("(0,1,2)(~0,3,4)(~1,5,6)(~2,8,7)(~3,~6,9)(~4,10,~7)(~5,12,11)(~8,13,~12)(~10,14,~11)", "RBBRBRBRRBRBBRR")
-            sage: (vt.stratum(), qvt.stratum())  # not tested
-            (H_4(2^3), Q_1(1^3, -1^3))
-
-            sage: vt.automorphism_quotient(mapping=True)  # not tested
-            (VeeringTriangulation("(0,1,2)(~0,3,4)(~1,5,6)(~2,8,7)(~3,~6,9)(~4,10,~7)(~5,12,11)(~8,13,~12)(~10,14,~11)", "RBBRBRBRRBRBBRR"),
-             array('i', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 18, 20, 21, 22, 23, 24, 25, 26, 26, 25, 24, 13, 12, 7, 6, 28, 28, 23, 22, 21, 20, 17, 16, 11, 10, 3, 2, 8, 9, 1, 0, 15, 14, 5, 4]))
-
-        Strebel graph example::
-
-            sage: sg = StrebelGraph("(0,~0,~1)(1,2,~2)")  # not tested
-            sage: sg.automorphism_quotient()  # not tested
-            StrebelGraph("(0,~0,1)")
-
-        TESTS::
-
-            sage: vt = VeeringTriangulation("(~0,1,2)(~1,3,4)(~2,5,6)(~3,7,8)(~4,~7,9)(~6,10,11)(~8,12,13)(~9,14,15)(~10,16,17)(~11,18,~17)(~12,19,~18)(~14,20,~16)(0:1)(~5:1)(~13:1)(~15:1)(~19:1)(~20:1)", "RBBBRRBRBBRRBRBRBBBRR")  # not tested
-            sage: vt.automorphism_quotient()  # not tested
-            VeeringTriangulation("(~0,1,2)(~1,3,4)(~2,5,6)(~3,7,8)(~4,~7,~6)(~8,9,10)(0:1)(~5:1)(~10:1)", "RBBBRRBRBBR")
-        """
-        return self.quotient(perms_orbits(self.automorphisms()), mapping, mutable, check)
-
-    def quotient(self, blocks, mapping=False, mutable=False, check=True):
-        if check:
-            if not all(blocks):
-                raise ValueError("each block must be non empty")
-            blocks = [[self._check_half_edge(h) for h in block] for block in blocks]
-            half_edges = set().union(*blocks)
-            if half_edges != set(self.half_edges()):
-                raise ValueError("invalid blocks")
-            for block in blocks:
-                for l in self._half_edges_data:
-                    if len(set(l[h] for h in block)) != 1:
-                        raise ValueError("block must be constant on half-edges data")
-                for l in self._edges_data:
-                    if len(set(l[h // 2] for h in block)) != 1:
-                        raise ValueError("block must be constant on edges data")
-
-        half_edge_to_block = [-1] * len(self._vp)
-        for i, block in enumerate(blocks):
-            for j in block:
-                half_edge_to_block[j] = i
-
-        if check:
-            for block in blocks:
-                if len(set(half_edge_to_block[self._vp[h]] for h in block)) != 1:
-                    raise ValueError("invalid blocks")
-                if len(set(half_edge_to_block[self._fp[h]] for h in block)) != 1:
-                    raise ValueError("invalid blocks")
-
-        ne = 0
-        block_relabelling = {-1: -1}
-        for e in range(len(self._vp) // 2):
-            i = half_edge_to_block[2 * e]
-            if i in block_relabelling:
-                continue
-            block_relabelling[i] = 2 * ne
-            if self._vp[2 * e + 1] != -1:
-                ii = half_edge_to_block[2 * e + 1]
-                if ii in block_relabelling:
-                    assert i == ii  # folding
-                else:
-                    block_relabelling[ii] = 2 * ne + 1
-            ne += 1
-
-        vp = array('i', [-1] * (2 * ne))
-        fp = array('i', [-1] * (2 * ne))
-        half_edges_data = [array('i', [0] * (2 * ne)) for _ in self._half_edges_data]
-        edges_data = [array('i', [0] * ne) for _ in self._edges_data]
-        for i, block in enumerate(blocks):
-            h = block[0]
-            ii = half_edge_to_block[self._vp[h]]
-            vp[block_relabelling[i]] = block_relabelling[ii]
-
-            ii = half_edge_to_block[self._fp[h]]
-            fp[block_relabelling[i]] = block_relabelling[ii]
-
-            for ldest, lsrc in zip(half_edges_data, self._half_edges_data):
-                ldest[block_relabelling[i]] = lsrc[h]
-            for ldest, lsrc in zip(edges_data, self._edges_data):
-                ldest[block_relabelling[i] // 2] = lsrc[h // 2]
-
-        quotient = self.from_permutations(vp, fp, half_edges_data, edges_data, mutable, check)
-        return (quotient, array('i', [block_relabelling[half_edge_to_block[h]] for h in range(len(self._vp))])) if mapping else quotient
-
     #################
     # Automorphisms #
     #################
@@ -3967,8 +3867,8 @@ class OrientedMap:
 
             sage: from combisurf import OrientedMap
             sage: m = OrientedMap(fp="(0,1)(~0,~1)")
-            sage: m._decoration_data(half_edge_data=([0, 1, 2, 3], (4, 5, 6, 7)), edge_data=['a', 'b'])
-            ([0, 1, 2, 3], (4, 5, 6, 7), ['a', 'a', 'b', 'b'])
+            sage: m._decoration_data(half_edge_data=([0, 1, 2, 3], (4, 5, 6, 7)), edge_data=[8, 9])
+            ([0, 1, 2, 3], (4, 5, 6, 7), [8, 8, 9, 9])
             sage: m._decoration_data(half_edge_data=(0, 1, 2, 3))
             ((0, 1, 2, 3),)
 
@@ -3992,9 +3892,41 @@ class OrientedMap:
             ValueError: face_data must be constant on faces
             sage: m._decoration_data(face_data=[0, 0, 1, 1], check=False)
             ([0, 0, 1, 1],)
+
+        The values must be integers::
+
+            sage: m1 = OrientedMap(fp="(0,1,2)(~0,~2,~1)")
+            sage: m1.canonical_labelling(edge_data=[None, 1, 2])
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_data must contain integers, got None
+            sage: m1.canonical_labelling(edge_data=['a', 'b', 'c'])
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_data must contain integers, got 'a'
+            sage: m1.canonical_labelling(edge_data=[0.5r, 1, 2])
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_data must contain integers, got 0.5
+            sage: m1.canonical_labelling(edge_data=[ZZ(0), True, 2])
+            array('i', [0, 1, 2, 3, 4, 5])
+            sage: m1.canonical_labelling(half_edge_data=((0,)*6,))
+            array('i', [0, 1, 2, 3, 4, 5])
         """
         n = len(self._vp)
+        fp = self._fp
         data = []
+
+        def check_integers(d, name, edges=False):
+            # the values on inactive half-edges are ignored, so they are not
+            # checked either
+            for i, x in enumerate(d):
+                if (fp[2 * i] != -1 or fp[2 * i + 1] != -1) if edges else fp[i] != -1:
+                    try:
+                        operator.index(x)
+                    except TypeError:
+                        raise ValueError("{} must contain integers, got {!r}".format(name, x)) from None
+
         if half_edge_data is not None:
             if isinstance(half_edge_data, tuple) and half_edge_data and all(isinstance(d, (list, tuple, array)) for d in half_edge_data):
                 data.extend(half_edge_data)
@@ -4004,9 +3936,12 @@ class OrientedMap:
                 for d in data:
                     if len(d) != n:
                         raise ValueError("half_edge_data must have length {}".format(n))
+                    check_integers(d, "half_edge_data")
         if edge_data is not None:
-            if check and len(edge_data) != n // 2:
-                raise ValueError("edge_data must have length {}".format(n // 2))
+            if check:
+                if len(edge_data) != n // 2:
+                    raise ValueError("edge_data must have length {}".format(n // 2))
+                check_integers(edge_data, "edge_data", edges=True)
             data.append([edge_data[h // 2] for h in range(n)])
         for d, p, name, cells in ((vertex_data, self._vp, "vertex_data", "vertices"),
                                   (face_data, self._fp, "face_data", "faces")):
@@ -4015,6 +3950,7 @@ class OrientedMap:
             if check:
                 if len(d) != n:
                     raise ValueError("{} must have length {}".format(name, n))
+                check_integers(d, name)
                 if any(p[h] != -1 and d[p[h]] != d[h] for h in range(n)):
                     raise ValueError("{} must be constant on {}".format(name, cells))
             data.append(d)
@@ -4029,9 +3965,10 @@ class OrientedMap:
 
         INPUT:
 
-        - ``half_edge_data`` -- optional; a list or array indexed by
-          half-edges, or a tuple of such (a tuple whose entries are all
-          lists, tuples or arrays)
+        - ``half_edge_data`` -- optional; either one decoration, a list or
+          array indexed by half-edges, or several decorations, given as a
+          tuple whose entries are all sequences (lists, tuples or arrays);
+          any other value is one decoration
 
         - ``edge_data`` -- optional; a list indexed by edges
 
@@ -4039,8 +3976,13 @@ class OrientedMap:
           half-edges, constant on each vertex and on each face respectively
 
         - ``check`` -- boolean (default ``True``); whether to check the
-          lengths of the decorations and the constancy of ``vertex_data``
-          and ``face_data``
+          lengths of the decorations, that their values are integers and
+          the constancy of ``vertex_data`` and ``face_data``
+
+        The values of a decoration are integers (Python ``int``, Sage
+        ``Integer``, or anything with an ``__index__`` method); the values
+        on inactive half-edges are ignored. With ``check=True`` any other
+        value raises a ``ValueError``.
 
         OUTPUT: an ``array('i')`` that maps each half-edge to its canonical
         label: a relabelling accepted by :meth:`relabel`, which gives the
@@ -4292,6 +4234,12 @@ class OrientedMap:
             Traceback (most recent call last):
             ...
             ValueError: edge_data must be a pair (of self, of other)
+            sage: m1.is_isomorphic(m2, edge_data=[0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_data must be a pair (of self, of other) of sequences or None
+            sage: m1.is_isomorphic(m2, edge_data=(None, [0, 0, 1]))
+            False
             sage: m1.is_isomorphic("(0,1,2)")
             Traceback (most recent call last):
             ...
@@ -4306,6 +4254,8 @@ class OrientedMap:
                 pairs[name] = (None, None)
             elif not isinstance(value, (tuple, list)) or len(value) != 2:
                 raise ValueError("{} must be a pair (of self, of other)".format(name))
+            elif check and not all(x is None or (hasattr(x, '__len__') and hasattr(x, '__getitem__') and not isinstance(x, str)) for x in value):
+                raise ValueError("{} must be a pair (of self, of other) of sequences or None".format(name))
         data1 = self._decoration_data(*(pairs[name][0] for name in ('half_edge_data', 'edge_data', 'vertex_data', 'face_data')), check=check)
         data2 = other._decoration_data(*(pairs[name][1] for name in ('half_edge_data', 'edge_data', 'vertex_data', 'face_data')), check=check)
         r = isomorphism_naive.isomorphism(self._fp, data1, other._fp, data2)
