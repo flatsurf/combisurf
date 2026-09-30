@@ -2,10 +2,11 @@ r"""
 Isomorphisms, automorphisms and canonical labels of maps, reference implementation
 
 This module computes canonical labellings, canonical forms, automorphism
-groups and isomorphisms of connected maps given by their face permutation,
-possibly decorated by values on half-edges. It works on plain arrays and is
-written for readability: every active half-edge is tried as a root, which
-costs `O(n^2)` for `n` half-edges, with no pruning. It is the reference
+groups and isomorphisms of maps, connected or not, given by their face
+permutation, possibly decorated by values on half-edges. It works on plain
+arrays and is written for readability: every active half-edge is tried as a
+root, which costs `O(n^2)` for `n` half-edges on a connected map, with no
+pruning. It is the reference
 against which a faster implementation is to be tested; the methods of
 :class:`~combisurf.oriented_map.OrientedMap` (such as
 :meth:`~combisurf.oriented_map.OrientedMap.canonical_labelling`) call it.
@@ -36,7 +37,37 @@ the face permutation in the new labels, followed by each array of
 ``classes`` read in the same order and renumbered ``0, 1, 2, ...`` by first
 appearance in that order. The renumbering makes the key independent of the
 names of the values, and costs `O(n)` per root like the rest of the key.
-The canonical labelling is the one of a root of minimal key.
+The canonical labelling of a connected map is the one of a root of minimal
+key.
+
+A disconnected map is labelled component after component, the labels of a
+component following those of the components labelled before it. The
+*block* of a component labelled from a root is its number of labels, its
+face permutation in its local labels ``0, ..., k-1``, each array of
+``data`` read in the order of the local labels of its active half-edges,
+then each array of ``classes`` read in the same order and renumbered by
+first appearance, continuing the numbering of the components labelled
+before (a value met in an earlier component keeps its number). The
+canonical labelling is the one whose sequence of blocks is
+lexicographically minimal. It is found by a search: at each step, every
+active half-edge not labelled yet is tried as a root and the roots of
+minimal block are kept. When several roots tie:
+
+- with ``classes``, each of them is followed: the numbering of the class
+  values left by two tied components may differ, and so may the minimal
+  continuations;
+
+- without ``classes``, only the first one is followed: two tied blocks are
+  isomorphic decorated components, and either choice leaves isomorphic
+  remainders, hence the same minimal continuation. This keeps the
+  canonical labelling of `k` isomorphic components from costing `k!`.
+
+The automorphisms are the compositions ``ra^{-1} o rb`` of the first
+labelling ``ra`` reaching the minimal sequence with each labelling ``rb``
+reaching it, so :func:`automorphisms` follows every tied root, with or
+without classes; on `k` isomorphic components the list has at least `k!`
+elements. On a connected map the sequence has a single block, whose
+labelling is the one of a root of minimal key.
 
 EXAMPLES::
 
@@ -58,6 +89,18 @@ to relabelling::
     3
     sage: len(automorphisms(fp, classes=(c,)))
     6
+
+Two components ``(0)(~0)`` and ``(1)(~1)``, each an edge with two faces of
+degree one: the automorphisms swap the halves of each edge and the two
+edges. Classes shared by the two components tie them together::
+
+    sage: fp = [0, 1, 2, 3]
+    sage: len(automorphisms(fp))
+    8
+    sage: len(automorphisms(fp, classes=([0, 1, 0, 1],)))
+    4
+    sage: len(automorphisms(fp, classes=([0, 1, 1, 2],)))
+    2
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -243,33 +286,124 @@ def _key(fp, data, r, k, classes=()):
     return tuple(key)
 
 
-def _minimal_roots(fp, data, classes=()):
+def _block(fp, data, classes, r, k, names):
     r"""
-    Return ``(key, roots)``: the minimal key over the active roots and the
-    list of the roots that reach it, each as a pair ``(root, r)`` with
-    ``r`` its relabelling, in increasing order of roots.
+    Return ``(block, new_names)``: the block of the component labelled by
+    ``r`` with ``k`` local labels ``0, ..., k-1`` (``-1`` outside the
+    component), and the numberings of the class values extended by it.
 
-    Raise ``NotImplementedError`` if ``fp`` is not connected. For a map
-    without active half-edge the list of roots is empty.
+    The block is the tuple of ``k``, the face permutation of the component
+    in its local labels, each array of ``data`` read in the order of the
+    local labels of its active half-edges, and each array of ``classes``
+    read in the same order and renumbered by first appearance, starting
+    from the numbering ``names`` (one dictionary per array, values to
+    numbers) of the components labelled before. ``names`` is not modified.
+
+    EXAMPLES:
+
+    The second component of ``(0)(~0)(1)(~1)`` meets a value of the first
+    one, which keeps its number, and a new value::
+
+        sage: from combisurf.isomorphism_naive import relabelling_from, _block
+        sage: fp = [0, 1, 2, 3]
+        sage: r, k = relabelling_from(fp, 2)
+        sage: _block(fp, (), ([5, 6, 6, 7],), r, k, [{5: 0, 6: 1}])
+        ((2, (0, 1), (1, 2)), [{5: 0, 6: 1, 7: 2}])
+    """
+    rinv = [-1] * k
+    for h, x in enumerate(r):
+        if x != -1 and fp[h] != -1:
+            rinv[x] = h
+    block = [k, tuple(-1 if h == -1 else r[fp[h]] for h in rinv)]
+    for d in data:
+        block.append(tuple(d[h] for h in rinv if h != -1))
+    new_names = []
+    for c, nm in zip(classes, names):
+        nm = dict(nm)
+        renumbered = []
+        for h in rinv:
+            if h != -1:
+                v = c[h]
+                i = nm.get(v)
+                if i is None:
+                    i = nm[v] = len(nm)
+                renumbered.append(i)
+        block.append(tuple(renumbered))
+        new_names.append(nm)
+    return tuple(block), new_names
+
+
+def _search(fp, data, classes=(), all_leaves=False):
+    r"""
+    Return ``(key, leaves)``: the lexicographically minimal sequence of
+    blocks over the labellings component after component, and the
+    relabellings that reach it, in the order of the search.
+
+    Each leaf is an ``array('i')`` of length ``len(fp)``, ``-1`` on the
+    half-edges of the inactive edges. The search is a depth-first walk
+    whose state is the relabelling of the components labelled so far: every
+    active half-edge not labelled yet is tried as the root of the next
+    component and only the roots of minimal block are followed, in
+    increasing order. A branch whose sequence of blocks exceeds the best
+    one found is cut. With ``all_leaves=False`` the first leaf reaching the
+    minimum is returned and, when ``classes`` is empty, only the first root
+    of minimal block is followed at each step; otherwise every such root
+    is, and every leaf reaching the minimum is returned.
+
+    EXAMPLES::
+
+        sage: from combisurf.isomorphism_naive import _search
+        sage: key, leaves = _search([0, 1, 2, 3], ())
+        sage: key
+        ((2, (0, 1)), (2, (0, 1)))
+        sage: leaves
+        [array('i', [0, 1, 2, 3])]
+        sage: len(_search([0, 1, 2, 3], (), all_leaves=True)[1])
+        8
     """
     n, ne = _check_input(fp, data, classes)
     best = None
-    roots = []
-    for root in range(n):
-        if fp[root] == -1:
+    leaves = []
+    # a state is (blocks, relabelling, number of labels used, numberings
+    # of the class values); the stack holds the states still to expand
+    stack = [((), array('i', [-1] * n), 0, [{} for _ in classes])]
+    while stack:
+        blocks, r, used, names = stack.pop()
+        if best is not None and blocks > best[:len(blocks)]:
             continue
-        r, k = relabelling_from(fp, root)
-        if k != 2 * ne:
-            raise NotImplementedError("disconnected maps are not supported")
-        key = _key(fp, data, r, k, classes)
-        if best is None or key < best:
-            best = key
-            roots = [(root, r)]
-        elif key == best:
-            roots.append((root, r))
-    if best is None:
-        best = ((),) + tuple(() for _ in data) + tuple(() for _ in classes)
-    return best, roots
+        if used == 2 * ne:
+            if best is None or blocks < best:
+                best = blocks
+                leaves = [r]
+            elif all_leaves:
+                leaves.append(r)
+            continue
+        minimum = None
+        tied = []
+        for root in range(n):
+            if fp[root] == -1 or r[root] != -1:
+                continue
+            rc, k = relabelling_from(fp, root)
+            block, new_names = _block(fp, data, classes, rc, k, names)
+            if minimum is None or block < minimum:
+                minimum = block
+                tied = [(rc, new_names)]
+            elif block == minimum:
+                tied.append((rc, new_names))
+        if not classes and not all_leaves:
+            # two roots of equal block give isomorphic decorated components
+            # and isomorphic remainders, hence the same minimal continuation
+            del tied[1:]
+        children = []
+        for rc, new_names in tied:
+            r2 = array('i', r)
+            for h, x in enumerate(rc):
+                if x != -1:
+                    r2[h] = used + x
+            children.append((blocks + (minimum,), r2, used + minimum[0], new_names))
+        # pushed in reverse so that the roots are expanded in increasing order
+        stack.extend(reversed(children))
+    return best, leaves
 
 
 def _complete(r, n, ne):
@@ -289,8 +423,11 @@ def _complete(r, n, ne):
 
 def canonical_labelling(fp, data=(), classes=()):
     r"""
-    Return the canonical labelling of the connected map with face
-    permutation ``fp`` decorated by ``data`` and ``classes``.
+    Return the canonical labelling of the map with face permutation ``fp``
+    decorated by ``data`` and ``classes``.
+
+    A disconnected map is labelled component after component (see the
+    module documentation).
 
     INPUT:
 
@@ -345,23 +482,33 @@ def canonical_labelling(fp, data=(), classes=()):
         sage: canonical_labelling([])
         array('i')
 
-    A disconnected map::
+    Disconnected maps: the triangle ``(0,1,2)(~0,~2,~1)`` beside the
+    folded edge ``(3)`` is labelled from the folded edge, whose block is
+    smaller; the same map with the components in the other order gets the
+    identity::
+
+        sage: canonical_labelling([2, 5, 4, 1, 0, 3, 6, -1])
+        array('i', [2, 3, 4, 5, 6, 7, 0, 1])
+        sage: canonical_labelling([0, -1, 4, 7, 6, 3, 2, 5])
+        array('i', [0, 1, 2, 3, 4, 5, 6, 7])
+
+    The two edges of ``(0)(~0)(1)(~1)``, with classes that pair the
+    half-edge ``0`` with ``3``::
 
         sage: canonical_labelling([0, 1, 2, 3])
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: disconnected maps are not supported
+        array('i', [0, 1, 2, 3])
+        sage: canonical_labelling([0, 1, 2, 3], classes=([0, 1, 1, 0],))
+        array('i', [0, 1, 3, 2])
     """
     n, ne = _check_input(fp, data, classes)
-    _, roots = _minimal_roots(fp, data, classes)
-    r = array('i', roots[0][1]) if roots else array('i', [-1] * n)
-    return _complete(r, n, ne)
+    _, leaves = _search(fp, data, classes)
+    return _complete(leaves[0], n, ne)
 
 
 def canonical_form(fp, data=(), classes=()):
     r"""
-    Return the canonical form of the connected map with face permutation
-    ``fp`` decorated by ``data`` and ``classes``.
+    Return the canonical form of the map with face permutation ``fp``
+    decorated by ``data`` and ``classes``.
 
     INPUT:
 
@@ -381,8 +528,10 @@ def canonical_form(fp, data=(), classes=()):
     the values of the ``i``-th array of ``data`` read in the increasing
     order of the canonical labels of the active half-edges, and ``c_i`` the
     values of the ``i``-th array of ``classes`` read in the same order and
-    renumbered ``0, 1, 2, ...`` by first appearance. Two decorated maps are
-    isomorphic if and only if their canonical forms are equal.
+    renumbered ``0, 1, 2, ...`` by first appearance, all components
+    together. The labelling is the one of :func:`canonical_labelling`. Two
+    decorated maps are isomorphic if and only if their canonical forms are
+    equal.
 
     EXAMPLES::
 
@@ -419,21 +568,30 @@ def canonical_form(fp, data=(), classes=()):
         sage: canonical_form([], ([],), ([], []))
         ((), (), (), ())
 
-    A disconnected map::
+    Disconnected maps: a triangle and a folded edge, in either order, and
+    two edges ``(0)(~0)(1)(~1)`` whose classes are equal up to relabelling
+    across the components, or not::
 
-        sage: canonical_form([0, 1, 2, 3])
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: disconnected maps are not supported
+        sage: canonical_form([2, 5, 4, 1, 0, 3, 6, -1])
+        ((0, -1, 4, 7, 6, 3, 2, 5),)
+        sage: canonical_form([0, -1, 4, 7, 6, 3, 2, 5])
+        ((0, -1, 4, 7, 6, 3, 2, 5),)
+        sage: canonical_form([0, 1, 2, 3], classes=([0, 1, 0, 1],))
+        ((0, 1, 2, 3), (0, 1, 0, 1))
+        sage: canonical_form([0, 1, 2, 3], classes=([0, 1, 1, 0],))
+        ((0, 1, 2, 3), (0, 1, 0, 1))
+        sage: canonical_form([0, 1, 2, 3], classes=([0, 1, 2, 2],))
+        ((0, 1, 2, 3), (0, 0, 1, 2))
     """
-    key, _ = _minimal_roots(fp, data, classes)
-    return key
+    n, ne = _check_input(fp, data, classes)
+    _, leaves = _search(fp, data, classes)
+    return _key(fp, data, leaves[0], 2 * ne, classes)
 
 
 def automorphisms(fp, data=(), classes=()):
     r"""
-    Return the automorphisms of the connected map with face permutation
-    ``fp`` decorated by ``data`` and ``classes``.
+    Return the automorphisms of the map with face permutation ``fp``
+    decorated by ``data`` and ``classes``.
 
     INPUT:
 
@@ -453,10 +611,12 @@ def automorphisms(fp, data=(), classes=()):
     ``data``, such that for every ``c`` of ``classes`` the map ``c[h] ->
     c[g[h]]`` on the active ``h`` is a well-defined bijection of values,
     that preserves the pairs ``{2e, 2e+1}`` and is the identity
-    on the inactive edges. The identity comes first. As the map is
-    connected, an automorphism is determined by the image of one active
-    half-edge, and there are at most as many automorphisms as active
-    half-edges.
+    on the inactive edges. The identity comes first. On a connected map an
+    automorphism is determined by the image of one active half-edge, and
+    there are at most as many automorphisms as active half-edges. On a
+    disconnected map there is no such bound: the automorphisms may permute
+    isomorphic components, and the list of `k` isomorphic components has at
+    least `k!` elements.
 
     EXAMPLES::
 
@@ -494,20 +654,31 @@ def automorphisms(fp, data=(), classes=()):
         sage: automorphisms([])
         [array('i')]
 
-    A disconnected map::
+    Disconnected maps: the two edges of ``(0)(~0)(1)(~1)``, which may be
+    flipped and swapped, with classes tying the components together, and a
+    triangle beside a folded edge::
 
         sage: automorphisms([0, 1, 2, 3])
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: disconnected maps are not supported
+        [array('i', [0, 1, 2, 3]),
+         array('i', [0, 1, 3, 2]),
+         array('i', [1, 0, 2, 3]),
+         array('i', [1, 0, 3, 2]),
+         array('i', [2, 3, 0, 1]),
+         array('i', [2, 3, 1, 0]),
+         array('i', [3, 2, 0, 1]),
+         array('i', [3, 2, 1, 0])]
+        sage: len(automorphisms([0, 1, 2, 3], classes=([0, 1, 0, 1],)))
+        4
+        sage: automorphisms([0, 1, 2, 3], classes=([0, 1, 1, 2],))
+        [array('i', [0, 1, 2, 3]), array('i', [3, 2, 1, 0])]
+        sage: len(automorphisms([2, 5, 4, 1, 0, 3, 6, -1]))
+        6
     """
     n, ne = _check_input(fp, data, classes)
-    _, roots = _minimal_roots(fp, data, classes)
-    if not roots:
-        return [array('i', range(n))]
-    ra = roots[0][1]
+    _, leaves = _search(fp, data, classes, all_leaves=True)
+    ra = leaves[0]
     result = []
-    for _, rb in roots:
+    for rb in leaves:
         rbinv = [-1] * (2 * ne)
         for h, x in enumerate(rb):
             if x != -1:
@@ -540,8 +711,8 @@ def _group_closure(gens, n):
 
 def automorphism_generators(fp, data=(), classes=()):
     r"""
-    Return generators of the automorphism group of the connected map with
-    face permutation ``fp`` decorated by ``data`` and ``classes``.
+    Return generators of the automorphism group of the map with face
+    permutation ``fp`` decorated by ``data`` and ``classes``.
 
     INPUT:
 
@@ -558,7 +729,9 @@ def automorphism_generators(fp, data=(), classes=()):
     OUTPUT: a list of automorphisms (as in :func:`automorphisms`) that
     generate the group; empty when the group is trivial. The automorphisms
     are scanned in the order of :func:`automorphisms` and one is kept when
-    it is not in the group generated by those already kept.
+    it is not in the group generated by those already kept. The list of
+    :func:`automorphisms` is computed in full, which costs at least `k!`
+    on a map with `k` isomorphic components.
 
     EXAMPLES::
 
@@ -576,6 +749,12 @@ def automorphism_generators(fp, data=(), classes=()):
         [array('i', [2, 3, 4, 5, 0, 1])]
         sage: automorphism_generators([2, 3, 4, 5, 0, 1], classes=(c,))
         [array('i', [1, 0, 3, 2, 5, 4]), array('i', [2, 3, 4, 5, 0, 1])]
+
+    The two edges of ``(0)(~0)(1)(~1)``: a flip of each edge and the swap
+    of the edges::
+
+        sage: automorphism_generators([0, 1, 2, 3])
+        [array('i', [0, 1, 3, 2]), array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
 
     TESTS::
 
@@ -596,8 +775,12 @@ def automorphism_generators(fp, data=(), classes=()):
 
 def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
     r"""
-    Return an isomorphism from the first decorated connected map to the
-    second, or ``None`` if they are not isomorphic.
+    Return an isomorphism from the first decorated map to the second, or
+    ``None`` if they are not isomorphic.
+
+    The maps may be disconnected; the components are then matched with each
+    other, and the classes up to one bijection of values for all the
+    components together.
 
     INPUT:
 
@@ -677,12 +860,21 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
         sage: isomorphism([-1, -1, 4, -1, 2, 5, -1, -1], (), [2, -1, 0, 3], ())
         array('i', [-1, -1, 0, 1, 2, 3, -1, -1])
 
-    A disconnected map::
+    Disconnected maps: a triangle beside a folded edge, in either order::
 
-        sage: isomorphism([0, 1, 2, 3], (), [0, 1, 2, 3], ())
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: disconnected maps are not supported
+        sage: isomorphism([2, 5, 4, 1, 0, 3, 6, -1], (), [0, -1, 4, 7, 6, 3, 2, 5], ())
+        array('i', [2, 3, 4, 5, 6, 7, 0, 1])
+
+    The two edges of ``(0)(~0)(1)(~1)`` are isomorphic with classes that
+    pair the half-edge ``0`` with ``2`` and with classes that pair it with
+    ``3``, which the isomorphism swaps, but not with classes that pair
+    ``2`` with ``3``::
+
+        sage: fp = [0, 1, 2, 3]
+        sage: isomorphism(fp, (), fp, (), ([0, 1, 0, 1],), ([0, 1, 1, 0],))
+        array('i', [0, 1, 3, 2])
+        sage: isomorphism(fp, (), fp, (), ([0, 1, 0, 1],), ([0, 1, 2, 2],)) is None
+        True
     """
     n1, ne1 = _check_input(fp1, data1, classes1)
     n2, ne2 = _check_input(fp2, data2, classes2)
@@ -690,21 +882,18 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
         raise ValueError("data1 and data2 must have the same number of arrays")
     if len(classes1) != len(classes2):
         raise ValueError("classes1 and classes2 must have the same number of arrays")
-    key1, roots1 = _minimal_roots(fp1, data1, classes1)
-    key2, roots2 = _minimal_roots(fp2, data2, classes2)
+    key1, leaves1 = _search(fp1, data1, classes1)
+    key2, leaves2 = _search(fp2, data2, classes2)
     if key1 != key2:
         return None
     r = array('i', [-1] * n1)
-    if roots1:
-        r1 = roots1[0][1]
-        r2 = roots2[0][1]
-        r2inv = [-1] * (2 * ne2)
-        for h, x in enumerate(r2):
-            if x != -1:
-                r2inv[x] = h
-        for h, x in enumerate(r1):
-            if x != -1:
-                r[h] = r2inv[x]
+    r2inv = [-1] * (2 * ne2)
+    for h, x in enumerate(leaves2[0]):
+        if x != -1:
+            r2inv[x] = h
+    for h, x in enumerate(leaves1[0]):
+        if x != -1:
+            r[h] = r2inv[x]
     if n1 == n2:
         inactive2 = [e for e in range(n2 // 2) if fp2[2 * e] == -1 and fp2[2 * e + 1] == -1]
         i = 0

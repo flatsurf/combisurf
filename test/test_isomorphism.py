@@ -11,10 +11,10 @@ next to each test.
 
 The functionality under test is reached only through the adapter functions
 below. They raise ``NotImplementedError`` for what combisurf does not
-offer yet (disconnected maps, among them the cylinder diagrams whose
-cylinders are joined only by their pairing, subspaces, tuples of
-permutations), and the tests that need it are expected to fail with that
-exception.
+offer yet (subspaces, tuples of permutations), and the tests that need it
+are expected to fail with that exception. Disconnected maps are supported,
+among them the cylinder diagrams whose components are joined only by the
+pairing of their cylinders.
 
 Regular maps of ``S_5`` and ``PSL(2, 7)`` (built with Sage groups) and
 origamis as maps (decorated by ``h % 4``) give automorphism counts that
@@ -32,8 +32,10 @@ coloured maps in :meth:`OrientedMap.is_isomorphic`.
 
 The last tests check the reference implementation
 :mod:`combisurf.isomorphism_naive` against the defining properties of
-isomorphisms and canonical forms on random connected maps, with decorations
-matched exactly and up to relabelling of their values.
+isomorphisms and canonical forms on random maps, connected and
+disconnected, with decorations matched exactly and up to relabelling of
+their values (on a disconnected map, the classes shared by the components
+tie them together).
 """
 import random
 from array import array
@@ -519,7 +521,7 @@ def test_random_relabelling():
     (lambda: map_from_fp(O1), 4),   # veerer/constellation.py:1769-1773
     (lambda: map_from_fp(O2), 8),   # veerer/constellation.py:1777-1779
     # veerer/constellation.py:1813-1815, disconnected
-    pytest.param(lambda: map_from_fp(O3), 36, marks=NOT_IMPLEMENTED),
+    (lambda: map_from_fp(O3), 36),
     (lambda: map_from_fp(O4), 2),   # veerer/constellation.py:1805-1807
     # surface-dynamics/fat_graph.py:2968-2982
     (lambda: map_from_unicellular_word(UNICELLULAR['O10']), 2),
@@ -717,6 +719,7 @@ def half_edge_array_of_edges(m, values):
 BRUTE_FORCE_CASES = [
     (lambda: map_from_fp(O1), {}),
     (lambda: map_from_fp(O2), {}),
+    (lambda: map_from_fp(O3), {}),
     (lambda: map_from_fp(O4), {}),
     (lambda: map_from_unicellular_word(UNICELLULAR['O10']), {}),
     (lambda: map_from_unicellular_word(UNICELLULAR['O11']), {}),
@@ -824,15 +827,16 @@ def test_isomorphism_fp(fa, fb, expected):
 
 
 @pytest.mark.parametrize("sa, sb, expected", [
-    # the maps of I3-I6 are disconnected (their cylinders join them)
+    # the maps of I3-I6 are disconnected, their components tied together
+    # by the cylinders (face classes)
     # surface-dynamics/separatrix_diagram.py:2376-2379
-    pytest.param(CD_I3_A, CD_I3_B, False, marks=NOT_IMPLEMENTED),
+    (CD_I3_A, CD_I3_B, False),
     # surface-dynamics/separatrix_diagram.py:2381-2385
-    pytest.param(CD_I3_A, CD_I4_B, True, marks=NOT_IMPLEMENTED),
+    (CD_I3_A, CD_I4_B, True),
     # surface-dynamics/separatrix_diagram.py:2387-2391
-    pytest.param(CD_I3_B, CD_I5_B, True, marks=NOT_IMPLEMENTED),
+    (CD_I3_B, CD_I5_B, True),
     # surface-dynamics/separatrix_diagram.py:2393-2396
-    pytest.param(CD_I6_A, CD_I6_B, False, marks=NOT_IMPLEMENTED),
+    (CD_I6_A, CD_I6_B, False),
     (CD_I7[0], CD_I7[1], False),  # surface-dynamics/separatrix_diagram.py:2398-2406
     (CD_I7[0], CD_I7[2], False),
     (CD_I7[1], CD_I7[2], False),
@@ -867,7 +871,7 @@ def test_isomorphism_cylinder_diagram_relabelled(s):
 @pytest.mark.parametrize("build, decorations", [
     (lambda: map_from_fp(O1), {}),
     (lambda: map_from_fp(O2), {}),
-    pytest.param(lambda: map_from_fp(O3), {}, marks=NOT_IMPLEMENTED),
+    (lambda: map_from_fp(O3), {}),
     (lambda: map_from_fp(O4), {}),
     (lambda: map_from_fp(O1), {'edge_data': O5_EDGE_DATA}),
     pytest.param(lambda: OrientedMap(fp=O20_FP), O20_DATA, marks=NOT_IMPLEMENTED),
@@ -954,7 +958,8 @@ def test_oriented_map_isomorphic_with_coloured():
         m.is_isomorphic(m_coloured)
 
 
-# Properties of the reference implementation on random connected maps
+# Properties of the reference implementation on random maps, connected and
+# disconnected
 
 MAX_ATTEMPTS = 1000
 
@@ -1039,6 +1044,29 @@ def random_connected_fp(rng, max_half_edges=40):
         assert len(fp) <= max_half_edges
         return fp
     raise RuntimeError("no connected map found in {} attempts".format(MAX_ATTEMPTS))
+
+
+def random_disconnected_fp(rng):
+    r"""
+    Return the face permutation of the disjoint union of one to three
+    random connected maps of at most 16 half-edge labels each (at most 48
+    in all), a component being sometimes a relabelled copy of an earlier
+    one, with the labels of the union shuffled by edges.
+    """
+    components = []
+    for _ in range(rng.randint(1, 3)):
+        if components and rng.random() < 0.5:
+            fp = rng.choice(components)
+            fp = relabel_arrays(fp, (), random_edge_relabelling(rng, fp))[0]
+        else:
+            fp = random_connected_fp(rng, max_half_edges=16)
+        components.append(fp)
+    union = []
+    for fp in components:
+        shift = len(union)
+        union.extend(-1 if x == -1 else x + shift for x in fp)
+    assert len(union) <= 48
+    return relabel_arrays(union, (), random_edge_relabelling(rng, union))[0]
 
 
 def random_data(rng, fp):
@@ -1140,68 +1168,113 @@ def check_automorphism(fp, data, g):
                 assert d[g[h]] == d[h]
 
 
-def extends_to_automorphism(fp, data, h0, x0, classes=()):
+def propagate(fp, data, classes, state, h0, x0):
     r"""
-    Return whether the map ``h0 -> x0`` extends to an automorphism of ``fp``
-    decorated by ``data`` (kept exactly) and ``classes`` (kept up to a
-    bijection of the values of each array).
+    Return the partial map ``state`` extended by ``h0 -> x0`` and every image
+    it forces, or ``None`` on a contradiction; ``state`` is not modified.
 
-    The image of every half-edge is forced by propagation along ``fp`` and
-    the twins of non-folded edges (a folded edge must go to a folded edge),
-    since ``fp`` is connected; the extension is then checked to be a
-    bijection of the active half-edges that commutes with ``fp`` and keeps
-    every array of ``data``. For each array of ``classes`` the propagation
-    records the value map ``c[h] -> c[g[h]]`` and its inverse, which must
-    stay well defined: the value map is then a bijection.
+    A state is a triple ``(g, inverse, value_maps)``: the partial map of
+    half-edges as a dictionary, its inverse, and for each array of
+    ``classes`` the value map ``c[h] -> c[g[h]]`` and its inverse, shared by
+    all the components. The images are forced along ``fp`` and the twins
+    of non-folded edges (a folded edge must go to a folded edge), so the
+    whole component of ``h0`` gets mapped, injectively, onto the component
+    of ``x0``. Each image keeps every array of ``data``, and the value maps
+    must stay well defined: they are then bijections.
     """
-    g = {}
-    inverse = {}
-    value_maps = [({}, {}) for _ in classes]
+    g = dict(state[0])
+    inverse = dict(state[1])
+    value_maps = [(dict(forward), dict(backward)) for forward, backward in state[2]]
     todo = [(h0, x0)]
     while todo:
         h, x = todo.pop()
         if h in g:
             if g[h] != x:
-                return False
+                return None
             continue
         if x in inverse or fp[x] == -1:
-            return False
+            return None
         if any(d[h] != d[x] for d in data):
-            return False
+            return None
         for c, (forward, backward) in zip(classes, value_maps):
             if forward.setdefault(c[h], c[x]) != c[x]:
-                return False
+                return None
             if backward.setdefault(c[x], c[h]) != c[h]:
-                return False
+                return None
         g[h] = x
         inverse[x] = h
         todo.append((fp[h], fp[x]))
         if fp[h ^ 1] != -1:
             if fp[x ^ 1] == -1:
-                return False
+                return None
             todo.append((h ^ 1, x ^ 1))
         elif fp[x ^ 1] != -1:
-            return False
+            return None
+    return g, inverse, value_maps
+
+
+def count_extensions(fp, data, classes, state):
+    r"""
+    Return the number of automorphisms of ``fp`` decorated by ``data`` and
+    ``classes`` that extend the partial map ``state`` (as in
+    :func:`propagate`), a union of components mapped onto components.
+
+    The least active half-edge not mapped yet is sent to every active
+    half-edge not yet an image in turn, the images its component forces
+    are propagated, and the complete bijections are counted; each is
+    checked to commute with ``fp``.
+    """
+    g, inverse, _ = state
     active = [h for h in range(len(fp)) if fp[h] != -1]
-    if sorted(g) != active or sorted(g.values()) != active:
-        return False
-    return all(g[fp[h]] == fp[g[h]] for h in active)
+    unmapped = [h for h in active if h not in g]
+    if not unmapped:
+        assert sorted(g.values()) == active
+        return int(all(g[fp[h]] == fp[g[h]] for h in active))
+    h0 = unmapped[0]
+    total = 0
+    for x in active:
+        if x not in inverse:
+            extended = propagate(fp, data, classes, state, h0, x)
+            if extended is not None:
+                total += count_extensions(fp, data, classes, extended)
+    return total
+
+
+def empty_state(classes):
+    r"""
+    Return the state of :func:`propagate` of the empty partial map.
+    """
+    return {}, {}, [({}, {}) for _ in classes]
+
+
+def extends_to_automorphism(fp, data, h0, x0, classes=()):
+    r"""
+    Return whether the map ``h0 -> x0`` extends to an automorphism of ``fp``
+    decorated by ``data`` (kept exactly) and ``classes`` (kept up to a
+    bijection of the values of each array, the same for all components).
+
+    The component of ``h0`` is mapped by propagation (see
+    :func:`propagate`); the other components, if any, by the backtracking
+    of :func:`count_extensions`.
+    """
+    state = propagate(fp, data, classes, empty_state(classes), h0, x0)
+    return state is not None and count_extensions(fp, data, classes, state) > 0
 
 
 def brute_force_automorphism_count(fp, data, classes=()):
     r"""
-    Return the number of automorphisms of the connected face permutation
-    ``fp`` decorated by the tuple of half-edge arrays ``data`` (kept
-    exactly) and ``classes`` (kept up to relabelling of their values).
+    Return the number of automorphisms of the face permutation ``fp``,
+    connected or not, decorated by the tuple of half-edge arrays ``data``
+    (kept exactly) and ``classes`` (kept up to relabelling of their values,
+    by one bijection for all components).
 
-    An automorphism is determined by the image of one active half-edge
-    ``h0``: every active ``x`` is tried as its image. This uses neither the
-    canonical key of :mod:`combisurf.isomorphism_naive` nor
+    The automorphisms are enumerated by a backtracking over the components
+    (see :func:`count_extensions`): on a connected map, every active
+    half-edge is tried as the image of the least one. This uses neither
+    the canonical key of :mod:`combisurf.isomorphism_naive` nor
     :class:`OrientedMap`.
     """
-    active = [h for h in range(len(fp)) if fp[h] != -1]
-    h0 = active[0]
-    return sum(extends_to_automorphism(fp, data, h0, x, classes) for x in active)
+    return count_extensions(fp, data, classes, empty_state(classes))
 
 
 def test_random_connected_fp():
@@ -1370,3 +1443,70 @@ def test_is_isomorphic_classes(seed):
         verdict = a.is_isomorphic(b, half_edge_classes=(half_edge_classes, half_edge_classes3),
                                   face_classes=(face_classes, face_classes2))
         assert verdict == (size == 1)
+
+
+def test_random_disconnected_fp():
+    rng = random.Random(0)
+    disconnected = symmetric = 0
+    for _ in range(50):
+        fp = random_disconnected_fp(rng)
+        assert len(fp) <= 48
+        OrientedMap(fp=fp)
+        disconnected += not is_connected_fp(fp)
+        symmetric += brute_force_automorphism_count(fp, ()) > 1
+    assert disconnected and symmetric
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_naive_automorphisms_disconnected(seed):
+    rng = random.Random(seed)
+    for _ in range(20):
+        fp = random_disconnected_fp(rng)
+        data = random_data(rng, fp)
+        classes = random_classes(rng, fp)
+        automorphisms = isomorphism_naive.automorphisms(fp, data, classes)
+        assert list(automorphisms[0]) == list(range(len(fp)))
+        assert len({tuple(g) for g in automorphisms}) == len(automorphisms)
+        for g in automorphisms:
+            check_automorphism(fp, data, g)
+            for c in classes:
+                check_classes_carried(fp, c, c, g)
+        assert len(automorphisms) == brute_force_automorphism_count(fp, data, classes)
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_naive_canonical_form_disconnected(seed):
+    rng = random.Random(seed)
+    for _ in range(20):
+        fp = random_disconnected_fp(rng)
+        data = random_data(rng, fp)
+        classes = random_classes(rng, fp)
+        c = isomorphism_naive.canonical_form(fp, data, classes)
+        assert len(c) == 1 + len(data) + len(classes)
+        for _ in range(3):
+            s = random_edge_relabelling(rng, fp)
+            fp2, data2 = relabel_arrays(fp, data, s)
+            _, classes2 = relabel_arrays(fp, classes, s)
+            classes2 = rename_values(rng, classes2)
+            assert isomorphism_naive.canonical_form(fp2, data2, classes2) == c
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_is_isomorphic_disconnected(seed):
+    rng = random.Random(seed)
+    for _ in range(20):
+        fp = random_disconnected_fp(rng)
+        a = OrientedMap(fp=fp)
+        data = [rng.randrange(2) for _ in fp]
+        classes = [rng.randrange(3) for _ in fp]
+        s = random_edge_relabelling(rng, fp)
+        fp2, (data2, classes2) = relabel_arrays(fp, (data, classes), s)
+        (classes2,) = rename_values(rng, (classes2,))
+        b = OrientedMap(fp=fp2)
+        ok, r = a.is_isomorphic(b, certificate=True, half_edge_data=(data, data2),
+                                half_edge_classes=(classes, classes2))
+        assert ok
+        check_relabelling_between(a, b, r)
+        assert relabel_map(a, r) == b
+        assert all(data2[r[h]] == data[h] for h in a.half_edges())
+        check_classes_carried(fp, classes, classes2, r)

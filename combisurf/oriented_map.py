@@ -3989,8 +3989,11 @@ class OrientedMap:
         Return the canonical labelling of this map with the given
         decorations.
 
-        The map must be connected. The ``*_data`` decorations are matched
-        exactly, the ``*_classes`` decorations up to relabelling.
+        The ``*_data`` decorations are matched exactly, the ``*_classes``
+        decorations up to relabelling. A disconnected map is labelled
+        component after component, and the values of a ``*_classes``
+        decoration are numbered across the components, so that its classes
+        may tie several components together.
 
         INPUT:
 
@@ -4081,12 +4084,15 @@ class OrientedMap:
             sage: m.canonical_labelling()
             array('i', [2, 3, 4, 5, 0, 1])
 
-        A disconnected map::
+        Disconnected maps: two triangles and a folded edge, labelled from
+        the folded edge, whose component is the smallest; two edges whose
+        face classes pair the faces ``(0)`` and ``(~1)``::
 
-            sage: OrientedMap(fp="(0)(~0)(1)(~1)").canonical_labelling()
-            Traceback (most recent call last):
-            ...
-            NotImplementedError: disconnected maps are not supported
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~2,~1)(3)(4,5,6)(~4,~6,~5)")
+            sage: m.canonical_labelling()
+            array('i', [2, 3, 4, 5, 6, 7, 0, 1, 8, 9, 10, 11, 12, 13])
+            sage: OrientedMap(fp="(0)(~0)(1)(~1)").canonical_labelling(face_classes=[0, 1, 1, 0])
+            array('i', [0, 1, 3, 2])
 
         The checks of the ``*_classes`` keywords::
 
@@ -4144,9 +4150,9 @@ class OrientedMap:
         r"""
         Return the canonical form of this map with the given decorations.
 
-        The map must be connected. The decorations are given as in
-        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
-        ``*_classes`` up to relabelling.
+        The decorations are given as in :meth:`canonical_labelling`: the
+        ``*_data`` matched exactly, the ``*_classes`` up to relabelling. The
+        map may be disconnected (see :meth:`canonical_labelling`).
 
         OUTPUT: a hashable tuple ``(fp, d_1, ..., d_k, c_1, ..., c_m)`` of
         tuples, equal for two decorated maps if and only if they are
@@ -4183,6 +4189,19 @@ class OrientedMap:
             ((2, 5, 4, 1, 0, 3), (0, 0, 0, 0, 1, 1))
             sage: m3.canonical_form(face_data=[0, 1, 0, 1, 0, 1], face_classes=[4, 7, 4, 7, 4, 7])
             ((2, 3, 4, 5, 0, 1), (0, 1, 0, 1, 0, 1), (0, 1, 0, 1, 0, 1))
+
+        A disconnected map, whose components are listed in any order, and
+        the classes renumbered across its two components::
+
+            sage: OrientedMap(fp="(0,1,2)(~0,~2,~1)(3)").canonical_form()
+            ((0, -1, 4, 7, 6, 3, 2, 5),)
+            sage: OrientedMap(fp="(0)(1,2,3)(~1,~3,~2)").canonical_form()
+            ((0, -1, 4, 7, 6, 3, 2, 5),)
+            sage: m = OrientedMap(fp="(0)(~0)(1)(~1)")
+            sage: m.canonical_form(face_classes=[0, 1, 1, 0]) == m.canonical_form(face_classes=[0, 1, 0, 1])
+            True
+            sage: m.canonical_form(face_classes=[0, 1, 2, 2])
+            ((0, 1, 2, 3), (0, 0, 1, 2))
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
@@ -4194,9 +4213,13 @@ class OrientedMap:
         r"""
         Return the automorphisms of this map with the given decorations.
 
-        The map must be connected. The decorations are given as in
-        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
-        ``*_classes`` up to relabelling.
+        The decorations are given as in :meth:`canonical_labelling`: the
+        ``*_data`` matched exactly, the ``*_classes`` up to relabelling. On
+        a disconnected map the automorphisms may permute isomorphic
+        components, and a ``*_classes`` decoration is preserved up to one
+        bijection of its values for all the components together. The list
+        is computed in full: it has at least `k!` elements on a map with
+        `k` isomorphic components.
 
         OUTPUT: the list of the automorphisms, the identity first, each an
         ``array('i')`` permutation of the half-edges that commutes with the
@@ -4271,12 +4294,21 @@ class OrientedMap:
              array('i', [4, 5, 2, 3, 8, 9, 6, 7, 0, 1]),
              array('i', [8, 9, 2, 3, 0, 1, 6, 7, 4, 5])]
 
-        A disconnected map::
+        Disconnected maps: two triangles and a folded edge (the 6
+        automorphisms of each triangle, and the swap of the triangles), and
+        two edges whose face classes pair the faces ``(0)`` and ``(~1)``::
 
-            sage: OrientedMap(fp="(0)(~0)(1)(~1)").automorphisms()
-            Traceback (most recent call last):
-            ...
-            NotImplementedError: disconnected maps are not supported
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~2,~1)(3)(4,5,6)(~4,~6,~5)")
+            sage: len(m.automorphisms())
+            72
+            sage: m = OrientedMap(fp="(0)(~0)(1)(~1)")
+            sage: len(m.automorphisms())
+            8
+            sage: m.automorphisms(face_classes=[0, 1, 1, 0])
+            [array('i', [0, 1, 2, 3]),
+             array('i', [1, 0, 3, 2]),
+             array('i', [2, 3, 0, 1]),
+             array('i', [3, 2, 1, 0])]
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
@@ -4289,9 +4321,10 @@ class OrientedMap:
         Return generators of the automorphism group of this map with the
         given decorations.
 
-        The map must be connected. The decorations are given as in
-        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
-        ``*_classes`` up to relabelling.
+        The decorations are given as in :meth:`canonical_labelling`: the
+        ``*_data`` matched exactly, the ``*_classes`` up to relabelling. The
+        map may be disconnected (see :meth:`automorphisms`); the generators
+        are extracted from the full list of the automorphisms.
 
         OUTPUT: a list of automorphisms (as in :meth:`automorphisms`) that
         generate the group; empty when the group is trivial.
@@ -4316,6 +4349,11 @@ class OrientedMap:
             [array('i', [2, 3, 4, 5, 0, 1])]
             sage: m.automorphism_generators(face_classes=[0, 1, 0, 1, 0, 1])
             [array('i', [1, 0, 3, 2, 5, 4]), array('i', [2, 3, 4, 5, 0, 1])]
+
+        A disconnected map, two edges that may be flipped and swapped::
+
+            sage: OrientedMap(fp="(0)(~0)(1)(~1)").automorphism_generators()
+            [array('i', [0, 1, 3, 2]), array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
@@ -4328,9 +4366,11 @@ class OrientedMap:
         Return whether this map is isomorphic to ``other`` with the given
         decorations.
 
-        Both maps must be connected. The ``*_data`` decorations are matched
-        exactly, the ``*_classes`` decorations up to relabelling (see
-        :meth:`canonical_labelling`).
+        The ``*_data`` decorations are matched exactly, the ``*_classes``
+        decorations up to relabelling (see :meth:`canonical_labelling`).
+        The maps may be disconnected: their components are matched with
+        each other, and a ``*_classes`` decoration up to one bijection of
+        its values for all the components together.
 
         INPUT:
 
@@ -4410,6 +4450,33 @@ class OrientedMap:
             sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], [5, 2, 5]))
             True
             sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], [5, 2, 3]))
+            False
+
+        Disconnected maps: a disjoint union of two triangles and a folded
+        edge against the same union relabelled, and against a union with
+        another triangle::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~2,~1)(3,4,5)(~3,~5,~4)(6)(~6)")
+            sage: m4 = OrientedMap(fp="(0)(~0)(1,3,2)(~1,~2,~3)(4,5,6)(~4,~6,~5)")
+            sage: ok, r = m.is_isomorphic(m4, certificate=True)
+            sage: r
+            array('i', [2, 3, 6, 7, 4, 5, 8, 9, 10, 11, 12, 13, 0, 1])
+            sage: mm = m.copy(mutable=True)
+            sage: mm.relabel(r)
+            sage: mm == m4
+            True
+            sage: m.is_isomorphic(OrientedMap(fp="(0)(~0)(1,2,3)(~1,~2,~3)(4,5,6)(~4,~6,~5)"))
+            False
+
+        Classes may tie the components together: the two edges of
+        ``(0)(~0)(1)(~1)`` with the faces ``(0)`` and ``(1)`` paired, and
+        with the faces ``(0)`` and ``(~1)`` paired, are isomorphic; with
+        the faces ``(1)`` and ``(~1)`` paired, they are not::
+
+            sage: m = OrientedMap(fp="(0)(~0)(1)(~1)")
+            sage: m.is_isomorphic(m, face_classes=([0, 1, 0, 1], [0, 1, 1, 0]), certificate=True)
+            (True, array('i', [0, 1, 3, 2]))
+            sage: m.is_isomorphic(m, face_classes=([0, 1, 0, 1], [0, 1, 2, 2]))
             False
 
         TESTS::
