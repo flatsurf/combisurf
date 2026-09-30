@@ -623,6 +623,30 @@ def test_automorphism_count_regular_map(build, expected):
     assert sorted(g[h0] for g in automorphisms) == sorted(m.half_edges())
 
 
+@pytest.mark.parametrize("build", [regular_map_S5, regular_map_PSL27], ids=["O22", "O23"])
+def test_fast_generators_regular_map(build):
+    fp = list(build().face_permutation())
+    fast = isomorphism_fast.automorphism_generators(fp)
+    assert fast == isomorphism_naive.automorphism_generators(fp)
+    assert 0 < len(fast) <= 7
+
+
+def test_fast_generators_connected_without_closure(monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("_group_closure called on a connected map")
+
+    monkeypatch.setattr(isomorphism_naive, "_group_closure", forbidden)
+    triangle = [2, 5, 4, 1, 0, 3]
+    assert isomorphism_fast.automorphism_generators(triangle) == [
+        array('i', [1, 0, 5, 4, 3, 2]), array('i', [2, 3, 4, 5, 0, 1])]
+    assert isomorphism_fast.automorphism_generators([2, -1, 0, 3]) == []
+    assert isomorphism_fast.automorphism_generators([]) == []
+    assert len(isomorphism_fast.automorphism_generators(list(range(2)))) == 1
+    for build in (regular_map_S5, regular_map_PSL27):
+        fp = list(build().face_permutation())
+        assert len(isomorphism_fast.automorphism_generators(fp)) > 0
+
+
 def face_indices(m):
     r"""
     Return the list that gives to each half-edge of ``m`` the index of its

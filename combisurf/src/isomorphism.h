@@ -139,7 +139,7 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
  * (ISO_SEQUENCE_SIZE) and one candidate block (ISO_KEY_SIZE + 1).
  *
  * These sizes are computed in int and overflow for about
- * 2^31 / (5 + nd + nc) half-edges; the caller checks them first.
+ * 2^31 / (9.5 + 2 nd + 3.5 nc) half-edges; the caller checks them first.
  */
 #define ISO_SEARCH_WORK_SIZE(n, nd, nc) \
     ((5 + (nc)) * (n) + (4 + (nc)) * ((n) / 2 + 1) + (nc) \
