@@ -59,7 +59,7 @@ from combisurf.permutation import (perm_init, perm_check, perm_trim, perm_cycles
                           perm_orbit, perm_orbit_size,
                           perms_are_transitive, perm_edge_orbits)
 from combisurf.word import word_init, word_string
-from combisurf import isomorphism_naive
+from combisurf import isomorphism
 
 def check_relabelling(arg, ne):
     r"""
@@ -4039,7 +4039,7 @@ class OrientedMap:
         active edges the labels ``0, 1, ...`` and the inactive edges the
         following ones. Two maps with decorations are isomorphic if and only
         if they are equal once relabelled by their canonical labellings.
-        See :mod:`combisurf.isomorphism_naive` for the ordering.
+        See :mod:`combisurf.isomorphism` for the ordering.
 
         EXAMPLES::
 
@@ -4142,7 +4142,7 @@ class OrientedMap:
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism_naive.canonical_labelling(self._fp, data, classes)
+        return isomorphism.canonical_labelling(self._fp, data, classes)
 
     def canonical_form(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                        half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
@@ -4205,7 +4205,7 @@ class OrientedMap:
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism_naive.canonical_form(self._fp, data, classes)
+        return isomorphism.canonical_form(self._fp, data, classes)
 
     def automorphisms(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
@@ -4312,7 +4312,7 @@ class OrientedMap:
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism_naive.automorphisms(self._fp, data, classes)
+        return isomorphism.automorphisms(self._fp, data, classes)
 
     def automorphism_generators(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                                 half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
@@ -4357,7 +4357,7 @@ class OrientedMap:
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism_naive.automorphism_generators(self._fp, data, classes)
+        return isomorphism.automorphism_generators(self._fp, data, classes)
 
     def is_isomorphic(self, other, certificate=False, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
@@ -4568,8 +4568,8 @@ class OrientedMap:
             r = None
         else:
             (data1, data2), (classes1, classes2) = decorations['data'], decorations['classes']
-            r = isomorphism_naive.isomorphism(self._fp, tuple(data1), other._fp, tuple(data2),
-                                              tuple(classes1), tuple(classes2))
+            r = isomorphism.isomorphism(self._fp, tuple(data1), other._fp, tuple(data2),
+                                        tuple(classes1), tuple(classes2))
         if certificate:
             return (r is not None, r)
         return r is not None

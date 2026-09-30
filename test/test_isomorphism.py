@@ -23,7 +23,9 @@ with a brute-force count that uses neither the canonical key of the
 reference implementation nor :class:`OrientedMap`.
 
 The sizes of the collections explored by the automata of veerer (flip graph
-of triangulations, reduced core automaton) are checked with the mutations
+of triangulations, reduced core automaton) and surface-dynamics (the
+GL(2, Z)-orbit of an origami, with the keys of
+:func:`combisurf.isomorphism.canonical_key`) are checked with the mutations
 of :mod:`explorations`.
 
 Coloured maps raise ``NotImplementedError`` on the isomorphism methods: the
@@ -35,7 +37,9 @@ The last tests check the reference implementation
 isomorphisms and canonical forms on random maps, connected and
 disconnected, with decorations matched exactly and up to relabelling of
 their values (on a disconnected map, the classes shared by the components
-tie them together).
+tie them together). The fast implementation :mod:`combisurf.isomorphism`
+is then compared with it by equality of the results, on random maps of up
+to 400 half-edges.
 """
 import random
 from array import array
@@ -43,6 +47,7 @@ from array import array
 import pytest
 
 from combisurf import OrientedMap
+from combisurf import isomorphism as isomorphism_fast
 from combisurf import isomorphism_naive
 
 from explorations import (BLUE, RED, combisurf_key, explore, flip_neighbours,
@@ -918,6 +923,26 @@ def test_explore_reduced_core_automaton():
     assert count == 234
 
 
+def test_explore_gl2z_orbit_O31():
+    # surface-dynamics automata.py, gl2z_orbit_small: the orbit of
+    # Origami("(1,2,...,49)", "(1,50)") has 32400 states; each state has two
+    # images, hence 2 * 32400 + 1 keys computed
+    n = 50
+    r = list(range(1, n - 1)) + [0, n - 1]
+    u = list(range(n))
+    u[0], u[n - 1] = n - 1, 0
+    decoration = (origami_decoration(n),)
+    calls = 0
+
+    def key(state):
+        nonlocal calls
+        calls += 1
+        return isomorphism_fast.canonical_key(origami_face_permutation(*state), decoration)
+
+    assert explore((r, u), gl2z_neighbours, key) == 32400
+    assert calls == 64801
+
+
 def test_origami_mutations():
     r, u = [1, 0, 2], [2, 1, 0]
     for image in (origami_l(r, u), origami_i(r, u)):
@@ -1247,20 +1272,6 @@ def empty_state(classes):
     return {}, {}, [({}, {}) for _ in classes]
 
 
-def extends_to_automorphism(fp, data, h0, x0, classes=()):
-    r"""
-    Return whether the map ``h0 -> x0`` extends to an automorphism of ``fp``
-    decorated by ``data`` (kept exactly) and ``classes`` (kept up to a
-    bijection of the values of each array, the same for all components).
-
-    The component of ``h0`` is mapped by propagation (see
-    :func:`propagate`); the other components, if any, by the backtracking
-    of :func:`count_extensions`.
-    """
-    state = propagate(fp, data, classes, empty_state(classes), h0, x0)
-    return state is not None and count_extensions(fp, data, classes, state) > 0
-
-
 def brute_force_automorphism_count(fp, data, classes=()):
     r"""
     Return the number of automorphisms of the face permutation ``fp``,
@@ -1510,3 +1521,116 @@ def test_is_isomorphic_disconnected(seed):
         assert relabel_map(a, r) == b
         assert all(data2[r[h]] == data[h] for h in a.half_edges())
         check_classes_carried(fp, classes, classes2, r)
+
+
+# The fast implementation against the reference one
+
+def random_large_connected_fp(rng):
+    r"""
+    Return a random connected face permutation of 200 to 400 half-edge
+    labels, as :func:`random_connected_fp`.
+    """
+    for _ in range(MAX_ATTEMPTS):
+        fp = random_connected_fp(rng, max_half_edges=400)
+        if len(fp) >= 200:
+            return fp
+    raise RuntimeError("no large map found in {} attempts".format(MAX_ATTEMPTS))
+
+
+def flatten(form):
+    r"""
+    Return the canonical form ``form`` flattened as the bytes of C ``int``,
+    the layout of :func:`combisurf.isomorphism.canonical_key`.
+    """
+    return array('i', [x for t in form for x in t]).tobytes()
+
+
+def check_fast_against_naive(rng, fp, data, classes):
+    r"""
+    Check that :mod:`combisurf.isomorphism` and
+    :mod:`combisurf.isomorphism_naive` agree on the decorated map ``fp``,
+    on a relabelled copy of it and on a map that is not isomorphic to it.
+    The arrays are passed as lists or as ``array('i')`` at random.
+    """
+    def arrays(fp, data):
+        if rng.random() < 0.5:
+            return array('i', fp), tuple(array('i', d) for d in data)
+        return fp, data
+
+    fast, naive = isomorphism_fast, isomorphism_naive
+    fp1, data1 = arrays(fp, data)
+    r = naive.canonical_labelling(fp, data, classes)
+    assert fast.canonical_labelling(fp1, data1, classes) == r
+    form = naive.canonical_form(fp, data, classes)
+    assert fast.canonical_form(fp1, data1, classes) == form
+    automorphisms = naive.automorphisms(fp, data, classes)
+    assert fast.automorphisms(fp1, data1, classes) == automorphisms
+    assert fast.automorphism_generators(fp1, data1, classes) == naive.automorphism_generators(fp, data, classes)
+    key, r1, count = fast.canonical_key(fp1, data1, classes, relabelling=True, automorphism_count=True)
+    assert key == flatten(form)
+    assert r1 == r
+    assert count == len(automorphisms)
+    assert fast.canonical_key(fp1, data1, classes) == key
+    assert fast.canonical_key(fp1, data1, classes, relabelling=True) == (key, r)
+    assert fast.canonical_key(fp1, data1, classes, automorphism_count=True) == (key, count)
+
+    s = random_edge_relabelling(rng, fp)
+    fp2, data2 = relabel_arrays(fp, data, s)
+    _, classes2 = relabel_arrays(fp, classes, s)
+    classes2 = rename_values(rng, classes2)
+    fp2a, data2a = arrays(fp2, data2)
+    assert fast.canonical_key(fp2a, data2a, classes2) == key
+    iso = fast.isomorphism(fp1, data1, fp2a, data2a, classes, classes2)
+    assert iso is not None
+    assert iso == naive.isomorphism(fp, data, fp2, data2, classes, classes2)
+
+    # one more array, marking one half-edge in the copy only
+    marked = [0] * len(fp2)
+    marked[next(h for h in range(len(fp2)) if fp2[h] != -1)] = 1
+    zeros = [0] * len(fp)
+    assert fast.isomorphism(fp1, data1 + (zeros,), fp2a, data2a + (marked,), classes, classes2) is None
+    assert naive.isomorphism(fp, data + (zeros,), fp2, data2 + (marked,), classes, classes2) is None
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_fast_against_naive(seed):
+    rng = random.Random(seed)
+    for _ in range(20):
+        fp = random_connected_fp(rng)
+        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_fast_against_naive_large(seed):
+    rng = random.Random(seed)
+    for _ in range(2):
+        fp = random_large_connected_fp(rng)
+        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_fast_against_naive_disconnected(seed):
+    rng = random.Random(seed)
+    for _ in range(10):
+        fp = random_disconnected_fp(rng)
+        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+
+
+def test_fast_malformed_input():
+    for fp, data, classes in [([0, -1, 2], (), ()), ([0, -1], [[0, 0]], ()),
+                              ([0, -1], ([0],), ()), ([0, -1], (), [[0, 0]]),
+                              ([0, -1], (), ([0],))]:
+        for name in ("canonical_labelling", "canonical_form", "automorphisms",
+                     "automorphism_generators", "canonical_key"):
+            with pytest.raises((ValueError, TypeError)) as fast_error:
+                getattr(isomorphism_fast, name)(fp, data, classes)
+            if name == "canonical_key":
+                continue
+            with pytest.raises((ValueError, TypeError)) as naive_error:
+                getattr(isomorphism_naive, name)(fp, data, classes)
+            assert fast_error.type is naive_error.type
+            assert str(fast_error.value) == str(naive_error.value)
+    with pytest.raises(ValueError, match="permutation"):
+        isomorphism_fast.canonical_labelling([1, 1])
+    with pytest.raises(OverflowError):
+        isomorphism_fast.canonical_labelling([1, 0], ([2**40, 0],))

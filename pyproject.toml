@@ -85,6 +85,10 @@ inputs = [
     "combisurf/conjugate_tree.pyx",
     "combisurf/src/conjugate_tree.c",
     "combisurf/src/conjugate_tree.h",
+    "combisurf/isomorphism.pxd",
+    "combisurf/isomorphism.pyx",
+    "combisurf/src/isomorphism.c",
+    "combisurf/src/isomorphism.h",
     "combisurf/partial_sums.pxd",
     "combisurf/crossing_arcs.pyx",
 ]
