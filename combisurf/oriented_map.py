@@ -4354,8 +4354,11 @@ class OrientedMap:
         - ``check`` -- boolean (default ``True``); whether to check the
           decorations
 
-        A decoration given for one map only (``None`` for the other) makes
-        the maps not isomorphic.
+        A ``*_data`` decoration given for one map only (``None`` for the
+        other) makes the maps not isomorphic. A ``*_classes`` decoration
+        must be given for both maps or for none (with the same number of
+        arrays for ``half_edge_classes``); otherwise a ``ValueError`` is
+        raised.
 
         OUTPUT: a boolean, or with ``certificate=True`` a pair ``(True, r)``
         or ``(False, None)``. The isomorphism ``r`` is an ``array('i')`` that
@@ -4429,8 +4432,22 @@ class OrientedMap:
             Traceback (most recent call last):
             ...
             ValueError: half_edge_classes must be a pair (of self, of other) of sequences or None
-            sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], None))
+            sage: m1.is_isomorphic(m2, edge_data=([0, 0, 0], None), face_data=(None, [0] * 6))
             False
+            sage: m1.is_isomorphic(m2, half_edge_data=(([0] * 6, [1] * 6), [0] * 6))
+            False
+            sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], None))
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_classes must be given for both maps or for none, with the same number of arrays
+            sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 0], None), face_classes=(None, [0] * 6))
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_classes must be given for both maps or for none, with the same number of arrays
+            sage: m1.is_isomorphic(m2, half_edge_classes=(([0] * 6, [1] * 6), [0] * 6))
+            Traceback (most recent call last):
+            ...
+            ValueError: half_edge_classes must be given for both maps or for none, with the same number of arrays
             sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], [0, 1]))
             Traceback (most recent call last):
             ...
@@ -4462,17 +4479,30 @@ class OrientedMap:
                 raise ValueError("{} must be a pair (of self, of other)".format(name))
             elif check and not all(x is None or (hasattr(x, '__len__') and hasattr(x, '__getitem__') and not isinstance(x, str)) for x in value):
                 raise ValueError("{} must be a pair (of self, of other) of sequences or None".format(name))
-        data_names = ('half_edge_data', 'edge_data', 'vertex_data', 'face_data')
-        classes_names = ('half_edge_classes', 'edge_classes', 'vertex_classes', 'face_classes')
-        data1 = self._decoration_data(*(pairs[name][0] for name in data_names), check=check)
-        data2 = other._decoration_data(*(pairs[name][1] for name in data_names), check=check)
-        classes1 = self._decoration_data(*(pairs[name][0] for name in classes_names), check=check, kind="classes")
-        classes2 = other._decoration_data(*(pairs[name][1] for name in classes_names), check=check, kind="classes")
-        if len(data1) != len(data2) or len(classes1) != len(classes2):
-            # a decoration given on one side only
+        # each keyword is converted on its own: comparing only the total
+        # numbers of arrays would let a decoration missing on one side be
+        # offset by another keyword missing on the other side
+        decorations = {'data': ([], []), 'classes': ([], [])}
+        one_sided = False
+        for kind in ('data', 'classes'):
+            for cell in ('half_edge', 'edge', 'vertex', 'face'):
+                name = cell + '_' + kind
+                d1, d2 = pairs[name]
+                keyword = cell + '_data'
+                a1 = self._decoration_data(**{keyword: d1}, check=check, kind=kind)
+                a2 = other._decoration_data(**{keyword: d2}, check=check, kind=kind)
+                if len(a1) != len(a2):
+                    if kind == 'classes':
+                        raise ValueError("{} must be given for both maps or for none, with the same number of arrays".format(name))
+                    one_sided = True
+                decorations[kind][0].extend(a1)
+                decorations[kind][1].extend(a2)
+        if one_sided:
             r = None
         else:
-            r = isomorphism_naive.isomorphism(self._fp, data1, other._fp, data2, classes1, classes2)
+            (data1, data2), (classes1, classes2) = decorations['data'], decorations['classes']
+            r = isomorphism_naive.isomorphism(self._fp, tuple(data1), other._fp, tuple(data2),
+                                              tuple(classes1), tuple(classes2))
         if certificate:
             return (r is not None, r)
         return r is not None

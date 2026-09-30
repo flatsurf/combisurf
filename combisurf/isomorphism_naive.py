@@ -668,7 +668,6 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
         ...
         ValueError: classes1 and classes2 must have the same number of arrays
 
-
     A folded edge and label gaps, with arrays of the same length or not::
 
         sage: isomorphism([2, -1, 0, 3], (), [-1, -1, 4, -1, 2, 5], ())
