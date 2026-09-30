@@ -10,7 +10,10 @@ decorated by integer values on half-edges. It computes exactly what
 functions of the same names take the same arguments and return the same
 values (the same canonical labelling, the same canonical form, the
 automorphisms in the same order, the same isomorphism), and raise the same
-exceptions on malformed input. The conventions (face permutations with
+exceptions on malformed input, with one addition: a face permutation that
+is not a permutation of its active half-edges raises a ``ValueError``,
+since the C code would read out of bounds on it (the reference loops
+forever or raises an ``IndexError`` there). The conventions (face permutations with
 ``-1`` on inactive half-edges, the decorations ``data`` kept exactly and
 ``classes`` kept up to a relabelling of their values, the breadth-first
 walk and the key of a root) are described in
