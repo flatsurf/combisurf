@@ -25,8 +25,14 @@ module.
 On a connected map, every active half-edge is tried as a root: the
 relabelling from it and its key are computed in C (``combisurf/src/isomorphism.c``)
 and the minimal key is kept, which costs `O(n^2)` for `n` half-edges. A
-disconnected map is currently handed to the function of the same name in
-:mod:`combisurf.isomorphism_naive`.
+disconnected map is searched in C as well, component after component, by
+the search of :mod:`combisurf.isomorphism_naive` over the sequences of
+blocks; as there, the list of the automorphisms of `k` isomorphic
+components has at least `k!` elements, and :func:`canonical_key` counts
+them one by one. The buffers of the C code are counted in C ``int``: a map
+too large for them (about `2^{31} / (10 + 2 nd + 3 nc)` half-edges with
+``nd`` arrays of ``data`` and ``nc`` of ``classes``) raises an
+``OverflowError``.
 
 The decorations are stored in C ``int`` arrays: a value of ``data``
 outside the range of a C ``int`` raises an ``OverflowError`` (the values
@@ -82,14 +88,43 @@ The results agree with the reference implementation::
 # ****************************************************************************
 
 from cpython cimport array
+from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
-
-import operator
 
 from combisurf import isomorphism_naive
 
 
 cdef array.array _int_array = array.array('i', [])
+
+
+def _check_sizes(n, nd, nc):
+    r"""
+    Raise an ``OverflowError`` if a buffer of the C code for a map of ``n``
+    half-edges decorated by ``nd`` arrays of ``data`` and ``nc`` arrays of
+    ``classes`` has more entries than a C ``int`` counts.
+
+    The sizes are those of ``combisurf/src/isomorphism.h``, computed here in
+    Python integers.
+
+    TESTS::
+
+        sage: from combisurf.isomorphism import _check_sizes
+        sage: _check_sizes(10**6, 2, 1)
+        sage: _check_sizes(2**28, 2, 1)
+        Traceback (most recent call last):
+        ...
+        OverflowError: map too large: 268435456 half-edges with 2 arrays of data and 1 of classes
+        sage: _check_sizes(2**31, 0, 0)
+        Traceback (most recent call last):
+        ...
+        OverflowError: map too large: 2147483648 half-edges with 0 arrays of data and 0 of classes
+    """
+    key = n * (1 + nd + nc)
+    work = 4 * n + key
+    sequence = key + n // 2
+    search = (5 + nc) * n + (4 + nc) * (n // 2 + 1) + nc + sequence + key + 1
+    if max(n, key, work, sequence, search) > INT_MAX:
+        raise OverflowError("map too large: {} half-edges with {} arrays of data and {} of classes".format(n, nd, nc))
 
 
 cdef inline array.array _new(Py_ssize_t size):
@@ -151,7 +186,8 @@ cdef _Map _convert(fp, tuple data, tuple classes):
 
     Raise ``ValueError`` if ``fp`` is not a permutation of its active
     half-edges and ``OverflowError`` if a value of ``data`` on an active
-    half-edge is outside the range of a C ``int``.
+    half-edge is outside the range of a C ``int`` or if the map is too
+    large for the buffers of the C code.
     """
     cdef _Map m = _Map.__new__(_Map)
     cdef int n, h, x, j, off, i
@@ -159,6 +195,12 @@ cdef _Map _convert(fp, tuple data, tuple classes):
     cdef int *dec
     cdef int *a
     cdef array.array seen
+    cdef Py_ssize_t size = len(fp)
+    # every buffer has at most 16 + 4 * (nd + nc) ints per half-edge (plus
+    # a constant): below that bound the exact check in Python integers is
+    # skipped, which keeps it off the path of small maps
+    if size * (16 + 4 * (len(data) + len(classes))) + 64 > INT_MAX:
+        _check_sizes(size, len(data), len(classes))
     m.fp = _as_int_array(fp)
     n = m.n = len(m.fp)
     m.nd = len(data)
@@ -251,6 +293,96 @@ cdef array.array _complete(array.array r, int n, int ne):
     return r
 
 
+cdef int _search(_Map m, bint all_leaves, array.array sequence, int *relabelling,
+                 iso_leaf_callback callback, void *arg) except -1:
+    r"""
+    Run ``iso_search`` on ``m``: write the minimal sequence of blocks into
+    ``sequence`` (of ``ISO_SEQUENCE_SIZE`` entries) and return its length.
+    A Python exception raised by ``callback`` propagates.
+    """
+    cdef array.array work = _new(ISO_SEARCH_WORK_SIZE(m.n, m.nd, m.nc))
+    cdef int *dec = m.dec.data.as_ints
+    cdef int length
+    iso_search(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n, all_leaves,
+               sequence.data.as_ints, &length, relabelling, callback, arg, work.data.as_ints)
+    return length
+
+
+cdef int _key_of(_Map m, array.array r, array.array key) except -1:
+    r"""
+    Write into ``key`` (of ``ISO_KEY_SIZE`` entries) the key of the
+    relabelling ``r`` of ``m`` by the ``2*ne`` labels of its active edges
+    (``-1`` on the half-edges of the inactive edges) and return its length.
+    """
+    cdef int n = m.n, k = 2 * m.ne, h
+    cdef int *f = m.fp.data.as_ints
+    cdef int *a = r.data.as_ints
+    cdef int *dec = m.dec.data.as_ints
+    cdef array.array rinv = _new(n)
+    cdef array.array names = _new(n)
+    # the labels of the inactive halves of folded edges keep -1
+    for h in range(n):
+        rinv.data.as_ints[h] = -1
+        names.data.as_ints[h] = -1
+    for h in range(n):
+        if f[h] != -1:
+            rinv.data.as_ints[a[h]] = h
+    return iso_key(n, f, m.nd, dec, m.nc, dec + m.nd * n, a, rinv.data.as_ints, k,
+                   key.data.as_ints, names.data.as_ints)
+
+
+cdef class _Automorphisms:
+    r"""
+    The automorphisms collected from the leaves of ``iso_search``: ``ra``
+    is the first leaf reaching the best sequence so far, ``result`` the
+    automorphisms ``g[h] = rb^{-1}[ra[h]]`` over the leaves ``rb`` reaching
+    it, and ``rbinv`` a work array of ``n`` entries.
+    """
+    cdef int n
+    cdef array.array ra
+    cdef array.array rbinv
+    cdef list result
+
+
+cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
+    r"""
+    Leaf callback of ``iso_search`` for :func:`automorphisms`: append the
+    automorphism of the leaf to the list, restarted at a smaller leaf.
+    """
+    cdef _Automorphisms s = <_Automorphisms> arg
+    cdef int n = s.n, h
+    cdef int *ra = s.ra.data.as_ints
+    cdef int *rbinv = s.rbinv.data.as_ints
+    cdef array.array g
+    if first:
+        memcpy(ra, leaf, n * sizeof(int))
+        s.result = []
+    for h in range(n):
+        if leaf[h] != -1:
+            rbinv[leaf[h]] = h
+    g = _new(n)
+    for h in range(n):
+        if ra[h] == -1:
+            g.data.as_ints[h] = h
+        else:
+            g.data.as_ints[h] = rbinv[ra[h]]
+    s.result.append(g)
+    return 0
+
+
+cdef int _count_leaf(const int *leaf, int first, void *arg) except -1:
+    r"""
+    Leaf callback of ``iso_search`` for :func:`canonical_key`: count the
+    leaves in the 64-bit counter ``arg``, restarted at a smaller leaf.
+    """
+    cdef long long *count = <long long *> arg
+    if first:
+        count[0] = 1
+    else:
+        count[0] += 1
+    return 0
+
+
 def canonical_labelling(fp, data=(), classes=()):
     r"""
     Return the canonical labelling of the map with face permutation ``fp``
@@ -301,10 +433,12 @@ def canonical_labelling(fp, data=(), classes=()):
         sage: canonical_labelling([])
         array('i')
 
-    A disconnected map, handed to :mod:`combisurf.isomorphism_naive`::
+    A disconnected map, labelled component after component::
 
         sage: canonical_labelling([2, 5, 4, 1, 0, 3, 6, -1])
         array('i', [2, 3, 4, 5, 6, 7, 0, 1])
+        sage: canonical_labelling([0, 1, 2, 3], classes=([0, 1, 1, 0],))
+        array('i', [0, 1, 3, 2])
 
     Malformed input::
 
@@ -339,7 +473,7 @@ def canonical_labelling(fp, data=(), classes=()):
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
     if _run(m, key, r.data.as_ints, NULL, NULL) == ISO_DISCONNECTED:
-        return isomorphism_naive.canonical_labelling(fp, data, classes)
+        _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
     return _complete(r, m.n, m.ne)
 
 
@@ -432,7 +566,8 @@ def canonical_form(fp, data=(), classes=()):
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
     if _run(m, key, r.data.as_ints, NULL, NULL) == ISO_DISCONNECTED:
-        return isomorphism_naive.canonical_form(fp, data, classes)
+        _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+        _key_of(m, r, key)
     return _form(m, key, r, data)
 
 
@@ -495,6 +630,14 @@ def automorphisms(fp, data=(), classes=()):
         [array('i', [0, 1])]
         sage: automorphisms([0, 1, 2, 3], classes=([0, 1, 1, 2],))
         [array('i', [0, 1, 2, 3]), array('i', [3, 2, 1, 0])]
+
+    The four edges ``(0)(~0)(1)(~1)(2)(~2)(3)(~3)``, which may be flipped
+    and permuted, and with classes that pair them::
+
+        sage: len(automorphisms(list(range(8))))
+        384
+        sage: len(automorphisms(list(range(8)), classes=([0, 1, 0, 1, 2, 3, 2, 3],)))
+        32
     """
     cdef _Map m = _prepare(fp, data, classes)
     cdef int n = m.n
@@ -503,8 +646,15 @@ def automorphisms(fp, data=(), classes=()):
     cdef array.array ra = _new(n)
     cdef array.array roots = _new(n)
     cdef array.array rb, rbinv, queue, g
+    cdef _Automorphisms s
     if _run(m, key, ra.data.as_ints, roots.data.as_ints, &count) == ISO_DISCONNECTED:
-        return isomorphism_naive.automorphisms(fp, data, classes)
+        s = _Automorphisms.__new__(_Automorphisms)
+        s.n = n
+        s.ra = ra
+        s.rbinv = _new(n)
+        s.result = []
+        _search(m, True, _new(ISO_SEQUENCE_SIZE(n, m.nd, m.nc)), NULL, _automorphism_leaf, <void *> s)
+        return s.result
     if count == 0:
         return [array.array('i', range(n))]
     rb = _new(n)
@@ -664,11 +814,21 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
     cdef array.array ra = _new(n1)
     cdef array.array rb = _new(n2)
     cdef int len1, len2, h, e, i
+    cdef array.array seq1, seq2
     len1 = _run(m1, key1, ra.data.as_ints, NULL, NULL)
     len2 = _run(m2, key2, rb.data.as_ints, NULL, NULL)
     if len1 == ISO_DISCONNECTED or len2 == ISO_DISCONNECTED:
-        return isomorphism_naive.isomorphism(fp1, data1, fp2, data2, classes1, classes2)
-    if (m1.ne != m2.ne or len1 != len2
+        # a connected map has one block, a disconnected one several
+        if len1 != len2:
+            return None
+        seq1 = _new(ISO_SEQUENCE_SIZE(n1, m1.nd, m1.nc))
+        seq2 = _new(ISO_SEQUENCE_SIZE(n2, m2.nd, m2.nc))
+        len1 = _search(m1, False, seq1, ra.data.as_ints, NULL, NULL)
+        len2 = _search(m2, False, seq2, rb.data.as_ints, NULL, NULL)
+        if (len1 != len2
+                or memcmp(seq1.data.as_ints, seq2.data.as_ints, len1 * sizeof(int)) != 0):
+            return None
+    elif (m1.ne != m2.ne or len1 != len2
             or memcmp(key1.data.as_ints, key2.data.as_ints, len1 * sizeof(int)) != 0):
         return None
     r = array.array('i', [-1] * n1)
@@ -770,8 +930,8 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         sage: canonical_key([-1, -1], relabelling=True, automorphism_count=True)
         (b'', array('i', [0, 1]), 1)
 
-    A disconnected map, handed to :mod:`combisurf.isomorphism_naive`: the
-    two edges ``(0)(~0)(1)(~1)``, with their classes::
+    A disconnected map, searched component after component: the two edges
+    ``(0)(~0)(1)(~1)``, with their classes::
 
         sage: key, r, count = canonical_key([0, 1, 2, 3], classes=([0, 1, 1, 2],), relabelling=True, automorphism_count=True)
         sage: array('i', key), r, count
@@ -791,20 +951,25 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
     cdef int count, length
+    cdef long long leaves = 0
     length = _run(m, key, r.data.as_ints, NULL, &count)
     if length == ISO_DISCONNECTED:
-        form = isomorphism_naive.canonical_form(fp, data, classes)
-        k = array.array('i', [operator.index(x) for t in form for x in t]).tobytes()
-        out = [k]
-        if relabelling:
-            out.append(isomorphism_naive.canonical_labelling(fp, data, classes))
+        # the first leaf reaching the minimum is the same with or without
+        # all the leaves: with classes every tied root is followed either
+        # way, and without them the first leaf follows the first tied roots
         if automorphism_count:
-            out.append(len(isomorphism_naive.automorphisms(fp, data, classes)))
-    else:
-        out = [(<char *> key.data.as_ints)[:length * sizeof(int)]]
-        if relabelling:
-            out.append(_complete(r, m.n, m.ne))
-        if automorphism_count:
+            _search(m, True, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints,
+                    _count_leaf, &leaves)
+        else:
+            _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+        length = _key_of(m, r, key)
+    out = [(<char *> key.data.as_ints)[:length * sizeof(int)]]
+    if relabelling:
+        out.append(_complete(r, m.n, m.ne))
+    if automorphism_count:
+        if leaves:
+            out.append(leaves)
+        else:
             out.append(count if count else 1)
     if len(out) == 1:
         return out[0]

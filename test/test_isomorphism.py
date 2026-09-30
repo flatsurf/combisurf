@@ -1616,6 +1616,107 @@ def test_fast_against_naive_disconnected(seed):
         check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
 
 
+def random_large_disconnected_fp(rng):
+    r"""
+    Return the face permutation of the disjoint union of two or three
+    random connected maps of 60 to 150 half-edge labels each, a component
+    after the first being a relabelled copy of an earlier one with
+    probability one half, with the labels of the union shuffled by edges.
+    """
+    components = []
+    for _ in range(rng.choice([2, 3])):
+        if components and rng.random() < 0.5:
+            fp = rng.choice(components)
+            fp = relabel_arrays(fp, (), random_edge_relabelling(rng, fp))[0]
+        else:
+            for _ in range(MAX_ATTEMPTS):
+                fp = random_connected_fp(rng, max_half_edges=150)
+                if len(fp) >= 60:
+                    break
+            else:
+                raise RuntimeError("no component found in {} attempts".format(MAX_ATTEMPTS))
+        components.append(fp)
+    union = []
+    for fp in components:
+        shift = len(union)
+        union.extend(-1 if x == -1 else x + shift for x in fp)
+    return relabel_arrays(union, (), random_edge_relabelling(rng, union))[0]
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_fast_against_naive_large_disconnected(seed):
+    rng = random.Random(seed)
+    for _ in range(3):
+        fp = random_large_disconnected_fp(rng)
+        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+
+
+def test_fast_four_edges():
+    fp = list(range(8))
+    c = ([0, 1, 0, 1, 2, 3, 2, 3],)
+    assert len(isomorphism_fast.automorphisms(fp)) == 384
+    assert len(isomorphism_fast.automorphisms(fp, classes=c)) == 32
+    assert isomorphism_fast.canonical_key(fp, automorphism_count=True)[1] == 384
+    assert isomorphism_fast.canonical_key(fp, classes=c, automorphism_count=True)[1] == 32
+    gens = isomorphism_fast.automorphism_generators(fp)
+    assert len(gens) == 7
+    assert gens == isomorphism_naive.automorphism_generators(fp)
+
+
+def test_fast_disconnected_without_naive(monkeypatch):
+    rng = random.Random(0)
+    cases = [([0, 1, 2, 3], (), ()),
+             ([0, 1, 2, 3], (), ([0, 1, 1, 2],)),
+             (list(range(8)), (), ([0, 1, 0, 1, 2, 3, 2, 3],)),
+             ([2, 5, 4, 1, 0, 3, 6, -1], ([0, 1, 0, 0, 1, 1, 0, 0],), ())]
+    for _ in range(3):
+        fp = random_disconnected_fp(rng)
+        while is_connected_fp(fp):
+            fp = random_disconnected_fp(rng)
+        cases.append((fp, random_data(rng, fp), random_classes(rng, fp)))
+
+    # the results of the reference, then the reference made unusable
+    expected = []
+    for fp, data, classes in cases:
+        s = random_edge_relabelling(rng, fp)
+        fp2, data2 = relabel_arrays(fp, data, s)
+        _, classes2 = relabel_arrays(fp, classes, s)
+        naive = isomorphism_naive
+        expected.append((naive.canonical_labelling(fp, data, classes),
+                         naive.canonical_form(fp, data, classes),
+                         naive.automorphisms(fp, data, classes),
+                         naive.automorphism_generators(fp, data, classes),
+                         fp2, data2, classes2,
+                         naive.isomorphism(fp, data, fp2, data2, classes, classes2)))
+
+    def unusable(*args, **kwds):
+        raise AssertionError("the reference implementation was called")
+
+    for name in ("_search", "canonical_labelling", "canonical_form", "automorphisms",
+                 "isomorphism"):
+        monkeypatch.setattr(isomorphism_naive, name, unusable)
+
+    fast = isomorphism_fast
+    for (fp, data, classes), (r, form, automorphisms, gens, fp2, data2, classes2, iso) in zip(cases, expected):
+        assert fast.canonical_labelling(fp, data, classes) == r
+        assert fast.canonical_form(fp, data, classes) == form
+        assert fast.automorphisms(fp, data, classes) == automorphisms
+        assert fast.automorphism_generators(fp, data, classes) == gens
+        assert fast.isomorphism(fp, data, fp2, data2, classes, classes2) == iso
+        key = flatten(form)
+        assert fast.canonical_key(fp, data, classes) == key
+        assert fast.canonical_key(fp, data, classes, relabelling=True) == (key, r)
+        assert fast.canonical_key(fp, data, classes, automorphism_count=True) == (key, len(automorphisms))
+        assert fast.canonical_key(fp, data, classes, relabelling=True, automorphism_count=True) == (key, r, len(automorphisms))
+
+
+def test_fast_sizes():
+    isomorphism_fast._check_sizes(2**20, 2, 2)
+    for n, nd, nc in [(2**31, 0, 0), (2**28, 0, 0), (2**26, 5, 5)]:
+        with pytest.raises(OverflowError, match="map too large"):
+            isomorphism_fast._check_sizes(n, nd, nc)
+
+
 def test_fast_malformed_input():
     for fp, data, classes in [([0, -1, 2], (), ()), ([0, -1], [[0, 0]], ()),
                               ([0, -1], ([0],), ()), ([0, -1], (), [[0, 0]]),

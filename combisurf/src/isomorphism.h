@@ -1,7 +1,7 @@
 /*
- * Canonical keys, canonical labellings and automorphisms of connected maps
- * given by their face permutation, possibly decorated by integer arrays on
- * the half-edges.
+ * Canonical keys, canonical labellings and automorphisms of maps given by
+ * their face permutation, possibly decorated by integer arrays on the
+ * half-edges.
  *
  * This file is part of combisurf. It is plain C99 and does not depend on
  * Python, so that it can be tested from standalone C programs. The Cython
@@ -108,5 +108,86 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  */
 int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
                   int *key, int *relabelling, int *roots, int *nroots, int *work);
+
+/*
+ * Maps that may be disconnected: the search over the labellings component
+ * after component of isomorphism_naive._search.
+ *
+ * The block of a component labelled from a root is made of k (its number of
+ * labels), its face permutation in its local labels 0, ..., k - 1 (-1 at
+ * the labels of inactive half-edges), each data array read in the order of
+ * the local labels of its active half-edges, then each class array read in
+ * the same order and renumbered by first appearance, continuing the
+ * numbering of the components labelled before. A sequence of blocks is
+ * stored flat, the blocks one after the other; since equal k and equal face
+ * permutations give blocks of equal lengths, the lexicographic order of the
+ * flat sequences of ints is the order of the sequences of blocks.
+ *
+ * A sequence of blocks has at most ne + 2 * ne + (nd + nc) * na ints (one k
+ * per component, at most ne components) for ne active edges and na active
+ * half-edges, hence at most ISO_SEQUENCE_SIZE(n, nd, nc) ints.
+ */
+#define ISO_SEQUENCE_SIZE(n, nd, nc) (ISO_KEY_SIZE(n, nd, nc) + (n) / 2)
+
+/*
+ * Size of the work buffer of iso_search, in ints: the global and local
+ * relabellings with their inverses and the queue (5 n), the numberings of
+ * the class values (nc n), the state of each of the at most n / 2 + 1
+ * levels of the search (its root, its first label, the position and the
+ * length of its block, and the counts of class values before it: (4 + nc)
+ * (n / 2 + 1)), the counts of class values (nc), the current sequence
+ * (ISO_SEQUENCE_SIZE) and one candidate block (ISO_KEY_SIZE + 1).
+ *
+ * These sizes are computed in int and overflow for about
+ * 2^31 / (5 + nd + nc) half-edges; the caller checks them first.
+ */
+#define ISO_SEARCH_WORK_SIZE(n, nd, nc) \
+    ((5 + (nc)) * (n) + (4 + (nc)) * ((n) / 2 + 1) + (nc) \
+     + ISO_SEQUENCE_SIZE(n, nd, nc) + ISO_KEY_SIZE(n, nd, nc) + 1)
+
+/*
+ * Callback of iso_search, called on a leaf: leaf is the relabelling of the
+ * leaf (n ints, -1 on the half-edges of the inactive edges), valid during
+ * the call only. first is 1 when the leaf is smaller than every leaf
+ * reported before, which the caller discards, and 0 when it is equal to
+ * the last leaf reported with first = 1. A nonzero return value stops the
+ * search, which returns it; the Cython layer returns -1 with a Python
+ * exception set.
+ */
+typedef int (*iso_leaf_callback)(const int *leaf, int first, void *arg);
+
+/*
+ * Search the lexicographically minimal sequence of blocks over the
+ * labellings of fp component after component, exactly as
+ * isomorphism_naive._search: from a state (the components labelled so
+ * far), every active half-edge not labelled yet is tried as a root, in
+ * increasing order, and only the roots of minimal block are followed,
+ * depth first in increasing root order; the component gets the labels
+ * following those used. When several roots tie, every one of them is
+ * followed if nc > 0 or all_leaves is nonzero, only the first one
+ * otherwise. A state whose sequence exceeds the prefix of the best
+ * sequence found is cut.
+ *
+ * Any map is accepted, connected or not; a connected map gives a single
+ * block, which is its key preceded by k. The empty map gives the empty
+ * sequence and one leaf.
+ *
+ * The minimal sequence is written into sequence (ISO_SEQUENCE_SIZE(n, nd,
+ * nc) ints) and its length into *length. When relabelling is not NULL (n
+ * ints), the relabelling of the first leaf reaching the minimal sequence
+ * is written there (-1 on the half-edges of the inactive edges). When
+ * callback is not NULL, it is called with arg on every leaf that is
+ * smaller than the best one so far (first = 1) and, when all_leaves is
+ * nonzero, on every leaf equal to the best one so far (first = 0). The
+ * leaves reported since the last call with first = 1 are then the leaves
+ * reaching the minimal sequence, in the order of the search. work is a
+ * buffer of ISO_SEARCH_WORK_SIZE(n, nd, nc) ints.
+ *
+ * Return 0, or the nonzero value returned by the callback, which stops the
+ * search and leaves the outputs undefined.
+ */
+int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
+               int all_leaves, int *sequence, int *length, int *relabelling,
+               iso_leaf_callback callback, void *arg, int *work);
 
 #endif
