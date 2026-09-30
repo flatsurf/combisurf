@@ -4452,9 +4452,9 @@ class OrientedMap:
             sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], [5, 2, 3]))
             False
 
-        Disconnected maps: a disjoint union of two triangles and a folded
-        edge against the same union relabelled, and against a union with
-        another triangle::
+        Disconnected maps: a disjoint union of two triangles and an edge
+        with two faces of degree 1 against the same union relabelled, and
+        against a union with another triangle::
 
             sage: m = OrientedMap(fp="(0,1,2)(~0,~2,~1)(3,4,5)(~3,~5,~4)(6)(~6)")
             sage: m4 = OrientedMap(fp="(0)(~0)(1,3,2)(~1,~2,~3)(4,5,6)(~4,~6,~5)")

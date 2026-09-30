@@ -5,8 +5,8 @@ This module computes canonical labellings, canonical forms, automorphism
 groups and isomorphisms of maps, connected or not, given by their face
 permutation, possibly decorated by values on half-edges. It works on plain
 arrays and is written for readability: every active half-edge is tried as a
-root, which costs `O(n^2)` for `n` half-edges on a connected map, with no
-pruning. It is the reference
+root, which costs `O(n^2)` for `n` half-edges on a connected map (every
+root is tried, nothing is pruned). It is the reference
 against which a faster implementation is to be tested; the methods of
 :class:`~combisurf.oriented_map.OrientedMap` (such as
 :meth:`~combisurf.oriented_map.OrientedMap.canonical_labelling`) call it.
