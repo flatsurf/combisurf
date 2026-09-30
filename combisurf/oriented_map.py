@@ -3851,7 +3851,7 @@ class OrientedMap:
     # Automorphisms #
     #################
 
-    def _decoration_data(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+    def _decoration_data(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True, kind="data"):
         r"""
         Return the decorations as a tuple of half-edge arrays, in the order
         ``half_edge_data``, ``edge_data``, ``vertex_data``, ``face_data``.
@@ -3863,6 +3863,10 @@ class OrientedMap:
         on the vertices and on the faces. With ``check=True``, the lengths
         and the constancy are checked and a violation raises ``ValueError``.
 
+        The same conversion serves the ``*_classes`` keywords: ``kind`` is
+        ``"data"`` or ``"classes"``, the suffix of the keyword names used in
+        the error messages.
+
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
@@ -3871,6 +3875,8 @@ class OrientedMap:
             ([0, 1, 2, 3], (4, 5, 6, 7), [8, 8, 9, 9])
             sage: m._decoration_data(half_edge_data=(0, 1, 2, 3))
             ((0, 1, 2, 3),)
+            sage: m._decoration_data(face_data=[0, 1, 0, 1], kind="classes")
+            ([0, 1, 0, 1],)
 
         TESTS::
 
@@ -3912,10 +3918,30 @@ class OrientedMap:
             array('i', [0, 1, 2, 3, 4, 5])
             sage: m1.canonical_labelling(half_edge_data=((0,)*6,))
             array('i', [0, 1, 2, 3, 4, 5])
+
+        The error messages name the ``*_classes`` keywords when those are
+        converted::
+
+            sage: m._decoration_data(half_edge_data=[0, 1, 2], kind="classes")
+            Traceback (most recent call last):
+            ...
+            ValueError: half_edge_classes must have length 4
+            sage: m._decoration_data(edge_data=[0, 1, 2], kind="classes")
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_classes must have length 2
+            sage: m._decoration_data(face_data=[0, 0, 1, 1], kind="classes")
+            Traceback (most recent call last):
+            ...
+            ValueError: face_classes must be constant on faces
         """
+        if kind not in ("data", "classes"):
+            raise ValueError("kind must be 'data' or 'classes'")
         n = len(self._vp)
         fp = self._fp
         data = []
+        half_edge_name = "half_edge_" + kind
+        edge_name = "edge_" + kind
 
         def check_integers(d, name, edges=False):
             # the values on inactive half-edges are ignored, so they are not
@@ -3935,16 +3961,16 @@ class OrientedMap:
             if check:
                 for d in data:
                     if len(d) != n:
-                        raise ValueError("half_edge_data must have length {}".format(n))
-                    check_integers(d, "half_edge_data")
+                        raise ValueError("{} must have length {}".format(half_edge_name, n))
+                    check_integers(d, half_edge_name)
         if edge_data is not None:
             if check:
                 if len(edge_data) != n // 2:
-                    raise ValueError("edge_data must have length {}".format(n // 2))
-                check_integers(edge_data, "edge_data", edges=True)
+                    raise ValueError("{} must have length {}".format(edge_name, n // 2))
+                check_integers(edge_data, edge_name, edges=True)
             data.append([edge_data[h // 2] for h in range(n)])
-        for d, p, name, cells in ((vertex_data, self._vp, "vertex_data", "vertices"),
-                                  (face_data, self._fp, "face_data", "faces")):
+        for d, p, name, cells in ((vertex_data, self._vp, "vertex_" + kind, "vertices"),
+                                  (face_data, self._fp, "face_" + kind, "faces")):
             if d is None:
                 continue
             if check:
@@ -3956,12 +3982,15 @@ class OrientedMap:
             data.append(d)
         return tuple(data)
 
-    def canonical_labelling(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+    def canonical_labelling(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
+                            half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
+                            check=True):
         r"""
         Return the canonical labelling of this map with the given
         decorations.
 
-        The map must be connected. The decorations are matched exactly.
+        The map must be connected. The ``*_data`` decorations are matched
+        exactly, the ``*_classes`` decorations up to relabelling.
 
         INPUT:
 
@@ -3975,14 +4004,32 @@ class OrientedMap:
         - ``vertex_data``, ``face_data`` -- optional; lists indexed by
           half-edges, constant on each vertex and on each face respectively
 
+        - ``half_edge_classes``, ``edge_classes``, ``vertex_classes``,
+          ``face_classes`` -- optional; decorations of the same shapes as
+          ``half_edge_data``, ``edge_data``, ``vertex_data`` and
+          ``face_data``, matched up to relabelling
+
         - ``check`` -- boolean (default ``True``); whether to check the
           lengths of the decorations, that their values are integers and
-          the constancy of ``vertex_data`` and ``face_data``
+          the constancy of ``vertex_data``, ``face_data``,
+          ``vertex_classes`` and ``face_classes``
 
         The values of a decoration are integers (Python ``int``, Sage
         ``Integer``, or anything with an ``__index__`` method); the values
         on inactive half-edges are ignored. With ``check=True`` any other
         value raises a ``ValueError``.
+
+        A decoration matched *exactly* must take the same value on a
+        half-edge and on its image by an isomorphism. A decoration matched
+        *up to relabelling* only needs its values to correspond through a
+        bijection: an isomorphism ``r`` preserves the decoration ``c`` of
+        the first map and ``c'`` of the second when there is a bijection
+        ``s`` of values with ``c'[r[h]] == s(c[h])`` for every active
+        half-edge ``h``. Only the partition of the half-edges (edges,
+        vertices, faces) into classes of equal values matters; for
+        instance, the cylinders of a cylinder diagram pair its faces, and
+        the pairing is given by ``face_classes`` with one value per
+        cylinder.
 
         OUTPUT: an ``array('i')`` that maps each half-edge to its canonical
         label: a relabelling accepted by :meth:`relabel`, which gives the
@@ -4014,6 +4061,18 @@ class OrientedMap:
             sage: r == m.canonical_labelling(half_edge_data=[colours[h // 2] for h in range(24)])
             True
 
+        The same colouring matched up to relabelling: swapping the two
+        colours changes neither the labelling nor the canonical form, which
+        differs when the colours are matched exactly::
+
+            sage: swapped = [3 - c for c in colours]
+            sage: m.canonical_labelling(edge_classes=colours) == m.canonical_labelling(edge_classes=swapped)
+            True
+            sage: m.canonical_form(edge_classes=colours) == m.canonical_form(edge_classes=swapped)
+            True
+            sage: m.canonical_form(edge_data=colours) == m.canonical_form(edge_data=swapped)
+            False
+
         TESTS:
 
         A label gap (the edge ``1`` is inactive) and a folded edge::
@@ -4028,22 +4087,76 @@ class OrientedMap:
             Traceback (most recent call last):
             ...
             NotImplementedError: disconnected maps are not supported
+
+        The checks of the ``*_classes`` keywords::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: m.canonical_labelling(half_edge_classes=[0, 1, 2])
+            Traceback (most recent call last):
+            ...
+            ValueError: half_edge_classes must have length 6
+            sage: m.canonical_labelling(half_edge_classes=[0, 1, 2, 3, 4, 'a'])
+            Traceback (most recent call last):
+            ...
+            ValueError: half_edge_classes must contain integers, got 'a'
+            sage: m.canonical_labelling(edge_classes=[0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_classes must have length 3
+            sage: m.canonical_labelling(edge_classes=[0, 1, None])
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_classes must contain integers, got None
+            sage: m.canonical_labelling(vertex_classes=[0, 0, 0])
+            Traceback (most recent call last):
+            ...
+            ValueError: vertex_classes must have length 6
+            sage: m.canonical_labelling(vertex_classes=[0, 0, 0, 0, 0, 0.5r])
+            Traceback (most recent call last):
+            ...
+            ValueError: vertex_classes must contain integers, got 0.5
+            sage: m.canonical_labelling(vertex_classes=[0, 1, 0, 1, 0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: vertex_classes must be constant on vertices
+            sage: m.canonical_labelling(face_classes=[0, 0, 0])
+            Traceback (most recent call last):
+            ...
+            ValueError: face_classes must have length 6
+            sage: m.canonical_labelling(face_classes=[0, 1, 0, 1, 0, 'b'])
+            Traceback (most recent call last):
+            ...
+            ValueError: face_classes must contain integers, got 'b'
+            sage: m.canonical_labelling(face_classes=[0, 1, 1, 0, 0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: face_classes must be constant on faces
+            sage: m.canonical_labelling(face_classes=[0, 1, 1, 0, 0, 1], check=False)
+            array('i', [2, 3, 4, 5, 0, 1])
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
-        return isomorphism_naive.canonical_labelling(self._fp, data)
+        classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
+        return isomorphism_naive.canonical_labelling(self._fp, data, classes)
 
-    def canonical_form(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+    def canonical_form(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
+                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
+                       check=True):
         r"""
         Return the canonical form of this map with the given decorations.
 
-        The map must be connected. The decorations are matched exactly and
-        given as in :meth:`canonical_labelling`.
+        The map must be connected. The decorations are given as in
+        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
+        ``*_classes`` up to relabelling.
 
-        OUTPUT: a hashable tuple ``(fp, d_1, d_2, ...)`` of tuples, equal for
-        two decorated maps if and only if they are isomorphic: ``fp`` is the
-        face permutation in the canonical labels and ``d_i`` the values of
-        the ``i``-th decoration (as a half-edge array) read in the increasing
-        order of the canonical labels of the active half-edges.
+        OUTPUT: a hashable tuple ``(fp, d_1, ..., d_k, c_1, ..., c_m)`` of
+        tuples, equal for two decorated maps if and only if they are
+        isomorphic: ``fp`` is the face permutation in the canonical labels,
+        ``d_i`` the values of the ``i``-th ``*_data`` decoration (as a
+        half-edge array, in the order half-edge, edge, vertex, face) read in
+        the increasing order of the canonical labels of the active
+        half-edges, and ``c_i`` the values of the ``i``-th ``*_classes``
+        decoration (in the same order) read in the same order of half-edges
+        and renumbered ``0, 1, 2, ...`` by first appearance.
 
         EXAMPLES::
 
@@ -4062,22 +4175,35 @@ class OrientedMap:
 
             sage: m1.canonical_form(edge_data=[0, 0, 1])
             ((2, 5, 4, 1, 0, 3), (0, 0, 0, 0, 1, 1))
+
+        With a decoration matched up to relabelling, renumbered by first
+        appearance::
+
+            sage: m1.canonical_form(edge_classes=[5, 5, 2])
+            ((2, 5, 4, 1, 0, 3), (0, 0, 0, 0, 1, 1))
+            sage: m3.canonical_form(face_data=[0, 1, 0, 1, 0, 1], face_classes=[4, 7, 4, 7, 4, 7])
+            ((2, 3, 4, 5, 0, 1), (0, 1, 0, 1, 0, 1), (0, 1, 0, 1, 0, 1))
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
-        return isomorphism_naive.canonical_form(self._fp, data)
+        classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
+        return isomorphism_naive.canonical_form(self._fp, data, classes)
 
-    def automorphisms(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+    def automorphisms(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
+                      half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
+                      check=True):
         r"""
         Return the automorphisms of this map with the given decorations.
 
-        The map must be connected. The decorations are matched exactly and
-        given as in :meth:`canonical_labelling`.
+        The map must be connected. The decorations are given as in
+        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
+        ``*_classes`` up to relabelling.
 
         OUTPUT: the list of the automorphisms, the identity first, each an
         ``array('i')`` permutation of the half-edges that commutes with the
         face and vertex permutations, preserves the edges and the
-        decorations, and is the identity on the inactive edges. It is a
-        relabelling accepted by :meth:`relabel`.
+        decorations (the ``*_classes`` up to a bijection of their values),
+        and is the identity on the inactive edges. It is a relabelling
+        accepted by :meth:`relabel`.
 
         EXAMPLES:
 
@@ -4125,6 +4251,15 @@ class OrientedMap:
             ...
             ValueError: face_data must be constant on faces
 
+        Matched up to relabelling, the same face decoration keeps the
+        automorphisms that swap the two faces, and their two values::
+
+            sage: A = m.automorphisms(face_classes=[0, 1, 0, 1, 0, 1])
+            sage: len(A)
+            6
+            sage: A[1]
+            array('i', [1, 0, 3, 2, 5, 4])
+
         TESTS:
 
         Folded edges and label gaps (the edges ``1`` and ``3`` are
@@ -4144,15 +4279,19 @@ class OrientedMap:
             NotImplementedError: disconnected maps are not supported
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
-        return isomorphism_naive.automorphisms(self._fp, data)
+        classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
+        return isomorphism_naive.automorphisms(self._fp, data, classes)
 
-    def automorphism_generators(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+    def automorphism_generators(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
+                                half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
+                                check=True):
         r"""
         Return generators of the automorphism group of this map with the
         given decorations.
 
-        The map must be connected. The decorations are matched exactly and
-        given as in :meth:`canonical_labelling`.
+        The map must be connected. The decorations are given as in
+        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
+        ``*_classes`` up to relabelling.
 
         OUTPUT: a list of automorphisms (as in :meth:`automorphisms`) that
         generate the group; empty when the group is trivial.
@@ -4169,16 +4308,29 @@ class OrientedMap:
             [array('i', [2, 3, 4, 5, 0, 1])]
             sage: m.automorphism_generators(half_edge_data=[0, 1, 0, 1, 0, 2])
             []
+
+        The two faces decorated by different values, matched exactly or up
+        to relabelling::
+
+            sage: m.automorphism_generators(face_data=[0, 1, 0, 1, 0, 1])
+            [array('i', [2, 3, 4, 5, 0, 1])]
+            sage: m.automorphism_generators(face_classes=[0, 1, 0, 1, 0, 1])
+            [array('i', [1, 0, 3, 2, 5, 4]), array('i', [2, 3, 4, 5, 0, 1])]
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
-        return isomorphism_naive.automorphism_generators(self._fp, data)
+        classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
+        return isomorphism_naive.automorphism_generators(self._fp, data, classes)
 
-    def is_isomorphic(self, other, certificate=False, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+    def is_isomorphic(self, other, certificate=False, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
+                      half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
+                      check=True):
         r"""
         Return whether this map is isomorphic to ``other`` with the given
         decorations.
 
-        Both maps must be connected. The decorations are matched exactly.
+        Both maps must be connected. The ``*_data`` decorations are matched
+        exactly, the ``*_classes`` decorations up to relabelling (see
+        :meth:`canonical_labelling`).
 
         INPUT:
 
@@ -4191,8 +4343,19 @@ class OrientedMap:
           -- optional; each a pair ``(decoration of self, decoration of
           other)``, the decorations as in :meth:`canonical_labelling`
 
+        - ``half_edge_classes``, ``edge_classes``, ``vertex_classes``,
+          ``face_classes`` -- optional; each a pair ``(decoration of self,
+          decoration of other)``, the decorations as in
+          :meth:`canonical_labelling`, matched up to relabelling: an
+          isomorphism ``r`` preserves the pair ``(c, c')`` when there is a
+          bijection ``s`` of values with ``c'[r[h]] == s(c[h])`` for every
+          active half-edge ``h``
+
         - ``check`` -- boolean (default ``True``); whether to check the
           decorations
+
+        A decoration given for one map only (``None`` for the other) makes
+        the maps not isomorphic.
 
         OUTPUT: a boolean, or with ``certificate=True`` a pair ``(True, r)``
         or ``(False, None)``. The isomorphism ``r`` is an ``array('i')`` that
@@ -4228,6 +4391,24 @@ class OrientedMap:
             sage: m1.is_isomorphic(m2, edge_data=([0, 0, 1], [0, 1, 1]))
             False
 
+        Two decorations of the faces of ``m3`` that differ by the names of
+        their values: not isomorphic when matched exactly, isomorphic up to
+        relabelling::
+
+            sage: m3.is_isomorphic(m3, face_data=([0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0]))
+            True
+            sage: m3.is_isomorphic(m3, face_data=([0, 1, 0, 1, 0, 1], [7, 3, 7, 3, 7, 3]))
+            False
+            sage: m3.is_isomorphic(m3, face_classes=([0, 1, 0, 1, 0, 1], [7, 3, 7, 3, 7, 3]), certificate=True)
+            (True, array('i', [0, 1, 2, 3, 4, 5]))
+
+        Classes must match as partitions::
+
+            sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], [5, 2, 5]))
+            True
+            sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], [5, 2, 3]))
+            False
+
         TESTS::
 
             sage: m1.is_isomorphic(m2, edge_data=[0, 0, 1])
@@ -4240,6 +4421,20 @@ class OrientedMap:
             ValueError: edge_data must be a pair (of self, of other) of sequences or None
             sage: m1.is_isomorphic(m2, edge_data=(None, [0, 0, 1]))
             False
+            sage: m1.is_isomorphic(m2, face_classes=[0, 1, 0, 1, 0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: face_classes must be a pair (of self, of other)
+            sage: m1.is_isomorphic(m2, half_edge_classes=[0, 1])
+            Traceback (most recent call last):
+            ...
+            ValueError: half_edge_classes must be a pair (of self, of other) of sequences or None
+            sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], None))
+            False
+            sage: m1.is_isomorphic(m2, edge_classes=([0, 0, 1], [0, 1]))
+            Traceback (most recent call last):
+            ...
+            ValueError: edge_classes must have length 3
             sage: m1.is_isomorphic("(0,1,2)")
             Traceback (most recent call last):
             ...
@@ -4257,7 +4452,9 @@ class OrientedMap:
         if isinstance(other, ColoredOrientedMap):
             raise NotImplementedError("colours are not supported yet")
         pairs = {'half_edge_data': half_edge_data, 'edge_data': edge_data,
-                 'vertex_data': vertex_data, 'face_data': face_data}
+                 'vertex_data': vertex_data, 'face_data': face_data,
+                 'half_edge_classes': half_edge_classes, 'edge_classes': edge_classes,
+                 'vertex_classes': vertex_classes, 'face_classes': face_classes}
         for name, value in pairs.items():
             if value is None:
                 pairs[name] = (None, None)
@@ -4265,9 +4462,17 @@ class OrientedMap:
                 raise ValueError("{} must be a pair (of self, of other)".format(name))
             elif check and not all(x is None or (hasattr(x, '__len__') and hasattr(x, '__getitem__') and not isinstance(x, str)) for x in value):
                 raise ValueError("{} must be a pair (of self, of other) of sequences or None".format(name))
-        data1 = self._decoration_data(*(pairs[name][0] for name in ('half_edge_data', 'edge_data', 'vertex_data', 'face_data')), check=check)
-        data2 = other._decoration_data(*(pairs[name][1] for name in ('half_edge_data', 'edge_data', 'vertex_data', 'face_data')), check=check)
-        r = isomorphism_naive.isomorphism(self._fp, data1, other._fp, data2)
+        data_names = ('half_edge_data', 'edge_data', 'vertex_data', 'face_data')
+        classes_names = ('half_edge_classes', 'edge_classes', 'vertex_classes', 'face_classes')
+        data1 = self._decoration_data(*(pairs[name][0] for name in data_names), check=check)
+        data2 = other._decoration_data(*(pairs[name][1] for name in data_names), check=check)
+        classes1 = self._decoration_data(*(pairs[name][0] for name in classes_names), check=check, kind="classes")
+        classes2 = other._decoration_data(*(pairs[name][1] for name in classes_names), check=check, kind="classes")
+        if len(data1) != len(data2) or len(classes1) != len(classes2):
+            # a decoration given on one side only
+            r = None
+        else:
+            r = isomorphism_naive.isomorphism(self._fp, data1, other._fp, data2, classes1, classes2)
         if certificate:
             return (r is not None, r)
         return r is not None
