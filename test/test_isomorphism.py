@@ -41,6 +41,7 @@ tie them together). The fast implementation :mod:`combisurf.isomorphism`
 is then compared with it by equality of the results, on random maps of up
 to 400 half-edges.
 """
+import math
 import random
 from array import array
 
@@ -1569,6 +1570,21 @@ def flatten(form):
     return array('i', [x for t in form for x in t]).tobytes()
 
 
+def check_generators(gens, expected, automorphisms, fp, classes):
+    r"""
+    Check the generators ``gens`` of the map ``fp``: equal to the generators
+    ``expected`` of the reference on a connected map or a map with
+    ``classes``; on a disconnected map without ``classes``, each one an
+    automorphism and generating the group of the list ``automorphisms``.
+    """
+    if classes or is_connected_fp(fp):
+        assert gens == expected
+        return
+    listed = {tuple(g) for g in automorphisms}
+    assert all(tuple(g) in listed for g in gens)
+    assert group_closure(gens, len(fp)) == listed
+
+
 def check_fast_against_naive(rng, fp, data, classes):
     r"""
     Check that :mod:`combisurf.isomorphism` and
@@ -1589,7 +1605,8 @@ def check_fast_against_naive(rng, fp, data, classes):
     assert fast.canonical_form(fp1, data1, classes) == form
     automorphisms = naive.automorphisms(fp, data, classes)
     assert fast.automorphisms(fp1, data1, classes) == automorphisms
-    assert fast.automorphism_generators(fp1, data1, classes) == naive.automorphism_generators(fp, data, classes)
+    check_generators(fast.automorphism_generators(fp1, data1, classes),
+                     naive.automorphism_generators(fp, data, classes), automorphisms, fp, classes)
     key, r1, count = fast.canonical_key(fp1, data1, classes, relabelling=True, automorphism_count=True)
     assert key == flatten(form)
     assert r1 == r
@@ -1683,8 +1700,84 @@ def test_fast_four_edges():
     assert isomorphism_fast.canonical_key(fp, automorphism_count=True)[1] == 384
     assert isomorphism_fast.canonical_key(fp, classes=c, automorphism_count=True)[1] == 32
     gens = isomorphism_fast.automorphism_generators(fp)
-    assert len(gens) == 7
-    assert gens == isomorphism_naive.automorphism_generators(fp)
+    assert len(gens) == 3
+    check_generators(gens, isomorphism_naive.automorphism_generators(fp),
+                     isomorphism_naive.automorphisms(fp), fp, ())
+    assert isomorphism_fast.automorphism_generators(fp, classes=c) == isomorphism_naive.automorphism_generators(fp, classes=c)
+
+
+def wreath_fp(k, component):
+    r"""
+    Return the face permutation of ``k`` disjoint copies of ``component``.
+    """
+    return [x + len(component) * i for i in range(k) for x in component]
+
+
+def is_automorphism(g, fp, data=()):
+    r"""
+    Whether ``g`` commutes with ``fp`` on the active half-edges, preserves
+    the pairs ``{2e, 2e+1}``, the arrays ``data`` and is the identity on the
+    inactive edges.
+    """
+    for h in range(len(fp)):
+        if g[h ^ 1] != g[h] ^ 1:
+            return False
+        if fp[h] == -1:
+            if fp[h ^ 1] == -1 and g[h] != h:
+                return False
+            continue
+        if g[fp[h]] != fp[g[h]]:
+            return False
+        if any(d[g[h]] != d[h] for d in data):
+            return False
+    return sorted(g) == list(range(len(fp)))
+
+
+def test_fast_wreath_generators():
+    fast = isomorphism_fast
+    # 20 isolated edges: the group is too large to be listed
+    fp = list(range(40))
+    gens = fast.automorphism_generators(fp)
+    assert len(gens) == 3
+    assert all(is_automorphism(g, fp) for g in gens)
+    assert fast.canonical_key(fp, automorphism_count=True)[1] == 2**20 * math.factorial(20)
+
+    triangle = [2, 5, 4, 1, 0, 3]
+    fp = wreath_fp(3, triangle)
+    gens = fast.automorphism_generators(fp)
+    assert len(gens) == 4
+    assert all(is_automorphism(g, fp) for g in gens)
+    assert len(group_closure(gens, len(fp))) == 1296 == fast.canonical_key(fp, automorphism_count=True)[1]
+
+    # data separating two of three isomorphic components
+    data = ([0] * 6 + [1] * 6 + [0] * 6,)
+    automorphisms = isomorphism_naive.automorphisms(fp, data)
+    gens = fast.automorphism_generators(fp, data)
+    assert all(is_automorphism(g, fp, data) for g in gens)
+    assert group_closure(gens, len(fp)) == {tuple(g) for g in automorphisms}
+    assert fast.canonical_key(fp, data, automorphism_count=True)[1] == len(automorphisms)
+
+    # a folded edge and an inactive edge in the components, components interleaved
+    fp = [2, -1, 0, 3, -1, -1, 8, -1, 6, 9, 10, 11, -1, -1]
+    automorphisms = isomorphism_naive.automorphisms(fp)
+    gens = fast.automorphism_generators(fp)
+    assert all(is_automorphism(g, fp) for g in gens)
+    assert group_closure(gens, len(fp)) == {tuple(g) for g in automorphisms}
+    assert fast.canonical_key(fp, automorphism_count=True)[1] == len(automorphisms)
+
+
+def test_fast_wreath_without_group_closure(monkeypatch):
+    def unusable(*args, **kwds):
+        raise AssertionError("the group closure was called")
+
+    monkeypatch.setattr(isomorphism_naive, "_group_closure", unusable)
+    fast = isomorphism_fast
+    triangle = [2, 5, 4, 1, 0, 3]
+    for fp, data in [(list(range(14)), ()), (wreath_fp(3, triangle), ()),
+                     (wreath_fp(3, triangle), ([0] * 6 + [1] * 6 + [0] * 6,)),
+                     ([0, 1, 2, 3], ())]:
+        assert fast.automorphism_generators(fp, data)
+        assert fast.canonical_key(fp, data, automorphism_count=True)[1] > 1
 
 
 def test_fast_disconnected_without_naive(monkeypatch):
@@ -1725,7 +1818,7 @@ def test_fast_disconnected_without_naive(monkeypatch):
         assert fast.canonical_labelling(fp, data, classes) == r
         assert fast.canonical_form(fp, data, classes) == form
         assert fast.automorphisms(fp, data, classes) == automorphisms
-        assert fast.automorphism_generators(fp, data, classes) == gens
+        check_generators(fast.automorphism_generators(fp, data, classes), gens, automorphisms, fp, classes)
         assert fast.isomorphism(fp, data, fp2, data2, classes, classes2) == iso
         key = flatten(form)
         assert fast.canonical_key(fp, data, classes) == key

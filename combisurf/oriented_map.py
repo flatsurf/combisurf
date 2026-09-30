@@ -4323,8 +4323,10 @@ class OrientedMap:
 
         The decorations are given as in :meth:`canonical_labelling`: the
         ``*_data`` matched exactly, the ``*_classes`` up to relabelling. The
-        map may be disconnected (see :meth:`automorphisms`); the generators
-        are extracted from the full list of the automorphisms.
+        map may be disconnected (see :meth:`automorphisms`); without
+        ``*_classes`` the generators then come from the structure of the
+        group, a product of wreath products over the classes of isomorphic
+        components, and not from the list of the automorphisms.
 
         OUTPUT: a list of automorphisms (as in :meth:`automorphisms`) that
         generate the group; empty when the group is trivial.
@@ -4350,10 +4352,11 @@ class OrientedMap:
             sage: m.automorphism_generators(face_classes=[0, 1, 0, 1, 0, 1])
             [array('i', [1, 0, 3, 2, 5, 4]), array('i', [2, 3, 4, 5, 0, 1])]
 
-        A disconnected map, two edges that may be flipped and swapped::
+        A disconnected map, two edges that may be flipped and swapped (a
+        flip of the first edge and the swap generate the group)::
 
             sage: OrientedMap(fp="(0)(~0)(1)(~1)").automorphism_generators()
-            [array('i', [0, 1, 3, 2]), array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
+            [array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
         """
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")

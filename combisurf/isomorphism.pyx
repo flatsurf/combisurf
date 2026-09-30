@@ -27,9 +27,12 @@ relabelling from it and its key are computed in C (``combisurf/src/isomorphism.c
 and the minimal key is kept, which costs `O(n^2)` for `n` half-edges. A
 disconnected map is searched in C as well, component after component, by
 the search of :mod:`combisurf.isomorphism_naive` over the sequences of
-blocks; as there, the list of the automorphisms of `k` isomorphic
-components has at least `k!` elements, and :func:`canonical_key` counts
-them one by one. The buffers of the C code are counted in C ``int``: a map
+blocks. Without ``classes``, the automorphism group of a disconnected map
+is a product of wreath products `\mathrm{Aut}(C) \wr S_k` over the classes
+of `k` isomorphic components `C`: :func:`automorphism_generators` and the
+count of :func:`canonical_key` come from this structure, component by
+component, without listing the automorphisms (their number is at least
+`k!`). With ``classes`` they are listed. The buffers of the C code are counted in C ``int``: a map
 too large for them (about `2^{31} / (9.5 + 2 nd + 3.5 nc)` half-edges with
 ``nd`` arrays of ``data`` and ``nc`` of ``classes``) raises an
 ``OverflowError``.
@@ -90,6 +93,7 @@ The results agree with the reference implementation::
 from cpython cimport array
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
+from math import factorial
 
 from combisurf import isomorphism_naive
 
@@ -607,6 +611,219 @@ cdef inline int _find(int *parent, int x):
     return x
 
 
+cdef list _leaf_automorphisms(_Map m, array.array ra):
+    r"""
+    Return the list of the automorphisms of the disconnected map ``m``, from
+    the leaves of ``iso_search``; ``ra`` is a buffer of ``m.n`` entries.
+    """
+    cdef _Automorphisms s = _Automorphisms.__new__(_Automorphisms)
+    s.n = m.n
+    s.ra = ra
+    s.rbinv = _new(m.n)
+    s.result = []
+    _search(m, True, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), NULL, _automorphism_leaf, <void *> s)
+    return s.result
+
+
+cdef list _connected_generators(_Map m, array.array ra, array.array roots, int count):
+    r"""
+    Return the generators of the automorphism group of the connected map
+    ``m`` from its ``count`` roots of minimal key ``roots`` and the
+    relabelling ``ra`` from the first of them: the automorphism of root
+    ``b_j`` is built only when ``b_j`` is outside the orbit of ``b_0`` under
+    the generators kept (a union-find over the half-edges).
+    """
+    cdef int n = m.n, j, h, x, y, b0
+    cdef array.array parent, rb, rbinv, queue, g
+    cdef int *p
+    cdef int *r
+    gens = []
+    if count <= 1:
+        return gens
+    parent = _new(n)
+    rb = _new(n)
+    rbinv = _new(n)
+    queue = _new(n)
+    p = parent.data.as_ints
+    r = roots.data.as_ints
+    for h in range(n):
+        p[h] = h
+    b0 = r[0]
+    for j in range(1, count):
+        # the orbit of b0 under the generators kept is its class in the
+        # union-find; an automorphism is determined by the image of b0
+        if _find(p, r[j]) == _find(p, b0):
+            continue
+        g = _automorphism_from(m, ra, r[j], rb, rbinv, queue)
+        for h in range(n):
+            x = _find(p, h)
+            y = _find(p, g.data.as_ints[h])
+            if x != y:
+                p[x] = y
+        gens.append(g)
+    return gens
+
+
+cdef array.array _identity(int n):
+    cdef array.array g = _new(n)
+    cdef int h
+    for h in range(n):
+        g.data.as_ints[h] = h
+    return g
+
+
+cdef list _wreath(_Map m, bint lift):
+    r"""
+    Return the structure of the automorphism group of the disconnected map
+    ``m`` without arrays of ``classes``, a product of wreath products.
+
+    The components are taken as connected maps of their own (their
+    half-edges in increasing order, ``data`` restricted) and grouped by
+    canonical key. The result lists the classes of isomorphic components,
+    ordered by the smallest half-edge of their first copy, as triples
+    ``(copies, generators, count)``:
+
+    - ``copies`` -- the list of the copies of the class, ordered by their
+      smallest half-edge, each a pair ``(halves, r)`` of an ``array('i')``
+      of the half-edges of the component in increasing order and of the
+      canonical relabelling ``r`` of the component as a map of its own
+      (``r[i]`` is the label of ``halves[i]``); the isomorphism from a copy
+      to another sends the half-edge of label ``i`` to the one of label
+      ``i`` (see ``_place``)
+    - ``generators`` -- the generators of the automorphism group of the
+      first copy, lifted to ``m`` (the identity elsewhere); empty unless
+      ``lift``
+    - ``count`` -- the order of the automorphism group of a copy
+
+    The group is the product over the classes of the wreath product of the
+    group of a copy by the symmetric group on the copies.
+    """
+    cdef int n = m.n, c, h, x, y, i, j, size, cnt, length, top
+    cdef int ncomp = 0
+    cdef int *f = m.fp.data.as_ints
+    cdef int *dec = m.dec.data.as_ints
+    cdef array.array comp = _new(n)
+    cdef array.array stack = _new(n)
+    cdef array.array idx = _new(n)
+    cdef array.array halves_c, lf, key, ra, roots, g, gl
+    cdef _Map mc
+    halves = []
+    for h in range(n):
+        comp.data.as_ints[h] = -1
+    for h in range(n):
+        if f[h] == -1 or comp.data.as_ints[h] != -1:
+            continue
+        comp.data.as_ints[h] = ncomp
+        halves.append([])
+        stack.data.as_ints[0] = h
+        top = 1
+        while top:
+            top -= 1
+            x = stack.data.as_ints[top]
+            # an inactive twin belongs to the component but has no face;
+            # each half-edge is pushed once, when it gets its component
+            for y in (f[x], x ^ 1):
+                if comp.data.as_ints[y] == -1:
+                    comp.data.as_ints[y] = ncomp
+                    if f[y] != -1:
+                        stack.data.as_ints[top] = y
+                        top += 1
+        ncomp += 1
+    for h in range(n):
+        if comp.data.as_ints[h] != -1:
+            halves[comp.data.as_ints[h]].append(h)
+
+    position = {}
+    classes = []
+    for c in range(ncomp):
+        halves_c = array.array('i', halves[c])
+        size = len(halves_c)
+        for i in range(size):
+            idx.data.as_ints[halves_c.data.as_ints[i]] = i
+        lf = _new(size)
+        for i in range(size):
+            y = f[halves_c.data.as_ints[i]]
+            lf.data.as_ints[i] = -1 if y == -1 else idx.data.as_ints[y]
+        ld = tuple([array.array('i', [dec[j * n + halves_c.data.as_ints[i]] for i in range(size)])
+                    for j in range(m.nd)])
+        mc = _convert(lf, ld, ())
+        key = _new(ISO_KEY_SIZE(size, mc.nd, 0))
+        ra = _new(size)
+        roots = _new(size)
+        length = _run(mc, key, ra.data.as_ints, roots.data.as_ints, &cnt)
+        if length == ISO_DISCONNECTED:
+            raise RuntimeError("a component of a map is not connected")
+        kb = (<char *> key.data.as_ints)[:length * sizeof(int)]
+        if kb in position:
+            classes[position[kb]][0].append((halves_c, ra))
+            continue
+        position[kb] = len(classes)
+        gens = []
+        if lift:
+            for gl in _connected_generators(mc, ra, roots, cnt):
+                g = _identity(n)
+                for i in range(size):
+                    g.data.as_ints[halves_c.data.as_ints[i]] = halves_c.data.as_ints[gl.data.as_ints[i]]
+                gens.append(g)
+        classes.append(([(halves_c, ra)], gens, cnt))
+    return classes
+
+
+cdef int _place(array.array g, tuple a, tuple b) except -1:
+    r"""
+    Write into ``g`` the isomorphism from the copy ``a`` to the copy ``b``
+    (see ``_wreath``): the half-edge of label ``i`` in ``a`` goes to the
+    one of label ``i`` in ``b``.
+    """
+    cdef array.array ha = a[0], ra = a[1], hb = b[0], rb = b[1]
+    cdef int size = len(ha), i
+    cdef array.array rinv = _new(size)
+    for i in range(size):
+        rinv.data.as_ints[rb.data.as_ints[i]] = i
+    for i in range(size):
+        g.data.as_ints[ha.data.as_ints[i]] = hb.data.as_ints[rinv.data.as_ints[ra.data.as_ints[i]]]
+    return 0
+
+
+cdef list _wreath_generators(_Map m):
+    r"""
+    Return the generators of the automorphism group of the disconnected map
+    ``m`` without arrays of ``classes``: for each class of isomorphic
+    components (see ``_wreath``), the generators of the group of its first
+    copy, then the transposition of its first two copies when it has at
+    least two, then the cycle of its copies when it has at least three.
+    """
+    cdef array.array g
+    cdef int t, k
+    gens = []
+    for copies, aut, _count in _wreath(m, True):
+        gens.extend(aut)
+        k = len(copies)
+        if k >= 2:
+            g = _identity(m.n)
+            _place(g, copies[0], copies[1])
+            _place(g, copies[1], copies[0])
+            gens.append(g)
+        if k >= 3:
+            g = _identity(m.n)
+            for t in range(k):
+                _place(g, copies[t], copies[(t + 1) % k])
+            gens.append(g)
+    return gens
+
+
+cdef _wreath_order(_Map m):
+    r"""
+    Return the number of automorphisms of the disconnected map ``m`` without
+    arrays of ``classes``, as a Python integer: the product over the classes
+    of `|Aut(C)|^k k!` (see ``_wreath``).
+    """
+    order = 1
+    for copies, _aut, count in _wreath(m, False):
+        order *= count ** len(copies) * factorial(len(copies))
+    return order
+
+
 def automorphisms(fp, data=(), classes=()):
     r"""
     Return the automorphisms of the map with face permutation ``fp``
@@ -682,15 +899,8 @@ def automorphisms(fp, data=(), classes=()):
     cdef array.array ra = _new(n)
     cdef array.array roots = _new(n)
     cdef array.array rb, rbinv, queue
-    cdef _Automorphisms s
     if _run(m, key, ra.data.as_ints, roots.data.as_ints, &count) == ISO_DISCONNECTED:
-        s = _Automorphisms.__new__(_Automorphisms)
-        s.n = n
-        s.ra = ra
-        s.rbinv = _new(n)
-        s.result = []
-        _search(m, True, _new(ISO_SEQUENCE_SIZE(n, m.nd, m.nc)), NULL, _automorphism_leaf, <void *> s)
-        return s.result
+        return _leaf_automorphisms(m, ra)
     if count == 0:
         return [array.array('i', range(n))]
     rb = _new(n)
@@ -708,7 +918,8 @@ def automorphism_generators(fp, data=(), classes=()):
     permutation ``fp`` decorated by ``data`` and ``classes``.
 
     The result is the one of
-    :func:`combisurf.isomorphism_naive.automorphism_generators`.
+    :func:`combisurf.isomorphism_naive.automorphism_generators`, except on
+    a disconnected map without ``classes``.
 
     INPUT:
 
@@ -724,14 +935,32 @@ def automorphism_generators(fp, data=(), classes=()):
       decoration)
 
     OUTPUT: a list of automorphisms (as in :func:`automorphisms`) that
-    generate the group; empty when the group is trivial. The automorphisms
-    are scanned in the order of :func:`automorphisms` and one is kept when
-    it is not in the group generated by those already kept. On a connected
-    map the scan runs over the roots of minimal key: the automorphism of
-    root ``b_j`` is built only when ``b_j`` is outside the orbit of ``b_0``
-    under the generators kept (a union-find over the half-edges), so the
-    list of automorphisms and the group closure are never computed. On a
-    disconnected map the scan goes through the list of :func:`automorphisms`.
+    generate the group; empty when the group is trivial. There are three
+    cases.
+
+    - On a connected map the automorphisms are scanned in the order of
+      :func:`automorphisms` and one is kept when it is not in the group
+      generated by those already kept. The scan runs over the roots of
+      minimal key: the automorphism of root ``b_j`` is built only when
+      ``b_j`` is outside the orbit of ``b_0`` under the generators kept (a
+      union-find over the half-edges), so the list of automorphisms and the
+      group closure are never computed.
+
+    - On a disconnected map with ``classes`` the same scan goes through the
+      list of :func:`automorphisms`.
+
+    - On a disconnected map without ``classes`` the group is the product,
+      over the classes of isomorphic components, of `\mathrm{Aut}(C) \wr
+      S_k` (``data`` links no two components). The classes are ordered by
+      the smallest half-edge of their first copy `C`, and the copies of a
+      class likewise; for each class the generators are those of
+      `\mathrm{Aut}(C)` (by the connected scan), then the transposition of
+      the first two copies if `k \geq 2`, then the cycle of the copies if
+      `k \geq 3`. The copies are exchanged by the isomorphism sending the
+      half-edge of canonical label `i` of one to the one of label `i` of
+      the other. These generators differ from those of
+      :func:`combisurf.isomorphism_naive.automorphism_generators` (fewer
+      of them) and generate the same group.
 
     EXAMPLES::
 
@@ -749,49 +978,35 @@ def automorphism_generators(fp, data=(), classes=()):
         sage: automorphism_generators([2, -1, 0, 3])
         []
         sage: automorphism_generators([0, 1, 2, 3])
-        [array('i', [0, 1, 3, 2]), array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
+        [array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
+
+    Three triangles: the two generators of the group of one triangle, the
+    transposition of the first two and the cycle of the three::
+
+        sage: fp = [x + 6*i for i in range(3) for x in [2, 5, 4, 1, 0, 3]]
+        sage: automorphism_generators(fp)
+        [array('i', [1, 0, 5, 4, 3, 2, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+         array('i', [2, 3, 4, 5, 0, 1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+         array('i', [6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17]),
+         array('i', [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 1, 2, 3, 4, 5])]
     """
     cdef _Map m = _prepare(fp, data, classes)
     cdef int n = m.n
-    cdef int count, j, h, x, y, b0
+    cdef int count
     cdef array.array key = _new(ISO_KEY_SIZE(n, m.nd, m.nc))
     cdef array.array ra = _new(n)
     cdef array.array roots = _new(n)
-    cdef array.array parent, rb, rbinv, queue, g
-    cdef int *p
-    cdef int *r
-    if _run(m, key, ra.data.as_ints, roots.data.as_ints, &count) == ISO_DISCONNECTED:
-        gens = []
-        group = {tuple(range(n))}
-        for g in automorphisms(fp, data, classes):
-            if tuple(g) not in group:
-                gens.append(g)
-                group = isomorphism_naive._group_closure(gens, n)
-        return gens
+    cdef array.array g
+    if _run(m, key, ra.data.as_ints, roots.data.as_ints, &count) != ISO_DISCONNECTED:
+        return _connected_generators(m, ra, roots, count)
+    if m.nc == 0:
+        return _wreath_generators(m)
     gens = []
-    if count <= 1:
-        return gens
-    parent = _new(n)
-    rb = _new(n)
-    rbinv = _new(n)
-    queue = _new(n)
-    p = parent.data.as_ints
-    r = roots.data.as_ints
-    for h in range(n):
-        p[h] = h
-    b0 = r[0]
-    for j in range(1, count):
-        # the orbit of b0 under the generators kept is its class in the
-        # union-find; an automorphism is determined by the image of b0
-        if _find(p, r[j]) == _find(p, b0):
-            continue
-        g = _automorphism_from(m, ra, r[j], rb, rbinv, queue)
-        for h in range(n):
-            x = _find(p, h)
-            y = _find(p, g.data.as_ints[h])
-            if x != y:
-                p[x] = y
-        gens.append(g)
+    group = {tuple(range(n))}
+    for g in _leaf_automorphisms(m, ra):
+        if tuple(g) not in group:
+            gens.append(g)
+            group = isomorphism_naive._group_closure(gens, n)
     return gens
 
 
@@ -946,7 +1161,11 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     ``(key, relabelling)``, ``(key, count)`` or ``(key, relabelling,
     count)``, where the relabelling is the one of
     :func:`canonical_labelling` and ``count`` the number of automorphisms
-    (the length of the list of :func:`automorphisms`).
+    (the length of the list of :func:`automorphisms`), a Python integer
+    that may exceed 64 bits. On a disconnected map without ``classes`` it
+    is the order `\prod |\mathrm{Aut}(C)|^k k!` of the product of wreath
+    products over the classes of `k` isomorphic components `C`, computed
+    without listing the automorphisms.
 
     EXAMPLES::
 
@@ -998,6 +1217,11 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         sage: array('i', key), r, count
         (array('i', [0, 1, 2, 3, 0, 1, 0, 2]), array('i', [1, 0, 2, 3]), 2)
 
+    Twenty isolated edges have `2^{20} \cdot 20!` automorphisms::
+
+        sage: canonical_key(list(range(40)), automorphism_count=True)[1]
+        2551082656125828464640000
+
     A value of ``data`` outside the range of a C ``int``, and one on an
     inactive half-edge, which is ignored::
 
@@ -1013,23 +1237,27 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     cdef array.array r = _new(m.n)
     cdef int count, length
     cdef long long leaves = 0
+    order = 0
     length = _run(m, key, r.data.as_ints, NULL, &count)
     if length == ISO_DISCONNECTED:
         # the first leaf reaching the minimum is the same with or without
         # all the leaves: with classes every tied root is followed either
         # way, and without them the first leaf follows the first tied roots
-        if automorphism_count:
+        if automorphism_count and m.nc > 0:
             _search(m, True, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints,
                     _count_leaf, &leaves)
+            order = leaves
         else:
             _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+            if automorphism_count:
+                order = _wreath_order(m)
         length = _key_of(m, r, key)
     out = [(<char *> key.data.as_ints)[:length * sizeof(int)]]
     if relabelling:
         out.append(_complete(r, m.n, m.ne))
     if automorphism_count:
-        if leaves:
-            out.append(leaves)
+        if order:
+            out.append(order)
         else:
             out.append(count if count else 1)
     if len(out) == 1:
