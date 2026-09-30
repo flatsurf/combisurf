@@ -4244,9 +4244,18 @@ class OrientedMap:
             Traceback (most recent call last):
             ...
             TypeError: other must be an OrientedMap
+            sage: from combisurf import ColoredOrientedMap
+            sage: m_coloured = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m1.is_isomorphic(m_coloured)
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
         """
         if not isinstance(other, OrientedMap):
             raise TypeError("other must be an OrientedMap")
+        from combisurf import ColoredOrientedMap
+        if isinstance(other, ColoredOrientedMap):
+            raise NotImplementedError("colours are not supported yet")
         pairs = {'half_edge_data': half_edge_data, 'edge_data': edge_data,
                  'vertex_data': vertex_data, 'face_data': face_data}
         for name, value in pairs.items():

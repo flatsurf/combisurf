@@ -25,6 +25,10 @@ The sizes of the collections explored by the automata of veerer (flip graph
 of triangulations, reduced core automaton) are checked with the mutations
 of :mod:`explorations`.
 
+Coloured maps raise ``NotImplementedError`` on the isomorphism methods: the
+four methods of :class:`ColoredOrientedMap` and plain maps compared with
+coloured maps in :meth:`OrientedMap.is_isomorphic`.
+
 The last tests check the reference implementation
 :mod:`combisurf.isomorphism_naive` against the defining properties of
 isomorphisms and canonical forms on random connected maps.
@@ -893,6 +897,37 @@ def test_origami_mutations():
         for p in image:
             assert sorted(p) == list(range(len(r)))
     assert len(gl2z_neighbours((r, u))) == 2
+
+
+# Coloured maps
+
+
+@pytest.mark.parametrize("call", [
+    lambda m: m.canonical_labelling(),
+    lambda m: m.canonical_form(),
+    lambda m: m.automorphisms(),
+    lambda m: m.is_isomorphic(m),
+], ids=["canonical_labelling", "canonical_form", "automorphisms",
+        "is_isomorphic"])
+def test_coloured_map_methods(call):
+    r"""
+    Coloured maps raise NotImplementedError on the four isomorphism methods.
+    """
+    from combisurf import ColoredOrientedMap
+    m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+    with pytest.raises(NotImplementedError):
+        call(m)
+
+
+def test_oriented_map_isomorphic_with_coloured():
+    r"""
+    OrientedMap.is_isomorphic raises NotImplementedError when other is a coloured map.
+    """
+    from combisurf import ColoredOrientedMap
+    m = OrientedMap(fp="(0,1,2)(~0,~2,~1)")
+    m_coloured = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+    with pytest.raises(NotImplementedError):
+        m.is_isomorphic(m_coloured)
 
 
 # Properties of the reference implementation on random connected maps

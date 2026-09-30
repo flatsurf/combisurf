@@ -506,3 +506,63 @@ class ColoredOrientedMap(OrientedMap):
 
     def smoothing(self, h, check=True):
         raise NotImplementedError
+
+    def canonical_labelling(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+        r"""
+        Return the canonical labelling of this coloured map.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.canonical_labelling()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def canonical_form(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+        r"""
+        Return the canonical form of this coloured map.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.canonical_form()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def automorphisms(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+        r"""
+        Return the automorphisms of this coloured map.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.automorphisms()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def is_isomorphic(self, other, certificate=False, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+        r"""
+        Return whether this coloured map is isomorphic to another.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.is_isomorphic(m)
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
