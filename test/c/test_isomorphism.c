@@ -10,6 +10,9 @@
  * do not change under a random relabelling of the map, for connected maps
  * (iso_canonical) and for disjoint unions (iso_search, where the minimal
  * sequence of blocks and the number of leaves reaching it are checked).
+ * iso_canonical, which rejects a root as soon as its key exceeds the best
+ * one, is also compared with a reference that walks and keys every root in
+ * full, on random maps and on square-tiled surfaces decorated by h % 4.
  *
  * This file is part of combisurf.
  *
@@ -439,6 +442,158 @@ static void test_random(void)
     }
 }
 
+/* ------------------------------------------------------------------ */
+/* iso_canonical against every root walked and keyed in full           */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The reference of iso_canonical: every active half-edge as a root, its
+ * relabelling by iso_relabelling_from and its key by iso_key in full, then
+ * compared with the best key so far.
+ */
+static int ref_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
+                         int *best, int *best_relabelling, int *best_roots, int *nroots)
+{
+    static int r[MAX_N], rinv[MAX_N], queue[MAX_N], names[MAX_N], cur[KEY_SIZE];
+    int ne = iso_num_edges(n, fp), root, k, len = 0, l, count = 0, cmp, i;
+
+    for (i = 0; i < n; i++) {
+        names[i] = -1;
+        best_relabelling[i] = -1;
+    }
+    for (root = 0; root < n; root++) {
+        if (fp[root] == -1)
+            continue;
+        k = iso_relabelling_from(n, fp, root, r, rinv, queue);
+        if (k != 2 * ne)
+            return ISO_DISCONNECTED;
+        l = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, cur, names);
+        if (count == 0) {
+            cmp = -1;
+        } else {
+            CHECK(l == len);
+            cmp = 0;
+            for (i = 0; i < len && cmp == 0; i++)
+                if (cur[i] != best[i])
+                    cmp = cur[i] < best[i] ? -1 : 1;
+        }
+        if (cmp < 0) {
+            len = l;
+            memcpy(best, cur, (size_t) l * sizeof(int));
+            memcpy(best_relabelling, r, (size_t) n * sizeof(int));
+            count = 0;
+        }
+        if (cmp <= 0)
+            best_roots[count++] = root;
+    }
+    *nroots = count;
+    return len;
+}
+
+/* Check iso_canonical against ref_canonical on fp. */
+static void check_reference(int n, const int *fp, int nd, const int *data, int nc, const int *classes)
+{
+    static int ref_key[KEY_SIZE], ref_relabelling[MAX_N], ref_roots[MAX_N];
+    int len, ref_len, count = -1, ref_count = -1;
+
+    ref_len = ref_canonical(n, fp, nd, data, nc, classes, ref_key, ref_relabelling, ref_roots,
+                            &ref_count);
+    len = iso_canonical(n, fp, nd, data, nc, classes, key, relabelling, roots, &count, work);
+    CHECK(len == ref_len);
+    if (len == ISO_DISCONNECTED)
+        return;
+    CHECK(count == ref_count);
+    CHECK(memcmp(key, ref_key, (size_t) len * sizeof(int)) == 0);
+    CHECK(memcmp(relabelling, ref_relabelling, (size_t) n * sizeof(int)) == 0);
+    CHECK(memcmp(roots, ref_roots, (size_t) count * sizeof(int)) == 0);
+}
+
+/*
+ * The square-tiled surface of the permutations right and up of the squares
+ * 0, ..., m - 1 as a quadrangulation on 4 m half-edges, into fp: the edge
+ * 2 i glues the right side 4 i of the square i to the left side 4 i + 1 of
+ * right[i], the edge 2 i + 1 its top side 4 i + 2 to the bottom side
+ * 4 i + 3 of up[i], so that h % 4 tells the side of the half-edge h.
+ */
+static void origami(int m, const int *right, const int *up, int *fp)
+{
+    int left_of[MAX_N / 4], below[MAX_N / 4], i, bottom, left;
+    for (i = 0; i < m; i++) {
+        left_of[right[i]] = i;
+        below[up[i]] = i;
+    }
+    for (i = 0; i < m; i++) {
+        bottom = 4 * below[i] + 3;
+        left = 4 * left_of[i] + 1;
+        fp[bottom] = 4 * i;
+        fp[4 * i] = 4 * i + 2;
+        fp[4 * i + 2] = left;
+        fp[left] = bottom;
+    }
+}
+
+/* A random permutation of 0, ..., m - 1, into p. */
+static void random_permutation(int m, int *p)
+{
+    int i, j, t;
+    for (i = 0; i < m; i++)
+        p[i] = i;
+    for (i = m - 1; i > 0; i--) {
+        j = rng_below(i + 1);
+        t = p[i];
+        p[i] = p[j];
+        p[j] = t;
+    }
+}
+
+static void test_reference(void)
+{
+    int fp[MAX_N], dec[2 * MAX_ARRAYS * MAX_N], right[MAX_N / 4], up[MAX_N / 4];
+    int trial, ne, n, m, nd, nc, i, h, s;
+
+    current_case = "reference, random maps";
+    for (trial = 0; trial < 300; trial++) {
+        ne = 1 + rng_below(trial < 250 ? 20 : MAX_N / 2);
+        n = 2 * ne;
+        CHECK(random_connected(ne, rng_below(4), fp));
+        nd = rng_below(MAX_ARRAYS + 1);
+        nc = rng_below(MAX_ARRAYS + 1);
+        /* two or three values: ties in the face permutation part are
+         * broken late, or not at all (class values stay below n) */
+        s = n > 2 ? 2 + rng_below(2) : 2;
+        for (i = 0; i < (nd + nc) * n; i++)
+            dec[i] = rng_below(s);
+        check_reference(n, fp, nd, dec, nc, dec + nd * n);
+        check_reference(n, fp, 0, NULL, 0, NULL);
+    }
+
+    current_case = "reference, origamis";
+    for (trial = 0; trial < 300; trial++) {
+        m = 1 + rng_below(trial < 250 ? 16 : MAX_N / 4);
+        n = 4 * m;
+        if (trial % 3 == 0) {
+            /* a cyclic origami: every root ties in the face permutation */
+            s = rng_below(m);
+            for (i = 0; i < m; i++) {
+                right[i] = (i + 1) % m;
+                up[i] = (i + s) % m;
+            }
+        } else {
+            random_permutation(m, right);
+            random_permutation(m, up);
+        }
+        origami(m, right, up, fp);
+        for (h = 0; h < n; h++) {
+            dec[h] = h % 4;
+            dec[n + h] = h % 4;
+        }
+        check_reference(n, fp, 1, dec, 0, NULL);
+        check_reference(n, fp, 0, NULL, 1, dec);
+        check_reference(n, fp, 1, dec, 1, dec + n);
+        check_reference(n, fp, 0, NULL, 0, NULL);
+    }
+}
+
 /*
  * A random disjoint union of one to three connected maps of at most 12
  * half-edges, each a relabelled copy of an earlier one with probability
@@ -518,6 +673,7 @@ int main(int argc, char **argv)
     rng_state = argc > 1 ? strtoull(argv[1], NULL, 10) : 1;
     test_fixed();
     test_random();
+    test_reference();
     test_search_fixed();
     test_search_random();
     printf("test_isomorphism: %ld checks passed\n", num_checks);

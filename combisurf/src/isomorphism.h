@@ -105,6 +105,18 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * or ISO_DISCONNECTED when the walk from the first active half-edge does
  * not reach every active edge; nothing is written into the output buffers
  * in that case.
+ *
+ * The first root is walked and keyed in full. Every other root is walked
+ * with its key compared with the best one as the entries of its face
+ * permutation part become final (those below the label of the next
+ * half-edge to walk), in passes of doubling length: the root is rejected
+ * at the first entry larger than the one of the best key, which costs
+ * about twice the labels it needed to differ, not n. At the first entry
+ * smaller, it becomes the best root and is walked and keyed in full. When
+ * the face permutation parts are equal, the data then the class parts are
+ * compared as they are built, with the same rejection. A root that ties
+ * with or beats the best one costs O(n (1 + nd + nc)), so a map whose
+ * roots all tie still costs O(n^2 (1 + nd + nc)).
  */
 int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
                   int *key, int *relabelling, int *roots, int *nroots, int *work);

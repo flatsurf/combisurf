@@ -3,9 +3,12 @@
  * isomorphism.h for the conventions and the sizes of the buffers.
  *
  * On a connected map (iso_canonical), every active half-edge is tried as a
- * root: the relabelling from it and its key are computed in full and
- * compared with the best key so far, which costs O(n) per root and O(n^2)
- * in all for n half-edges.
+ * root. The first root is walked and keyed in full; for the others, the
+ * walk is compared with the best key so far as it goes and stops at the
+ * first entry larger, so that a rejected root costs the labels it gave
+ * (they alone are reset afterwards), and a root costs O(n) only when it
+ * ties with or beats the best one. A map whose roots all tie (a regular
+ * map) still costs O(n^2) for n half-edges.
  *
  * On any map (iso_search), the search goes component after component. Its
  * memory does not grow with the depth beyond a few ints per level: the
@@ -165,6 +168,175 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
     return pos;
 }
 
+/*
+ * The walk of iso_relabelling_from from root, on r all -1 on entry, with the
+ * face permutation part of its key compared with best as it is built. The
+ * entry i of that part is r[fp[rinv[i]]], or -1 at an inactive label. The
+ * entries below the label of the next half-edge of the queue are final: an
+ * even label is on a half-edge of a face walked, and an odd one is inactive
+ * or on a half-edge taken from the queue. The final entries are compared
+ * with best after a face walk once their number beyond those compared
+ * reaches a step that starts at 2 and doubles after each comparison, and
+ * at the end of the walk. A root rejected after l labels has thus walked
+ * at most about 2 l labels, and a tied root runs O(log n) comparison
+ * passes. On regular maps (S_5 to PSL(2, 17), 120 to 2448 half-edges),
+ * where every root ties, comparing after every face was 11 to 32 % slower
+ * than walking and keying every root in full, and this step 5 to 12 %.
+ *
+ * At the first entry larger than the one of best, the walk stops and 1 is
+ * returned; at the first entry smaller, the comparison stops, the walk
+ * goes on to the end and -1 is returned; 0 is returned when the walk ends
+ * with every entry equal.
+ *
+ * The number of labels given is stored into *k; r and rinv hold them, and
+ * reset_local sets r back to -1.
+ */
+static int walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
+                        const int *best, int *k)
+{
+    int head = 0, tail = 0, used = 0, p = 0, cmp = 0, step = 1, next = 0;
+    int h, x, v, lim;
+
+    queue[tail++] = root;
+    while (head < tail) {
+        h = queue[head++];
+        x = h;
+        do {
+            if (r[x] == -1) {
+                r[x] = used;
+                r[x ^ 1] = used + 1;
+                rinv[used] = x;
+                if (fp[x ^ 1] != -1) {
+                    rinv[used + 1] = x ^ 1;
+                    queue[tail++] = x ^ 1;
+                } else {
+                    rinv[used + 1] = -1;
+                }
+                used += 2;
+            }
+            x = fp[x];
+        } while (x != h);
+        if (cmp != 0)
+            continue;
+        lim = head < tail ? r[queue[head]] : used;
+        if (lim < next && head < tail)
+            continue;
+        step *= 2;
+        next = lim + step;
+        for (; p < lim; p++) {
+            x = rinv[p];
+            v = x == -1 ? -1 : r[fp[x]];
+#ifdef ISO_DEBUG
+            ISO_CHECK(v != -1 || x == -1);
+#endif
+            if (v != best[p]) {
+                if (v > best[p]) {
+                    *k = used;
+                    return 1;
+                }
+                cmp = -1;
+                break;
+            }
+        }
+    }
+#ifdef ISO_DEBUG
+    ISO_CHECK(cmp != 0 || p == used);
+#endif
+    *k = used;
+    return cmp;
+}
+
+/*
+ * The data and class parts of the key of (r, rinv) using k labels, written
+ * into cur and compared with best as they are built, both from the position
+ * k of the key. Return 1 at the first entry larger than the one of best,
+ * with cur only partly written; otherwise write the parts in full and
+ * return -1 or 0 as the comparison. names is all -1 on entry and on return.
+ */
+static int tail_compare(int n, int nd, const int *data, int nc, const int *classes,
+                        const int *rinv, int k, const int *best, int *cur, int *names)
+{
+    int i, j, h, v, pos = k, next, cmp = 0;
+    const int *a;
+
+    for (j = 0; j < nd; j++) {
+        a = data + (long) j * n;
+        for (i = 0; i < k; i++) {
+            h = rinv[i];
+            if (h == -1)
+                continue;
+            v = a[h];
+            if (cmp == 0 && v != best[pos]) {
+                if (v > best[pos])
+                    return 1;
+                cmp = -1;
+            }
+            cur[pos++] = v;
+        }
+    }
+    for (j = 0; j < nc; j++) {
+        a = classes + (long) j * n;
+        next = 0;
+        for (i = 0; i < k; i++) {
+            h = rinv[i];
+            if (h == -1)
+                continue;
+            if (names[a[h]] == -1)
+                names[a[h]] = next++;
+            v = names[a[h]];
+            if (cmp == 0 && v != best[pos]) {
+                if (v > best[pos]) {
+                    /* the values named so far are on the labels 0, ..., i */
+                    for (; i >= 0; i--)
+                        if (rinv[i] != -1)
+                            names[a[rinv[i]]] = -1;
+                    return 1;
+                }
+                cmp = -1;
+            }
+            cur[pos++] = v;
+        }
+        for (i = 0; i < k; i++) {
+            h = rinv[i];
+            if (h != -1)
+                names[a[h]] = -1;
+        }
+    }
+    return cmp;
+}
+
+static void reset_local(int k, const int *lrinv, int *lr);
+
+#ifdef ISO_DEBUG
+/*
+ * Check the outcome cmp of the root against the key computed in full by
+ * iso_relabelling_from and iso_key (len ints): it compares with best as
+ * cmp says, and equals cur when cmp < 0. scratch holds 3 n +
+ * ISO_KEY_SIZE(n, nd, nc) ints.
+ */
+static void debug_root(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
+                       int root, int cmp, const int *best, const int *cur, int len, int *names,
+                       int *scratch)
+{
+    int *r2 = scratch, *rinv2 = scratch + n, *queue2 = scratch + 2 * n, *key2 = scratch + 3 * n;
+    int k2, len2, i, ref = 0;
+
+    k2 = iso_relabelling_from(n, fp, root, r2, rinv2, queue2);
+    len2 = iso_key(n, fp, nd, data, nc, classes, r2, rinv2, k2, key2, names);
+    ISO_CHECK(len2 == len);
+    for (i = 0; i < len; i++) {
+        if (key2[i] != best[i]) {
+            ref = key2[i] < best[i] ? -1 : 1;
+            break;
+        }
+    }
+    ISO_CHECK(ref == cmp);
+    if (cmp < 0)
+        for (i = 0; i < len; i++)
+            ISO_CHECK(cur[i] == key2[i]);
+}
+#endif
+
 int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
                   int *key, int *relabelling, int *roots, int *nroots, int *work)
 {
@@ -176,6 +348,9 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     int *cur = work + 4 * n;
     int *tmp;
     int ne, first, root, k, len = 0, count = 0, i, cmp;
+#ifdef ISO_DEBUG
+    int *scratch;
+#endif
 
     ne = iso_num_edges(n, fp);
     for (first = 0; first < n && fp[first] == -1; first++)
@@ -191,38 +366,45 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
 
     for (i = 0; i < n; i++)
         names[i] = -1;
-    for (root = first; root < n; root++) {
+
+    /* the first root, walked in full: connectedness does not depend on the
+     * root, so only this walk can fail */
+    k = iso_relabelling_from(n, fp, first, r, rinv, queue);
+    if (k != 2 * ne)
+        return ISO_DISCONNECTED;
+    len = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, best, names);
+    if (relabelling != NULL)
+        memcpy(relabelling, r, (size_t) n * sizeof(int));
+    if (roots != NULL)
+        roots[0] = first;
+    count = 1;
+    reset_local(k, rinv, r);
+#ifdef ISO_DEBUG
+    scratch = malloc(((size_t) 3 * n + (size_t) ISO_KEY_SIZE(n, nd, nc)) * sizeof(int));
+    ISO_CHECK(scratch != NULL);
+#endif
+
+    /* the other roots: r is -1 on entry of each, and only the labels a root
+     * gave are reset after it */
+    for (root = first + 1; root < n; root++) {
         if (fp[root] == -1)
             continue;
-        k = iso_relabelling_from(n, fp, root, r, rinv, queue);
-        if (k != 2 * ne) {
-            /* connectedness does not depend on the root: only the first one
-             * can fail */
-            return ISO_DISCONNECTED;
-        }
-        if (count == 0) {
-            len = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, best, names);
-            cmp = -1;
-        } else {
-            int l = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, cur, names);
-            (void) l;
-#ifdef ISO_DEBUG
-            ISO_CHECK(l == len);
-#endif
-            cmp = 0;
-            for (i = 0; i < len; i++) {
-                if (cur[i] != best[i]) {
-                    cmp = cur[i] < best[i] ? -1 : 1;
-                    break;
-                }
-            }
-            if (cmp < 0) {
-                tmp = best;
-                best = cur;
-                cur = tmp;
-            }
-        }
+        cmp = walk_compare(fp, root, r, rinv, queue, best, &k);
         if (cmp < 0) {
+            iso_key(n, fp, nd, data, nc, classes, r, rinv, k, cur, names);
+        } else if (cmp == 0) {
+            cmp = tail_compare(n, nd, data, nc, classes, rinv, k, best, cur, names);
+            if (cmp < 0)
+                memcpy(cur, best, (size_t) k * sizeof(int));
+        }
+#ifdef ISO_DEBUG
+        ISO_CHECK(cmp == 1 || k == 2 * ne);
+        debug_root(n, fp, nd, data, nc, classes, root, cmp, best, cur, len, names, scratch);
+#endif
+        if (cmp < 0) {
+            tmp = best;
+            best = cur;
+            cur = tmp;
             count = 0;
             if (relabelling != NULL)
                 memcpy(relabelling, r, (size_t) n * sizeof(int));
@@ -232,7 +414,22 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
                 roots[count] = root;
             count++;
         }
+        /* past n / 2 labels, a sequential clear (all bytes 0xff, the int
+         * -1) is cheaper than the scattered writes of reset_local: 6 to
+         * 13 % of the time of a regular map, where every root walks all */
+        if (2 * k >= n)
+            memset(r, -1, (size_t) n * sizeof(int));
+        else
+            reset_local(k, rinv, r);
+#ifdef ISO_DEBUG
+        for (i = 0; i < n; i++)
+            ISO_CHECK(r[i] == -1);
+        debug_names(n, names);
+#endif
     }
+#ifdef ISO_DEBUG
+    free(scratch);
+#endif
     if (best != key)
         memcpy(key, best, (size_t) len * sizeof(int));
     if (nroots != NULL)

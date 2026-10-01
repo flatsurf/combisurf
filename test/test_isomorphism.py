@@ -1137,12 +1137,13 @@ def random_classes(rng, fp):
 
 def rename_values(rng, classes):
     r"""
-    Return the arrays of ``classes`` (values in ``range(3)``), each with its
-    values renamed by its own random permutation of ``range(3)``.
+    Return the arrays of ``classes`` (values in ``range(m)``, ``m`` at least
+    3), each with its values renamed by its own random permutation of
+    ``range(m)``.
     """
     renamed = []
     for c in classes:
-        names = [0, 1, 2]
+        names = list(range(max(3, max(c, default=0) + 1)))
         rng.shuffle(names)
         renamed.append([names[x] for x in c])
     return tuple(renamed)
@@ -1689,6 +1690,45 @@ def test_fast_against_naive_large_disconnected(seed):
     for _ in range(3):
         fp = random_large_disconnected_fp(rng)
         check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+
+
+def random_origami(rng, n):
+    r"""
+    Return a random connected origami ``(r, u)`` of ``n`` squares.
+    """
+    for _ in range(MAX_ATTEMPTS):
+        r = list(range(n))
+        u = list(range(n))
+        rng.shuffle(r)
+        rng.shuffle(u)
+        if is_connected_fp(origami_face_permutation(r, u)):
+            return r, u
+    raise RuntimeError("no connected origami found in {} attempts".format(MAX_ATTEMPTS))
+
+
+@pytest.mark.parametrize("seed", range(3))
+def test_fast_against_naive_origamis(seed):
+    # the decoration h % 4 makes many roots tie on the face permutation, so
+    # that the comparison of roots is decided by the data or not at all
+    rng = random.Random(seed)
+    origamis = [([1, 2, 3, 4, 5, 0], [0, 1, 2, 3, 4, 5]),
+                ([1, 2, 0, 4, 5, 3], [3, 4, 5, 1, 2, 0]),
+                ([(i + 1) % 12 for i in range(12)], [(i + 5) % 12 for i in range(12)])]
+    origamis.extend(random_origami(rng, rng.randrange(2, 20)) for _ in range(5))
+    for r, u in origamis:
+        fp = origami_face_permutation(r, u)
+        d = origami_decoration(len(r))
+        check_fast_against_naive(rng, fp, (d,), ())
+        check_fast_against_naive(rng, fp, (), (d,))
+        check_fast_against_naive(rng, fp, (), ())
+
+
+@pytest.mark.parametrize("build", [regular_map_S5, regular_map_PSL27], ids=["O22", "O23"])
+def test_fast_against_naive_regular_map(build):
+    # every root ties: no root is rejected early
+    rng = random.Random(0)
+    fp = list(build().face_permutation())
+    check_fast_against_naive(rng, fp, (), ())
 
 
 def test_fast_four_edges():
