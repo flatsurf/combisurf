@@ -4323,10 +4323,13 @@ class OrientedMap:
 
         The decorations are given as in :meth:`canonical_labelling`: the
         ``*_data`` matched exactly, the ``*_classes`` up to relabelling. The
-        map may be disconnected (see :meth:`automorphisms`); without
-        ``*_classes`` the generators then come from the structure of the
-        group, a product of wreath products over the classes of isomorphic
-        components, and not from the list of the automorphisms.
+        map may be disconnected (see :meth:`automorphisms`); the generators
+        then come from the structure of the group, not from the list of the
+        automorphisms: without ``*_classes`` the group is a product of
+        wreath products over the classes of isomorphic components, and with
+        ``*_classes`` its subgroup preserving the partitions they define,
+        searched by backtracking (exponential in the number of components
+        in the worst case).
 
         OUTPUT: a list of automorphisms (as in :meth:`automorphisms`) that
         generate the group; empty when the group is trivial.

@@ -5,11 +5,14 @@ Isomorphisms, automorphisms and canonical labels of maps
 
 This module computes canonical labellings, canonical forms, automorphism
 groups and isomorphisms of maps given by their face permutation, possibly
-decorated by integer values on half-edges. It computes exactly what
+decorated by integer values on half-edges. It computes what
 :mod:`combisurf.isomorphism_naive` computes, which is its reference: the
 functions of the same names take the same arguments and return the same
 values (the same canonical labelling, the same canonical form, the
-automorphisms in the same order, the same isomorphism), and raise the same
+automorphisms in the same order, the same isomorphism), except
+:func:`automorphism_generators` on a disconnected map, whose generators
+come from the structure of the group and differ from those of the
+reference while generating the same group. They raise the same
 exceptions on malformed input, with one addition: a face permutation that
 is not a permutation of its active half-edges raises a ``ValueError``,
 since the C code would read out of bounds on it (the reference loops
@@ -32,7 +35,14 @@ is a product of wreath products `\mathrm{Aut}(C) \wr S_k` over the classes
 of `k` isomorphic components `C`: :func:`automorphism_generators` and the
 count of :func:`canonical_key` come from this structure, component by
 component, without listing the automorphisms (their number is at least
-`k!`). With ``classes`` they are listed. The buffers of the C code are counted in C ``int``: a map
+`k!`). With ``classes`` the group is the subgroup of this product that
+preserves the partitions of the half-edges by the values of ``classes``:
+its generators and its order come from a backtrack search of this
+subgroup (the subgroup search of Sims, one base point per component),
+exponential in the number of components in the worst case. The search
+of the canonical key itself follows every root tied in a component when
+there are ``classes``, so its cost grows with the number of
+automorphisms. The buffers of the C code are counted in C ``int``: a map
 too large for them (about `2^{31} / (9.5 + 2 nd + 3.5 nc)` half-edges with
 ``nd`` arrays of ``data`` and ``nc`` of ``classes``) raises an
 ``OverflowError``.
@@ -94,8 +104,6 @@ from cpython cimport array
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
 from math import factorial
-
-from combisurf import isomorphism_naive
 
 
 cdef array.array _int_array = array.array('i', [])
@@ -371,19 +379,6 @@ cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
         else:
             g.data.as_ints[h] = rbinv[ra[h]]
     s.result.append(g)
-    return 0
-
-
-cdef int _count_leaf(const int *leaf, int first, void *arg) except -1:
-    r"""
-    Leaf callback of ``iso_search`` for :func:`canonical_key`: count the
-    leaves in the 64-bit counter ``arg``, restarted at a smaller leaf.
-    """
-    cdef long long *count = <long long *> arg
-    if first:
-        count[0] = 1
-    else:
-        count[0] += 1
     return 0
 
 
@@ -672,16 +667,16 @@ cdef array.array _identity(int n):
     return g
 
 
-cdef list _wreath(_Map m, bint lift):
+cdef list _wreath(_Map m, bint lift, bint labels=False):
     r"""
     Return the structure of the automorphism group of the disconnected map
-    ``m`` without arrays of ``classes``, a product of wreath products.
+    ``m`` with its arrays of ``data`` alone, a product of wreath products.
 
     The components are taken as connected maps of their own (their
-    half-edges in increasing order, ``data`` restricted) and grouped by
-    canonical key. The result lists the classes of isomorphic components,
-    ordered by the smallest half-edge of their first copy, as triples
-    ``(copies, generators, count)``:
+    half-edges in increasing order, ``data`` restricted, ``classes``
+    ignored) and grouped by canonical key. The result lists the classes of
+    isomorphic components, ordered by the smallest half-edge of their first
+    copy, as tuples ``(copies, generators, count, local, roots)``:
 
     - ``copies`` -- the list of the copies of the class, ordered by their
       smallest half-edge, each a pair ``(halves, r)`` of an ``array('i')``
@@ -694,6 +689,13 @@ cdef list _wreath(_Map m, bint lift):
       first copy, lifted to ``m`` (the identity elsewhere); empty unless
       ``lift``
     - ``count`` -- the order of the automorphism group of a copy
+    - ``local`` -- the first copy as a map of its own (a ``_Map``, in the
+      local indices of ``halves``) if ``labels``, ``None`` otherwise
+    - ``roots`` -- the canonical labels of the roots of minimal key of the
+      first copy, in increasing order (an ``array('i')`` starting with
+      ``0``; its automorphism sending the half-edge of label ``0`` to the
+      one of label ``l`` exists exactly for these ``l``) if ``labels``,
+      ``None`` otherwise
 
     The group is the product over the classes of the wreath product of the
     group of a copy by the symmetric group on the copies.
@@ -765,7 +767,11 @@ cdef list _wreath(_Map m, bint lift):
                 for i in range(size):
                     g.data.as_ints[halves_c.data.as_ints[i]] = halves_c.data.as_ints[gl.data.as_ints[i]]
                 gens.append(g)
-        classes.append(([(halves_c, ra)], gens, cnt))
+        if labels:
+            classes.append(([(halves_c, ra)], gens, cnt, mc,
+                            array.array('i', sorted([ra.data.as_ints[roots.data.as_ints[i]] for i in range(cnt)]))))
+        else:
+            classes.append(([(halves_c, ra)], gens, cnt, None, None))
     return classes
 
 
@@ -796,7 +802,7 @@ cdef list _wreath_generators(_Map m):
     cdef array.array g
     cdef int t, k
     gens = []
-    for copies, aut, _count in _wreath(m, True):
+    for copies, aut, _count, _local, _roots in _wreath(m, True):
         gens.extend(aut)
         k = len(copies)
         if k >= 2:
@@ -819,9 +825,349 @@ cdef _wreath_order(_Map m):
     of `|Aut(C)|^k k!` (see ``_wreath``).
     """
     order = 1
-    for copies, _aut, count in _wreath(m, False):
+    for copies, _aut, count, _local, _roots in _wreath(m, False):
         order *= count ** len(copies) * factorial(len(copies))
     return order
+
+
+cdef class _Stabiliser:
+    r"""
+    The state of the search of :func:`_stabiliser` on a disconnected map.
+
+    The levels are the components, in the order of ``_wreath`` (classes in
+    order, copies in order). Per level ``j``: ``kind[j]`` its class and
+    ``off[j]`` the offset of its half-edges in ``lab``, by canonical label
+    (``lab[off[j] + i]`` is its half-edge of label ``i``). Per class ``t``:
+    its copies are the levels ``start[t], ..., start[t + 1] - 1``; its
+    first copy as a map of its own has the face permutation ``cfp``, the
+    canonical relabelling ``cra`` (local index to label) and its inverse
+    ``crainv``, all of ``csize[t]`` entries at the offset ``coff[t]``; the
+    labels of its roots of minimal key are ``labels[loff[t]], ...,
+    labels[loff[t + 1] - 1]``, in increasing order.
+
+    The search state: ``fw`` and ``bw`` the forward and backward maps of the
+    values of each array of ``classes`` (``-1`` where unset, the array
+    ``q`` at the offset ``q * n``), ``trail`` the entries of ``fw`` set, in
+    order, ``used`` the copies already images, and per level its image
+    ``target``, the index ``choice`` of its label in ``labels`` and the
+    length ``mark`` of the trail before its step. ``rb``, ``rbinv``,
+    ``queue``, ``perm`` and ``ident`` are buffers of the size of the
+    largest component.
+    """
+    cdef int n
+    cdef int nd
+    cdef int nc
+    cdef int ncomp
+    cdef int ntrail
+    cdef array.array fp
+    cdef array.array dec
+    cdef array.array kind, off, lab, start, coff, csize, cfp, cra, crainv, loff, labels
+    cdef array.array fw, bw, trail, used, target, choice, mark
+    cdef array.array rb, rbinv, queue, perm, ident
+
+    cdef int relabel(self, int t, int l) except -1:
+        r"""
+        Write into ``perm`` the automorphism of the first copy of the class
+        ``t`` sending the half-edge of label ``0`` to the one of label
+        ``l``, on the labels: ``perm[i]`` is the label of the image of the
+        half-edge of label ``i``.
+        """
+        cdef int o = self.coff.data.as_ints[t], size = self.csize.data.as_ints[t], h
+        cdef int *cra = self.cra.data.as_ints + o
+        cdef int *rb = self.rb.data.as_ints
+        cdef int *rbinv = self.rbinv.data.as_ints
+        cdef int *perm = self.perm.data.as_ints
+        # iso_relabelling_from writes -1 into rbinv at the labels of the
+        # inactive halves of folded edges, which are rebuilt from rb
+        iso_relabelling_from(size, self.cfp.data.as_ints + o, self.crainv.data.as_ints[o + l],
+                             rb, rbinv, self.queue.data.as_ints)
+        for h in range(size):
+            rbinv[rb[h]] = h
+        for h in range(size):
+            perm[h] = cra[rbinv[h]]
+        return 0
+
+    cdef int step(self, int a, int b, int *perm) except -1:
+        r"""
+        Extend the maps of values by the isomorphism from the level ``a`` to
+        the level ``b`` sending the half-edge of label ``i`` to the one of
+        label ``perm[i]``; return ``0`` on a conflict (the entries set
+        before it stay on the trail) and ``1`` otherwise.
+        """
+        cdef int n = self.n, size = self.csize.data.as_ints[self.kind.data.as_ints[a]]
+        cdef int *f = self.fp.data.as_ints
+        cdef int *cls = self.dec.data.as_ints + self.nd * n
+        cdef int *la = self.lab.data.as_ints + self.off.data.as_ints[a]
+        cdef int *lb = self.lab.data.as_ints + self.off.data.as_ints[b]
+        cdef int *fw = self.fw.data.as_ints
+        cdef int *bw = self.bw.data.as_ints
+        cdef int *trail = self.trail.data.as_ints
+        cdef int i, q, h, y, v, w, base
+        for i in range(size):
+            h = la[i]
+            if f[h] == -1:
+                continue
+            y = lb[perm[i]]
+            for q in range(self.nc):
+                base = q * n
+                v = cls[base + h]
+                w = cls[base + y]
+                if fw[base + v] == -1:
+                    if bw[base + w] != -1:
+                        return 0
+                    fw[base + v] = w
+                    bw[base + w] = v
+                    trail[self.ntrail] = base + v
+                    self.ntrail += 1
+                elif fw[base + v] != w:
+                    return 0
+        return 1
+
+    cdef void undo(self, int length):
+        r"""
+        Unset the entries of the maps of values set after the first
+        ``length`` entries of the trail.
+        """
+        cdef int *fw = self.fw.data.as_ints
+        cdef int *bw = self.bw.data.as_ints
+        cdef int e
+        while self.ntrail > length:
+            self.ntrail -= 1
+            e = self.trail.data.as_ints[self.ntrail]
+            bw[(e // self.n) * self.n + fw[e]] = -1
+            fw[e] = -1
+
+    cdef int extend(self, int i) except -1:
+        r"""
+        Search images for the levels ``i + 1, ..., ncomp - 1``, each a copy
+        of its class not used yet, through any label of its roots, in
+        order; return ``1`` at the first leaf, the choices left in
+        ``target`` and ``choice``, and ``0`` if there is none.
+        """
+        cdef int *kind = self.kind.data.as_ints
+        cdef int *start = self.start.data.as_ints
+        cdef int *loff = self.loff.data.as_ints
+        cdef int *labels = self.labels.data.as_ints
+        cdef int *used = self.used.data.as_ints
+        cdef int *target = self.target.data.as_ints
+        cdef int *choice = self.choice.data.as_ints
+        cdef int *mark = self.mark.data.as_ints
+        cdef int j = i + 1, t, b, placed
+        if j < self.ncomp:
+            target[j] = start[kind[j]]
+            choice[j] = 0
+        while True:
+            if j == self.ncomp:
+                return 1
+            if j <= i:
+                return 0
+            t = kind[j]
+            placed = 0
+            while target[j] < start[t + 1]:
+                b = target[j]
+                if used[b] or choice[j] >= loff[t + 1] - loff[t]:
+                    target[j] += 1
+                    choice[j] = 0
+                    continue
+                mark[j] = self.ntrail
+                self.relabel(t, labels[loff[t] + choice[j]])
+                if self.step(j, b, self.perm.data.as_ints):
+                    used[b] = 1
+                    placed = 1
+                    break
+                self.undo(mark[j])
+                choice[j] += 1
+            if placed:
+                j += 1
+                if j < self.ncomp:
+                    target[j] = start[kind[j]]
+                    choice[j] = 0
+            else:
+                j -= 1
+                if j > i:
+                    self.undo(mark[j])
+                    used[target[j]] = 0
+                    choice[j] += 1
+
+    cdef array.array leaf(self, int i):
+        r"""
+        Return the automorphism of the map given by the choices of the
+        levels ``i, ..., ncomp - 1`` (the identity on the other levels and
+        on the inactive edges).
+        """
+        cdef array.array g = _identity(self.n)
+        cdef int *lab = self.lab.data.as_ints
+        cdef int *perm = self.perm.data.as_ints
+        cdef int j, t, k, oa, ob
+        for j in range(i, self.ncomp):
+            t = self.kind.data.as_ints[j]
+            self.relabel(t, self.labels.data.as_ints[self.loff.data.as_ints[t] + self.choice.data.as_ints[j]])
+            oa = self.off.data.as_ints[j]
+            ob = self.off.data.as_ints[self.target.data.as_ints[j]]
+            for k in range(self.csize.data.as_ints[t]):
+                g.data.as_ints[lab[oa + k]] = lab[ob + perm[k]]
+        return g
+
+
+cdef _Stabiliser _stabiliser_state(_Map m):
+    r"""
+    Return the :class:`_Stabiliser` of the disconnected map ``m``, its
+    search state cleared.
+    """
+    cdef _Stabiliser s = _Stabiliser.__new__(_Stabiliser)
+    cdef int n = m.n, size, i, largest = 0
+    cdef array.array halves_c, r
+    cdef _Map local
+    kind = []
+    off = []
+    lab = []
+    start = [0]
+    coff = []
+    csize = []
+    cfp = []
+    cra = []
+    crainv = []
+    loff = [0]
+    labels = []
+    for t, (copies, _aut, _count, local, roots) in enumerate(_wreath(m, False, True)):
+        size = len(copies[0][0])
+        largest = max(largest, size)
+        coff.append(len(cfp))
+        csize.append(size)
+        cfp.extend(local.fp)
+        r = copies[0][1]
+        cra.extend(r)
+        inv = [0] * size
+        for i in range(size):
+            inv[r.data.as_ints[i]] = i
+        crainv.extend(inv)
+        labels.extend(roots)
+        loff.append(len(labels))
+        for halves_c, r in copies:
+            kind.append(t)
+            off.append(len(lab))
+            for i in range(size):
+                inv[r.data.as_ints[i]] = halves_c.data.as_ints[i]
+            lab.extend(inv)
+        start.append(len(kind))
+    s.n = n
+    s.nd = m.nd
+    s.nc = m.nc
+    s.ncomp = len(kind)
+    s.ntrail = 0
+    s.fp = m.fp
+    s.dec = m.dec
+    s.kind = array.array('i', kind)
+    s.off = array.array('i', off)
+    s.lab = array.array('i', lab)
+    s.start = array.array('i', start)
+    s.coff = array.array('i', coff)
+    s.csize = array.array('i', csize)
+    s.cfp = array.array('i', cfp)
+    s.cra = array.array('i', cra)
+    s.crainv = array.array('i', crainv)
+    s.loff = array.array('i', loff)
+    s.labels = array.array('i', labels)
+    s.fw = array.array('i', [-1]) * (m.nc * n)
+    s.bw = array.array('i', [-1]) * (m.nc * n)
+    s.trail = _new(m.nc * n)
+    s.used = array.array('i', [0]) * s.ncomp
+    s.target = _new(s.ncomp)
+    s.choice = _new(s.ncomp)
+    s.mark = _new(s.ncomp)
+    s.rb = _new(largest)
+    s.rbinv = _new(largest)
+    s.queue = _new(largest)
+    s.perm = _new(largest)
+    s.ident = array.array('i', range(largest))
+    return s
+
+
+cdef tuple _stabiliser(_Map m):
+    r"""
+    Return the generators and the order (a Python integer) of the group of
+    the automorphisms of the disconnected map ``m`` that preserve the
+    partitions defined by its arrays of ``classes``.
+
+    This group `H` is the stabiliser of these partitions in the group `G`
+    of ``m`` with its ``data`` alone (see ``_wreath``), computed by a
+    subgroup search of Sims. The base is ``b_1, ..., b_c``, the half-edge of
+    canonical label ``0`` of each component, in the order of ``_wreath``;
+    the pointwise stabiliser of ``b_1, ..., b_{i-1}`` in `G` fixes their
+    components and permutes the others as the wreath products do, so the
+    orbit of ``b_i`` in it is made of the half-edges whose label is the one
+    of a root of minimal key in the copies of the class of ``b_i`` at the
+    levels ``>= i``. The levels are processed from the last to the first:
+    each point ``x`` of that orbit outside the orbit of ``b_i`` under the
+    generators found so far (a union-find over the half-edges) is tried by
+    a depth-first search for an element of `H`, the identity on the levels
+    ``< i``, sending ``b_i`` to ``x``, which maps the following levels one
+    after the other to unused copies of their classes and rejects a step
+    whose values contradict the bijections of values built so far. The
+    first element found is a generator. The generators found at the levels
+    ``>= i`` generate the stabiliser of ``b_1, ..., b_{i-1}`` in `H`, so
+    the order of `H` is the product over the levels of the size of the
+    orbit of ``b_i`` right after its level.
+
+    The search is exponential in the number of components in the worst
+    case, when many copies tie and the values of ``classes`` reject the
+    candidates only deep in the search.
+    """
+    cdef _Stabiliser s = _stabiliser_state(m)
+    cdef int n = m.n, i, t, b, q, h, x, y, bi, nl
+    cdef array.array parent = _new(n)
+    cdef array.array sizes = _new(n)
+    cdef array.array g
+    cdef int *p = parent.data.as_ints
+    cdef int *sz = sizes.data.as_ints
+    cdef int *used = s.used.data.as_ints
+    cdef int *start = s.start.data.as_ints
+    cdef int *loff = s.loff.data.as_ints
+    cdef int *labels = s.labels.data.as_ints
+    cdef int *lab = s.lab.data.as_ints
+    cdef int *off = s.off.data.as_ints
+    for h in range(n):
+        p[h] = h
+        sz[h] = 1
+    gens = []
+    order = 1
+    for i in range(s.ncomp - 1, -1, -1):
+        t = s.kind.data.as_ints[i]
+        nl = loff[t + 1] - loff[t]
+        bi = lab[off[i]]
+        if start[t + 1] - start[t] == 1 and nl == 1:
+            continue
+        # the levels < i are fixed: their values are mapped to themselves
+        for b in range(i):
+            used[b] = 1
+            s.step(b, b, s.ident.data.as_ints)
+        for b in range(max(start[t], i), start[t + 1]):
+            for q in range(nl):
+                x = lab[off[b] + labels[loff[t] + q]]
+                if x == bi or _find(p, x) == _find(p, bi):
+                    continue
+                s.target.data.as_ints[i] = b
+                s.choice.data.as_ints[i] = q
+                s.mark.data.as_ints[i] = s.ntrail
+                used[b] = 1
+                s.relabel(t, labels[loff[t] + q])
+                if s.step(i, b, s.perm.data.as_ints) and s.extend(i):
+                    g = s.leaf(i)
+                    gens.append(g)
+                    for h in range(n):
+                        x = _find(p, h)
+                        y = _find(p, g.data.as_ints[h])
+                        if x != y:
+                            p[x] = y
+                            sz[y] += sz[x]
+                s.undo(s.mark.data.as_ints[i])
+                for h in range(i, s.ncomp):
+                    used[h] = 0
+        s.undo(0)
+        for b in range(i):
+            used[b] = 0
+        order *= sz[_find(p, bi)]
+    return gens, order
 
 
 def automorphisms(fp, data=(), classes=()):
@@ -918,8 +1264,9 @@ def automorphism_generators(fp, data=(), classes=()):
     permutation ``fp`` decorated by ``data`` and ``classes``.
 
     The result is the one of
-    :func:`combisurf.isomorphism_naive.automorphism_generators`, except on
-    a disconnected map without ``classes``.
+    :func:`combisurf.isomorphism_naive.automorphism_generators` on a
+    connected map; on a disconnected map the generators come from the
+    structure of the group and generate the same group.
 
     INPUT:
 
@@ -946,9 +1293,6 @@ def automorphism_generators(fp, data=(), classes=()):
       union-find over the half-edges), so the list of automorphisms and the
       group closure are never computed.
 
-    - On a disconnected map with ``classes`` the same scan goes through the
-      list of :func:`automorphisms`.
-
     - On a disconnected map without ``classes`` the group is the product,
       over the classes of isomorphic components, of `\mathrm{Aut}(C) \wr
       S_k` (``data`` links no two components). The classes are ordered by
@@ -961,6 +1305,22 @@ def automorphism_generators(fp, data=(), classes=()):
       the other. These generators differ from those of
       :func:`combisurf.isomorphism_naive.automorphism_generators` (fewer
       of them) and generate the same group.
+
+    - On a disconnected map with ``classes`` the group `H` is the subgroup
+      of the previous one (for ``data`` alone) of the automorphisms that
+      preserve the partitions defined by the arrays of ``classes``. The
+      half-edges of canonical label `0` of the components, in the order
+      above, form a base `b_1, \ldots, b_c`; the levels are processed from
+      the last to the first, and at the level `i` each image of `b_i` under
+      the automorphisms fixing the components of `b_1, \ldots, b_{i-1}`
+      that is outside its orbit under the generators found so far is
+      tried by a depth-first search for an element of `H` sending `b_i`
+      to it, which maps the following components one after the other to
+      copies of their classes. The first element found is a generator; the
+      generators come in the order found. The search is exponential in the
+      number of components in the worst case, when many components are
+      isomorphic and the values of ``classes`` reject the candidates only
+      deep in the search.
 
     EXAMPLES::
 
@@ -989,6 +1349,21 @@ def automorphism_generators(fp, data=(), classes=()):
          array('i', [2, 3, 4, 5, 0, 1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
          array('i', [6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17]),
          array('i', [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 1, 2, 3, 4, 5])]
+
+    The four edges ``(0)(~0)(1)(~1)(2)(~2)(3)(~3)`` with classes that pair
+    them: the generators generate the 32 automorphisms::
+
+        sage: fp = list(range(8))
+        sage: c = [0, 1, 0, 1, 2, 3, 2, 3]
+        sage: gens = automorphism_generators(fp, classes=(c,))
+        sage: gens
+        [array('i', [0, 1, 2, 3, 5, 4, 7, 6]),
+         array('i', [0, 1, 2, 3, 6, 7, 4, 5]),
+         array('i', [1, 0, 3, 2, 4, 5, 6, 7]),
+         array('i', [2, 3, 0, 1, 4, 5, 6, 7]),
+         array('i', [4, 5, 6, 7, 0, 1, 2, 3])]
+        sage: PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, 9))).order()
+        32
     """
     cdef _Map m = _prepare(fp, data, classes)
     cdef int n = m.n
@@ -996,18 +1371,11 @@ def automorphism_generators(fp, data=(), classes=()):
     cdef array.array key = _new(ISO_KEY_SIZE(n, m.nd, m.nc))
     cdef array.array ra = _new(n)
     cdef array.array roots = _new(n)
-    cdef array.array g
     if _run(m, key, ra.data.as_ints, roots.data.as_ints, &count) != ISO_DISCONNECTED:
         return _connected_generators(m, ra, roots, count)
     if m.nc == 0:
         return _wreath_generators(m)
-    gens = []
-    group = {tuple(range(n))}
-    for g in _leaf_automorphisms(m, ra):
-        if tuple(g) not in group:
-            gens.append(g)
-            group = isomorphism_naive._group_closure(gens, n)
-    return gens
+    return _stabiliser(m)[0]
 
 
 def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
@@ -1165,7 +1533,11 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     that may exceed 64 bits. On a disconnected map without ``classes`` it
     is the order `\prod |\mathrm{Aut}(C)|^k k!` of the product of wreath
     products over the classes of `k` isomorphic components `C`, computed
-    without listing the automorphisms.
+    without listing the automorphisms; with ``classes`` it is the order
+    of the subgroup that preserves the partitions of ``classes``, computed
+    by the search of :func:`automorphism_generators`. With ``classes`` the
+    search of the key on a disconnected map follows every root tied in a
+    component, and its cost grows with the number of automorphisms.
 
     EXAMPLES::
 
@@ -1222,6 +1594,16 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         sage: canonical_key(list(range(40)), automorphism_count=True)[1]
         2551082656125828464640000
 
+    With one class value, six isolated edges keep their `2^6 \cdot 6!`
+    automorphisms, and two values on the halves of each edge leave the
+    `6!` permutations of the edges, alone or followed by the flip of every
+    edge (which exchanges the two values)::
+
+        sage: canonical_key(list(range(12)), classes=([0] * 12,), automorphism_count=True)[1]
+        46080
+        sage: canonical_key(list(range(12)), classes=([0, 1] * 6,), automorphism_count=True)[1]
+        1440
+
     A value of ``data`` outside the range of a C ``int``, and one on an
     inactive half-edge, which is ignored::
 
@@ -1236,21 +1618,12 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
     cdef int count, length
-    cdef long long leaves = 0
     order = 0
     length = _run(m, key, r.data.as_ints, NULL, &count)
     if length == ISO_DISCONNECTED:
-        # the first leaf reaching the minimum is the same with or without
-        # all the leaves: with classes every tied root is followed either
-        # way, and without them the first leaf follows the first tied roots
-        if automorphism_count and m.nc > 0:
-            _search(m, True, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints,
-                    _count_leaf, &leaves)
-            order = leaves
-        else:
-            _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
-            if automorphism_count:
-                order = _wreath_order(m)
+        _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+        if automorphism_count:
+            order = _stabiliser(m)[1] if m.nc else _wreath_order(m)
         length = _key_of(m, r, key)
     out = [(<char *> key.data.as_ints)[:length * sizeof(int)]]
     if relabelling:

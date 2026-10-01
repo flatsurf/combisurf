@@ -1573,11 +1573,10 @@ def flatten(form):
 def check_generators(gens, expected, automorphisms, fp, classes):
     r"""
     Check the generators ``gens`` of the map ``fp``: equal to the generators
-    ``expected`` of the reference on a connected map or a map with
-    ``classes``; on a disconnected map without ``classes``, each one an
-    automorphism and generating the group of the list ``automorphisms``.
+    ``expected`` of the reference on a connected map; on a disconnected
+    map, each one in the list ``automorphisms`` and generating its group.
     """
-    if classes or is_connected_fp(fp):
+    if is_connected_fp(fp):
         assert gens == expected
         return
     listed = {tuple(g) for g in automorphisms}
@@ -1703,14 +1702,16 @@ def test_fast_four_edges():
     assert len(gens) == 3
     check_generators(gens, isomorphism_naive.automorphism_generators(fp),
                      isomorphism_naive.automorphisms(fp), fp, ())
-    assert isomorphism_fast.automorphism_generators(fp, classes=c) == isomorphism_naive.automorphism_generators(fp, classes=c)
+    gens = isomorphism_fast.automorphism_generators(fp, classes=c)
+    check_generators(gens, isomorphism_naive.automorphism_generators(fp, classes=c),
+                     isomorphism_naive.automorphisms(fp, classes=c), fp, c)
 
 
 def wreath_fp(k, component):
     r"""
     Return the face permutation of ``k`` disjoint copies of ``component``.
     """
-    return [x + len(component) * i for i in range(k) for x in component]
+    return [-1 if x == -1 else x + len(component) * i for i in range(k) for x in component]
 
 
 def is_automorphism(g, fp, data=()):
@@ -1825,6 +1826,92 @@ def test_fast_disconnected_without_naive(monkeypatch):
         assert fast.canonical_key(fp, data, classes, relabelling=True) == (key, r)
         assert fast.canonical_key(fp, data, classes, automorphism_count=True) == (key, len(automorphisms))
         assert fast.canonical_key(fp, data, classes, relabelling=True, automorphism_count=True) == (key, r, len(automorphisms))
+
+
+def check_generated_group(fp, data, classes):
+    r"""
+    Check that the generators of :func:`combisurf.isomorphism.automorphism_generators`
+    are automorphisms of the reference list and generate it, and that the
+    count of :func:`combisurf.isomorphism.canonical_key` is its length.
+    """
+    automorphisms = isomorphism_naive.automorphisms(fp, data, classes)
+    listed = {tuple(g) for g in automorphisms}
+    gens = isomorphism_fast.automorphism_generators(fp, data, classes)
+    assert all(tuple(g) in listed for g in gens)
+    assert group_closure(gens, len(fp)) == listed
+    assert isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True)[1] == len(automorphisms)
+
+
+def cylinder_diagram_case(s):
+    r"""
+    Return the face permutation, the data (the colours) and the classes
+    (the cylinders) of the cylinder diagram ``s``.
+    """
+    m, colour, cylinder = cylinder_diagram(s)
+    return list(m._fp), (colour,), (cylinder,)
+
+
+CLASSES_CASES = [
+    (list(range(8)), (), ([0, 1, 0, 1, 2, 3, 2, 3],)),
+    (list(range(14)), (), ([(h // 4) * 2 + h % 2 for h in range(14)],)),
+    (list(range(12)), (), ([0] * 12,)),
+    (list(range(14)), (), ([0] * 14,)),
+    (wreath_fp(5, [2, 5, 4, 1, 0, 3]), (), ([h % 3 for h in range(30)],)),
+] + [cylinder_diagram_case(s) for s in (CD_I3_A, CD_I3_B, CD_I6_A, CD_I6_B)]
+
+
+@pytest.mark.parametrize("fp, data, classes", CLASSES_CASES,
+                         ids=["4-edges", "7-edges-pairs", "6-edges-one-value", "7-edges-one-value",
+                              "5-triangles", "I3a", "I3b", "I6a", "I6b"])
+def test_fast_generators_classes(fp, data, classes):
+    check_generated_group(fp, data, classes)
+
+
+def test_fast_generators_classes_twenty_edges():
+    from sage.all import PermutationGroup
+
+    # 2^20 * 20! automorphisms: too many for a closure, and for the search
+    # of the canonical key, which follows every tied root when there are
+    # classes; the order of the group generated is computed by Sage
+    fp = list(range(40))
+    c = [0] * 40
+    gens = isomorphism_fast.automorphism_generators(fp, classes=(c,))
+    for g in gens:
+        assert is_automorphism(g, fp)
+        check_classes_carried(fp, c, c, g)
+    G = PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, 41)))
+    assert G.order() == 2**20 * math.factorial(20)
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_fast_generators_classes_copies(seed):
+    rng = random.Random(seed)
+    for _ in range(3):
+        fp = wreath_fp(rng.randint(2, 4), random_connected_fp(rng, max_half_edges=16))
+        for values in (2, 3):
+            classes = tuple([rng.randrange(values) for _ in fp] for _ in range(rng.randint(1, 2)))
+            fp2, classes2 = relabel_arrays(fp, classes, random_edge_relabelling(rng, fp))
+            check_generated_group(fp2, (), classes2)
+
+
+def test_fast_generators_classes_without_naive(monkeypatch):
+    rng = random.Random(1)
+    cases = CLASSES_CASES[:3] + CLASSES_CASES[4:]
+    for _ in range(3):
+        fp = wreath_fp(3, random_connected_fp(rng, max_half_edges=16))
+        cases.append((fp, (), ([rng.randrange(2) for _ in fp],)))
+    expected = [{tuple(g) for g in isomorphism_naive.automorphisms(fp, data, classes)}
+                for fp, data, classes in cases]
+
+    def unusable(*args, **kwds):
+        raise AssertionError("the reference implementation was called")
+
+    monkeypatch.setattr(isomorphism_naive, "_group_closure", unusable)
+    monkeypatch.setattr(isomorphism_naive, "automorphism_generators", unusable)
+    for (fp, data, classes), listed in zip(cases, expected):
+        gens = isomorphism_fast.automorphism_generators(fp, data, classes)
+        assert group_closure(gens, len(fp)) == listed
+        assert isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True)[1] == len(listed)
 
 
 def test_fast_sizes():
