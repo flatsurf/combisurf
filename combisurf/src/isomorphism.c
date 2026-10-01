@@ -177,8 +177,9 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * or on a half-edge taken from the queue. The final entries are compared
  * with best after a face walk once their number beyond those compared
  * reaches a step that starts at 2 and doubles after each comparison, and
- * at the end of the walk. A root rejected after l labels has thus walked
- * at most about 2 l labels, and a tied root runs O(log n) comparison
+ * at the end of the walk. A rejected root has thus given about twice
+ * the labels needed to make the differing entry final, plus those of the
+ * half-edges still waiting in the queue, and a tied root runs O(log n) comparison
  * passes. On regular maps (S_5 to PSL(2, 17), 120 to 2448 half-edges),
  * where every root ties, comparing after every face was 11 to 32 % slower
  * than walking and keying every root in full, and this step 5 to 12 %.
