@@ -1894,7 +1894,31 @@ def test_fast_generators_classes_copies(seed):
             check_generated_group(fp2, (), classes2)
 
 
+@pytest.mark.parametrize("seed", range(5))
+def test_fast_generators_classes_mixed_copies(seed):
+    # copies of two components of different sizes, the data repeated on the
+    # copies so that they stay isomorphic, the classes of each copy drawn
+    # from two patterns so that they cut the wreath product
+    rng = random.Random(seed)
+    for _ in range(3):
+        union, data, classes = [], [], []
+        for _ in range(2):
+            component = random_connected_fp(rng, max_half_edges=12)
+            d = [rng.randrange(2) for _ in component]
+            patterns = [[rng.randrange(2) for _ in component] for _ in range(2)]
+            for _ in range(rng.randint(1, 3)):
+                shift = len(union)
+                union.extend(-1 if x == -1 else x + shift for x in component)
+                data.extend(d)
+                classes.extend(rng.choice(patterns))
+        r = random_edge_relabelling(rng, union)
+        fp2, data2 = relabel_arrays(union, (data,), r)
+        _, classes2 = relabel_arrays(union, (classes,), r)
+        check_generated_group(fp2, data2, classes2)
+
+
 def test_fast_generators_classes_without_naive(monkeypatch):
+    assert not hasattr(isomorphism_fast, "isomorphism_naive")
     rng = random.Random(1)
     cases = CLASSES_CASES[:3] + CLASSES_CASES[4:]
     for _ in range(3):
