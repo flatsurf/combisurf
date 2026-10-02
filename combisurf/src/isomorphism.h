@@ -35,6 +35,22 @@
  * each class array read in the same order and renumbered 0, 1, 2, ... by
  * first appearance. Keys are compared as sequences of signed ints.
  *
+ * The roots tried by iso_canonical and iso_search are restricted by a rule
+ * (iso_root_rule), as the keyword root_rule of isomorphism_naive. For an
+ * active half-edge h, vdeg(h) and fdeg(h) are the degrees of its vertex and
+ * of its face, and its twin t is h ^ 1, or h itself on a folded edge; the
+ * vertex permutation is vp[fp[t]] = h. A rule gives each active half-edge
+ * an invariant: the pair (vdeg(h), fdeg(h)) under the half-edge rules, the
+ * tuple (vdeg(h), fdeg(h), vdeg(t), fdeg(t), loop, monogon) under the edge
+ * rules, loop (monogon) being 1 when h and t are at the same vertex (in the
+ * same face) and 0 otherwise. The half-edges of equal invariant form a
+ * class, and only the half-edges of one class are tried: under *_MAX the
+ * class of the largest invariant (tuples compared lexicographically), under
+ * *_FEWEST the class with the fewest half-edges, ties broken by the largest
+ * invariant. The invariants are computed once per call on the whole map,
+ * from fp alone (never from the decorations). Under ISO_ROOTS_ALL every
+ * active half-edge is a root.
+ *
  * No function allocates memory: every buffer is handed in by the caller,
  * with the sizes documented below.
  *
@@ -54,13 +70,31 @@ enum {
 };
 
 /*
+ * The rules restricting the roots, with the values of the constants
+ * ROOTS_ALL, ..., ROOTS_EDGE_FEWEST of isomorphism_naive.
+ */
+typedef enum {
+    ISO_ROOTS_ALL = 0,
+    ISO_ROOTS_HALF_EDGE_MAX = 1,
+    ISO_ROOTS_HALF_EDGE_FEWEST = 2,
+    ISO_ROOTS_EDGE_MAX = 3,
+    ISO_ROOTS_EDGE_FEWEST = 4
+} iso_root_rule;
+
+/*
  * Upper bound on the length of a key, in ints: n for the face permutation
  * and n for each decoration array.
  */
 #define ISO_KEY_SIZE(n, nd, nc) ((n) * (1 + (nd) + (nc)))
 
-/* Size of the work buffer of iso_canonical, in ints. */
-#define ISO_WORK_SIZE(n, nd, nc) (4 * (n) + ISO_KEY_SIZE(n, nd, nc))
+/*
+ * Size of the work buffer of iso_canonical, in ints: the relabelling, its
+ * inverse, the queue and the numbering of the class values (4 n), a
+ * candidate key (ISO_KEY_SIZE), and under a rule other than ISO_ROOTS_ALL
+ * the active half-edges sorted by invariant, the class of each half-edge
+ * and the start of each class in that order (3 n + 1).
+ */
+#define ISO_WORK_SIZE(n, nd, nc) (7 * (n) + 1 + ISO_KEY_SIZE(n, nd, nc))
 
 /* Return the number of active edges of fp. */
 int iso_num_edges(int n, const int *fp);
@@ -90,16 +124,20 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
             const int *r, const int *rinv, int k, int *key, int *names);
 
 /*
- * Try every active half-edge of fp as a root, in increasing order, and
- * write into key (ISO_KEY_SIZE(n, nd, nc) ints) the minimal key.
+ * Try every active half-edge of fp of the class of the rule as a root (every
+ * active half-edge under ISO_ROOTS_ALL), in increasing order, and write
+ * into key (ISO_KEY_SIZE(n, nd, nc) ints) the minimal key.
  *
  * When relabelling is not NULL (n ints), write there the relabelling from
  * the first root of minimal key (-1 on the half-edges of the inactive
  * edges). When roots is not NULL (n ints), write there the roots of
  * minimal key in increasing order. When nroots is not NULL, store there
  * their number, which is the number of automorphisms of the decorated map
- * (0 when the map has no active half-edge). work is a buffer of
- * ISO_WORK_SIZE(n, nd, nc) ints.
+ * under every rule (0 when the map has no active half-edge): an
+ * automorphism of a connected map is determined by the image of one
+ * half-edge and preserves the invariants, so the roots of minimal key form
+ * one orbit of the group. work is a buffer of ISO_WORK_SIZE(n, nd, nc)
+ * ints.
  *
  * Return the length of the key (0 when the map has no active half-edge),
  * or ISO_DISCONNECTED when the walk from the first active half-edge does
@@ -116,10 +154,13 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * the face permutation parts are equal, the data then the class parts are
  * compared as they are built, with the same rejection. A root that ties
  * with or beats the best one costs O(n (1 + nd + nc)), so a map whose
- * roots all tie still costs O(n^2 (1 + nd + nc)).
+ * roots all tie still costs O(n^2 (1 + nd + nc)). Under a rule other than
+ * ISO_ROOTS_ALL, the classes cost O(n) more: the half-edges are sorted by
+ * invariant by counting sorts on its 2 or 6 entries.
  */
 int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-                  int *key, int *relabelling, int *roots, int *nroots, int *work);
+                  iso_root_rule rule, int *key, int *relabelling, int *roots, int *nroots,
+                  int *work);
 
 /*
  * Maps that may be disconnected: the search over the labellings component
@@ -148,14 +189,17 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
  * levels of the search (its root, its first label, the position and the
  * length of its block, and the counts of class values before it: (4 + nc)
  * (n / 2 + 1)), the counts of class values (nc), the current sequence
- * (ISO_SEQUENCE_SIZE) and one candidate block (ISO_KEY_SIZE + 1).
+ * (ISO_SEQUENCE_SIZE), one candidate block (ISO_KEY_SIZE + 1), and for the
+ * rules other than ISO_ROOTS_ALL the active half-edges sorted by invariant,
+ * the class of each half-edge, the start of each class in that order and
+ * the number of half-edges not labelled yet in each class (4 n + 1).
  *
  * These sizes are computed in int and overflow for about
- * 2^31 / (9.5 + 2 nd + 3.5 nc) half-edges; the caller checks them first.
+ * 2^31 / (13.5 + 2 nd + 3.5 nc) half-edges; the caller checks them first.
  */
 #define ISO_SEARCH_WORK_SIZE(n, nd, nc) \
     ((5 + (nc)) * (n) + (4 + (nc)) * ((n) / 2 + 1) + (nc) \
-     + ISO_SEQUENCE_SIZE(n, nd, nc) + ISO_KEY_SIZE(n, nd, nc) + 1)
+     + ISO_SEQUENCE_SIZE(n, nd, nc) + ISO_KEY_SIZE(n, nd, nc) + 1 + 4 * (n) + 1)
 
 /*
  * Callback of iso_search, called on a leaf: leaf is the relabelling of the
@@ -172,8 +216,12 @@ typedef int (*iso_leaf_callback)(const int *leaf, int first, void *arg);
  * Search the lexicographically minimal sequence of blocks over the
  * labellings of fp component after component, exactly as
  * isomorphism_naive._search: from a state (the components labelled so
- * far), every active half-edge not labelled yet is tried as a root, in
- * increasing order, and only the roots of minimal block are followed,
+ * far), the class of the rule is chosen among the active half-edges not
+ * labelled yet (by the invariants of the whole map, and by the numbers of
+ * half-edges not labelled yet in each class under *_FEWEST), the
+ * half-edges of that class not labelled yet are tried as roots (every
+ * active half-edge not labelled yet under ISO_ROOTS_ALL), in increasing
+ * order, and only the roots of minimal block are followed,
  * depth first in increasing root order; the component gets the labels
  * following those used. When several roots tie, every one of them is
  * followed if nc > 0 or all_leaves is nonzero, only the first one
@@ -199,7 +247,7 @@ typedef int (*iso_leaf_callback)(const int *leaf, int first, void *arg);
  * search and leaves the outputs undefined.
  */
 int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-               int all_leaves, int *sequence, int *length, int *relabelling,
+               iso_root_rule rule, int all_leaves, int *sequence, int *length, int *relabelling,
                iso_leaf_callback callback, void *arg, int *work);
 
 #endif

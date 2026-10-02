@@ -4318,8 +4318,9 @@ class OrientedMap:
         a disconnected map the automorphisms may permute isomorphic
         components, and a ``*_classes`` decoration is preserved up to one
         bijection of its values for all the components together. The list
-        is computed in full: it has at least `k!` elements on a map with
-        `k` isomorphic components.
+        is computed in full under every ``root_rule``: it has at least `k!`
+        elements on a map with `k` isomorphic components, which
+        :meth:`automorphism_generators` avoids.
 
         OUTPUT: the list of the automorphisms, the identity first, each an
         ``array('i')`` permutation of the half-edges that commutes with the
@@ -4443,10 +4444,10 @@ class OrientedMap:
         wreath products over the classes of isomorphic components, and with
         ``*_classes`` its subgroup preserving the partitions they define,
         searched by backtracking (exponential in the number of components
-        in the worst case). Under a ``root_rule`` other than ``"all"``, the
-        generators are instead extracted from the list of all the
-        automorphisms, of length at least `k!` on `k` isomorphic
-        components.
+        in the worst case). This holds under every ``root_rule``: on a
+        disconnected map the generators do not depend on it, and the list of
+        all the automorphisms (of length at least `k!` on `k` isomorphic
+        components) is never computed.
 
         OUTPUT: a list of automorphisms (as in :meth:`automorphisms`) that
         generate the group; empty when the group is trivial.
@@ -4481,7 +4482,7 @@ class OrientedMap:
         Under the rule ``"edge-max"``::
 
             sage: OrientedMap(fp="(0)(~0)(1)(~1)").automorphism_generators(root_rule="edge-max")
-            [array('i', [0, 1, 3, 2]), array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
+            [array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
         """
         rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)

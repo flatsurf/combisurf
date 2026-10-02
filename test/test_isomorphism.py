@@ -1896,21 +1896,25 @@ def test_fast_wreath_generators():
     assert fast.canonical_key(fp, automorphism_count=True)[1] == len(automorphisms)
 
 
-def test_fast_wreath_without_group_closure(monkeypatch):
+@WITH_ROOT_RULES
+def test_fast_wreath_without_group_closure(monkeypatch, root_rule):
     def unusable(*args, **kwds):
         raise AssertionError("the group closure was called")
 
     monkeypatch.setattr(isomorphism_naive, "_group_closure", unusable)
+    monkeypatch.setattr(isomorphism_naive, "automorphisms", unusable)
+    monkeypatch.setattr(isomorphism_naive, "automorphism_generators", unusable)
     fast = isomorphism_fast
     triangle = [2, 5, 4, 1, 0, 3]
     for fp, data in [(list(range(14)), ()), (wreath_fp(3, triangle), ()),
                      (wreath_fp(3, triangle), ([0] * 6 + [1] * 6 + [0] * 6,)),
                      ([0, 1, 2, 3], ())]:
-        assert fast.automorphism_generators(fp, data)
-        assert fast.canonical_key(fp, data, automorphism_count=True)[1] > 1
+        assert fast.automorphism_generators(fp, data, root_rule=root_rule)
+        assert fast.canonical_key(fp, data, automorphism_count=True, root_rule=root_rule)[1] > 1
 
 
-def test_fast_disconnected_without_naive(monkeypatch):
+@WITH_ROOT_RULES
+def test_fast_disconnected_without_naive(monkeypatch, root_rule):
     rng = random.Random(0)
     cases = [([0, 1, 2, 3], (), ()),
              ([0, 1, 2, 3], (), ([0, 1, 1, 2],)),
@@ -1923,38 +1927,40 @@ def test_fast_disconnected_without_naive(monkeypatch):
         cases.append((fp, random_data(rng, fp), random_classes(rng, fp)))
 
     # the results of the reference, then the reference made unusable
+    rule = {'root_rule': root_rule}
     expected = []
     for fp, data, classes in cases:
         s = random_edge_relabelling(rng, fp)
         fp2, data2 = relabel_arrays(fp, data, s)
         _, classes2 = relabel_arrays(fp, classes, s)
         naive = isomorphism_naive
-        expected.append((naive.canonical_labelling(fp, data, classes),
-                         naive.canonical_form(fp, data, classes),
-                         naive.automorphisms(fp, data, classes),
-                         naive.automorphism_generators(fp, data, classes),
+        expected.append((naive.canonical_labelling(fp, data, classes, **rule),
+                         naive.canonical_form(fp, data, classes, **rule),
+                         naive.automorphisms(fp, data, classes, **rule),
+                         naive.automorphism_generators(fp, data, classes, **rule),
                          fp2, data2, classes2,
-                         naive.isomorphism(fp, data, fp2, data2, classes, classes2)))
+                         naive.isomorphism(fp, data, fp2, data2, classes, classes2, **rule)))
 
     def unusable(*args, **kwds):
         raise AssertionError("the reference implementation was called")
 
-    for name in ("_search", "canonical_labelling", "canonical_form", "automorphisms",
-                 "isomorphism"):
+    for name in ("_search", "_roots", "_root_invariants", "_group_closure", "canonical_labelling",
+                 "canonical_form", "automorphisms", "automorphism_generators", "isomorphism"):
         monkeypatch.setattr(isomorphism_naive, name, unusable)
 
     fast = isomorphism_fast
     for (fp, data, classes), (r, form, automorphisms, gens, fp2, data2, classes2, iso) in zip(cases, expected):
-        assert fast.canonical_labelling(fp, data, classes) == r
-        assert fast.canonical_form(fp, data, classes) == form
-        assert fast.automorphisms(fp, data, classes) == automorphisms
-        check_generators(fast.automorphism_generators(fp, data, classes), gens, automorphisms, fp, classes)
-        assert fast.isomorphism(fp, data, fp2, data2, classes, classes2) == iso
+        assert fast.canonical_labelling(fp, data, classes, **rule) == r
+        assert fast.canonical_form(fp, data, classes, **rule) == form
+        assert fast.automorphisms(fp, data, classes, **rule) == automorphisms
+        check_generators(fast.automorphism_generators(fp, data, classes, **rule), gens, automorphisms, fp, classes)
+        assert fast.isomorphism(fp, data, fp2, data2, classes, classes2, **rule) == iso
         key = flatten(form)
-        assert fast.canonical_key(fp, data, classes) == key
-        assert fast.canonical_key(fp, data, classes, relabelling=True) == (key, r)
-        assert fast.canonical_key(fp, data, classes, automorphism_count=True) == (key, len(automorphisms))
-        assert fast.canonical_key(fp, data, classes, relabelling=True, automorphism_count=True) == (key, r, len(automorphisms))
+        n = len(automorphisms)
+        assert fast.canonical_key(fp, data, classes, **rule) == key
+        assert fast.canonical_key(fp, data, classes, relabelling=True, **rule) == (key, r)
+        assert fast.canonical_key(fp, data, classes, automorphism_count=True, **rule) == (key, n)
+        assert fast.canonical_key(fp, data, classes, relabelling=True, automorphism_count=True, **rule) == (key, r, n)
 
 
 def check_generated_group(fp, data, classes):
@@ -2046,7 +2052,8 @@ def test_fast_generators_classes_mixed_copies(seed):
         check_generated_group(fp2, data2, classes2)
 
 
-def test_fast_generators_classes_without_naive(monkeypatch):
+@WITH_ROOT_RULES
+def test_fast_generators_classes_without_naive(monkeypatch, root_rule):
     assert not hasattr(isomorphism_fast, "isomorphism_naive")
     rng = random.Random(1)
     cases = CLASSES_CASES[:3] + CLASSES_CASES[4:]
@@ -2059,12 +2066,42 @@ def test_fast_generators_classes_without_naive(monkeypatch):
     def unusable(*args, **kwds):
         raise AssertionError("the reference implementation was called")
 
-    monkeypatch.setattr(isomorphism_naive, "_group_closure", unusable)
-    monkeypatch.setattr(isomorphism_naive, "automorphism_generators", unusable)
+    for name in ("_search", "_roots", "_root_invariants", "_group_closure", "canonical_labelling",
+                 "canonical_form", "automorphisms", "automorphism_generators", "isomorphism"):
+        monkeypatch.setattr(isomorphism_naive, name, unusable)
     for (fp, data, classes), listed in zip(cases, expected):
-        gens = isomorphism_fast.automorphism_generators(fp, data, classes)
+        gens = isomorphism_fast.automorphism_generators(fp, data, classes, root_rule=root_rule)
         assert group_closure(gens, len(fp)) == listed
-        assert isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True)[1] == len(listed)
+        count = isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True, root_rule=root_rule)[1]
+        assert count == len(listed)
+
+
+@WITH_ROOT_RULES
+@pytest.mark.parametrize("seed", range(3))
+def test_fast_generators_rules_disconnected(seed, root_rule):
+    # the generators and the count on disconnected maps do not depend on the
+    # rule: they generate the group listed by the reference under the rule,
+    # and the count is its length
+    rng = random.Random(seed)
+    triangle = [2, 5, 4, 1, 0, 3]
+    cases = [(wreath_fp(3, triangle) + [18, -1], (), ()),
+             (wreath_fp(3, triangle) + [18, -1], (), ([h % 2 for h in range(20)],)),
+             ([2, 5, 4, 1, 0, 3, 6, -1], ([0, 1, 0, 0, 1, 1, 0, 0],), ())]
+    while len(cases) < 9:
+        fp = random_disconnected_fp(rng)
+        if is_connected_fp(fp):
+            continue
+        classes = random_classes(rng, fp) if len(cases) % 2 else ()
+        cases.append((fp, random_data(rng, fp), classes))
+    for fp, data, classes in cases:
+        automorphisms = isomorphism_naive.automorphisms(fp, data, classes, root_rule=root_rule)
+        listed = {tuple(g) for g in automorphisms}
+        assert len(listed) == len(automorphisms)
+        gens = isomorphism_fast.automorphism_generators(fp, data, classes, root_rule=root_rule)
+        assert all(tuple(g) in listed for g in gens)
+        assert group_closure(gens, len(fp)) == listed
+        count = isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True, root_rule=root_rule)[1]
+        assert count == len(automorphisms)
 
 
 def test_fast_sizes():

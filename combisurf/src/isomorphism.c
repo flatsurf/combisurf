@@ -18,6 +18,15 @@
  * tied root is found again by scanning the roots after the current one for
  * a block equal to the one of the level, which is still in the sequence.
  *
+ * Under a rule other than ISO_ROOTS_ALL, the classes of the half-edges are
+ * computed once per call (root_classes: a radix sort of the active
+ * half-edges by invariant, O(n)). iso_canonical then tries the half-edges
+ * of the chosen class only. iso_search keeps the number of half-edges not
+ * labelled yet in each class, updated as components are labelled and
+ * undone, and chooses the class at each step from these numbers (O(number
+ * of classes)); its scans run over the half-edges of that class. Under
+ * ISO_ROOTS_ALL the loops over the roots are those without classes.
+ *
  * With ISO_DEBUG defined, the relabellings and keys are checked as they are
  * computed, and a failed check aborts with a message.
  *
@@ -166,6 +175,178 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
     debug_names(n, names);
 #endif
     return pos;
+}
+
+/*
+ * Write into id the index of the cycle of p (n ints, -1 on the inactive
+ * half-edges) of each active half-edge, -1 on the inactive ones, and into
+ * size the length of that cycle (not written on the inactive half-edges).
+ */
+static void cycles(int n, const int *p, int *id, int *size)
+{
+    int h, x, len, c = 0;
+
+    for (h = 0; h < n; h++)
+        id[h] = -1;
+    for (h = 0; h < n; h++) {
+        if (p[h] == -1 || id[h] != -1)
+            continue;
+        len = 0;
+        x = h;
+        do {
+            id[x] = c;
+            len++;
+            x = p[x];
+        } while (x != h);
+        do {
+            size[x] = len;
+            x = p[x];
+        } while (x != h);
+        c++;
+    }
+}
+
+/*
+ * The entry j of the invariant of the active half-edge h (see
+ * isomorphism.h), shifted into 0, ..., n - 1: the degrees minus 1, and loop
+ * and monogon as 0 or 1. vid and fid are the indices of the vertices and of
+ * the faces, vdeg and fdeg their degrees.
+ */
+static int invariant_entry(int j, int h, const int *fp, const int *vid, const int *vdeg,
+                           const int *fid, const int *fdeg)
+{
+    int t = fp[h ^ 1] != -1 ? h ^ 1 : h;
+    switch (j) {
+    case 0:
+        return vdeg[h] - 1;
+    case 1:
+        return fdeg[h] - 1;
+    case 2:
+        return vdeg[t] - 1;
+    case 3:
+        return fdeg[t] - 1;
+    case 4:
+        return vid[h] == vid[t];
+    default:
+        return fid[h] == fid[t];
+    }
+}
+
+/*
+ * The classes of the rule (not ISO_ROOTS_ALL) on the active half-edges of
+ * fp, from the invariants of the whole map. Write into order the active
+ * half-edges sorted by invariant, the half-edges of equal invariant in
+ * increasing order, into cls (n ints) the class of each half-edge, -1 on the
+ * inactive ones, the classes being numbered 0, 1, ... in increasing order
+ * of invariant, and into start the start of each class in order, followed
+ * by the number of active half-edges (the class c is order[start[c]],
+ * ..., order[start[c + 1] - 1]). order holds n ints, start n + 1 and tmp
+ * 4 n. Return the number of classes.
+ *
+ * The sort is a least significant digit radix sort: one stable counting
+ * sort per entry of the invariant (2 or 6 of them, each in 0, ..., n - 1),
+ * from the last to the first, O(n) each.
+ */
+static int root_classes(int n, const int *fp, iso_root_rule rule, int *order, int *cls,
+                        int *start, int *tmp)
+{
+    int *vdeg = tmp, *fdeg = tmp + n, *aux = tmp + 2 * n, *count = tmp + 3 * n;
+    /* the indices of the vertices and of the faces, until the classes are
+     * written over them */
+    int *vid = cls, *fid = start;
+    int entries = rule == ISO_ROOTS_EDGE_MAX || rule == ISO_ROOTS_EDGE_FEWEST ? 6 : 2;
+    int h, t, i, j, v, sum, na = 0, m;
+    int *src = order, *dst = aux, *swap;
+
+    /* the vertex permutation, in aux */
+    for (h = 0; h < n; h++)
+        aux[h] = -1;
+    for (h = 0; h < n; h++) {
+        if (fp[h] == -1)
+            continue;
+        t = fp[h ^ 1] != -1 ? h ^ 1 : h;
+        aux[fp[t]] = h;
+    }
+    cycles(n, aux, vid, vdeg);
+    cycles(n, fp, fid, fdeg);
+
+    for (h = 0; h < n; h++)
+        if (fp[h] != -1)
+            order[na++] = h;
+    if (na == 0) {
+        for (h = 0; h < n; h++)
+            cls[h] = -1;
+        start[0] = 0;
+        return 0;
+    }
+
+    for (j = entries - 1; j >= 0; j--) {
+        for (v = 0; v < n; v++)
+            count[v] = 0;
+        for (i = 0; i < na; i++)
+            count[invariant_entry(j, src[i], fp, vid, vdeg, fid, fdeg)]++;
+        sum = 0;
+        for (v = 0; v < n; v++) {
+            t = count[v];
+            count[v] = sum;
+            sum += t;
+        }
+        for (i = 0; i < na; i++) {
+            h = src[i];
+            dst[count[invariant_entry(j, h, fp, vid, vdeg, fid, fdeg)]++] = h;
+        }
+        swap = src;
+        src = dst;
+        dst = swap;
+    }
+    /* an even number of passes leaves the result in order */
+#ifdef ISO_DEBUG
+    ISO_CHECK(src == order);
+#endif
+
+    /* the class of each position, in aux */
+    aux[0] = 0;
+    for (i = 1; i < na; i++) {
+        aux[i] = aux[i - 1];
+        for (j = 0; j < entries; j++) {
+            if (invariant_entry(j, order[i - 1], fp, vid, vdeg, fid, fdeg)
+                    != invariant_entry(j, order[i], fp, vid, vdeg, fid, fdeg)) {
+                aux[i]++;
+                break;
+            }
+        }
+    }
+    m = aux[na - 1] + 1;
+    for (h = 0; h < n; h++)
+        cls[h] = -1;
+    for (i = 0; i < na; i++) {
+        cls[order[i]] = aux[i];
+        if (i == 0 || aux[i] != aux[i - 1])
+            start[aux[i]] = i;
+    }
+    start[m] = na;
+    return m;
+}
+
+/*
+ * The class tried among the m classes of root_classes, cnt[c] being the
+ * number of half-edges of the class c that may be roots (at least one class
+ * has one): under *_MAX the largest class of positive count, under *_FEWEST
+ * the class of smallest positive count, ties broken by the largest class.
+ */
+static int choose_class(iso_root_rule rule, int m, const int *cnt)
+{
+    int c, best = -1;
+
+    if (rule == ISO_ROOTS_HALF_EDGE_MAX || rule == ISO_ROOTS_EDGE_MAX) {
+        for (c = m - 1; cnt[c] == 0; c--)
+            ;
+        return c;
+    }
+    for (c = 0; c < m; c++)
+        if (cnt[c] > 0 && (best == -1 || cnt[c] <= cnt[best]))
+            best = c;
+    return best;
 }
 
 /*
@@ -338,20 +519,87 @@ static void debug_root(int n, const int *fp, int nd, const int *data, int nc, co
 }
 #endif
 
+/*
+ * The state of iso_canonical while it tries the roots after the first one:
+ * the buffers, the best key so far and the candidate key (swapped when a
+ * root beats the best one), the length of the keys, the number of roots of
+ * minimal key so far and the outputs.
+ */
+struct canonical_state {
+    int n, nd, nc, ne, len, count;
+    const int *fp, *data, *classes;
+    int *r, *rinv, *queue, *names, *best, *cur, *relabelling, *roots;
+#ifdef ISO_DEBUG
+    int *scratch;
+#endif
+};
+
+/*
+ * Try root after the first one: compare its key with the best one, and
+ * record it when it ties with or beats it. r is -1 on entry and on return.
+ */
+static inline void canonical_root(struct canonical_state *s, int root)
+{
+    int n = s->n, k, cmp;
+    int *r = s->r, *rinv = s->rinv, *tmp;
+
+    cmp = walk_compare(s->fp, root, r, rinv, s->queue, s->best, &k);
+    if (cmp < 0) {
+        iso_key(n, s->fp, s->nd, s->data, s->nc, s->classes, r, rinv, k, s->cur, s->names);
+    } else if (cmp == 0) {
+        cmp = tail_compare(n, s->nd, s->data, s->nc, s->classes, rinv, k, s->best, s->cur, s->names);
+        if (cmp < 0)
+            memcpy(s->cur, s->best, (size_t) k * sizeof(int));
+    }
+#ifdef ISO_DEBUG
+    ISO_CHECK(cmp == 1 || k == 2 * s->ne);
+    debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp, s->best, s->cur, s->len,
+               s->names, s->scratch);
+#endif
+    if (cmp < 0) {
+        tmp = s->best;
+        s->best = s->cur;
+        s->cur = tmp;
+        s->count = 0;
+        if (s->relabelling != NULL)
+            memcpy(s->relabelling, r, (size_t) n * sizeof(int));
+    }
+    if (cmp <= 0) {
+        if (s->roots != NULL)
+            s->roots[s->count] = root;
+        s->count++;
+    }
+    /* past n / 2 labels, a sequential clear (all bytes 0xff, the int
+     * -1) is cheaper than the scattered writes of reset_local: 6 to
+     * 13 % of the time of a regular map, where every root walks all */
+    if (2 * k >= n)
+        memset(r, -1, (size_t) n * sizeof(int));
+    else
+        reset_local(k, rinv, r);
+#ifdef ISO_DEBUG
+    {
+        int i;
+        for (i = 0; i < n; i++)
+            ISO_CHECK(r[i] == -1);
+        debug_names(n, s->names);
+    }
+#endif
+}
+
 int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-                  int *key, int *relabelling, int *roots, int *nroots, int *work)
+                  iso_root_rule rule, int *key, int *relabelling, int *roots, int *nroots,
+                  int *work)
 {
     int *r = work;
     int *rinv = work + n;
     int *queue = work + 2 * n;
     int *names = work + 3 * n;
-    int *best = key;
     int *cur = work + 4 * n;
-    int *tmp;
-    int ne, first, root, k, len = 0, count = 0, i, cmp;
-#ifdef ISO_DEBUG
-    int *scratch;
-#endif
+    int *order = cur + ISO_KEY_SIZE(n, nd, nc);
+    int *cls = order + n;
+    int *start = cls + n;
+    struct canonical_state s;
+    int ne, first, root, k, i, c, m, lo = 0, hi = 0;
 
     ne = iso_num_edges(n, fp);
     for (first = 0; first < n && fp[first] == -1; first++)
@@ -365,6 +613,18 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
         return 0;
     }
 
+    if (rule != ISO_ROOTS_ALL) {
+        /* r, rinv, queue and names (4 n) are free until the first walk;
+         * the sizes of the classes go into r */
+        m = root_classes(n, fp, rule, order, cls, start, work);
+        for (c = 0; c < m; c++)
+            r[c] = start[c + 1] - start[c];
+        c = choose_class(rule, m, r);
+        lo = start[c];
+        hi = start[c + 1];
+        first = order[lo];
+    }
+
     for (i = 0; i < n; i++)
         names[i] = -1;
 
@@ -373,69 +633,52 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     k = iso_relabelling_from(n, fp, first, r, rinv, queue);
     if (k != 2 * ne)
         return ISO_DISCONNECTED;
-    len = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, best, names);
+    s.n = n;
+    s.nd = nd;
+    s.nc = nc;
+    s.ne = ne;
+    s.fp = fp;
+    s.data = data;
+    s.classes = classes;
+    s.r = r;
+    s.rinv = rinv;
+    s.queue = queue;
+    s.names = names;
+    s.best = key;
+    s.cur = cur;
+    s.relabelling = relabelling;
+    s.roots = roots;
+    s.len = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, s.best, names);
     if (relabelling != NULL)
         memcpy(relabelling, r, (size_t) n * sizeof(int));
     if (roots != NULL)
         roots[0] = first;
-    count = 1;
+    s.count = 1;
     reset_local(k, rinv, r);
 #ifdef ISO_DEBUG
-    scratch = malloc(((size_t) 3 * n + (size_t) ISO_KEY_SIZE(n, nd, nc)) * sizeof(int));
-    ISO_CHECK(scratch != NULL);
+    s.scratch = malloc(((size_t) 3 * n + (size_t) ISO_KEY_SIZE(n, nd, nc)) * sizeof(int));
+    ISO_CHECK(s.scratch != NULL);
 #endif
 
     /* the other roots: r is -1 on entry of each, and only the labels a root
-     * gave are reset after it */
-    for (root = first + 1; root < n; root++) {
-        if (fp[root] == -1)
-            continue;
-        cmp = walk_compare(fp, root, r, rinv, queue, best, &k);
-        if (cmp < 0) {
-            iso_key(n, fp, nd, data, nc, classes, r, rinv, k, cur, names);
-        } else if (cmp == 0) {
-            cmp = tail_compare(n, nd, data, nc, classes, rinv, k, best, cur, names);
-            if (cmp < 0)
-                memcpy(cur, best, (size_t) k * sizeof(int));
-        }
-#ifdef ISO_DEBUG
-        ISO_CHECK(cmp == 1 || k == 2 * ne);
-        debug_root(n, fp, nd, data, nc, classes, root, cmp, best, cur, len, names, scratch);
-#endif
-        if (cmp < 0) {
-            tmp = best;
-            best = cur;
-            cur = tmp;
-            count = 0;
-            if (relabelling != NULL)
-                memcpy(relabelling, r, (size_t) n * sizeof(int));
-        }
-        if (cmp <= 0) {
-            if (roots != NULL)
-                roots[count] = root;
-            count++;
-        }
-        /* past n / 2 labels, a sequential clear (all bytes 0xff, the int
-         * -1) is cheaper than the scattered writes of reset_local: 6 to
-         * 13 % of the time of a regular map, where every root walks all */
-        if (2 * k >= n)
-            memset(r, -1, (size_t) n * sizeof(int));
-        else
-            reset_local(k, rinv, r);
-#ifdef ISO_DEBUG
-        for (i = 0; i < n; i++)
-            ISO_CHECK(r[i] == -1);
-        debug_names(n, names);
-#endif
+     * gave are reset after it. The loop is chosen once per call, so that
+     * ISO_ROOTS_ALL tests no class per root. */
+    if (rule == ISO_ROOTS_ALL) {
+        for (root = first + 1; root < n; root++)
+            if (fp[root] != -1)
+                canonical_root(&s, root);
+    } else {
+        for (i = lo + 1; i < hi; i++)
+            canonical_root(&s, order[i]);
     }
 #ifdef ISO_DEBUG
-    free(scratch);
+    free(s.scratch);
 #endif
-    if (best != key)
-        memcpy(key, best, (size_t) len * sizeof(int));
+    if (s.best != key)
+        memcpy(key, s.best, (size_t) s.len * sizeof(int));
     if (nroots != NULL)
-        *nroots = count;
-    return len;
+        *nroots = s.count;
+    return s.len;
 }
 
 /*
@@ -569,8 +812,29 @@ static int exceeds_prefix(const int *a, int la, const int *b, int lb)
     return la > lb;
 }
 
+/*
+ * The block of the component of root, not labelled yet, written into cand
+ * (see component_block, without commit); return its length. lr is -1 on
+ * entry and on return.
+ */
+static inline int root_block(int n, const int *fp, int nd, const int *data, int nc,
+                             const int *classes, int root, int *lr, int *lrinv, int *queue,
+                             int *names, int *next, int *cand)
+{
+    int k = local_walk(fp, root, lr, lrinv, queue);
+    int len = component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names, next, 0, cand);
+    reset_local(k, lrinv, lr);
+    return len;
+}
+
+/*
+ * The levels of the search store the position of their root in the scan of
+ * the roots: the half-edge itself under ISO_ROOTS_ALL, its index in order
+ * (see root_classes) under the other rules. The scans are written twice, once
+ * per kind of position, so that ISO_ROOTS_ALL tests no class per root.
+ */
 int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-               int all_leaves, int *sequence, int *length, int *relabelling,
+               iso_root_rule rule, int all_leaves, int *sequence, int *length, int *relabelling,
                iso_leaf_callback callback, void *arg, int *work)
 {
     long levels = n / 2 + 1;
@@ -588,11 +852,22 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
     int *next = lvl_next + (long) nc * levels;
     int *seq = next + nc;
     int *cand = seq + ISO_SEQUENCE_SIZE(n, nd, nc);
+    int *order = cand + ISO_KEY_SIZE(n, nd, nc) + 1;
+    int *cls = order + n;
+    int *start = cls + n;
+    int *cnt = start + n + 1;
     int follow_ties = nc > 0 || all_leaves;
-    int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1;
-    int root, best_root, blen, len, k, cmp, ret, i, j, h, found;
+    int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, m = 0;
+    int root, best_root, blen, len, k, cmp, ret, i, j, h, c, found;
 
     ne = iso_num_edges(n, fp);
+    if (rule != ISO_ROOTS_ALL) {
+        /* r, rinv, lr and lrinv (4 n) are free until they are cleared below;
+         * cnt[c] is the number of half-edges of the class c not labelled */
+        m = root_classes(n, fp, rule, order, cls, start, work);
+        for (c = 0; c < m; c++)
+            cnt[c] = start[c + 1] - start[c];
+    }
     for (h = 0; h < n; h++) {
         r[h] = -1;
         lr[h] = -1;
@@ -628,16 +903,31 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
              * in place in seq, and its first root */
             best_root = -1;
             blen = 0;
-            for (root = 0; root < n; root++) {
-                if (fp[root] == -1 || r[root] != -1)
-                    continue;
-                k = local_walk(fp, root, lr, lrinv, queue);
-                len = component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names, next, 0, cand);
-                reset_local(k, lrinv, lr);
-                if (best_root == -1 || compare_sequences(cand, len, seq + seqlen, blen) < 0) {
-                    memcpy(seq + seqlen, cand, (size_t) len * sizeof(int));
-                    blen = len;
-                    best_root = root;
+            if (rule == ISO_ROOTS_ALL) {
+                for (root = 0; root < n; root++) {
+                    if (fp[root] == -1 || r[root] != -1)
+                        continue;
+                    len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
+                                     names, next, cand);
+                    if (best_root == -1 || compare_sequences(cand, len, seq + seqlen, blen) < 0) {
+                        memcpy(seq + seqlen, cand, (size_t) len * sizeof(int));
+                        blen = len;
+                        best_root = root;
+                    }
+                }
+            } else {
+                c = choose_class(rule, m, cnt);
+                for (i = start[c]; i < start[c + 1]; i++) {
+                    root = order[i];
+                    if (r[root] != -1)
+                        continue;
+                    len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
+                                     names, next, cand);
+                    if (best_root == -1 || compare_sequences(cand, len, seq + seqlen, blen) < 0) {
+                        memcpy(seq + seqlen, cand, (size_t) len * sizeof(int));
+                        blen = len;
+                        best_root = i;
+                    }
                 }
             }
 #ifdef ISO_DEBUG
@@ -654,6 +944,10 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
             found = 0;
             while (!found && depth > 0) {
                 depth--;
+                if (rule != ISO_ROOTS_ALL)
+                    for (i = lvl_used[depth]; i < used; i++)
+                        if (rinv[i] != -1)
+                            cnt[cls[rinv[i]]]++;
                 for (i = lvl_used[depth]; i < used; i++) {
                     h = rinv[i];
                     if (h == -1)
@@ -674,17 +968,34 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
                 if (!follow_ties)
                     continue;
                 /* the tied roots after the current one: their block is
-                 * the one of the level, already in seq */
-                for (root = lvl_root[depth] + 1; root < n; root++) {
-                    if (fp[root] == -1 || r[root] != -1)
-                        continue;
-                    k = local_walk(fp, root, lr, lrinv, queue);
-                    len = component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names, next, 0, cand);
-                    reset_local(k, lrinv, lr);
-                    if (len == lvl_len[depth] && compare_sequences(cand, len, seq + seqlen, len) == 0) {
-                        lvl_root[depth] = root;
-                        found = 1;
-                        break;
+                 * the one of the level, already in seq; under a rule, they
+                 * are in the class of the root of the level, the one chosen
+                 * at the level since the state is back to it */
+                if (rule == ISO_ROOTS_ALL) {
+                    for (root = lvl_root[depth] + 1; root < n; root++) {
+                        if (fp[root] == -1 || r[root] != -1)
+                            continue;
+                        len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
+                                         names, next, cand);
+                        if (len == lvl_len[depth] && compare_sequences(cand, len, seq + seqlen, len) == 0) {
+                            lvl_root[depth] = root;
+                            found = 1;
+                            break;
+                        }
+                    }
+                } else {
+                    c = cls[order[lvl_root[depth]]];
+                    for (i = lvl_root[depth] + 1; i < start[c + 1]; i++) {
+                        root = order[i];
+                        if (r[root] != -1)
+                            continue;
+                        len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
+                                         names, next, cand);
+                        if (len == lvl_len[depth] && compare_sequences(cand, len, seq + seqlen, len) == 0) {
+                            lvl_root[depth] = i;
+                            found = 1;
+                            break;
+                        }
                     }
                 }
             }
@@ -693,7 +1004,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
         }
 
         /* label the component of the root of the level depth */
-        root = lvl_root[depth];
+        root = rule == ISO_ROOTS_ALL ? lvl_root[depth] : order[lvl_root[depth]];
         k = local_walk(fp, root, lr, lrinv, queue);
         for (i = 0; i < k; i += 2) {
             h = lrinv[i];
@@ -703,6 +1014,10 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
             rinv[used + i + 1] = lrinv[i + 1];
         }
         component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names, next, 1, cand);
+        if (rule != ISO_ROOTS_ALL)
+            for (i = 0; i < k; i++)
+                if (lrinv[i] != -1)
+                    cnt[cls[lrinv[i]]]--;
         reset_local(k, lrinv, lr);
         used += k;
         seqlen += lvl_len[depth];
@@ -716,6 +1031,8 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
         ISO_CHECK(r[h] == -1 && lr[h] == -1);
     for (i = 0; i < nc * n; i++)
         ISO_CHECK(names[i] == -1);
+    for (c = 0; c < m; c++)
+        ISO_CHECK(cnt[c] == start[c + 1] - start[c]);
 #endif
     *length = bestlen;
     return 0;

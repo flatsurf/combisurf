@@ -13,6 +13,13 @@
  * iso_canonical, which rejects a root as soon as its key exceeds the best
  * one, is also compared with a reference that walks and keys every root in
  * full, on random maps and on square-tiled surfaces decorated by h % 4.
+ * Under the rules restricting the roots, both are compared with a
+ * reference of the classes that computes the invariants by walking the
+ * cycles and compares every pair of half-edges: iso_canonical tries the
+ * roots of the class of the reference, and each block of iso_search starts
+ * at a half-edge of the class of the reference among the half-edges not
+ * labelled before; the number of automorphisms does not depend on the
+ * rule.
  *
  * This file is part of combisurf.
  *
@@ -56,6 +63,13 @@ static int key2[KEY_SIZE];
 static int work[WORK_SIZE];
 static int relabelling[MAX_N];
 static int roots[MAX_N];
+
+/* the rules, ISO_ROOTS_ALL first */
+static const iso_root_rule rules[] = {
+    ISO_ROOTS_ALL, ISO_ROOTS_HALF_EDGE_MAX, ISO_ROOTS_HALF_EDGE_FEWEST,
+    ISO_ROOTS_EDGE_MAX, ISO_ROOTS_EDGE_FEWEST
+};
+#define NUM_RULES 5
 
 /* splitmix64 */
 static uint64_t rng_state;
@@ -108,7 +122,8 @@ static void check_case(const char *name, int n, const int *fp, int nd, const int
 {
     int count = -1, i;
     current_case = name;
-    CHECK(iso_canonical(n, fp, nd, data, nc, classes, key, relabelling, roots, &count, work) == len);
+    CHECK(iso_canonical(n, fp, nd, data, nc, classes, ISO_ROOTS_ALL, key, relabelling, roots, &count,
+                        work) == len);
     for (i = 0; i < len; i++)
         CHECK(key[i] == expected_key[i]);
     for (i = 0; i < n; i++)
@@ -117,7 +132,8 @@ static void check_case(const char *name, int n, const int *fp, int nd, const int
     for (i = 1; i < count; i++)
         CHECK(roots[i - 1] < roots[i]);
     /* the key and the count do not depend on the optional outputs */
-    CHECK(iso_canonical(n, fp, nd, data, nc, classes, key2, NULL, NULL, NULL, work) == len);
+    CHECK(iso_canonical(n, fp, nd, data, nc, classes, ISO_ROOTS_ALL, key2, NULL, NULL, NULL, work)
+          == len);
     CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) == 0);
 }
 
@@ -166,8 +182,8 @@ static void test_fixed(void)
     check_case("no active half-edge", 2, empty, 0, NULL, 0, NULL, 0, NULL, empty_relabelling, 0);
 
     current_case = "disconnected";
-    CHECK(iso_canonical(4, disconnected, 0, NULL, 0, NULL, key, relabelling, roots, &count, work)
-          == ISO_DISCONNECTED);
+    CHECK(iso_canonical(4, disconnected, 0, NULL, 0, NULL, ISO_ROOTS_ALL, key, relabelling, roots,
+                        &count, work) == ISO_DISCONNECTED);
     CHECK(count == -1);
 }
 
@@ -238,7 +254,7 @@ static int count_leaf(const int *leaf, int first, void *arg)
  * sequence and relabelling.
  */
 static long search(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-                   int *len, long *calls)
+                   iso_root_rule rule, int *len, long *calls)
 {
     static int first_sequence[SEQUENCE_SIZE];
     static int first_relabelling[MAX_N];
@@ -251,12 +267,12 @@ static long search(int n, const int *fp, int nd, const int *data, int nc, const 
     s.count = 0;
     s.calls = 0;
     s.stop_after = 0;
-    CHECK(iso_search(n, fp, nd, data, nc, classes, 1, sequence, len, relabelling,
+    CHECK(iso_search(n, fp, nd, data, nc, classes, rule, 1, sequence, len, relabelling,
                      count_leaf, &s, search_work) == 0);
     CHECK(s.count >= 1);
     if (calls != NULL)
         *calls = s.calls;
-    CHECK(iso_search(n, fp, nd, data, nc, classes, 0, first_sequence, &len2, first_relabelling,
+    CHECK(iso_search(n, fp, nd, data, nc, classes, rule, 0, first_sequence, &len2, first_relabelling,
                      NULL, NULL, search_work) == 0);
     CHECK(len2 == *len);
     CHECK(memcmp(first_sequence, sequence, (size_t) len2 * sizeof(int)) == 0);
@@ -275,13 +291,16 @@ static void test_search_fixed(void)
     static const int pairs[] = {0, 1, 0, 1, 2, 3, 2, 3};
     static const int triangle_and_folded[] = {2, 5, 4, 1, 0, 3, 6, -1};
     static const int triangle_and_folded_relabelling[] = {2, 3, 4, 5, 6, 7, 0, 1};
+    static const int folded_first_sequence[] = {2, 0, -1, 6, 2, 5, 4, 1, 0, 3};
+    static const int triangle_first_sequence[] = {6, 2, 5, 4, 1, 0, 3, 2, 0, -1};
+    static const int identity8[] = {0, 1, 2, 3, 4, 5, 6, 7};
     static const int empty[] = {-1, -1};
     struct leaves s;
-    int len, i;
+    int len, i, count;
     long calls;
 
     current_case = "search, two edges";
-    CHECK(search(4, two_edges, 0, NULL, 0, NULL, &len, NULL) == 8);
+    CHECK(search(4, two_edges, 0, NULL, 0, NULL, ISO_ROOTS_ALL, &len, NULL) == 8);
     CHECK(len == 6);
     for (i = 0; i < len; i++)
         CHECK(sequence[i] == two_edges_sequence[i]);
@@ -291,7 +310,7 @@ static void test_search_fixed(void)
     current_case = "search, two edges, shared classes";
     /* the first leaf, from the roots 0 then 2, is replaced by the one from
      * the roots 1 then 2, followed by the one from 2 then 1 */
-    CHECK(search(4, two_edges, 0, NULL, 1, shared, &len, &calls) == 2);
+    CHECK(search(4, two_edges, 0, NULL, 1, shared, ISO_ROOTS_ALL, &len, &calls) == 2);
     CHECK(calls == 3);
     CHECK(len == 10);
     for (i = 0; i < len; i++)
@@ -300,20 +319,46 @@ static void test_search_fixed(void)
         CHECK(relabelling[i] == shared_relabelling[i]);
 
     current_case = "search, four edges";
-    CHECK(search(8, four_edges, 0, NULL, 0, NULL, &len, NULL) == 384);
+    CHECK(search(8, four_edges, 0, NULL, 0, NULL, ISO_ROOTS_ALL, &len, NULL) == 384);
     CHECK(len == 12);
-    CHECK(search(8, four_edges, 0, NULL, 1, pairs, &len, NULL) == 32);
+    CHECK(search(8, four_edges, 0, NULL, 1, pairs, ISO_ROOTS_ALL, &len, NULL) == 32);
     /* the same classes kept exactly */
-    CHECK(search(8, four_edges, 1, pairs, 0, NULL, &len, NULL) == 4);
+    CHECK(search(8, four_edges, 1, pairs, 0, NULL, ISO_ROOTS_ALL, &len, NULL) == 4);
 
     current_case = "search, triangle and folded edge";
-    CHECK(search(8, triangle_and_folded, 0, NULL, 0, NULL, &len, NULL) == 6);
+    CHECK(search(8, triangle_and_folded, 0, NULL, 0, NULL, ISO_ROOTS_ALL, &len, NULL) == 6);
     CHECK(len == 3 + 7);
     for (i = 0; i < 8; i++)
         CHECK(relabelling[i] == triangle_and_folded_relabelling[i]);
 
+    /* the outputs of isomorphism_naive: the class changes from the first
+     * step to the second, the folded edge (its own class) then the
+     * triangle under *_FEWEST, the triangle (vertices of degree 2, faces of
+     * degree 3) then the folded edge under *_MAX */
+    for (i = 1; i < NUM_RULES; i++) {
+        const int *expected_sequence, *expected_relabelling;
+        int j;
+        current_case = "search, triangle and folded edge, under a rule";
+        if (rules[i] == ISO_ROOTS_HALF_EDGE_FEWEST || rules[i] == ISO_ROOTS_EDGE_FEWEST) {
+            expected_sequence = folded_first_sequence;
+            expected_relabelling = triangle_and_folded_relabelling;
+        } else {
+            expected_sequence = triangle_first_sequence;
+            expected_relabelling = identity8;
+        }
+        CHECK(search(8, triangle_and_folded, 0, NULL, 0, NULL, rules[i], &len, NULL) == 6);
+        CHECK(len == 10);
+        for (j = 0; j < len; j++)
+            CHECK(sequence[j] == expected_sequence[j]);
+        for (j = 0; j < 8; j++)
+            CHECK(relabelling[j] == expected_relabelling[j]);
+        current_case = "connected triangle and folded edge, under a rule";
+        CHECK(iso_canonical(8, triangle_and_folded, 0, NULL, 0, NULL, rules[i], key, relabelling,
+                            roots, &count, work) == ISO_DISCONNECTED);
+    }
+
     current_case = "search, no active half-edge";
-    CHECK(search(2, empty, 0, NULL, 0, NULL, &len, NULL) == 1);
+    CHECK(search(2, empty, 0, NULL, 0, NULL, ISO_ROOTS_ALL, &len, NULL) == 1);
     CHECK(len == 0);
     CHECK(relabelling[0] == -1 && relabelling[1] == -1);
 
@@ -325,7 +370,7 @@ static void test_search_fixed(void)
     s.count = 0;
     s.calls = 0;
     s.stop_after = 5;
-    CHECK(iso_search(8, four_edges, 0, NULL, 0, NULL, 1, sequence, &len, NULL,
+    CHECK(iso_search(8, four_edges, 0, NULL, 0, NULL, ISO_ROOTS_ALL, 1, sequence, &len, NULL,
                      count_leaf, &s, search_work) == 7);
     CHECK(s.calls == 5);
 }
@@ -362,7 +407,8 @@ static int random_connected(int ne, int folded, int *fp)
             fp[i] = -1;
         for (i = 0; i < na; i++)
             fp[active[i]] = images[i];
-        if (iso_canonical(n, fp, 0, NULL, 0, NULL, key, NULL, NULL, NULL, work) != ISO_DISCONNECTED)
+        if (iso_canonical(n, fp, 0, NULL, 0, NULL, ISO_ROOTS_ALL, key, NULL, NULL, NULL, work)
+                != ISO_DISCONNECTED)
             return 1;
     }
     return 0;
@@ -407,7 +453,8 @@ static void test_random(void)
         /* few values, so that automorphisms may survive */
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(2);
-        len = iso_canonical(n, fp, nd, dec, nc, dec + nd * n, key, relabelling, roots, &count, work);
+        len = iso_canonical(n, fp, nd, dec, nc, dec + nd * n, ISO_ROOTS_ALL, key, relabelling, roots,
+                            &count, work);
         CHECK(len >= n);
         CHECK(count >= 1);
         for (i = 0; i < count; i++)
@@ -424,7 +471,8 @@ static void test_random(void)
         relabel_arrays(n, nd + nc, dec, r, dec2);
         for (i = nd * n; i < (nd + nc) * n; i++)
             dec2[i] = 1 - dec2[i];
-        len2 = iso_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n, key2, NULL, NULL, &count2, work);
+        len2 = iso_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n, ISO_ROOTS_ALL, key2, NULL, NULL,
+                             &count2, work);
         CHECK(len2 == len);
         CHECK(count2 == count);
         CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) == 0);
@@ -435,7 +483,8 @@ static void test_random(void)
             for (h = 0; fp2[h] == -1; h++)
                 ;
             dec2[h] = 2;
-            len2 = iso_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n, key2, NULL, NULL, NULL, work);
+            len2 = iso_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n, ISO_ROOTS_ALL, key2, NULL, NULL,
+                                 NULL, work);
             CHECK(len2 == len);
             CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) != 0);
         }
@@ -447,22 +496,113 @@ static void test_random(void)
 /* ------------------------------------------------------------------ */
 
 /*
- * The reference of iso_canonical: every active half-edge as a root, its
- * relabelling by iso_relabelling_from and its key by iso_key in full, then
- * compared with the best key so far.
+ * The invariant of the active half-edge h under rule, into inv (6 ints, the
+ * unused entries 0), computed by walking the cycles from h: the vertex of h
+ * is h, vp[h], ... with vp[fp[t]] = h for t the twin of h (h itself on a
+ * folded edge), that is vp[x] = twin(fp^-1(x)).
+ */
+static int ref_twin(const int *fp, int h)
+{
+    return fp[h ^ 1] != -1 ? h ^ 1 : h;
+}
+
+/*
+ * The length of the cycle of h in the vertex permutation (vertex nonzero)
+ * or in fp, and whether g is on it; finv is the inverse of fp.
+ */
+static int ref_cycle(const int *fp, const int *finv, int vertex, int h, int g, int *meets)
+{
+    int x = h, len = 0;
+    *meets = 0;
+    do {
+        if (x == g)
+            *meets = 1;
+        len++;
+        x = vertex ? ref_twin(fp, finv[x]) : fp[x];
+    } while (x != h);
+    return len;
+}
+
+static void ref_invariant(const int *fp, const int *finv, iso_root_rule rule, int h, int *inv)
+{
+    int t = ref_twin(fp, h), loop, monogon, i;
+    for (i = 0; i < 6; i++)
+        inv[i] = 0;
+    if (rule == ISO_ROOTS_ALL)
+        return;
+    inv[0] = ref_cycle(fp, finv, 1, h, t, &loop);
+    inv[1] = ref_cycle(fp, finv, 0, h, t, &monogon);
+    if (rule == ISO_ROOTS_HALF_EDGE_MAX || rule == ISO_ROOTS_HALF_EDGE_FEWEST)
+        return;
+    inv[2] = ref_cycle(fp, finv, 1, t, t, &i);
+    inv[3] = ref_cycle(fp, finv, 0, t, t, &i);
+    inv[4] = loop;
+    inv[5] = monogon;
+}
+
+/*
+ * The reference of the class of a rule: into mask (n ints), 1 on the
+ * half-edges among those with avail[h] nonzero (active ones) whose
+ * invariant is the one chosen by the rule among them, 0 elsewhere. Every
+ * pair of half-edges is compared, O(n^2) invariants.
+ */
+static void ref_class(int n, const int *fp, iso_root_rule rule, const int *avail, int *mask)
+{
+    static int inv[MAX_N][6], finv[MAX_N];
+    int h, g, cnt, best = -1, best_cnt = 0, cmp;
+    int fewest = rule == ISO_ROOTS_HALF_EDGE_FEWEST || rule == ISO_ROOTS_EDGE_FEWEST;
+
+    for (h = 0; h < n; h++)
+        if (fp[h] != -1)
+            finv[fp[h]] = h;
+    for (h = 0; h < n; h++)
+        if (avail[h])
+            ref_invariant(fp, finv, rule, h, inv[h]);
+    for (h = 0; h < n; h++) {
+        if (!avail[h])
+            continue;
+        cnt = 0;
+        for (g = 0; g < n; g++)
+            if (avail[g] && memcmp(inv[g], inv[h], sizeof(inv[h])) == 0)
+                cnt++;
+        cmp = best == -1 ? 1 : 0;
+        if (cmp == 0 && fewest && cnt != best_cnt)
+            cmp = cnt < best_cnt ? 1 : -1;
+        if (cmp == 0) {
+            for (g = 0; g < 6 && inv[h][g] == inv[best][g]; g++)
+                ;
+            cmp = g == 6 ? 0 : (inv[h][g] > inv[best][g] ? 1 : -1);
+        }
+        if (cmp > 0) {
+            best = h;
+            best_cnt = cnt;
+        }
+    }
+    for (h = 0; h < n; h++)
+        mask[h] = best != -1 && avail[h] && memcmp(inv[h], inv[best], sizeof(inv[h])) == 0;
+}
+
+/*
+ * The reference of iso_canonical: every active half-edge of the class of the
+ * rule (ref_class) as a root, its relabelling by iso_relabelling_from and
+ * its key by iso_key in full, then compared with the best key so far.
  */
 static int ref_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-                         int *best, int *best_relabelling, int *best_roots, int *nroots)
+                         iso_root_rule rule, int *best, int *best_relabelling, int *best_roots,
+                         int *nroots)
 {
     static int r[MAX_N], rinv[MAX_N], queue[MAX_N], names[MAX_N], cur[KEY_SIZE];
+    static int avail[MAX_N], mask[MAX_N];
     int ne = iso_num_edges(n, fp), root, k, len = 0, l, count = 0, cmp, i;
 
     for (i = 0; i < n; i++) {
         names[i] = -1;
         best_relabelling[i] = -1;
+        avail[i] = fp[i] != -1;
     }
+    ref_class(n, fp, rule, avail, mask);
     for (root = 0; root < n; root++) {
-        if (fp[root] == -1)
+        if (!mask[root])
             continue;
         k = iso_relabelling_from(n, fp, root, r, rinv, queue);
         if (k != 2 * ne)
@@ -490,22 +630,32 @@ static int ref_canonical(int n, const int *fp, int nd, const int *data, int nc, 
     return len;
 }
 
-/* Check iso_canonical against ref_canonical on fp. */
+/*
+ * Check iso_canonical against ref_canonical on fp under every rule. The
+ * number of roots of minimal key, the order of the group, does not depend
+ * on the rule.
+ */
 static void check_reference(int n, const int *fp, int nd, const int *data, int nc, const int *classes)
 {
     static int ref_key[KEY_SIZE], ref_relabelling[MAX_N], ref_roots[MAX_N];
-    int len, ref_len, count = -1, ref_count = -1;
+    int len, ref_len, count = -1, ref_count = -1, all_count = -1, i;
 
-    ref_len = ref_canonical(n, fp, nd, data, nc, classes, ref_key, ref_relabelling, ref_roots,
-                            &ref_count);
-    len = iso_canonical(n, fp, nd, data, nc, classes, key, relabelling, roots, &count, work);
-    CHECK(len == ref_len);
-    if (len == ISO_DISCONNECTED)
-        return;
-    CHECK(count == ref_count);
-    CHECK(memcmp(key, ref_key, (size_t) len * sizeof(int)) == 0);
-    CHECK(memcmp(relabelling, ref_relabelling, (size_t) n * sizeof(int)) == 0);
-    CHECK(memcmp(roots, ref_roots, (size_t) count * sizeof(int)) == 0);
+    for (i = 0; i < NUM_RULES; i++) {
+        ref_len = ref_canonical(n, fp, nd, data, nc, classes, rules[i], ref_key, ref_relabelling,
+                                ref_roots, &ref_count);
+        len = iso_canonical(n, fp, nd, data, nc, classes, rules[i], key, relabelling, roots, &count,
+                            work);
+        CHECK(len == ref_len);
+        if (len == ISO_DISCONNECTED)
+            return;
+        CHECK(count == ref_count);
+        CHECK(memcmp(key, ref_key, (size_t) len * sizeof(int)) == 0);
+        CHECK(memcmp(relabelling, ref_relabelling, (size_t) n * sizeof(int)) == 0);
+        CHECK(memcmp(roots, ref_roots, (size_t) count * sizeof(int)) == 0);
+        if (i == 0)
+            all_count = count;
+        CHECK(count == all_count);
+    }
 }
 
 /*
@@ -620,12 +770,45 @@ static int random_union(int *fp)
     return n;
 }
 
+/*
+ * Check that the root of each block of the leaf rel of fp (the half-edge of
+ * the first label of its component), reaching the sequence seq of len ints
+ * with nd + nc decoration arrays, lies in the class of rule (ref_class)
+ * among the active half-edges not labelled before it.
+ */
+static void check_block_roots(int n, const int *fp, int narrays, iso_root_rule rule,
+                              const int *rel, const int *seq, int len)
+{
+    static int avail[MAX_N], mask[MAX_N];
+    int pos = 0, first = 0, k, na, root, h;
+
+    while (pos < len) {
+        k = seq[pos];
+        na = 0;
+        root = -1;
+        for (h = 0; h < n; h++) {
+            avail[h] = fp[h] != -1 && rel[h] >= first;
+            if (fp[h] != -1 && rel[h] >= first && rel[h] < first + k)
+                na++;
+            if (rel[h] == first)
+                root = h;
+        }
+        CHECK(root != -1 && fp[root] != -1);
+        ref_class(n, fp, rule, avail, mask);
+        CHECK(mask[root]);
+        pos += 1 + k + narrays * na;
+        first += k;
+    }
+    CHECK(pos == len);
+}
+
 static void test_search_random(void)
 {
     int fp[MAX_N], fp2[MAX_N], r[MAX_N], relabelling1[MAX_N];
     int dec[2 * MAX_ARRAYS * MAX_N], dec2[2 * MAX_ARRAYS * MAX_N];
-    int trial, n, nd, nc, len, len2, count, i, h;
-    long leaves, leaves2;
+    int trial, n, nd, nc, len, len2, count, i, h, j;
+    long leaves, leaves2, all_leaves = 0;
+    iso_root_rule rule;
 
     current_case = "search, random unions";
     for (trial = 0; trial < 300; trial++) {
@@ -634,37 +817,47 @@ static void test_search_random(void)
         nc = rng_below(MAX_ARRAYS + 1);
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(2);
-        leaves = search(n, fp, nd, dec, nc, dec + nd * n, &len, NULL);
-        memcpy(relabelling1, relabelling, (size_t) n * sizeof(int));
+        for (j = 0; j < NUM_RULES; j++) {
+            rule = rules[j];
+            leaves = search(n, fp, nd, dec, nc, dec + nd * n, rule, &len, NULL);
+            memcpy(relabelling1, relabelling, (size_t) n * sizeof(int));
+            /* the leaves reaching the minimum are the automorphisms, whose
+             * number does not depend on the rule */
+            if (j == 0)
+                all_leaves = leaves;
+            CHECK(leaves == all_leaves);
+            check_block_roots(n, fp, nd + nc, rule, relabelling1, sequence, len);
 
-        /* the first leaf sends fp to the face permutation of the canonical
-         * form, which starts with the first block */
-        relabel_fp(n, fp, relabelling1, fp2);
-        CHECK(sequence[0] <= n);
-        for (h = 0; h < sequence[0]; h++)
-            CHECK(fp2[h] == sequence[1 + h]);
+            /* the first leaf sends fp to the face permutation of the
+             * canonical form, which starts with the first block */
+            relabel_fp(n, fp, relabelling1, fp2);
+            CHECK(sequence[0] <= n);
+            for (h = 0; h < sequence[0]; h++)
+                CHECK(fp2[h] == sequence[1 + h]);
 
-        /* a connected map gives one block: k, then its key */
-        len2 = iso_canonical(n, fp, nd, dec, nc, dec + nd * n, key, relabelling, NULL, &count, work);
-        if (len2 != ISO_DISCONNECTED) {
-            CHECK(len == 1 + len2 && sequence[0] == n);
-            CHECK(memcmp(sequence + 1, key, (size_t) len2 * sizeof(int)) == 0);
-            CHECK(memcmp(relabelling, relabelling1, (size_t) n * sizeof(int)) == 0);
-            CHECK(leaves == count);
+            /* a connected map gives one block: k, then its key */
+            len2 = iso_canonical(n, fp, nd, dec, nc, dec + nd * n, rule, key, relabelling, NULL,
+                                 &count, work);
+            if (len2 != ISO_DISCONNECTED) {
+                CHECK(len == 1 + len2 && sequence[0] == n);
+                CHECK(memcmp(sequence + 1, key, (size_t) len2 * sizeof(int)) == 0);
+                CHECK(memcmp(relabelling, relabelling1, (size_t) n * sizeof(int)) == 0);
+                CHECK(leaves == count);
+            }
+
+            /* a relabelled copy, with the class values renamed, has the
+             * same sequence and as many leaves */
+            random_relabelling(n, r);
+            relabel_fp(n, fp, r, fp2);
+            relabel_arrays(n, nd + nc, dec, r, dec2);
+            for (i = nd * n; i < (nd + nc) * n; i++)
+                dec2[i] = 1 - dec2[i];
+            memcpy(sequence2, sequence, (size_t) len * sizeof(int));
+            leaves2 = search(n, fp2, nd, dec2, nc, dec2 + nd * n, rule, &len2, NULL);
+            CHECK(len2 == len);
+            CHECK(leaves2 == leaves);
+            CHECK(memcmp(sequence, sequence2, (size_t) len * sizeof(int)) == 0);
         }
-
-        /* a relabelled copy, with the class values renamed, has the same
-         * sequence and as many leaves */
-        random_relabelling(n, r);
-        relabel_fp(n, fp, r, fp2);
-        relabel_arrays(n, nd + nc, dec, r, dec2);
-        for (i = nd * n; i < (nd + nc) * n; i++)
-            dec2[i] = 1 - dec2[i];
-        memcpy(sequence2, sequence, (size_t) len * sizeof(int));
-        leaves2 = search(n, fp2, nd, dec2, nc, dec2 + nd * n, &len2, NULL);
-        CHECK(len2 == len);
-        CHECK(leaves2 == leaves);
-        CHECK(memcmp(sequence, sequence2, (size_t) len * sizeof(int)) == 0);
     }
 }
 

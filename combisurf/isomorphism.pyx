@@ -25,12 +25,13 @@ walk and the key of a root) are described in
 :meth:`~combisurf.oriented_map.OrientedMap.canonical_labelling`) call this
 module.
 
-On a connected map, every active half-edge is tried as a root: the
-relabelling from it and its key are computed in C (``combisurf/src/isomorphism.c``)
-and the minimal key is kept, which costs `O(n^2)` for `n` half-edges. A
-disconnected map is searched in C as well, component after component, by
-the search of :mod:`combisurf.isomorphism_naive` over the sequences of
-blocks. Without ``classes``, the automorphism group of a disconnected map
+On a connected map, every active half-edge of the class of the rule (see
+below) is tried as a root: the relabelling from it and its key are
+computed in C (``combisurf/src/isomorphism.c``) and the minimal key is
+kept, which costs `O(n^2)` for `n` half-edges. A disconnected map is
+searched in C as well, component after component, by the search of
+:mod:`combisurf.isomorphism_naive` over the sequences of blocks. Without
+``classes``, the automorphism group of a disconnected map
 is a product of wreath products `\mathrm{Aut}(C) \wr S_k` over the classes
 of `k` isomorphic components `C`: :func:`automorphism_generators` and the
 count of :func:`canonical_key` come from this structure, component by
@@ -43,7 +44,7 @@ exponential in the number of components in the worst case. The search
 of the canonical key itself follows every root tied in a component when
 there are ``classes``, so its cost grows with the number of
 automorphisms. The buffers of the C code are counted in C ``int``: a map
-too large for them (about `2^{31} / (9.5 + 2 nd + 3.5 nc)` half-edges with
+too large for them (about `2^{31} / (13.5 + 2 nd + 3.5 nc)` half-edges with
 ``nd`` arrays of ``data`` and ``nc`` of ``classes``) raises an
 ``OverflowError``.
 
@@ -65,11 +66,13 @@ The public functions take the keyword ``root_rule``, one of the integers
 :data:`ROOTS_EDGE_FEWEST`, equal to the constants of the same names of
 :mod:`combisurf.isomorphism_naive`, which defines the rules: the
 half-edges tried as roots. Any other value, a string included, raises a
-``ValueError``. The C code tries every active half-edge as a root, which
-is :data:`ROOTS_ALL`; under another rule the functions check their input
-as above, then return the results of :mod:`combisurf.isomorphism_naive`
-for that rule (the count of :func:`canonical_key` excepted, which does not
-depend on the rule and is computed here).
+``ValueError``. The C code computes the invariants of the half-edges once
+per call and tries only the roots of the class of the rule, on a
+disconnected map the class chosen at each step among the half-edges not
+labelled yet, as the reference does. The automorphism group does not
+depend on the rule: on a disconnected map, :func:`automorphism_generators`
+and the count of :func:`canonical_key` come from the structure of the
+group above under every rule.
 
 EXAMPLES::
 
@@ -93,7 +96,7 @@ The results agree with the reference implementation::
     True
 
 Under a rule other than the default, the results are those of the
-reference for that rule::
+reference for that rule, computed in C::
 
     sage: from combisurf.isomorphism import canonical_form, ROOTS_ALL, ROOTS_HALF_EDGE_MAX
     sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]
@@ -137,8 +140,8 @@ cdef array.array _int_array = array.array('i', [])
 
 
 cdef enum:
-    # the value of ROOTS_ALL as a C constant, compared without the lookup of
-    # a module global
+    # the value of ROOTS_ALL as a C constant, passed to the C code without
+    # the lookup of a module global
     _ROOTS_ALL = 0
 
 
@@ -168,24 +171,6 @@ cdef int _check_root_rule(root_rule) except -1:
                      "ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got {!r}".format(root_rule))
 
 
-def _naive():
-    r"""
-    Return the module :mod:`combisurf.isomorphism_naive`, which computes the
-    results under the rules other than ``ROOTS_ALL``.
-
-    It is imported at the call, so that the results under ``ROOTS_ALL`` never
-    depend on it.
-
-    TESTS::
-
-        sage: from combisurf.isomorphism import _naive
-        sage: _naive().__name__
-        'combisurf.isomorphism_naive'
-    """
-    from combisurf import isomorphism_naive
-    return isomorphism_naive
-
-
 def _check_sizes(n, nd, nc):
     r"""
     Raise an ``OverflowError`` if a buffer of the C code for a map of ``n``
@@ -209,9 +194,9 @@ def _check_sizes(n, nd, nc):
         OverflowError: map too large: 2147483648 half-edges with 0 arrays of data and 0 of classes
     """
     key = n * (1 + nd + nc)
-    work = 4 * n + key
+    work = 7 * n + 1 + key
     sequence = key + n // 2
-    search = (5 + nc) * n + (4 + nc) * (n // 2 + 1) + nc + sequence + key + 1
+    search = (5 + nc) * n + (4 + nc) * (n // 2 + 1) + nc + sequence + key + 1 + 4 * n + 1
     if max(n, key, work, sequence, search) > INT_MAX:
         raise OverflowError("map too large: {} half-edges with {} arrays of data and {} of classes".format(n, nd, nc))
 
@@ -355,15 +340,17 @@ cdef _Map _prepare(fp, data, classes):
     return _convert(fp, data, classes)
 
 
-cdef int _run(_Map m, array.array key, int *relabelling, int *roots, int *nroots) except? -2:
+cdef int _run(_Map m, int rule, array.array key, int *relabelling, int *roots, int *nroots) except? -2:
     r"""
-    Run ``iso_canonical`` on ``m``: write the minimal key into ``key`` (of
+    Run ``iso_canonical`` on ``m`` under the rule ``rule`` (checked by
+    ``_check_root_rule``): write the minimal key into ``key`` (of
     ``ISO_KEY_SIZE`` entries) and return its length, or ``ISO_DISCONNECTED``.
     """
     cdef array.array work = _new(ISO_WORK_SIZE(m.n, m.nd, m.nc))
     cdef int *dec = m.dec.data.as_ints
     return iso_canonical(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n,
-                         key.data.as_ints, relabelling, roots, nroots, work.data.as_ints)
+                         <iso_root_rule> rule, key.data.as_ints, relabelling, roots, nroots,
+                         work.data.as_ints)
 
 
 cdef array.array _complete(array.array r, int n, int ne):
@@ -382,18 +369,20 @@ cdef array.array _complete(array.array r, int n, int ne):
     return r
 
 
-cdef int _search(_Map m, bint all_leaves, array.array sequence, int *relabelling,
+cdef int _search(_Map m, int rule, bint all_leaves, array.array sequence, int *relabelling,
                  iso_leaf_callback callback, void *arg) except -1:
     r"""
-    Run ``iso_search`` on ``m``: write the minimal sequence of blocks into
-    ``sequence`` (of ``ISO_SEQUENCE_SIZE`` entries) and return its length.
-    A Python exception raised by ``callback`` propagates.
+    Run ``iso_search`` on ``m`` under the rule ``rule``: write the minimal
+    sequence of blocks into ``sequence`` (of ``ISO_SEQUENCE_SIZE`` entries)
+    and return its length. A Python exception raised by ``callback``
+    propagates.
     """
     cdef array.array work = _new(ISO_SEARCH_WORK_SIZE(m.n, m.nd, m.nc))
     cdef int *dec = m.dec.data.as_ints
     cdef int length
-    iso_search(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n, all_leaves,
-               sequence.data.as_ints, &length, relabelling, callback, arg, work.data.as_ints)
+    iso_search(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n, <iso_root_rule> rule,
+               all_leaves, sequence.data.as_ints, &length, relabelling, callback, arg,
+               work.data.as_ints)
     return length
 
 
@@ -575,12 +564,10 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
-    if rule != _ROOTS_ALL:
-        return _naive().canonical_labelling(fp, data, classes, root_rule=rule)
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
-    if _run(m, key, r.data.as_ints, NULL, NULL) == ISO_DISCONNECTED:
-        _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+    if _run(m, rule, key, r.data.as_ints, NULL, NULL) == ISO_DISCONNECTED:
+        _search(m, rule, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
     return _complete(r, m.n, m.ne)
 
 
@@ -685,12 +672,10 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
-    if rule != _ROOTS_ALL:
-        return _naive().canonical_form(fp, data, classes, root_rule=rule)
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
-    if _run(m, key, r.data.as_ints, NULL, NULL) == ISO_DISCONNECTED:
-        _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+    if _run(m, rule, key, r.data.as_ints, NULL, NULL) == ISO_DISCONNECTED:
+        _search(m, rule, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
         _key_of(m, r, key)
     return _form(m, key, r, data)
 
@@ -731,17 +716,19 @@ cdef inline int _find(int *parent, int x):
     return x
 
 
-cdef list _leaf_automorphisms(_Map m, array.array ra):
+cdef list _leaf_automorphisms(_Map m, int rule, array.array ra):
     r"""
     Return the list of the automorphisms of the disconnected map ``m``, from
-    the leaves of ``iso_search``; ``ra`` is a buffer of ``m.n`` entries.
+    the leaves of ``iso_search`` under the rule ``rule``, in their order;
+    ``ra`` is a buffer of ``m.n`` entries.
     """
     cdef _Automorphisms s = _Automorphisms.__new__(_Automorphisms)
     s.n = m.n
     s.ra = ra
     s.rbinv = _new(m.n)
     s.result = []
-    _search(m, True, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), NULL, _automorphism_leaf, <void *> s)
+    _search(m, rule, True, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), NULL, _automorphism_leaf,
+            <void *> s)
     return s.result
 
 
@@ -877,7 +864,7 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
         key = _new(ISO_KEY_SIZE(size, mc.nd, 0))
         ra = _new(size)
         roots = _new(size)
-        length = _run(mc, key, ra.data.as_ints, roots.data.as_ints, &cnt)
+        length = _run(mc, _ROOTS_ALL, key, ra.data.as_ints, roots.data.as_ints, &cnt)
         if length == ISO_DISCONNECTED:
             raise RuntimeError("a component of a map is not connected")
         kb = (<char *> key.data.as_ints)[:length * sizeof(int)]
@@ -1377,16 +1364,14 @@ def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
-    if rule != _ROOTS_ALL:
-        return _naive().automorphisms(fp, data, classes, root_rule=rule)
     cdef int n = m.n
     cdef int count, j
     cdef array.array key = _new(ISO_KEY_SIZE(n, m.nd, m.nc))
     cdef array.array ra = _new(n)
     cdef array.array roots = _new(n)
     cdef array.array rb, rbinv, queue
-    if _run(m, key, ra.data.as_ints, roots.data.as_ints, &count) == ISO_DISCONNECTED:
-        return _leaf_automorphisms(m, ra)
+    if _run(m, rule, key, ra.data.as_ints, roots.data.as_ints, &count) == ISO_DISCONNECTED:
+        return _leaf_automorphisms(m, rule, ra)
     if count == 0:
         return [array.array('i', range(n))]
     rb = _new(n)
@@ -1422,20 +1407,19 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_ALL):
       decoration)
 
     - ``root_rule`` -- the half-edges tried as roots, as in
-      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`); under
-      another rule the result is the one of
-      :func:`combisurf.isomorphism_naive.automorphism_generators` for that
-      rule, connected map or not: the generators may differ from a rule to
-      another, the group generated does not
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`): on a
+      connected map the generators may differ from a rule to another, the
+      group generated does not; on a disconnected map the generators do not
+      depend on the rule
 
     OUTPUT: a list of automorphisms (as in :func:`automorphisms`) that
     generate the group; empty when the group is trivial. There are three
     cases.
 
     - On a connected map the automorphisms are scanned in the order of
-      :func:`automorphisms` and one is kept when it is not in the group
-      generated by those already kept. The scan runs over the roots of
-      minimal key: the automorphism of root ``b_j`` is built only when
+      :func:`automorphisms` under the rule, and one is kept when it is not
+      in the group generated by those already kept. The scan runs over the
+      roots of minimal key: the automorphism of root ``b_j`` is built only when
       ``b_j`` is outside the orbit of ``b_0`` under the generators kept (a
       union-find over the half-edges), so the list of automorphisms and the
       group closure are never computed.
@@ -1451,7 +1435,8 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_ALL):
       half-edge of canonical label `i` of one to the one of label `i` of
       the other. These generators differ from those of
       :func:`combisurf.isomorphism_naive.automorphism_generators` (fewer
-      of them) and generate the same group.
+      of them) and generate the same group. The components are labelled
+      under :data:`ROOTS_ALL` whatever the rule.
 
     - On a disconnected map with ``classes`` the group `H` is the subgroup
       of the previous one (for ``data`` alone) of the automorphisms that
@@ -1512,23 +1497,25 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_ALL):
         sage: PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, 9))).order()
         32
 
-    Under a rule, the generators of the reference for that rule::
+    Under a rule, the same group; on a disconnected map, the same
+    generators::
 
         sage: from combisurf.isomorphism import ROOTS_EDGE_MAX
-        sage: gens = automorphism_generators(fp, classes=(c,), root_rule=ROOTS_EDGE_MAX)
-        sage: PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, 9))).order()
-        32
+        sage: automorphism_generators(fp, classes=(c,), root_rule=ROOTS_EDGE_MAX) == gens
+        True
+        sage: from combisurf.isomorphism import ROOTS_HALF_EDGE_FEWEST
+        sage: gens = automorphism_generators([2, 3, 4, 5, 0, 1], classes=([0, 1, 0, 1, 0, 1],), root_rule=ROOTS_HALF_EDGE_FEWEST)
+        sage: PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, 7))).order()
+        6
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
-    if rule != _ROOTS_ALL:
-        return _naive().automorphism_generators(fp, data, classes, root_rule=rule)
     cdef int n = m.n
     cdef int count
     cdef array.array key = _new(ISO_KEY_SIZE(n, m.nd, m.nc))
     cdef array.array ra = _new(n)
     cdef array.array roots = _new(n)
-    if _run(m, key, ra.data.as_ints, roots.data.as_ints, &count) != ISO_DISCONNECTED:
+    if _run(m, rule, key, ra.data.as_ints, roots.data.as_ints, &count) != ISO_DISCONNECTED:
         return _connected_generators(m, ra, roots, count)
     if m.nc == 0:
         return _wreath_generators(m)
@@ -1621,8 +1608,6 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
         raise ValueError("classes1 and classes2 must have the same number of arrays")
     cdef _Map m1 = _convert(fp1, data1, classes1)
     cdef _Map m2 = _convert(fp2, data2, classes2)
-    if rule != _ROOTS_ALL:
-        return _naive().isomorphism(fp1, data1, fp2, data2, classes1, classes2, root_rule=rule)
     cdef int n1 = m1.n, n2 = m2.n
     cdef array.array key1 = _new(ISO_KEY_SIZE(n1, m1.nd, m1.nc))
     cdef array.array key2 = _new(ISO_KEY_SIZE(n2, m2.nd, m2.nc))
@@ -1630,16 +1615,16 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
     cdef array.array rb = _new(n2)
     cdef int len1, len2, h, e, i
     cdef array.array seq1, seq2
-    len1 = _run(m1, key1, ra.data.as_ints, NULL, NULL)
-    len2 = _run(m2, key2, rb.data.as_ints, NULL, NULL)
+    len1 = _run(m1, rule, key1, ra.data.as_ints, NULL, NULL)
+    len2 = _run(m2, rule, key2, rb.data.as_ints, NULL, NULL)
     if len1 == ISO_DISCONNECTED or len2 == ISO_DISCONNECTED:
         # a connected map has one block, a disconnected one several
         if len1 != len2:
             return None
         seq1 = _new(ISO_SEQUENCE_SIZE(n1, m1.nd, m1.nc))
         seq2 = _new(ISO_SEQUENCE_SIZE(n2, m2.nd, m2.nc))
-        len1 = _search(m1, False, seq1, ra.data.as_ints, NULL, NULL)
-        len2 = _search(m2, False, seq2, rb.data.as_ints, NULL, NULL)
+        len1 = _search(m1, rule, False, seq1, ra.data.as_ints, NULL, NULL)
+        len2 = _search(m2, rule, False, seq2, rb.data.as_ints, NULL, NULL)
         if (len1 != len2
                 or memcmp(seq1.data.as_ints, seq2.data.as_ints, len1 * sizeof(int)) != 0):
             return None
@@ -1663,19 +1648,6 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
                 r[2 * e + 1] = 2 * inactive2[i] + 1
                 i += 1
     return r
-
-
-cdef _automorphism_count(_Map m):
-    r"""
-    Return the number of automorphisms of ``m``, a Python integer, as the
-    count of :func:`canonical_key`.
-    """
-    cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
-    cdef array.array r = _new(m.n)
-    cdef int count
-    if _run(m, key, r.data.as_ints, NULL, &count) == ISO_DISCONNECTED:
-        return _stabiliser(m)[1] if m.nc else _wreath_order(m)
-    return count if count else 1
 
 
 def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count=False, root_rule=ROOTS_ALL):
@@ -1820,24 +1792,13 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
-    if rule != _ROOTS_ALL:
-        naive = _naive()
-        form = naive.canonical_form(fp, data, classes, root_rule=rule)
-        out = [array.array('i', [x for t in form for x in t]).tobytes()]
-        if relabelling:
-            out.append(naive.canonical_labelling(fp, data, classes, root_rule=rule))
-        if automorphism_count:
-            out.append(_automorphism_count(m))
-        if len(out) == 1:
-            return out[0]
-        return tuple(out)
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
     cdef int count, length
     order = 0
-    length = _run(m, key, r.data.as_ints, NULL, &count)
+    length = _run(m, rule, key, r.data.as_ints, NULL, &count)
     if length == ISO_DISCONNECTED:
-        _search(m, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+        _search(m, rule, False, _new(ISO_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
         if automorphism_count:
             order = _stabiliser(m)[1] if m.nc else _wreath_order(m)
         length = _key_of(m, r, key)
