@@ -40,6 +40,12 @@ their values (on a disconnected map, the classes shared by the components
 tie them together). The fast implementation :mod:`combisurf.isomorphism`
 is then compared with it by equality of the results, on random maps of up
 to 400 half-edges.
+
+The properties on random maps of up to 48 half-edges, the comparison of
+the two implementations on them, the automorphism counts and the
+isomorphism verdicts of cylinder diagrams are checked under each rule of
+the roots (the keyword ``root_rule``) as well; under every rule the
+automorphisms form the same group.
 """
 import math
 import random
@@ -58,6 +64,15 @@ from explorations import (BLUE, RED, combisurf_key, explore, flip_neighbours,
                           reduced_core_seed)
 
 NOT_IMPLEMENTED = pytest.mark.xfail(raises=NotImplementedError, strict=True)
+
+# the rules of the roots, by their names in OrientedMap and their integers
+# in the modules isomorphism and isomorphism_naive
+ROOT_RULE_NAMES = ["all", "half-edge-max", "half-edge-fewest", "edge-max", "edge-fewest"]
+ROOT_RULES = [isomorphism_naive.ROOTS_ALL, isomorphism_naive.ROOTS_HALF_EDGE_MAX,
+              isomorphism_naive.ROOTS_HALF_EDGE_FEWEST, isomorphism_naive.ROOTS_EDGE_MAX,
+              isomorphism_naive.ROOTS_EDGE_FEWEST]
+WITH_ROOT_RULES = pytest.mark.parametrize("root_rule", ROOT_RULES, ids=ROOT_RULE_NAMES)
+WITH_ROOT_RULE_NAMES = pytest.mark.parametrize("root_rule", ROOT_RULE_NAMES)
 
 
 # Adapters
@@ -128,29 +143,31 @@ def automorphism_group_generated(m, gens, **decorations):
     return group_closure(gens, len(m.vertex_permutation())) == group
 
 
-def isomorphism(a, b, **decorations):
+def isomorphism(a, b, root_rule="all", **decorations):
     r"""
     Return a half-edge relabelling ``r`` (a list) such that ``a``
     relabelled by ``r`` is ``b`` with the decorations of ``a`` carried to
-    those of ``b``, or ``None`` if there is none.
+    those of ``b``, or ``None`` if there is none, searched under the rule
+    of the roots ``root_rule``.
 
     Each decoration keyword (as in :func:`automorphism_count`) takes a pair
     ``(decoration of a, decoration of b)``.
     """
     keywords = decoration_keywords(**decorations)
     keywords = {key: value for key, value in keywords.items() if value is not None}
-    ok, r = a.is_isomorphic(b, certificate=True, **keywords)
+    ok, r = a.is_isomorphic(b, certificate=True, root_rule=root_rule, **keywords)
     return list(r) if ok else None
 
 
-def canonical_form(m, **decorations):
+def canonical_form(m, root_rule="all", **decorations):
     r"""
     Return an object comparable with ``==`` that is equal for two decorated
-    maps if and only if they are isomorphic.
+    maps if and only if they are isomorphic, under the rule of the roots
+    ``root_rule``.
 
     The decorations are as in :func:`automorphism_count`.
     """
-    return m.canonical_form(**decoration_keywords(**decorations))
+    return m.canonical_form(root_rule=root_rule, **decoration_keywords(**decorations))
 
 
 def tuple_automorphism_count(perms):
@@ -791,6 +808,12 @@ def test_brute_force_count_agrees(build, decorations):
         data.append(half_edge_array_of_edges(m, decorations['edge_data']))
     expected = automorphism_count(m, **decorations)
     assert brute_force_automorphism_count(fp, tuple(data)) == expected
+    # the same group under every rule of the roots
+    group = {tuple(g) for g in m.automorphisms(**decoration_keywords(**decorations))}
+    for root_rule in ROOT_RULE_NAMES[1:]:
+        automorphisms = m.automorphisms(root_rule=root_rule, **decoration_keywords(**decorations))
+        assert len(automorphisms) == expected
+        assert {tuple(g) for g in automorphisms} == group
 
 
 # Isomorphism verdicts
@@ -819,18 +842,19 @@ def check_relabelling_between(a, b, r):
             assert r[h ^ 1] == r[h] ^ 1
 
 
-def check_isomorphism(a, b, expected, colours=None, cylinders=None):
+def check_isomorphism(a, b, expected, colours=None, cylinders=None, root_rule="all"):
     r"""
-    Check the verdict of :func:`isomorphism` on ``a`` and ``b``; when they
-    are isomorphic, check that the relabelling sends ``a`` to ``b`` and
-    carries the colours exactly and the cylinders up to relabelling.
+    Check the verdict of :func:`isomorphism` on ``a`` and ``b`` under the
+    rule of the roots ``root_rule``; when they are isomorphic, check that
+    the relabelling sends ``a`` to ``b`` and carries the colours exactly and
+    the cylinders up to relabelling.
     """
     decorations = {}
     if colours is not None:
         decorations['face_data'] = colours
     if cylinders is not None:
         decorations['face_classes'] = cylinders
-    r = isomorphism(a, b, **decorations)
+    r = isomorphism(a, b, root_rule=root_rule, **decorations)
     if not expected:
         assert r is None
         return
@@ -856,6 +880,7 @@ def test_isomorphism_fp(fa, fb, expected):
     check_isomorphism(map_from_fp(fa), map_from_fp(fb), expected)
 
 
+@WITH_ROOT_RULE_NAMES
 @pytest.mark.parametrize("sa, sb, expected", [
     # the maps of I3-I6 are disconnected, their components tied together
     # by the cylinders (face classes)
@@ -871,11 +896,11 @@ def test_isomorphism_fp(fa, fb, expected):
     (CD_I7[0], CD_I7[2], False),
     (CD_I7[1], CD_I7[2], False),
 ], ids=["I3", "I4", "I5", "I6", "I7ab", "I7ac", "I7bc"])
-def test_isomorphism_cylinder_diagram(sa, sb, expected):
+def test_isomorphism_cylinder_diagram(sa, sb, expected, root_rule):
     a, colour_a, cylinder_a = cylinder_diagram(sa)
     b, colour_b, cylinder_b = cylinder_diagram(sb)
     check_isomorphism(a, b, expected, colours=(colour_a, colour_b),
-                      cylinders=(cylinder_a, cylinder_b))
+                      cylinders=(cylinder_a, cylinder_b), root_rule=root_rule)
 
 
 @pytest.mark.parametrize("s", CD_I7 + [CD_I8], ids=["I7a", "I7b", "I7c", "I8"])
@@ -914,6 +939,24 @@ def test_canonical_form_invariance(build, decorations):
         r, sigma = random_relabelling(m, rng)
         mm = relabel_map(m, r)
         assert canonical_form(mm, **carry_decorations(r, sigma, decorations)) == c
+
+
+@pytest.mark.parametrize("root_rule", ROOT_RULE_NAMES[1:])
+def test_canonical_form_invariance_root_rule(root_rule):
+    # O1-O5 under the other rules; O3 has folded edges and two non-folded
+    # edges whose invariants differ, so that the classes differ by rule
+    for build, decorations in [(lambda: map_from_fp(O1), {}), (lambda: map_from_fp(O2), {}),
+                               (lambda: map_from_fp(O3), {}), (lambda: map_from_fp(O4), {}),
+                               (lambda: map_from_fp(O1), {'edge_data': O5_EDGE_DATA})]:
+        m = build()
+        c = canonical_form(m, root_rule=root_rule, **decorations)
+        rng = random.Random(0)
+        for _ in range(3):
+            r, sigma = random_relabelling(m, rng)
+            mm = relabel_map(m, r)
+            assert canonical_form(mm, root_rule=root_rule, **carry_decorations(r, sigma, decorations)) == c
+    m = map_from_fp(O3)
+    assert m.is_isomorphic(relabel_map(m, random_relabelling(m, random.Random(1))[0]), root_rule=root_rule)
 
 
 # Tuples of permutations: surface-dynamics origami_dense.pyx:2838-2850,
@@ -1314,6 +1357,27 @@ def brute_force_automorphism_count(fp, data, classes=()):
     return count_extensions(fp, data, classes, empty_state(classes))
 
 
+def check_labelling_gives_form(fp, data, classes, r, form):
+    r"""
+    Check that the canonical labelling ``r`` relabels ``fp``, ``data`` and
+    ``classes`` into the canonical form ``form``: the face permutation on
+    the labels of the active edges, then the arrays read in the order of
+    the labels of the active half-edges, the classes renumbered by first
+    appearance.
+    """
+    assert sorted(r) == list(range(len(fp)))
+    assert all(r[h ^ 1] == r[h] ^ 1 for h in range(len(fp)))
+    k = len(form[0])
+    fp_c, arrays_c = relabel_arrays(fp, data + classes, r)
+    assert tuple(fp_c[:k]) == form[0]
+    read = [tuple(a[x] for x in range(k) if fp_c[x] != -1) for a in arrays_c]
+    renumbered = []
+    for values in read[len(data):]:
+        names = {}
+        renumbered.append(tuple(names.setdefault(v, len(names)) for v in values))
+    assert tuple(read[:len(data)]) + tuple(renumbered) == form[1:]
+
+
 def test_random_connected_fp():
     rng = random.Random(0)
     folded = gaps = symmetric = 0
@@ -1327,40 +1391,52 @@ def test_random_connected_fp():
     assert folded and gaps and symmetric
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_naive_canonical_form_invariance(seed):
+def test_naive_canonical_form_invariance(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
         fp = random_connected_fp(rng)
         data = random_data(rng, fp)
-        c = isomorphism_naive.canonical_form(fp, data)
-        r = isomorphism_naive.canonical_labelling(fp, data)
-        assert sorted(r) == list(range(len(fp)))
-        assert all(r[h ^ 1] == r[h] ^ 1 for h in range(len(fp)))
+        c = isomorphism_naive.canonical_form(fp, data, root_rule=root_rule)
+        r = isomorphism_naive.canonical_labelling(fp, data, root_rule=root_rule)
+        check_labelling_gives_form(fp, data, (), r, c)
         fp_c, data_c = relabel_arrays(fp, data, r)
-        assert tuple(fp_c[:len(c[0])]) == c[0]
         for _ in range(3):
             s = random_edge_relabelling(rng, fp)
             fp2, data2 = relabel_arrays(fp, data, s)
-            assert isomorphism_naive.canonical_form(fp2, data2) == c
-            r2 = isomorphism_naive.canonical_labelling(fp2, data2)
+            assert isomorphism_naive.canonical_form(fp2, data2, root_rule=root_rule) == c
+            r2 = isomorphism_naive.canonical_labelling(fp2, data2, root_rule=root_rule)
             assert relabel_arrays(fp2, data2, r2)[0][:len(c[0])] == fp_c[:len(c[0])]
 
 
+def check_same_group(fp, data, classes, automorphisms, root_rule):
+    r"""
+    Check that the list ``automorphisms`` under the rule ``root_rule`` is,
+    as a set, the list under ``ROOTS_ALL``, and that the generators under
+    the rule generate it.
+    """
+    listed = {tuple(g) for g in automorphisms}
+    if root_rule != isomorphism_naive.ROOTS_ALL:
+        assert listed == {tuple(g) for g in isomorphism_naive.automorphisms(fp, data, classes)}
+    gens = isomorphism_naive.automorphism_generators(fp, data, classes, root_rule=root_rule)
+    assert group_closure(gens, len(fp)) == listed
+
+
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_naive_automorphisms(seed):
+def test_naive_automorphisms(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
         fp = random_connected_fp(rng)
         data = random_data(rng, fp)
-        automorphisms = isomorphism_naive.automorphisms(fp, data)
+        automorphisms = isomorphism_naive.automorphisms(fp, data, root_rule=root_rule)
         assert list(automorphisms[0]) == list(range(len(fp)))
         assert len({tuple(g) for g in automorphisms}) == len(automorphisms)
         for g in automorphisms:
             check_automorphism(fp, data, g)
         assert len(automorphisms) == brute_force_automorphism_count(fp, data)
-        gens = isomorphism_naive.automorphism_generators(fp, data)
-        assert group_closure(gens, len(fp)) == {tuple(g) for g in automorphisms}
+        check_same_group(fp, data, (), automorphisms, root_rule)
 
 
 @pytest.mark.parametrize("seed", range(5))
@@ -1403,14 +1479,15 @@ def test_edge_data_as_half_edge_data(seed):
         assert isinstance(r, array)
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_naive_automorphisms_classes(seed):
+def test_naive_automorphisms_classes(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
         fp = random_connected_fp(rng)
         data = random_data(rng, fp)
         classes = random_classes(rng, fp)
-        automorphisms = isomorphism_naive.automorphisms(fp, data, classes)
+        automorphisms = isomorphism_naive.automorphisms(fp, data, classes, root_rule=root_rule)
         assert list(automorphisms[0]) == list(range(len(fp)))
         assert len({tuple(g) for g in automorphisms}) == len(automorphisms)
         for g in automorphisms:
@@ -1418,26 +1495,28 @@ def test_naive_automorphisms_classes(seed):
             for c in classes:
                 check_classes_carried(fp, c, c, g)
         assert len(automorphisms) == brute_force_automorphism_count(fp, data, classes)
-        gens = isomorphism_naive.automorphism_generators(fp, data, classes)
-        assert group_closure(gens, len(fp)) == {tuple(g) for g in automorphisms}
+        check_same_group(fp, data, classes, automorphisms, root_rule)
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_naive_canonical_form_classes(seed):
+def test_naive_canonical_form_classes(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
         fp = random_connected_fp(rng)
         data = random_data(rng, fp)
         classes = random_classes(rng, fp)
-        c = isomorphism_naive.canonical_form(fp, data, classes)
+        c = isomorphism_naive.canonical_form(fp, data, classes, root_rule=root_rule)
         assert len(c) == 1 + len(data) + len(classes)
+        check_labelling_gives_form(fp, data, classes,
+                                   isomorphism_naive.canonical_labelling(fp, data, classes, root_rule=root_rule), c)
         for _ in range(3):
             s = random_edge_relabelling(rng, fp)
             fp2, data2 = relabel_arrays(fp, data, s)
             _, classes2 = relabel_arrays(fp, classes, s)
             classes2 = rename_values(rng, classes2)
-            assert isomorphism_naive.canonical_form(fp2, data2, classes2) == c
-            r = isomorphism_naive.isomorphism(fp, data, fp2, data2, classes, classes2)
+            assert isomorphism_naive.canonical_form(fp2, data2, classes2, root_rule=root_rule) == c
+            r = isomorphism_naive.isomorphism(fp, data, fp2, data2, classes, classes2, root_rule=root_rule)
             assert r is not None
             for c1, c2 in zip(classes, classes2):
                 check_classes_carried(fp, c1, c2, r)
@@ -1494,14 +1573,15 @@ def test_random_disconnected_fp():
     assert disconnected and symmetric
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_naive_automorphisms_disconnected(seed):
+def test_naive_automorphisms_disconnected(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
         fp = random_disconnected_fp(rng)
         data = random_data(rng, fp)
         classes = random_classes(rng, fp)
-        automorphisms = isomorphism_naive.automorphisms(fp, data, classes)
+        automorphisms = isomorphism_naive.automorphisms(fp, data, classes, root_rule=root_rule)
         assert list(automorphisms[0]) == list(range(len(fp)))
         assert len({tuple(g) for g in automorphisms}) == len(automorphisms)
         for g in automorphisms:
@@ -1509,23 +1589,28 @@ def test_naive_automorphisms_disconnected(seed):
             for c in classes:
                 check_classes_carried(fp, c, c, g)
         assert len(automorphisms) == brute_force_automorphism_count(fp, data, classes)
+        if root_rule != isomorphism_naive.ROOTS_ALL:
+            check_same_group(fp, data, classes, automorphisms, root_rule)
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_naive_canonical_form_disconnected(seed):
+def test_naive_canonical_form_disconnected(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
         fp = random_disconnected_fp(rng)
         data = random_data(rng, fp)
         classes = random_classes(rng, fp)
-        c = isomorphism_naive.canonical_form(fp, data, classes)
+        c = isomorphism_naive.canonical_form(fp, data, classes, root_rule=root_rule)
         assert len(c) == 1 + len(data) + len(classes)
+        check_labelling_gives_form(fp, data, classes,
+                                   isomorphism_naive.canonical_labelling(fp, data, classes, root_rule=root_rule), c)
         for _ in range(3):
             s = random_edge_relabelling(rng, fp)
             fp2, data2 = relabel_arrays(fp, data, s)
             _, classes2 = relabel_arrays(fp, classes, s)
             classes2 = rename_values(rng, classes2)
-            assert isomorphism_naive.canonical_form(fp2, data2, classes2) == c
+            assert isomorphism_naive.canonical_form(fp2, data2, classes2, root_rule=root_rule) == c
 
 
 @pytest.mark.parametrize("seed", range(5))
@@ -1585,11 +1670,12 @@ def check_generators(gens, expected, automorphisms, fp, classes):
     assert group_closure(gens, len(fp)) == listed
 
 
-def check_fast_against_naive(rng, fp, data, classes):
+def check_fast_against_naive(rng, fp, data, classes, root_rule=isomorphism_naive.ROOTS_ALL):
     r"""
     Check that :mod:`combisurf.isomorphism` and
     :mod:`combisurf.isomorphism_naive` agree on the decorated map ``fp``,
-    on a relabelled copy of it and on a map that is not isomorphic to it.
+    on a relabelled copy of it and on a map that is not isomorphic to it,
+    under the rule of the roots ``root_rule``.
     The arrays are passed as lists or as ``array('i')`` at random.
     """
     def arrays(fp, data):
@@ -1598,47 +1684,49 @@ def check_fast_against_naive(rng, fp, data, classes):
         return fp, data
 
     fast, naive = isomorphism_fast, isomorphism_naive
+    rule = {'root_rule': root_rule}
     fp1, data1 = arrays(fp, data)
-    r = naive.canonical_labelling(fp, data, classes)
-    assert fast.canonical_labelling(fp1, data1, classes) == r
-    form = naive.canonical_form(fp, data, classes)
-    assert fast.canonical_form(fp1, data1, classes) == form
-    automorphisms = naive.automorphisms(fp, data, classes)
-    assert fast.automorphisms(fp1, data1, classes) == automorphisms
-    check_generators(fast.automorphism_generators(fp1, data1, classes),
-                     naive.automorphism_generators(fp, data, classes), automorphisms, fp, classes)
-    key, r1, count = fast.canonical_key(fp1, data1, classes, relabelling=True, automorphism_count=True)
+    r = naive.canonical_labelling(fp, data, classes, **rule)
+    assert fast.canonical_labelling(fp1, data1, classes, **rule) == r
+    form = naive.canonical_form(fp, data, classes, **rule)
+    assert fast.canonical_form(fp1, data1, classes, **rule) == form
+    automorphisms = naive.automorphisms(fp, data, classes, **rule)
+    assert fast.automorphisms(fp1, data1, classes, **rule) == automorphisms
+    check_generators(fast.automorphism_generators(fp1, data1, classes, **rule),
+                     naive.automorphism_generators(fp, data, classes, **rule), automorphisms, fp, classes)
+    key, r1, count = fast.canonical_key(fp1, data1, classes, relabelling=True, automorphism_count=True, **rule)
     assert key == flatten(form)
     assert r1 == r
     assert count == len(automorphisms)
-    assert fast.canonical_key(fp1, data1, classes) == key
-    assert fast.canonical_key(fp1, data1, classes, relabelling=True) == (key, r)
-    assert fast.canonical_key(fp1, data1, classes, automorphism_count=True) == (key, count)
+    assert fast.canonical_key(fp1, data1, classes, **rule) == key
+    assert fast.canonical_key(fp1, data1, classes, relabelling=True, **rule) == (key, r)
+    assert fast.canonical_key(fp1, data1, classes, automorphism_count=True, **rule) == (key, count)
 
     s = random_edge_relabelling(rng, fp)
     fp2, data2 = relabel_arrays(fp, data, s)
     _, classes2 = relabel_arrays(fp, classes, s)
     classes2 = rename_values(rng, classes2)
     fp2a, data2a = arrays(fp2, data2)
-    assert fast.canonical_key(fp2a, data2a, classes2) == key
-    iso = fast.isomorphism(fp1, data1, fp2a, data2a, classes, classes2)
+    assert fast.canonical_key(fp2a, data2a, classes2, **rule) == key
+    iso = fast.isomorphism(fp1, data1, fp2a, data2a, classes, classes2, **rule)
     assert iso is not None
-    assert iso == naive.isomorphism(fp, data, fp2, data2, classes, classes2)
+    assert iso == naive.isomorphism(fp, data, fp2, data2, classes, classes2, **rule)
 
     # one more array, marking one half-edge in the copy only
     marked = [0] * len(fp2)
     marked[next(h for h in range(len(fp2)) if fp2[h] != -1)] = 1
     zeros = [0] * len(fp)
-    assert fast.isomorphism(fp1, data1 + (zeros,), fp2a, data2a + (marked,), classes, classes2) is None
-    assert naive.isomorphism(fp, data + (zeros,), fp2, data2 + (marked,), classes, classes2) is None
+    assert fast.isomorphism(fp1, data1 + (zeros,), fp2a, data2a + (marked,), classes, classes2, **rule) is None
+    assert naive.isomorphism(fp, data + (zeros,), fp2, data2 + (marked,), classes, classes2, **rule) is None
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_fast_against_naive(seed):
+def test_fast_against_naive(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
         fp = random_connected_fp(rng)
-        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
 
 
 @pytest.mark.parametrize("seed", range(5))
@@ -1649,12 +1737,13 @@ def test_fast_against_naive_large(seed):
         check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_fast_against_naive_disconnected(seed):
+def test_fast_against_naive_disconnected(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(10):
         fp = random_disconnected_fp(rng)
-        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
 
 
 def random_large_disconnected_fp(rng):
@@ -2003,3 +2092,61 @@ def test_fast_malformed_input():
         isomorphism_fast.canonical_labelling([1, 1])
     with pytest.raises(OverflowError):
         isomorphism_fast.canonical_labelling([1, 0], ([2**40, 0],))
+
+
+def test_root_rule_constants():
+    for name in ("ROOTS_ALL", "ROOTS_HALF_EDGE_MAX", "ROOTS_HALF_EDGE_FEWEST",
+                 "ROOTS_EDGE_MAX", "ROOTS_EDGE_FEWEST"):
+        assert getattr(isomorphism_fast, name) == getattr(isomorphism_naive, name)
+    assert ROOT_RULES == list(range(5))
+    assert [OrientedMap._root_rule(name) for name in ROOT_RULE_NAMES] == ROOT_RULES
+
+
+def test_root_rule_restricts():
+    # the random maps of the tests above exercise the rules: on some of them
+    # a rule tries fewer roots than the active half-edges, and the rules
+    # do not all try the same roots
+    rng = random.Random(0)
+    restricted = {rule: 0 for rule in ROOT_RULES[1:]}
+    distinct = 0
+    for _ in range(50):
+        fp = random_connected_fp(rng)
+        unlabelled = [-1] * len(fp)
+        active = sum(1 for x in fp if x != -1)
+        roots = {}
+        for rule in ROOT_RULES:
+            invariants = isomorphism_naive._root_invariants(fp, rule)
+            roots[rule] = isomorphism_naive._roots(fp, unlabelled, invariants, rule)
+            assert 0 < len(roots[rule]) <= active
+        assert len(roots[isomorphism_naive.ROOTS_ALL]) == active
+        for rule in ROOT_RULES[1:]:
+            restricted[rule] += len(roots[rule]) < active
+        distinct += len({tuple(r) for r in roots.values()}) > 2
+    assert all(restricted.values())
+    assert distinct
+
+
+@pytest.mark.parametrize("root_rule", [5, -1, 2**70, "all", "edge-max", 1.0, True, None])
+def test_root_rule_invalid_integer(root_rule):
+    fp, fp2 = [2, 5, 4, 1, 0, 3], [4, 3, 0, 5, 2, 1]
+    for module in (isomorphism_fast, isomorphism_naive):
+        for name in ("canonical_labelling", "canonical_form", "automorphisms",
+                     "automorphism_generators", "canonical_key"):
+            if name == "canonical_key" and module is isomorphism_naive:
+                continue
+            with pytest.raises(ValueError, match="root_rule must be one of the integers"):
+                getattr(module, name)(fp, (), (), root_rule=root_rule)
+        with pytest.raises(ValueError, match="root_rule must be one of the integers"):
+            module.isomorphism(fp, (), fp2, (), root_rule=root_rule)
+
+
+@pytest.mark.parametrize("root_rule", ["edge", "EDGE-MAX", "edge_max", 0, 3, None, ["all"]])
+def test_root_rule_invalid_string(root_rule):
+    m = OrientedMap(fp="(0,1,2)(~0,~2,~1)")
+    for check in (True, False):
+        for call in (m.canonical_labelling, m.canonical_form, m.automorphisms,
+                     m.automorphism_generators):
+            with pytest.raises(ValueError, match="root_rule must be one of 'all'"):
+                call(root_rule=root_rule, check=check)
+        with pytest.raises(ValueError, match="root_rule must be one of 'all'"):
+            m.is_isomorphic(m, root_rule=root_rule, check=check)

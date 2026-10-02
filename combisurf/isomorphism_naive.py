@@ -69,6 +69,41 @@ without classes; on `k` isomorphic components the list has at least `k!`
 elements. On a connected map the sequence has a single block, whose
 labelling is the one of a root of minimal key.
 
+The keyword ``root_rule`` of the public functions restricts the half-edges
+tried as roots to a class of half-edges that every isomorphism preserves.
+For an active half-edge ``h``, let ``vdeg(h)`` and ``fdeg(h)`` be the
+degrees of its vertex and of its face, and ``t`` its twin ``h ^ 1``, or
+``h`` itself on a folded edge. A rule gives each active half-edge an
+invariant:
+
+- :data:`ROOTS_ALL` (the default): the same invariant for all, so that
+  every active half-edge is a root;
+
+- :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`: the pair
+  ``(vdeg(h), fdeg(h))``;
+
+- :data:`ROOTS_EDGE_MAX`, :data:`ROOTS_EDGE_FEWEST`: the tuple ``(vdeg(h),
+  fdeg(h), vdeg(t), fdeg(t), loop, monogon)``, with ``loop`` equal to
+  ``1`` when ``h`` and ``t`` are at the same vertex and ``monogon`` equal
+  to ``1`` when they are in the same face (``0`` otherwise; both are ``1``
+  on a folded edge). It extends the invariant of the good starts of the fat
+  graphs of surface-dynamics.
+
+The half-edges are grouped into classes of equal invariant, and only the
+half-edges of one class are tried as roots: with ``*_MAX`` the class of the
+largest invariant (tuples compared lexicographically), with ``*_FEWEST``
+the class with the fewest half-edges, ties broken by the largest invariant.
+The invariants depend on the map only, not on ``data`` nor ``classes``,
+and are computed once on the whole map; the degrees are local to a
+component. On a disconnected map the class is chosen at each step of the
+search among the active half-edges not labelled yet, and the roots tried
+are the half-edges of that class not labelled yet; the rest of the search
+is unchanged. Since an isomorphism preserves the invariants, the result
+under a rule has the properties above, but the canonical labelling and the
+canonical form may differ from one rule to another: two of them compare
+only under the same rule. The automorphisms are the same under every rule,
+listed in the order of the search of the rule.
+
 EXAMPLES::
 
     sage: from combisurf.isomorphism_naive import canonical_labelling, automorphisms, isomorphism
@@ -101,6 +136,21 @@ edges. Classes shared by the two components tie them together::
     4
     sage: len(automorphisms(fp, classes=([0, 1, 1, 2],)))
     2
+
+The triangle ``(0,1,2)(~0,~2,~1)`` beside the folded edge ``(3)``: every
+active half-edge is a root under the default rule, the half-edges of the
+triangle (a vertex and a face of degree 3) under ``ROOTS_HALF_EDGE_MAX``
+and the folded edge (the class with one half-edge) under
+``ROOTS_HALF_EDGE_FEWEST``::
+
+    sage: from combisurf.isomorphism_naive import canonical_form, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST
+    sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]
+    sage: canonical_form(fp)
+    ((0, -1, 4, 7, 6, 3, 2, 5),)
+    sage: canonical_form(fp, root_rule=ROOTS_HALF_EDGE_MAX)
+    ((2, 5, 4, 1, 0, 3, 6, -1),)
+    sage: canonical_form(fp, root_rule=ROOTS_HALF_EDGE_FEWEST)
+    ((0, -1, 4, 7, 6, 3, 2, 5),)
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -124,6 +174,192 @@ edges. Classes shared by the two components tie them together::
 
 from array import array
 from collections import deque
+from numbers import Integral
+
+
+ROOTS_ALL = 0
+ROOTS_HALF_EDGE_MAX = 1
+ROOTS_HALF_EDGE_FEWEST = 2
+ROOTS_EDGE_MAX = 3
+ROOTS_EDGE_FEWEST = 4
+
+
+def _check_root_rule(root_rule):
+    r"""
+    Return ``root_rule`` as a Python ``int`` after checking that it is one
+    of the integers :data:`ROOTS_ALL`, :data:`ROOTS_HALF_EDGE_MAX`,
+    :data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and
+    :data:`ROOTS_EDGE_FEWEST`.
+
+    EXAMPLES::
+
+        sage: from combisurf.isomorphism_naive import _check_root_rule, ROOTS_ALL, ROOTS_EDGE_FEWEST
+        sage: ROOTS_ALL, ROOTS_EDGE_FEWEST
+        (0, 4)
+        sage: _check_root_rule(ROOTS_EDGE_FEWEST)
+        4
+        sage: _check_root_rule(3)
+        3
+
+    TESTS::
+
+        sage: _check_root_rule(5)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 5
+        sage: _check_root_rule("all")
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 'all'
+        sage: _check_root_rule(1.0r)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 1.0
+        sage: _check_root_rule(True)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got True
+    """
+    if (isinstance(root_rule, bool) or not isinstance(root_rule, Integral)
+            or not ROOTS_ALL <= root_rule <= ROOTS_EDGE_FEWEST):
+        raise ValueError("root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, "
+                         "ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got {!r}".format(root_rule))
+    return int(root_rule)
+
+
+def _cells(p):
+    r"""
+    Return ``(cell, size)``: for each active half-edge of the permutation
+    ``p`` (``-1`` on the inactive half-edges), the index of its cycle and
+    the length of that cycle (``-1`` on the inactive half-edges).
+
+    EXAMPLES::
+
+        sage: from combisurf.isomorphism_naive import _cells
+        sage: _cells([1, 0, 2, -1])
+        ([0, 0, 1, -1], [2, 2, 1, -1])
+    """
+    n = len(p)
+    cell = [-1] * n
+    size = [-1] * n
+    k = 0
+    for h in range(n):
+        if p[h] == -1 or cell[h] != -1:
+            continue
+        cycle = [h]
+        cell[h] = k
+        x = p[h]
+        while x != h:
+            cycle.append(x)
+            cell[x] = k
+            x = p[x]
+        for x in cycle:
+            size[x] = len(cycle)
+        k += 1
+    return cell, size
+
+
+def _root_invariants(fp, root_rule):
+    r"""
+    Return the list of the invariants of the half-edges of ``fp`` under the
+    rule ``root_rule`` (``None`` on the inactive half-edges).
+
+    The invariant of an active half-edge ``h`` is ``()`` under
+    :data:`ROOTS_ALL`, ``(vdeg(h), fdeg(h))`` under the ``ROOTS_HALF_EDGE_*``
+    rules and ``(vdeg(h), fdeg(h), vdeg(t), fdeg(t), loop, monogon)`` under
+    the ``ROOTS_EDGE_*`` rules (see the module documentation). The vertex
+    permutation is built from ``fp`` as :class:`~combisurf.oriented_map.OrientedMap`
+    builds it: ``vp[fp[t]] = h`` with ``t`` the twin of ``h``.
+
+    EXAMPLES:
+
+    The map ``(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)``, whose edges ``0, 1, 3, 6,
+    7, 8`` are folded::
+
+        sage: from combisurf import OrientedMap
+        sage: from combisurf.isomorphism_naive import _root_invariants, ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_EDGE_MAX
+        sage: fp = list(OrientedMap(fp="(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)").face_permutation())
+        sage: _root_invariants(fp, ROOTS_ALL)[:6]
+        [(), None, (), None, (), ()]
+        sage: inv = _root_invariants(fp, ROOTS_HALF_EDGE_MAX)
+        sage: inv[0], inv[4], inv[8], inv[9], inv[12]
+        ((3, 3), (4, 3), (4, 3), (1, 3), (3, 3))
+        sage: inv = _root_invariants(fp, ROOTS_EDGE_MAX)
+        sage: inv[0], inv[4], inv[8], inv[9], inv[12]
+        ((3, 3, 3, 3, 1, 1),
+         (4, 3, 4, 3, 1, 0),
+         (4, 3, 1, 3, 0, 1),
+         (1, 3, 4, 3, 0, 1),
+         (3, 3, 3, 3, 1, 1))
+
+    The vertex of the half-edge ``0`` is ``(0,6,2)`` and the vertex
+    ``(4,8,5,10)`` holds both halves of the edge ``2`` (a loop) and the
+    half-edge ``8`` of the edge ``4``, whose other half ``9`` is alone at
+    its vertex and in the face ``(4,8,9)`` of ``8`` (a monogon edge).
+    """
+    root_rule = _check_root_rule(root_rule)
+    n = len(fp)
+    if root_rule == ROOTS_ALL:
+        return [None if x == -1 else () for x in fp]
+    vp = [-1] * n
+    for h in range(n):
+        if fp[h] != -1:
+            t = h ^ 1 if fp[h ^ 1] != -1 else h
+            vp[fp[t]] = h
+    vertex, vdeg = _cells(vp)
+    face, fdeg = _cells(fp)
+    invariants = [None] * n
+    for h in range(n):
+        if fp[h] == -1:
+            continue
+        if root_rule in (ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST):
+            invariants[h] = (vdeg[h], fdeg[h])
+        else:
+            t = h ^ 1 if fp[h ^ 1] != -1 else h
+            invariants[h] = (vdeg[h], fdeg[h], vdeg[t], fdeg[t],
+                             int(vertex[h] == vertex[t]), int(face[h] == face[t]))
+    return invariants
+
+
+def _roots(fp, r, invariants, root_rule):
+    r"""
+    Return the roots to try, in increasing order, among the active
+    half-edges of ``fp`` not labelled by ``r`` (``-1`` on the half-edges not
+    labelled): the class of the rule ``root_rule`` among them for the
+    ``invariants`` of :func:`_root_invariants`.
+
+    EXAMPLES:
+
+    The triangle ``(0,1,2)(~0,~2,~1)`` beside the folded edge ``(3)``::
+
+        sage: from combisurf.isomorphism_naive import _roots, _root_invariants, ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST
+        sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]
+        sage: r = [-1] * 8
+        sage: _roots(fp, r, _root_invariants(fp, ROOTS_ALL), ROOTS_ALL)
+        [0, 1, 2, 3, 4, 5, 6]
+        sage: _roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_MAX), ROOTS_HALF_EDGE_MAX)
+        [0, 1, 2, 3, 4, 5]
+        sage: _roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_FEWEST), ROOTS_HALF_EDGE_FEWEST)
+        [6]
+
+    Once the folded edge is labelled, the class is chosen among the
+    half-edges of the triangle::
+
+        sage: r = [-1] * 6 + [0, 1]
+        sage: _roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_FEWEST), ROOTS_HALF_EDGE_FEWEST)
+        [0, 1, 2, 3, 4, 5]
+    """
+    groups = {}
+    for h in range(len(fp)):
+        if fp[h] != -1 and r[h] == -1:
+            groups.setdefault(invariants[h], []).append(h)
+    if not groups:
+        return []
+    if root_rule in (ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_FEWEST):
+        chosen = max(groups, key=lambda i: (-len(groups[i]), i))
+    else:
+        chosen = max(groups)
+    return groups[chosen]
 
 
 def _check_input(fp, data, classes=()):
@@ -333,7 +569,7 @@ def _block(fp, data, classes, r, k, names):
     return tuple(block), new_names
 
 
-def _search(fp, data, classes=(), all_leaves=False):
+def _search(fp, data, classes=(), all_leaves=False, root_rule=ROOTS_ALL):
     r"""
     Return ``(key, leaves)``: the lexicographically minimal sequence of
     blocks over the labellings component after component, and the
@@ -341,14 +577,16 @@ def _search(fp, data, classes=(), all_leaves=False):
 
     Each leaf is an ``array('i')`` of length ``len(fp)``, ``-1`` on the
     half-edges of the inactive edges. The search is a depth-first walk
-    whose state is the relabelling of the components labelled so far: every
-    active half-edge not labelled yet is tried as the root of the next
-    component and only the roots of minimal block are followed, in
-    increasing order. A branch whose sequence of blocks exceeds the best
-    one found is cut. With ``all_leaves=False`` the first leaf reaching the
-    minimum is returned and, when ``classes`` is empty, only the first root
-    of minimal block is followed at each step; otherwise every such root
-    is, and every leaf reaching the minimum is returned.
+    whose state is the relabelling of the components labelled so far: the
+    half-edges of the class of ``root_rule`` among the active half-edges
+    not labelled yet (all of them under :data:`ROOTS_ALL`) are tried as the
+    root of the next component and only the roots of minimal block are
+    followed, in increasing order. A branch whose sequence of blocks
+    exceeds the best one found is cut. With ``all_leaves=False`` the first
+    leaf reaching the minimum is returned and, when ``classes`` is empty,
+    only the first root of minimal block is followed at each step;
+    otherwise every such root is, and every leaf reaching the minimum is
+    returned.
 
     EXAMPLES::
 
@@ -362,6 +600,7 @@ def _search(fp, data, classes=(), all_leaves=False):
         8
     """
     n, ne = _check_input(fp, data, classes)
+    invariants = _root_invariants(fp, root_rule)
     best = None
     leaves = []
     # a state is (blocks, relabelling, number of labels used, numberings
@@ -380,9 +619,7 @@ def _search(fp, data, classes=(), all_leaves=False):
             continue
         minimum = None
         tied = []
-        for root in range(n):
-            if fp[root] == -1 or r[root] != -1:
-                continue
+        for root in _roots(fp, r, invariants, root_rule):
             rc, k = relabelling_from(fp, root)
             block, new_names = _block(fp, data, classes, rc, k, names)
             if minimum is None or block < minimum:
@@ -421,7 +658,7 @@ def _complete(r, n, ne):
     return r
 
 
-def canonical_labelling(fp, data=(), classes=()):
+def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     r"""
     Return the canonical labelling of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -441,6 +678,12 @@ def canonical_labelling(fp, data=(), classes=()):
       half-edges, kept up to a relabelling of their values (default: no
       decoration)
 
+    - ``root_rule`` -- one of the integers :data:`ROOTS_ALL` (the default),
+      :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`,
+      :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`: the half-edges
+      tried as roots (see the module documentation); any other value
+      raises a ``ValueError``
+
     OUTPUT: an ``array('i')`` ``r`` that maps each half-edge to its
     canonical label. It is a permutation of ``range(len(fp))`` that
     preserves the pairs ``{2e, 2e+1}``. The active edges get the labels
@@ -448,7 +691,7 @@ def canonical_labelling(fp, data=(), classes=()):
     inactive edges the following ones, in increasing order.
 
     Two decorated maps are isomorphic if and only if they are equal once
-    relabelled by their canonical labellings.
+    relabelled by their canonical labellings under the same rule.
 
     EXAMPLES::
 
@@ -499,13 +742,32 @@ def canonical_labelling(fp, data=(), classes=()):
         array('i', [0, 1, 2, 3])
         sage: canonical_labelling([0, 1, 2, 3], classes=([0, 1, 1, 0],))
         array('i', [0, 1, 3, 2])
+
+    Under each rule, the map ``(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)``, whose
+    edges ``0, 1, 3, 6, 7, 8`` are folded::
+
+        sage: from combisurf import OrientedMap
+        sage: from combisurf.isomorphism_naive import ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST
+        sage: fp = list(OrientedMap(fp="(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)").face_permutation())
+        sage: for rule in [ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST]:
+        ....:     print(canonical_labelling(fp, root_rule=rule))
+        array('i', [6, 7, 8, 9, 2, 3, 10, 11, 0, 1, 4, 5, 12, 13, 14, 15, 16, 17])
+        array('i', [6, 7, 8, 9, 2, 3, 10, 11, 0, 1, 4, 5, 12, 13, 14, 15, 16, 17])
+        array('i', [6, 7, 8, 9, 2, 3, 10, 11, 1, 0, 4, 5, 12, 13, 14, 15, 16, 17])
+        array('i', [6, 7, 8, 9, 0, 1, 10, 11, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17])
+        array('i', [6, 7, 8, 9, 0, 1, 10, 11, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17])
+        sage: canonical_labelling(fp, root_rule="all")
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 'all'
     """
+    root_rule = _check_root_rule(root_rule)
     n, ne = _check_input(fp, data, classes)
-    _, leaves = _search(fp, data, classes)
+    _, leaves = _search(fp, data, classes, root_rule=root_rule)
     return _complete(leaves[0], n, ne)
 
 
-def canonical_form(fp, data=(), classes=()):
+def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     r"""
     Return the canonical form of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -522,6 +784,9 @@ def canonical_form(fp, data=(), classes=()):
       half-edges, kept up to a relabelling of their values (default: no
       decoration)
 
+    - ``root_rule`` -- the half-edges tried as roots, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`)
+
     OUTPUT: a tuple ``(fp_c, d_1, ..., d_k, c_1, ..., c_m)`` of tuples:
     ``fp_c`` is the face permutation in the canonical labels (of length
     ``2*ne``, ``-1`` on the inactive half-edges of folded edges), ``d_i``
@@ -530,8 +795,8 @@ def canonical_form(fp, data=(), classes=()):
     values of the ``i``-th array of ``classes`` read in the same order and
     renumbered ``0, 1, 2, ...`` by first appearance, all components
     together. The labelling is the one of :func:`canonical_labelling`. Two
-    decorated maps are isomorphic if and only if their canonical forms are
-    equal.
+    decorated maps are isomorphic if and only if their canonical forms
+    under the same rule are equal.
 
     EXAMPLES::
 
@@ -582,13 +847,32 @@ def canonical_form(fp, data=(), classes=()):
         ((0, 1, 2, 3), (0, 1, 0, 1))
         sage: canonical_form([0, 1, 2, 3], classes=([0, 1, 2, 2],))
         ((0, 1, 2, 3), (0, 0, 1, 2))
+
+    Under the rule ``ROOTS_EDGE_MAX``, the form of the map
+    ``(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)`` and of a relabelling of it::
+
+        sage: from combisurf import OrientedMap
+        sage: from combisurf.isomorphism_naive import ROOTS_EDGE_MAX
+        sage: fp = list(OrientedMap(fp="(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)").face_permutation())
+        sage: canonical_form(fp, root_rule=ROOTS_EDGE_MAX)
+        ((2, 4, 3, 0, 5, 1, 8, -1, 10, -1, 6, -1, 14, -1, 16, -1, 12, -1),)
+        sage: canonical_form(fp)
+        ((1, 2, 0, 4, 5, 3, 8, -1, 10, -1, 6, -1, 14, -1, 16, -1, 12, -1),)
+        sage: fp2 = list(OrientedMap(fp="(8,7,5)(6,4,~4)(~6,3,~3)(2,1,0)").face_permutation())
+        sage: canonical_form(fp2, root_rule=ROOTS_EDGE_MAX) == canonical_form(fp, root_rule=ROOTS_EDGE_MAX)
+        True
+        sage: canonical_form(fp, root_rule=-1)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got -1
     """
+    root_rule = _check_root_rule(root_rule)
     n, ne = _check_input(fp, data, classes)
-    _, leaves = _search(fp, data, classes)
+    _, leaves = _search(fp, data, classes, root_rule=root_rule)
     return _key(fp, data, leaves[0], 2 * ne, classes)
 
 
-def automorphisms(fp, data=(), classes=()):
+def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     r"""
     Return the automorphisms of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -605,6 +889,9 @@ def automorphisms(fp, data=(), classes=()):
       half-edges, kept up to a relabelling of their values (default: no
       decoration)
 
+    - ``root_rule`` -- the half-edges tried as roots, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`)
+
     OUTPUT: the list of the automorphisms, each an ``array('i')``
     permutation ``g`` of ``range(len(fp))`` with ``g[fp[h]] == fp[g[h]]``
     and ``d[g[h]] == d[h]`` for every active ``h`` and every ``d`` of
@@ -616,7 +903,8 @@ def automorphisms(fp, data=(), classes=()):
     there are at most as many automorphisms as active half-edges. On a
     disconnected map there is no such bound: the automorphisms may permute
     isomorphic components, and the list of `k` isomorphic components has at
-    least `k!` elements.
+    least `k!` elements. The list is the same group under every rule, in
+    the order of the search of the rule.
 
     EXAMPLES::
 
@@ -673,9 +961,20 @@ def automorphisms(fp, data=(), classes=()):
         [array('i', [0, 1, 2, 3]), array('i', [3, 2, 1, 0])]
         sage: len(automorphisms([2, 5, 4, 1, 0, 3, 6, -1]))
         6
+
+    The same group under every rule::
+
+        sage: from combisurf.isomorphism_naive import ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX
+        sage: fp = [2, 3, 4, 5, 0, 1, 6, -1]
+        sage: A = automorphisms(fp)
+        sage: B = automorphisms(fp, root_rule=ROOTS_HALF_EDGE_FEWEST)
+        sage: C = automorphisms(fp, root_rule=ROOTS_EDGE_MAX)
+        sage: len(A), sorted(A) == sorted(B) == sorted(C)
+        (6, True)
     """
+    root_rule = _check_root_rule(root_rule)
     n, ne = _check_input(fp, data, classes)
-    _, leaves = _search(fp, data, classes, all_leaves=True)
+    _, leaves = _search(fp, data, classes, all_leaves=True, root_rule=root_rule)
     ra = leaves[0]
     result = []
     for rb in leaves:
@@ -709,7 +1008,7 @@ def _group_closure(gens, n):
     return elements
 
 
-def automorphism_generators(fp, data=(), classes=()):
+def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     r"""
     Return generators of the automorphism group of the map with face
     permutation ``fp`` decorated by ``data`` and ``classes``.
@@ -726,9 +1025,14 @@ def automorphism_generators(fp, data=(), classes=()):
       half-edges, kept up to a relabelling of their values (default: no
       decoration)
 
+    - ``root_rule`` -- the half-edges tried as roots, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`)
+
     OUTPUT: a list of automorphisms (as in :func:`automorphisms`) that
     generate the group; empty when the group is trivial. The automorphisms
-    are scanned in the order of :func:`automorphisms` and one is kept when
+    are scanned in the order of :func:`automorphisms` under the rule (so
+    the generators may differ from a rule to another, the group generated
+    does not) and one is kept when
     it is not in the group generated by those already kept. The list of
     :func:`automorphisms` is computed in full, which costs at least `k!`
     on a map with `k` isomorphic components.
@@ -762,18 +1066,25 @@ def automorphism_generators(fp, data=(), classes=()):
         []
         sage: automorphism_generators([0, -1])
         []
+
+    Under a rule::
+
+        sage: from combisurf.isomorphism_naive import ROOTS_HALF_EDGE_FEWEST
+        sage: automorphism_generators([2, 3, 4, 5, 0, 1, 6, -1], root_rule=ROOTS_HALF_EDGE_FEWEST)
+        [array('i', [1, 0, 3, 2, 5, 4, 6, 7]), array('i', [2, 3, 4, 5, 0, 1, 6, 7])]
     """
+    root_rule = _check_root_rule(root_rule)
     n = len(fp)
     gens = []
     group = {tuple(range(n))}
-    for g in automorphisms(fp, data, classes):
+    for g in automorphisms(fp, data, classes, root_rule):
         if tuple(g) not in group:
             gens.append(g)
             group = _group_closure(gens, n)
     return gens
 
 
-def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
+def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOTS_ALL):
     r"""
     Return an isomorphism from the first decorated map to the second, or
     ``None`` if they are not isomorphic.
@@ -793,6 +1104,9 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
     - ``classes1``, ``classes2`` -- tuples with the same number of arrays
       indexed by half-edges, of lengths ``len(fp1)`` and ``len(fp2)``, kept
       up to a relabelling of their values (default: no decoration)
+
+    - ``root_rule`` -- the half-edges tried as roots in both maps, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`)
 
     OUTPUT: ``None`` or an ``array('i')`` ``r`` of length ``len(fp1)`` with
     ``r[fp1[h]] == fp2[r[h]]`` and ``data2[i][r[h]] == data1[i][h]`` for
@@ -875,15 +1189,24 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
         array('i', [0, 1, 3, 2])
         sage: isomorphism(fp, (), fp, (), ([0, 1, 0, 1],), ([0, 1, 2, 2],)) is None
         True
+
+    Under a rule, the same verdicts::
+
+        sage: from combisurf.isomorphism_naive import ROOTS_EDGE_FEWEST
+        sage: isomorphism([2, 5, 4, 1, 0, 3, 6, -1], (), [0, -1, 4, 7, 6, 3, 2, 5], (), root_rule=ROOTS_EDGE_FEWEST)
+        array('i', [2, 3, 4, 5, 6, 7, 0, 1])
+        sage: isomorphism(fp1, (), fp3, (), root_rule=ROOTS_EDGE_FEWEST) is None
+        True
     """
+    root_rule = _check_root_rule(root_rule)
     n1, ne1 = _check_input(fp1, data1, classes1)
     n2, ne2 = _check_input(fp2, data2, classes2)
     if len(data1) != len(data2):
         raise ValueError("data1 and data2 must have the same number of arrays")
     if len(classes1) != len(classes2):
         raise ValueError("classes1 and classes2 must have the same number of arrays")
-    key1, leaves1 = _search(fp1, data1, classes1)
-    key2, leaves2 = _search(fp2, data2, classes2)
+    key1, leaves1 = _search(fp1, data1, classes1, root_rule=root_rule)
+    key2, leaves2 = _search(fp2, data2, classes2, root_rule=root_rule)
     if key1 != key2:
         return None
     r = array('i', [-1] * n1)

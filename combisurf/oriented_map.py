@@ -3982,9 +3982,50 @@ class OrientedMap:
             data.append(d)
         return tuple(data)
 
+    _ROOT_RULES = {"all": isomorphism.ROOTS_ALL,
+                   "half-edge-max": isomorphism.ROOTS_HALF_EDGE_MAX,
+                   "half-edge-fewest": isomorphism.ROOTS_HALF_EDGE_FEWEST,
+                   "edge-max": isomorphism.ROOTS_EDGE_MAX,
+                   "edge-fewest": isomorphism.ROOTS_EDGE_FEWEST}
+
+    @staticmethod
+    def _root_rule(root_rule):
+        r"""
+        Return the integer of :mod:`combisurf.isomorphism` for the rule
+        ``root_rule``, one of the strings ``"all"``, ``"half-edge-max"``,
+        ``"half-edge-fewest"``, ``"edge-max"`` and ``"edge-fewest"``; any
+        other value raises a ``ValueError``.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: OrientedMap._root_rule("all"), OrientedMap._root_rule("edge-fewest")
+            (0, 4)
+
+        TESTS::
+
+            sage: OrientedMap._root_rule("edge_max")
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 'edge_max'
+            sage: OrientedMap._root_rule(3)
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 3
+            sage: OrientedMap._root_rule([])
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got []
+        """
+        try:
+            return OrientedMap._ROOT_RULES[root_rule]
+        except (KeyError, TypeError):
+            raise ValueError("root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', "
+                             "'edge-max', 'edge-fewest', got {!r}".format(root_rule)) from None
+
     def canonical_labelling(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                             half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                            check=True):
+                            check=True, root_rule="all"):
         r"""
         Return the canonical labelling of this map with the given
         decorations.
@@ -4016,6 +4057,22 @@ class OrientedMap:
           lengths of the decorations, that their values are integers and
           the constancy of ``vertex_data``, ``face_data``,
           ``vertex_classes`` and ``face_classes``
+
+        - ``root_rule`` -- string (default ``"all"``); the half-edges tried
+          as roots of the canonical labelling, among those of one class of
+          half-edges preserved by every isomorphism: ``"all"`` tries every
+          half-edge; ``"half-edge-max"`` and ``"half-edge-fewest"`` group
+          the half-edges by the degrees of their vertex and of their face;
+          ``"edge-max"`` and ``"edge-fewest"`` by these degrees for the
+          half-edge and for its twin, and whether the two are at the same
+          vertex and in the same face. ``"*-max"`` tries the class of the
+          largest invariant, ``"*-fewest"`` the class with the fewest
+          half-edges (ties broken by the largest invariant); on a
+          disconnected map the class is chosen among the half-edges not
+          labelled yet, component after component. The labellings and the
+          canonical forms under two rules are not comparable. Any other
+          value raises a ``ValueError``, whatever ``check``. See
+          :mod:`combisurf.isomorphism_naive` for the definitions.
 
         The values of a decoration are integers (Python ``int``, Sage
         ``Integer``, or anything with an ``__index__`` method); the values
@@ -4139,24 +4196,52 @@ class OrientedMap:
             ValueError: face_classes must be constant on faces
             sage: m.canonical_labelling(face_classes=[0, 1, 1, 0, 0, 1], check=False)
             array('i', [2, 3, 4, 5, 0, 1])
+
+        Under a rule other than ``"all"``: the triangle beside a folded edge
+        is labelled from the triangle under ``"edge-max"``, two relabelled
+        copies of a map get the same canonical labelling, and an unknown
+        rule raises an error::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~2,~1)(3)")
+            sage: m.canonical_labelling()
+            array('i', [2, 3, 4, 5, 6, 7, 0, 1])
+            sage: m.canonical_labelling(root_rule="edge-max")
+            array('i', [0, 1, 2, 3, 4, 5, 6, 7])
+            sage: m1 = OrientedMap(fp="(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)", mutable=True)
+            sage: m2 = OrientedMap(fp="(8,7,5)(6,4,~4)(~6,3,~3)(2,1,0)", mutable=True)
+            sage: m1.relabel(m1.canonical_labelling(root_rule="edge-max"))
+            sage: m2.relabel(m2.canonical_labelling(root_rule="edge-max"))
+            sage: m1 == m2
+            True
+            sage: m.canonical_labelling(root_rule="edge")
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 'edge'
+            sage: m.canonical_labelling(root_rule=3, check=False)
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 3
         """
+        rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism.canonical_labelling(self._fp, data, classes)
+        return isomorphism.canonical_labelling(self._fp, data, classes, root_rule=rule)
 
     def canonical_form(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                        half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                       check=True):
+                       check=True, root_rule="all"):
         r"""
         Return the canonical form of this map with the given decorations.
 
-        The decorations are given as in :meth:`canonical_labelling`: the
-        ``*_data`` matched exactly, the ``*_classes`` up to relabelling. The
-        map may be disconnected (see :meth:`canonical_labelling`).
+        The decorations and ``root_rule`` are given as in
+        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
+        ``*_classes`` up to relabelling. The map may be disconnected (see
+        :meth:`canonical_labelling`).
 
         OUTPUT: a hashable tuple ``(fp, d_1, ..., d_k, c_1, ..., c_m)`` of
-        tuples, equal for two decorated maps if and only if they are
-        isomorphic: ``fp`` is the face permutation in the canonical labels,
+        tuples, equal for two decorated maps under the same ``root_rule``
+        if and only if they are isomorphic: ``fp`` is the face permutation
+        in the canonical labels,
         ``d_i`` the values of the ``i``-th ``*_data`` decoration (as a
         half-edge array, in the order half-edge, edge, vertex, face) read in
         the increasing order of the canonical labels of the active
@@ -4202,19 +4287,34 @@ class OrientedMap:
             True
             sage: m.canonical_form(face_classes=[0, 1, 2, 2])
             ((0, 1, 2, 3), (0, 0, 1, 2))
+
+        Under the rule ``"edge-max"``, two isomorphic maps get the same
+        form, which differs from their form under ``"all"``::
+
+            sage: m1 = OrientedMap(fp="(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)")
+            sage: m2 = OrientedMap(fp="(8,7,5)(6,4,~4)(~6,3,~3)(2,1,0)")
+            sage: m1.canonical_form(root_rule="edge-max")
+            ((2, 4, 3, 0, 5, 1, 8, -1, 10, -1, 6, -1, 14, -1, 16, -1, 12, -1),)
+            sage: m1.canonical_form(root_rule="edge-max") == m2.canonical_form(root_rule="edge-max")
+            True
+            sage: m1.canonical_form()
+            ((1, 2, 0, 4, 5, 3, 8, -1, 10, -1, 6, -1, 14, -1, 16, -1, 12, -1),)
         """
+        rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism.canonical_form(self._fp, data, classes)
+        return isomorphism.canonical_form(self._fp, data, classes, root_rule=rule)
 
     def automorphisms(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                      check=True):
+                      check=True, root_rule="all"):
         r"""
         Return the automorphisms of this map with the given decorations.
 
-        The decorations are given as in :meth:`canonical_labelling`: the
-        ``*_data`` matched exactly, the ``*_classes`` up to relabelling. On
+        The decorations and ``root_rule`` are given as in
+        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
+        ``*_classes`` up to relabelling. The list is the same group under
+        every ``root_rule``, in the order of the search of the rule. On
         a disconnected map the automorphisms may permute isomorphic
         components, and a ``*_classes`` decoration is preserved up to one
         bijection of its values for all the components together. The list
@@ -4309,20 +4409,34 @@ class OrientedMap:
              array('i', [1, 0, 3, 2]),
              array('i', [2, 3, 0, 1]),
              array('i', [3, 2, 1, 0])]
+
+        Under the rule ``"edge-max"``, the same group::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~2,~1)(3)(4,5,6)(~4,~6,~5)")
+            sage: A = m.automorphisms(root_rule="edge-max")
+            sage: len(A), sorted(A) == sorted(m.automorphisms())
+            (72, True)
+            sage: m.automorphisms(root_rule="max")
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 'max'
         """
+        rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism.automorphisms(self._fp, data, classes)
+        return isomorphism.automorphisms(self._fp, data, classes, root_rule=rule)
 
     def automorphism_generators(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                                 half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                                check=True):
+                                check=True, root_rule="all"):
         r"""
         Return generators of the automorphism group of this map with the
         given decorations.
 
-        The decorations are given as in :meth:`canonical_labelling`: the
-        ``*_data`` matched exactly, the ``*_classes`` up to relabelling. The
+        The decorations and ``root_rule`` are given as in
+        :meth:`canonical_labelling`: the ``*_data`` matched exactly, the
+        ``*_classes`` up to relabelling. The generators may differ from a
+        ``root_rule`` to another, the group generated does not. The
         map may be disconnected (see :meth:`automorphisms`); the generators
         then come from the structure of the group, not from the list of the
         automorphisms: without ``*_classes`` the group is a product of
@@ -4360,14 +4474,20 @@ class OrientedMap:
 
             sage: OrientedMap(fp="(0)(~0)(1)(~1)").automorphism_generators()
             [array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
+
+        Under the rule ``"edge-max"``::
+
+            sage: OrientedMap(fp="(0)(~0)(1)(~1)").automorphism_generators(root_rule="edge-max")
+            [array('i', [0, 1, 3, 2]), array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
         """
+        rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism.automorphism_generators(self._fp, data, classes)
+        return isomorphism.automorphism_generators(self._fp, data, classes, root_rule=rule)
 
     def is_isomorphic(self, other, certificate=False, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                      check=True):
+                      check=True, root_rule="all"):
         r"""
         Return whether this map is isomorphic to ``other`` with the given
         decorations.
@@ -4399,6 +4519,11 @@ class OrientedMap:
 
         - ``check`` -- boolean (default ``True``); whether to check the
           decorations
+
+        - ``root_rule`` -- string (default ``"all"``); the half-edges tried
+          as roots in both maps, as in :meth:`canonical_labelling`; the
+          verdict does not depend on it, the isomorphism returned may
+          differ from a rule to another
 
         A ``*_data`` decoration given for one map only (``None`` for the
         other) makes the maps not isomorphic. A ``*_classes`` decoration
@@ -4485,6 +4610,17 @@ class OrientedMap:
             sage: m.is_isomorphic(m, face_classes=([0, 1, 0, 1], [0, 1, 2, 2]))
             False
 
+        Under the rule ``"edge-max"``::
+
+            sage: m1.is_isomorphic(m2, certificate=True, root_rule="edge-max")
+            (True, array('i', [0, 1, 4, 5, 2, 3]))
+            sage: m1.is_isomorphic(m3, root_rule="edge-max")
+            False
+            sage: m1.is_isomorphic(m2, root_rule="edge")
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 'edge'
+
         TESTS::
 
             sage: m1.is_isomorphic(m2, edge_data=[0, 0, 1])
@@ -4536,6 +4672,7 @@ class OrientedMap:
             ...
             NotImplementedError: colours are not supported yet
         """
+        rule = self._root_rule(root_rule)
         if not isinstance(other, OrientedMap):
             raise TypeError("other must be an OrientedMap")
         from combisurf import ColoredOrientedMap
@@ -4575,7 +4712,7 @@ class OrientedMap:
         else:
             (data1, data2), (classes1, classes2) = decorations['data'], decorations['classes']
             r = isomorphism.isomorphism(self._fp, tuple(data1), other._fp, tuple(data2),
-                                        tuple(classes1), tuple(classes2))
+                                        tuple(classes1), tuple(classes2), root_rule=rule)
         if certificate:
             return (r is not None, r)
         return r is not None

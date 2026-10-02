@@ -59,6 +59,18 @@ compact hashable key for the exploration of large collections of maps up
 to isomorphism, and on request the canonical labelling and the number of
 automorphisms.
 
+The public functions take the keyword ``root_rule``, one of the integers
+:data:`ROOTS_ALL` (the default), :data:`ROOTS_HALF_EDGE_MAX`,
+:data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and
+:data:`ROOTS_EDGE_FEWEST`, equal to the constants of the same names of
+:mod:`combisurf.isomorphism_naive`, which defines the rules: the
+half-edges tried as roots. Any other value, a string included, raises a
+``ValueError``. The C code tries every active half-edge as a root, which
+is :data:`ROOTS_ALL`; under another rule the functions check their input
+as above, then return the results of :mod:`combisurf.isomorphism_naive`
+for that rule (the count of :func:`canonical_key` excepted, which does not
+depend on the rule and is computed here).
+
 EXAMPLES::
 
     sage: from combisurf.isomorphism import canonical_labelling, automorphisms, isomorphism, canonical_key
@@ -78,6 +90,18 @@ The results agree with the reference implementation::
     sage: fp = [2, 3, 4, 5, 0, 1]
     sage: c = [0, 1, 0, 1, 0, 1]
     sage: automorphisms(fp, classes=(c,)) == isomorphism_naive.automorphisms(fp, classes=(c,))
+    True
+
+Under a rule other than the default, the results are those of the
+reference for that rule::
+
+    sage: from combisurf.isomorphism import canonical_form, ROOTS_HALF_EDGE_MAX
+    sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]
+    sage: canonical_form(fp)
+    ((0, -1, 4, 7, 6, 3, 2, 5),)
+    sage: canonical_form(fp, root_rule=ROOTS_HALF_EDGE_MAX)
+    ((2, 5, 4, 1, 0, 3, 6, -1),)
+    sage: canonical_form(fp, root_rule=ROOTS_HALF_EDGE_MAX) == isomorphism_naive.canonical_form(fp, root_rule=isomorphism_naive.ROOTS_HALF_EDGE_MAX)
     True
 """
 # ****************************************************************************
@@ -104,9 +128,60 @@ from cpython cimport array
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
 from math import factorial
+from numbers import Integral
 
 
 cdef array.array _int_array = array.array('i', [])
+
+
+cdef enum:
+    # the value of ROOTS_ALL as a C constant, compared without the lookup of
+    # a module global
+    _ROOTS_ALL = 0
+
+
+ROOTS_ALL = _ROOTS_ALL
+ROOTS_HALF_EDGE_MAX = 1
+ROOTS_HALF_EDGE_FEWEST = 2
+ROOTS_EDGE_MAX = 3
+ROOTS_EDGE_FEWEST = 4
+
+
+cdef int _check_root_rule(root_rule) except -1:
+    r"""
+    Return ``root_rule`` as a C ``int`` after checking that it is one of the
+    integers ``ROOTS_ALL``, ..., ``ROOTS_EDGE_FEWEST``, with the message of
+    ``isomorphism_naive._check_root_rule``.
+
+    A Python ``int`` is checked first, without the lookup of
+    :class:`numbers.Integral`: :func:`canonical_key` may be called millions
+    of times in an exploration.
+    """
+    if type(root_rule) is int:
+        if 0 <= root_rule <= 4:
+            return root_rule
+    elif not isinstance(root_rule, bool) and isinstance(root_rule, Integral) and 0 <= root_rule <= 4:
+        return int(root_rule)
+    raise ValueError("root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, "
+                     "ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got {!r}".format(root_rule))
+
+
+def _naive():
+    r"""
+    Return the module :mod:`combisurf.isomorphism_naive`, which computes the
+    results under the rules other than ``ROOTS_ALL``.
+
+    It is imported at the call, so that the results under ``ROOTS_ALL`` never
+    depend on it.
+
+    TESTS::
+
+        sage: from combisurf.isomorphism import _naive
+        sage: _naive().__name__
+        'combisurf.isomorphism_naive'
+    """
+    from combisurf import isomorphism_naive
+    return isomorphism_naive
 
 
 def _check_sizes(n, nd, nc):
@@ -382,7 +457,7 @@ cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
     return 0
 
 
-def canonical_labelling(fp, data=(), classes=()):
+def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     r"""
     Return the canonical labelling of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -402,6 +477,12 @@ def canonical_labelling(fp, data=(), classes=()):
     - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by
       half-edges, kept up to a relabelling of their values (default: no
       decoration)
+
+    - ``root_rule`` -- one of the integers :data:`ROOTS_ALL` (the default),
+      :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`,
+      :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`: the half-edges
+      tried as roots (see :mod:`combisurf.isomorphism_naive`); any other
+      value raises a ``ValueError``
 
     OUTPUT: an ``array('i')`` ``r`` that maps each half-edge to its
     canonical label. It is a permutation of ``range(len(fp))`` that
@@ -467,8 +548,33 @@ def canonical_labelling(fp, data=(), classes=()):
         OverflowError: ...
         sage: canonical_labelling([0, -1], ([0, 2**40],))
         array('i', [0, 1])
+
+    Under a rule, the triangle ``(0,1,2)(~0,~2,~1)`` beside the folded edge
+    ``(3)`` is labelled from the folded edge or from the triangle::
+
+        sage: from combisurf.isomorphism import ROOTS_HALF_EDGE_MAX, ROOTS_EDGE_FEWEST
+        sage: canonical_labelling([2, 5, 4, 1, 0, 3, 6, -1], root_rule=ROOTS_EDGE_FEWEST)
+        array('i', [2, 3, 4, 5, 6, 7, 0, 1])
+        sage: canonical_labelling([2, 5, 4, 1, 0, 3, 6, -1], root_rule=ROOTS_HALF_EDGE_MAX)
+        array('i', [0, 1, 2, 3, 4, 5, 6, 7])
+
+    A rule that is not one of the five integers::
+
+        sage: canonical_labelling([0, -1], root_rule=5)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 5
+        sage: canonical_labelling([0, -1], root_rule="edge-max")
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 'edge-max'
+        sage: canonical_labelling([0, -1], root_rule=int(3))
+        array('i', [0, 1])
     """
+    cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
+    if rule != _ROOTS_ALL:
+        return _naive().canonical_labelling(fp, data, classes, root_rule=rule)
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
     if _run(m, key, r.data.as_ints, NULL, NULL) == ISO_DISCONNECTED:
@@ -499,7 +605,7 @@ cdef tuple _form(_Map m, array.array key, array.array r, tuple data):
     return tuple(out)
 
 
-def canonical_form(fp, data=(), classes=()):
+def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     r"""
     Return the canonical form of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -520,6 +626,9 @@ def canonical_form(fp, data=(), classes=()):
       half-edges, kept up to a relabelling of their values (default: no
       decoration)
 
+    - ``root_rule`` -- the half-edges tried as roots, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`)
+
     OUTPUT: a tuple ``(fp_c, d_1, ..., d_k, c_1, ..., c_m)`` of tuples:
     ``fp_c`` is the face permutation in the canonical labels (of length
     ``2*ne``, ``-1`` on the inactive half-edges of folded edges), ``d_i``
@@ -527,7 +636,8 @@ def canonical_form(fp, data=(), classes=()):
     order of the canonical labels of the active half-edges, and ``c_i`` the
     values of the ``i``-th array of ``classes`` read in the same order and
     renumbered ``0, 1, 2, ...`` by first appearance. Two decorated maps are
-    isomorphic if and only if their canonical forms are equal.
+    isomorphic if and only if their canonical forms under the same rule are
+    equal.
 
     EXAMPLES::
 
@@ -560,8 +670,21 @@ def canonical_form(fp, data=(), classes=()):
         Traceback (most recent call last):
         ...
         OverflowError: ...
+
+    Under a rule, the input is checked as under the default one::
+
+        sage: from combisurf.isomorphism import ROOTS_EDGE_MAX
+        sage: canonical_form([1, 0], ([0, -2**40],), root_rule=ROOTS_EDGE_MAX)
+        Traceback (most recent call last):
+        ...
+        OverflowError: ...
+        sage: canonical_form([2, 5, 4, 1, 0, 3, 6, -1], root_rule=ROOTS_EDGE_MAX)
+        ((2, 5, 4, 1, 0, 3, 6, -1),)
     """
+    cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
+    if rule != _ROOTS_ALL:
+        return _naive().canonical_form(fp, data, classes, root_rule=rule)
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
     if _run(m, key, r.data.as_ints, NULL, NULL) == ISO_DISCONNECTED:
@@ -1170,7 +1293,7 @@ cdef tuple _stabiliser(_Map m):
     return gens, order
 
 
-def automorphisms(fp, data=(), classes=()):
+def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     r"""
     Return the automorphisms of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -1190,6 +1313,11 @@ def automorphisms(fp, data=(), classes=()):
     - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by
       half-edges, kept up to a relabelling of their values (default: no
       decoration)
+
+    - ``root_rule`` -- the half-edges tried as roots, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`); the group
+      is the same under every rule, listed in the order of the search of
+      the rule
 
     OUTPUT: the list of the automorphisms, each an ``array('i')``
     permutation of ``range(len(fp))`` that commutes with ``fp`` on the
@@ -1237,8 +1365,18 @@ def automorphisms(fp, data=(), classes=()):
         384
         sage: len(automorphisms(list(range(8)), classes=([0, 1, 0, 1, 2, 3, 2, 3],)))
         32
+
+    Under a rule::
+
+        sage: from combisurf.isomorphism import ROOTS_HALF_EDGE_FEWEST
+        sage: A = automorphisms([2, 3, 4, 5, 0, 1, 6, -1], root_rule=ROOTS_HALF_EDGE_FEWEST)
+        sage: len(A), sorted(A) == sorted(automorphisms([2, 3, 4, 5, 0, 1, 6, -1]))
+        (6, True)
     """
+    cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
+    if rule != _ROOTS_ALL:
+        return _naive().automorphisms(fp, data, classes, root_rule=rule)
     cdef int n = m.n
     cdef int count, j
     cdef array.array key = _new(ISO_KEY_SIZE(n, m.nd, m.nc))
@@ -1258,7 +1396,7 @@ def automorphisms(fp, data=(), classes=()):
     return result
 
 
-def automorphism_generators(fp, data=(), classes=()):
+def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_ALL):
     r"""
     Return generators of the automorphism group of the map with face
     permutation ``fp`` decorated by ``data`` and ``classes``.
@@ -1280,6 +1418,13 @@ def automorphism_generators(fp, data=(), classes=()):
     - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by
       half-edges, kept up to a relabelling of their values (default: no
       decoration)
+
+    - ``root_rule`` -- the half-edges tried as roots, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`); under
+      another rule the result is the one of
+      :func:`combisurf.isomorphism_naive.automorphism_generators` for that
+      rule, connected map or not: the generators may differ from a rule to
+      another, the group generated does not
 
     OUTPUT: a list of automorphisms (as in :func:`automorphisms`) that
     generate the group; empty when the group is trivial. There are three
@@ -1364,8 +1509,18 @@ def automorphism_generators(fp, data=(), classes=()):
          array('i', [4, 5, 6, 7, 0, 1, 2, 3])]
         sage: PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, 9))).order()
         32
+
+    Under a rule, the generators of the reference for that rule::
+
+        sage: from combisurf.isomorphism import ROOTS_EDGE_MAX
+        sage: gens = automorphism_generators(fp, classes=(c,), root_rule=ROOTS_EDGE_MAX)
+        sage: PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, 9))).order()
+        32
     """
+    cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
+    if rule != _ROOTS_ALL:
+        return _naive().automorphism_generators(fp, data, classes, root_rule=rule)
     cdef int n = m.n
     cdef int count
     cdef array.array key = _new(ISO_KEY_SIZE(n, m.nd, m.nc))
@@ -1378,7 +1533,7 @@ def automorphism_generators(fp, data=(), classes=()):
     return _stabiliser(m)[0]
 
 
-def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
+def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOTS_ALL):
     r"""
     Return an isomorphism from the first decorated map to the second, or
     ``None`` if they are not isomorphic.
@@ -1398,6 +1553,9 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
     - ``classes1``, ``classes2`` -- tuples with the same number of arrays
       indexed by half-edges, of lengths ``len(fp1)`` and ``len(fp2)``, kept
       up to a relabelling of their values (default: no decoration)
+
+    - ``root_rule`` -- the half-edges tried as roots in both maps, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`)
 
     OUTPUT: ``None`` or an ``array('i')`` ``r`` of length ``len(fp1)`` with
     ``r[fp1[h]] == fp2[r[h]]`` and ``data2[i][r[h]] == data1[i][h]`` for
@@ -1443,7 +1601,16 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
         array('i', [2, 3, 4, 5, 6, 7, 0, 1])
         sage: isomorphism([2, 5, 4, 1, 0, 3], (), [2, 5, 4, 1, 0, 3, 6, -1], ()) is None
         True
+
+    Under a rule::
+
+        sage: from combisurf.isomorphism import ROOTS_HALF_EDGE_FEWEST
+        sage: isomorphism([2, 5, 4, 1, 0, 3, 6, -1], (), [0, -1, 4, 7, 6, 3, 2, 5], (), root_rule=ROOTS_HALF_EDGE_FEWEST)
+        array('i', [2, 3, 4, 5, 6, 7, 0, 1])
+        sage: isomorphism(fp1, (), fp3, (), root_rule=ROOTS_HALF_EDGE_FEWEST) is None
+        True
     """
+    cdef int rule = _check_root_rule(root_rule)
     _check_input(fp1, data1, classes1)
     _check_input(fp2, data2, classes2)
     if len(data1) != len(data2):
@@ -1452,6 +1619,8 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
         raise ValueError("classes1 and classes2 must have the same number of arrays")
     cdef _Map m1 = _convert(fp1, data1, classes1)
     cdef _Map m2 = _convert(fp2, data2, classes2)
+    if rule != _ROOTS_ALL:
+        return _naive().isomorphism(fp1, data1, fp2, data2, classes1, classes2, root_rule=rule)
     cdef int n1 = m1.n, n2 = m2.n
     cdef array.array key1 = _new(ISO_KEY_SIZE(n1, m1.nd, m1.nc))
     cdef array.array key2 = _new(ISO_KEY_SIZE(n2, m2.nd, m2.nc))
@@ -1494,7 +1663,20 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=()):
     return r
 
 
-def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count=False):
+cdef _automorphism_count(_Map m):
+    r"""
+    Return the number of automorphisms of ``m``, a Python integer, as the
+    count of :func:`canonical_key`.
+    """
+    cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
+    cdef array.array r = _new(m.n)
+    cdef int count
+    if _run(m, key, r.data.as_ints, NULL, &count) == ISO_DISCONNECTED:
+        return _stabiliser(m)[1] if m.nc else _wreath_order(m)
+    return count if count else 1
+
+
+def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count=False, root_rule=ROOTS_ALL):
     r"""
     Return the canonical form of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``, flattened as bytes, and on
@@ -1519,12 +1701,18 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     - ``automorphism_count`` -- boolean (default ``False``); whether to
       return the number of automorphisms as well
 
+    - ``root_rule`` -- the half-edges tried as roots, as in
+      :func:`canonical_labelling` (default: :data:`ROOTS_ALL`); the key and
+      the relabelling are those of the rule, the count does not depend on
+      it
+
     OUTPUT: the key, a ``bytes`` object: the entries of the canonical form
     (see :func:`canonical_form`) as C ``int`` in the machine byte order,
     the face permutation first, then each array of ``data``, then each
     array of ``classes``. Two maps with the same numbers of arrays of
-    ``data`` and of ``classes`` have equal keys if and only if their
-    canonical forms are equal, that is, if and only if they are isomorphic.
+    ``data`` and of ``classes`` have equal keys under the same rule if and
+    only if their canonical forms are equal, that is, if and only if they
+    are isomorphic.
     With ``relabelling=True`` or ``automorphism_count=True``, a tuple
     ``(key, relabelling)``, ``(key, count)`` or ``(key, relabelling,
     count)``, where the relabelling is the one of
@@ -1613,8 +1801,34 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         OverflowError: ...
         sage: array('i', canonical_key([0, -1], ([3, None],)))
         array('i', [0, -1, 3])
+
+    Under a rule, the key is the canonical form of that rule flattened::
+
+        sage: from combisurf.isomorphism import ROOTS_HALF_EDGE_MAX
+        sage: fp = [2, 3, 4, 5, 0, 1, 6, -1]
+        sage: key, r, count = canonical_key(fp, relabelling=True, automorphism_count=True, root_rule=ROOTS_HALF_EDGE_MAX)
+        sage: array('i', key), r, count
+        (array('i', [2, 3, 4, 5, 0, 1, 6, -1]), array('i', [0, 1, 2, 3, 4, 5, 6, 7]), 6)
+        sage: array('i', canonical_key(fp))
+        array('i', [0, -1, 4, 5, 6, 7, 2, 3])
+        sage: canonical_key(fp, root_rule="all")
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 'all'
     """
+    cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
+    if rule != _ROOTS_ALL:
+        naive = _naive()
+        form = naive.canonical_form(fp, data, classes, root_rule=rule)
+        out = [array.array('i', [x for t in form for x in t]).tobytes()]
+        if relabelling:
+            out.append(naive.canonical_labelling(fp, data, classes, root_rule=rule))
+        if automorphism_count:
+            out.append(_automorphism_count(m))
+        if len(out) == 1:
+            return out[0]
+        return tuple(out)
     cdef array.array key = _new(ISO_KEY_SIZE(m.n, m.nd, m.nc))
     cdef array.array r = _new(m.n)
     cdef int count, length
