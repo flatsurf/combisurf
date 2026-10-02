@@ -1729,12 +1729,13 @@ def test_fast_against_naive(seed, root_rule):
         check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_fast_against_naive_large(seed):
+def test_fast_against_naive_large(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(2):
         fp = random_large_connected_fp(rng)
-        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
 
 
 @WITH_ROOT_RULES
@@ -1773,12 +1774,34 @@ def random_large_disconnected_fp(rng):
     return relabel_arrays(union, (), random_edge_relabelling(rng, union))[0]
 
 
+@WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
-def test_fast_against_naive_large_disconnected(seed):
+def test_fast_against_naive_large_disconnected(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(3):
         fp = random_large_disconnected_fp(rng)
-        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp))
+        check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
+
+
+def test_default_root_rule():
+    # omitting root_rule is the rule half-edge-fewest in each layer
+    rng = random.Random(0)
+    fewest = isomorphism_naive.ROOTS_HALF_EDGE_FEWEST
+    for fp in [random_connected_fp(rng) for _ in range(10)] + [random_disconnected_fp(rng) for _ in range(10)]:
+        data, classes = random_data(rng, fp), random_classes(rng, fp)
+        for module in (isomorphism_naive, isomorphism_fast):
+            assert module.canonical_labelling(fp, data, classes) == module.canonical_labelling(fp, data, classes, root_rule=fewest)
+            assert module.canonical_form(fp, data, classes) == module.canonical_form(fp, data, classes, root_rule=fewest)
+            assert module.automorphisms(fp, data, classes) == module.automorphisms(fp, data, classes, root_rule=fewest)
+            assert module.isomorphism(fp, data, fp, data, classes, classes) == \
+                module.isomorphism(fp, data, fp, data, classes, classes, root_rule=fewest)
+        assert isomorphism_fast.canonical_key(fp, data, classes) == \
+            isomorphism_fast.canonical_key(fp, data, classes, root_rule=fewest)
+        m = OrientedMap(fp=fp)
+        assert m.canonical_labelling() == m.canonical_labelling(root_rule="half-edge-fewest")
+        assert m.canonical_form() == m.canonical_form(root_rule="half-edge-fewest")
+        assert m.automorphisms() == m.automorphisms(root_rule="half-edge-fewest")
+        assert m.is_isomorphic(m, certificate=True) == m.is_isomorphic(m, certificate=True, root_rule="half-edge-fewest")
 
 
 def random_origami(rng, n):
