@@ -4443,7 +4443,10 @@ class OrientedMap:
         wreath products over the classes of isomorphic components, and with
         ``*_classes`` its subgroup preserving the partitions they define,
         searched by backtracking (exponential in the number of components
-        in the worst case).
+        in the worst case). Under a ``root_rule`` other than ``"all"``, the
+        generators are instead extracted from the list of all the
+        automorphisms, of length at least `k!` on `k` isomorphic
+        components.
 
         OUTPUT: a list of automorphisms (as in :meth:`automorphisms`) that
         generate the group; empty when the group is trivial.

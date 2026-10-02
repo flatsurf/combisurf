@@ -95,10 +95,12 @@ The results agree with the reference implementation::
 Under a rule other than the default, the results are those of the
 reference for that rule::
 
-    sage: from combisurf.isomorphism import canonical_form, ROOTS_HALF_EDGE_MAX
+    sage: from combisurf.isomorphism import canonical_form, ROOTS_ALL, ROOTS_HALF_EDGE_MAX
     sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]
     sage: canonical_form(fp)
     ((0, -1, 4, 7, 6, 3, 2, 5),)
+    sage: canonical_form(fp, root_rule=ROOTS_ALL) == canonical_form(fp)
+    True
     sage: canonical_form(fp, root_rule=ROOTS_HALF_EDGE_MAX)
     ((2, 5, 4, 1, 0, 3, 6, -1),)
     sage: canonical_form(fp, root_rule=ROOTS_HALF_EDGE_MAX) == isomorphism_naive.canonical_form(fp, root_rule=isomorphism_naive.ROOTS_HALF_EDGE_MAX)

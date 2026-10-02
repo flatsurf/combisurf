@@ -139,7 +139,7 @@ edges. Classes shared by the two components tie them together::
 
 The triangle ``(0,1,2)(~0,~2,~1)`` beside the folded edge ``(3)``: every
 active half-edge is a root under the default rule, the half-edges of the
-triangle (a vertex and a face of degree 3) under ``ROOTS_HALF_EDGE_MAX``
+triangle (at a vertex of degree 2 and a face of degree 3) under ``ROOTS_HALF_EDGE_MAX``
 and the folded edge (the class with one half-edge) under
 ``ROOTS_HALF_EDGE_FEWEST``::
 
