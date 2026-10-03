@@ -20,7 +20,10 @@
  * roots of the class of the reference, and each block of iso_search starts
  * at a half-edge of the class of the reference among the half-edges not
  * labelled before; the number of automorphisms does not depend on the
- * rule.
+ * rule. The rules run with and without the flag ISO_ROOTS_DATA, whose
+ * reference invariants read the data values themselves; half of the random
+ * cases take their data values among -7, n + 11, INT_MIN and INT_MAX, far
+ * from the ranks 0, ..., n - 1 the C code sorts by.
  *
  * This file is part of combisurf.
  *
@@ -33,6 +36,7 @@
  */
 #include "../../combisurf/src/isomorphism.h"
 
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,12 +69,32 @@ static int work[WORK_SIZE];
 static int relabelling[MAX_N];
 static int roots[MAX_N];
 
-/* the rules, ISO_ROOTS_ALL first */
+/* the rules, ISO_ROOTS_ALL first, then the base rules with the flag */
 static const iso_root_rule rules[] = {
     ISO_ROOTS_ALL, ISO_ROOTS_HALF_EDGE_MAX, ISO_ROOTS_HALF_EDGE_FEWEST,
-    ISO_ROOTS_EDGE_MAX, ISO_ROOTS_EDGE_FEWEST
+    ISO_ROOTS_EDGE_MAX, ISO_ROOTS_EDGE_FEWEST,
+    ISO_ROOTS_HALF_EDGE_MAX | ISO_ROOTS_DATA, ISO_ROOTS_HALF_EDGE_FEWEST | ISO_ROOTS_DATA,
+    ISO_ROOTS_EDGE_MAX | ISO_ROOTS_DATA, ISO_ROOTS_EDGE_FEWEST | ISO_ROOTS_DATA
 };
-#define NUM_RULES 5
+#define NUM_RULES 9
+
+/* the base rule of a rule, without the flag */
+static int base_rule(iso_root_rule rule)
+{
+    return rule & ~ISO_ROOTS_DATA;
+}
+
+/*
+ * Data values far from 0, ..., n - 1, negative and larger than n, among
+ * which the random cases draw: index v of the table replaces the value v.
+ */
+static void spread_values(int n, int count, int *a)
+{
+    const int wide[] = {-7, n + 11, INT_MIN, INT_MAX};
+    int i;
+    for (i = 0; i < count; i++)
+        a[i] = wide[a[i]];
+}
 
 /* splitmix64 */
 static uint64_t rng_state;
@@ -340,7 +364,7 @@ static void test_search_fixed(void)
         const int *expected_sequence, *expected_relabelling;
         int j;
         current_case = "search, triangle and folded edge, under a rule";
-        if (rules[i] == ISO_ROOTS_HALF_EDGE_FEWEST || rules[i] == ISO_ROOTS_EDGE_FEWEST) {
+        if (base_rule(rules[i]) == ISO_ROOTS_HALF_EDGE_FEWEST || base_rule(rules[i]) == ISO_ROOTS_EDGE_FEWEST) {
             expected_sequence = folded_first_sequence;
             expected_relabelling = triangle_and_folded_relabelling;
         } else {
@@ -497,8 +521,9 @@ static void test_random(void)
 /* ------------------------------------------------------------------ */
 
 /*
- * The invariant of the active half-edge h under rule, into inv (6 ints, the
- * unused entries 0), computed by walking the cycles from h: the vertex of h
+ * The invariant of the active half-edge h under rule, into inv (INV_SIZE
+ * ints, the unused entries 0), computed by walking the cycles from h and
+ * reading the data values themselves, not ranks of them: the vertex of h
  * is h, vp[h], ... with vp[fp[t]] = h for t the twin of h (h itself on a
  * folded edge), that is vp[x] = twin(fp^-1(x)).
  */
@@ -524,21 +549,37 @@ static int ref_cycle(const int *fp, const int *finv, int vertex, int h, int g, i
     return len;
 }
 
-static void ref_invariant(const int *fp, const int *finv, iso_root_rule rule, int h, int *inv)
+/* the length of a reference invariant: 6 base entries, 2 per data array */
+#define INV_SIZE (6 + 2 * MAX_ARRAYS)
+
+/*
+ * Under ISO_ROOTS_DATA, the base entries are followed by the nd data values
+ * at h, then under the edge rules by those at t, in the entries 6 on.
+ */
+static void ref_invariant(const int *fp, const int *finv, iso_root_rule rule, int n, int nd,
+                          const int *data, int h, int *inv)
 {
-    int t = ref_twin(fp, h), loop, monogon, i;
-    for (i = 0; i < 6; i++)
+    int t = ref_twin(fp, h), loop, monogon, i, base = base_rule(rule);
+    int edge = base == ISO_ROOTS_EDGE_MAX || base == ISO_ROOTS_EDGE_FEWEST;
+    for (i = 0; i < INV_SIZE; i++)
         inv[i] = 0;
-    if (rule == ISO_ROOTS_ALL)
+    if (base == ISO_ROOTS_ALL)
         return;
     inv[0] = ref_cycle(fp, finv, 1, h, t, &loop);
     inv[1] = ref_cycle(fp, finv, 0, h, t, &monogon);
-    if (rule == ISO_ROOTS_HALF_EDGE_MAX || rule == ISO_ROOTS_HALF_EDGE_FEWEST)
-        return;
-    inv[2] = ref_cycle(fp, finv, 1, t, t, &i);
-    inv[3] = ref_cycle(fp, finv, 0, t, t, &i);
-    inv[4] = loop;
-    inv[5] = monogon;
+    if (edge) {
+        inv[2] = ref_cycle(fp, finv, 1, t, t, &i);
+        inv[3] = ref_cycle(fp, finv, 0, t, t, &i);
+        inv[4] = loop;
+        inv[5] = monogon;
+    }
+    if (rule & ISO_ROOTS_DATA) {
+        for (i = 0; i < nd; i++) {
+            inv[6 + i] = data[i * n + h];
+            if (edge)
+                inv[6 + nd + i] = data[i * n + t];
+        }
+    }
 }
 
 /*
@@ -547,18 +588,19 @@ static void ref_invariant(const int *fp, const int *finv, iso_root_rule rule, in
  * invariant is the one chosen by the rule among them, 0 elsewhere. Every
  * pair of half-edges is compared, O(n^2) invariants.
  */
-static void ref_class(int n, const int *fp, iso_root_rule rule, const int *avail, int *mask)
+static void ref_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
+                      const int *avail, int *mask)
 {
-    static int inv[MAX_N][6], finv[MAX_N];
+    static int inv[MAX_N][INV_SIZE], finv[MAX_N];
     int h, g, cnt, best = -1, best_cnt = 0, cmp;
-    int fewest = rule == ISO_ROOTS_HALF_EDGE_FEWEST || rule == ISO_ROOTS_EDGE_FEWEST;
+    int fewest = base_rule(rule) == ISO_ROOTS_HALF_EDGE_FEWEST || base_rule(rule) == ISO_ROOTS_EDGE_FEWEST;
 
     for (h = 0; h < n; h++)
         if (fp[h] != -1)
             finv[fp[h]] = h;
     for (h = 0; h < n; h++)
         if (avail[h])
-            ref_invariant(fp, finv, rule, h, inv[h]);
+            ref_invariant(fp, finv, rule, n, nd, data, h, inv[h]);
     for (h = 0; h < n; h++) {
         if (!avail[h])
             continue;
@@ -570,9 +612,9 @@ static void ref_class(int n, const int *fp, iso_root_rule rule, const int *avail
         if (cmp == 0 && fewest && cnt != best_cnt)
             cmp = cnt < best_cnt ? 1 : -1;
         if (cmp == 0) {
-            for (g = 0; g < 6 && inv[h][g] == inv[best][g]; g++)
+            for (g = 0; g < INV_SIZE && inv[h][g] == inv[best][g]; g++)
                 ;
-            cmp = g == 6 ? 0 : (inv[h][g] > inv[best][g] ? 1 : -1);
+            cmp = g == INV_SIZE ? 0 : (inv[h][g] > inv[best][g] ? 1 : -1);
         }
         if (cmp > 0) {
             best = h;
@@ -601,7 +643,7 @@ static int ref_canonical(int n, const int *fp, int nd, const int *data, int nc, 
         best_relabelling[i] = -1;
         avail[i] = fp[i] != -1;
     }
-    ref_class(n, fp, rule, avail, mask);
+    ref_class(n, fp, rule, nd, data, avail, mask);
     for (root = 0; root < n; root++) {
         if (!mask[root])
             continue;
@@ -788,6 +830,8 @@ static void test_reference(void)
         s = n > 2 ? 2 + rng_below(2) : 2;
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(s);
+        if (trial % 2)
+            spread_values(n, nd * n, dec);
         check_reference(n, fp, nd, dec, nc, dec + nd * n);
         check_reference(n, fp, 0, NULL, 0, NULL);
     }
@@ -851,8 +895,8 @@ static int random_union(int *fp)
  * with nd + nc decoration arrays, lies in the class of rule (ref_class)
  * among the active half-edges not labelled before it.
  */
-static void check_block_roots(int n, const int *fp, int narrays, iso_root_rule rule,
-                              const int *rel, const int *seq, int len)
+static void check_block_roots(int n, const int *fp, int nd, const int *data, int narrays,
+                              iso_root_rule rule, const int *rel, const int *seq, int len)
 {
     static int avail[MAX_N], mask[MAX_N];
     int pos = 0, first = 0, k, na, root, h;
@@ -869,7 +913,7 @@ static void check_block_roots(int n, const int *fp, int narrays, iso_root_rule r
                 root = h;
         }
         CHECK(root != -1 && fp[root] != -1);
-        ref_class(n, fp, rule, avail, mask);
+        ref_class(n, fp, rule, nd, data, avail, mask);
         CHECK(mask[root]);
         pos += 1 + k + narrays * na;
         first += k;
@@ -892,6 +936,8 @@ static void test_search_random(void)
         nc = rng_below(MAX_ARRAYS + 1);
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(2);
+        if (trial % 2)
+            spread_values(n, nd * n, dec);
         for (j = 0; j < NUM_RULES; j++) {
             rule = rules[j];
             leaves = search(n, fp, nd, dec, nc, dec + nd * n, rule, &len, NULL);
@@ -901,7 +947,7 @@ static void test_search_random(void)
             if (j == 0)
                 all_leaves = leaves;
             CHECK(leaves == all_leaves);
-            check_block_roots(n, fp, nd + nc, rule, relabelling1, sequence, len);
+            check_block_roots(n, fp, nd, dec, nd + nc, rule, relabelling1, sequence, len);
 
             /* the first leaf sends fp to the face permutation of the
              * canonical form, which starts with the first block */

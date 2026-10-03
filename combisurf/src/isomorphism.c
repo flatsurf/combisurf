@@ -24,7 +24,11 @@
  *
  * Under a rule other than ISO_ROOTS_ALL, the classes of the half-edges are
  * computed once per call (root_classes: a radix sort of the active
- * half-edges by invariant, O(n)). iso_canonical then tries the half-edges
+ * half-edges by invariant, O(n)). Under ISO_ROOTS_DATA, whose invariants
+ * end with data values, arbitrary ints, each data array is first replaced
+ * by the ranks of its values, O(n log n), so that every entry of the radix
+ * sort lies in 0, ..., n - 1. The flag is masked wherever the base rule is
+ * tested. iso_canonical then tries the half-edges
  * of the chosen class only. iso_search keeps the number of half-edges not
  * labelled yet in each class, updated as components are labelled and
  * undone, and chooses the class at each step from these numbers (O(number
@@ -237,6 +241,128 @@ static int invariant_entry(int j, int h, const int *fp, const int *vid, const in
 }
 
 /*
+ * The entries of the invariants of a rule other than ISO_ROOTS_ALL, each in
+ * 0, ..., n - 1: the base entries of invariant_entry, then, under
+ * ISO_ROOTS_DATA, the ranks of the data values at h (nd entries), and under
+ * the edge rules those at the twin t (nd more). rank holds the nd arrays of
+ * ranks, nd being 0 without the flag.
+ */
+struct invariants {
+    const int *fp, *vid, *vdeg, *fid, *fdeg, *rank;
+    int n, nd, base, edge;
+};
+
+/* The entry j of the invariant of the active half-edge h. */
+static inline int entry(const struct invariants *iv, int j, int h)
+{
+    if (j < iv->base)
+        return invariant_entry(j, h, iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg);
+    j -= iv->base;
+    if (j >= iv->nd) {
+        j -= iv->nd;
+        if (iv->fp[h ^ 1] != -1)
+            h ^= 1;
+    }
+    return iv->rank[(long) j * iv->n + h];
+}
+
+/* Sift down the entry i of the max-heap a[0:len] ordered by the values v[a[.]]. */
+static void sift_down(int *a, int i, int len, const int *v)
+{
+    int c, x = a[i];
+    while ((c = 2 * i + 1) < len) {
+        if (c + 1 < len && v[a[c + 1]] > v[a[c]])
+            c++;
+        if (v[a[c]] <= v[x])
+            break;
+        a[i] = a[c];
+        i = c;
+    }
+    a[i] = x;
+}
+
+/*
+ * Write into rank (n ints) the rank of the value of the array a at each
+ * active half-edge of fp among the distinct values of a on the active
+ * half-edges, in 0, ..., k - 1 in increasing order of value (not written on
+ * the inactive half-edges). tmp holds n ints. The active half-edges are
+ * sorted by value by a heap sort, which needs no buffer beyond them and
+ * runs in O(n log n) whatever the values.
+ */
+static void data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
+{
+    int h, i, x, na = 0, k = 0;
+
+    for (h = 0; h < n; h++)
+        if (fp[h] != -1)
+            tmp[na++] = h;
+    for (i = na / 2 - 1; i >= 0; i--)
+        sift_down(tmp, i, na, a);
+    for (i = na - 1; i > 0; i--) {
+        x = tmp[0];
+        tmp[0] = tmp[i];
+        tmp[i] = x;
+        sift_down(tmp, 0, i, a);
+    }
+    for (i = 0; i < na; i++) {
+        if (i > 0 && a[tmp[i]] != a[tmp[i - 1]])
+            k++;
+        rank[tmp[i]] = k;
+    }
+}
+
+#ifdef ISO_DEBUG
+/*
+ * Compare the invariants of the active half-edges h1 and h2 computed
+ * directly, from the degrees and the data values themselves rather than
+ * their ranks: -1, 0 or 1.
+ */
+static int debug_compare_invariants(const struct invariants *iv, const int *data, int h1, int h2)
+{
+    int j, x, y, side, t1, t2;
+    for (j = 0; j < iv->base; j++) {
+        x = invariant_entry(j, h1, iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg);
+        y = invariant_entry(j, h2, iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg);
+        if (x != y)
+            return x < y ? -1 : 1;
+    }
+    for (side = 0; side <= iv->edge; side++) {
+        t1 = side && iv->fp[h1 ^ 1] != -1 ? h1 ^ 1 : h1;
+        t2 = side && iv->fp[h2 ^ 1] != -1 ? h2 ^ 1 : h2;
+        for (j = 0; j < iv->nd; j++) {
+            x = data[(long) j * iv->n + t1];
+            y = data[(long) j * iv->n + t2];
+            if (x != y)
+                return x < y ? -1 : 1;
+        }
+    }
+    return 0;
+}
+
+/*
+ * Check the class pos_cls[i] of each position i of order (na active
+ * half-edges) against the invariants computed directly: the classes start
+ * at 0 and grow by at most 1 from a position to the next, the half-edges of
+ * one class have equal invariants and come in increasing order, and the
+ * invariants increase from a class to the next.
+ */
+static void debug_classes(const struct invariants *iv, const int *data, int na, const int *order,
+                          const int *pos_cls)
+{
+    int i, cmp;
+    ISO_CHECK(pos_cls[0] == 0);
+    for (i = 1; i < na; i++) {
+        cmp = debug_compare_invariants(iv, data, order[i - 1], order[i]);
+        if (pos_cls[i] == pos_cls[i - 1]) {
+            ISO_CHECK(cmp == 0 && order[i - 1] < order[i]);
+        } else {
+            ISO_CHECK(pos_cls[i] == pos_cls[i - 1] + 1 && cmp < 0);
+        }
+    }
+}
+#endif
+
+/*
  * The classes of the rule (not ISO_ROOTS_ALL) on the active half-edges of
  * fp, from the invariants of the whole map. Write into order the active
  * half-edges sorted by invariant, the half-edges of equal invariant in
@@ -245,22 +371,45 @@ static int invariant_entry(int j, int h, const int *fp, const int *vid, const in
  * of invariant, and into start the start of each class in order, followed
  * by the number of active half-edges (the class c is order[start[c]],
  * ..., order[start[c + 1] - 1]). order holds n ints, start n + 1 and tmp
- * 4 n. Return the number of classes.
+ * 4 n. Under ISO_ROOTS_DATA, the nd data arrays (nd n ints) are read and
+ * ranks (nd n ints) receives their ranks. Return the number of classes.
  *
  * The sort is a least significant digit radix sort: one stable counting
- * sort per entry of the invariant (2 or 6 of them, each in 0, ..., n - 1),
- * from the last to the first, O(n) each.
+ * sort per entry of the invariant (2 or 6 of them, plus nd or 2 nd ranks
+ * under ISO_ROOTS_DATA, each in 0, ..., n - 1), from the last to the
+ * first, O(n) each.
  */
-static int root_classes(int n, const int *fp, iso_root_rule rule, int *order, int *cls,
-                        int *start, int *tmp)
+static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
+                        int *order, int *cls, int *start, int *tmp, int *ranks)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *aux = tmp + 2 * n, *count = tmp + 3 * n;
     /* the indices of the vertices and of the faces, until the classes are
      * written over them */
     int *vid = cls, *fid = start;
-    int entries = rule == ISO_ROOTS_EDGE_MAX || rule == ISO_ROOTS_EDGE_FEWEST ? 6 : 2;
+    int base_rule = rule & ~ISO_ROOTS_DATA;
+    int edge = base_rule == ISO_ROOTS_EDGE_MAX || base_rule == ISO_ROOTS_EDGE_FEWEST;
+    struct invariants iv;
+    int entries;
     int h, t, i, j, v, sum, na = 0, m;
     int *src = order, *dst = aux, *swap;
+
+    if (!(rule & ISO_ROOTS_DATA))
+        nd = 0;
+    iv.fp = fp;
+    iv.vid = vid;
+    iv.vdeg = vdeg;
+    iv.fid = fid;
+    iv.fdeg = fdeg;
+    iv.rank = ranks;
+    iv.n = n;
+    iv.nd = nd;
+    iv.base = edge ? 6 : 2;
+    iv.edge = edge;
+    entries = iv.base + (edge ? 2 * nd : nd);
+
+    /* the ranks first, while aux is free */
+    for (j = 0; j < nd; j++)
+        data_ranks(n, fp, data + (long) j * n, ranks + (long) j * n, aux);
 
     /* the vertex permutation, in aux */
     for (h = 0; h < n; h++)
@@ -288,7 +437,7 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int *order, in
         for (v = 0; v < n; v++)
             count[v] = 0;
         for (i = 0; i < na; i++)
-            count[invariant_entry(j, src[i], fp, vid, vdeg, fid, fdeg)]++;
+            count[entry(&iv, j, src[i])]++;
         sum = 0;
         for (v = 0; v < n; v++) {
             t = count[v];
@@ -297,29 +446,32 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int *order, in
         }
         for (i = 0; i < na; i++) {
             h = src[i];
-            dst[count[invariant_entry(j, h, fp, vid, vdeg, fid, fdeg)]++] = h;
+            dst[count[entry(&iv, j, h)]++] = h;
         }
         swap = src;
         src = dst;
         dst = swap;
     }
-    /* an even number of passes leaves the result in order */
-#ifdef ISO_DEBUG
-    ISO_CHECK(src == order);
-#endif
+    /* an even number of passes leaves the result in order; an odd one (2 +
+     * nd passes with nd odd) leaves it in aux, copied back */
+    if (src != order)
+        memcpy(order, src, (size_t) na * sizeof(int));
 
     /* the class of each position, in aux */
     aux[0] = 0;
     for (i = 1; i < na; i++) {
         aux[i] = aux[i - 1];
         for (j = 0; j < entries; j++) {
-            if (invariant_entry(j, order[i - 1], fp, vid, vdeg, fid, fdeg)
-                    != invariant_entry(j, order[i], fp, vid, vdeg, fid, fdeg)) {
+            if (entry(&iv, j, order[i - 1]) != entry(&iv, j, order[i])) {
                 aux[i]++;
                 break;
             }
         }
     }
+#ifdef ISO_DEBUG
+    /* before the classes are written over vid and fid */
+    debug_classes(&iv, data, na, order, aux);
+#endif
     m = aux[na - 1] + 1;
     for (h = 0; h < n; h++)
         cls[h] = -1;
@@ -337,12 +489,14 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int *order, in
  * number of half-edges of the class c that may be roots (at least one class
  * has one): under *_MAX the largest class of positive count, under *_FEWEST
  * the class of smallest positive count, ties broken by the largest class.
+ * The flag ISO_ROOTS_DATA does not change the choice.
  */
 static int choose_class(iso_root_rule rule, int m, const int *cnt)
 {
     int c, best = -1;
+    int base_rule = rule & ~ISO_ROOTS_DATA;
 
-    if (rule == ISO_ROOTS_HALF_EDGE_MAX || rule == ISO_ROOTS_EDGE_MAX) {
+    if (base_rule == ISO_ROOTS_HALF_EDGE_MAX || base_rule == ISO_ROOTS_EDGE_MAX) {
         for (c = m - 1; cnt[c] == 0; c--)
             ;
         return c;
@@ -715,6 +869,7 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     int *rbest = start + n + 1;
     int *parent = rbest + n;
     struct canonical_state s;
+    int all = (rule & ~ISO_ROOTS_DATA) == ISO_ROOTS_ALL;
     int ne, first, root, k, i, c, m, rep, count, lo = 0, hi = 0;
 
     ne = iso_num_edges(n, fp);
@@ -729,10 +884,11 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
         return 0;
     }
 
-    if (rule != ISO_ROOTS_ALL) {
-        /* r, rinv, queue and names (4 n) are free until the first walk;
-         * the sizes of the classes go into r */
-        m = root_classes(n, fp, rule, order, cls, start, work);
+    if (!all) {
+        /* r, rinv, queue and names (4 n) are free until the first walk, cur
+         * (the ranks of the data values) until the first key; the sizes of
+         * the classes go into r */
+        m = root_classes(n, fp, rule, nd, data, order, cls, start, work, cur);
         for (c = 0; c < m; c++)
             r[c] = start[c + 1] - start[c];
         c = choose_class(rule, m, r);
@@ -777,7 +933,7 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     /* the other roots: r is -1 on entry of each, and only the labels a root
      * gave are reset after it. The loop is chosen once per call, so that
      * ISO_ROOTS_ALL tests no class per root. */
-    if (rule == ISO_ROOTS_ALL) {
+    if (all) {
         for (root = first + 1; root < n; root++)
             if (fp[root] != -1)
                 canonical_root(&s, root);
@@ -805,7 +961,7 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
         ISO_CHECK(rep == s.best_root);
 #endif
         count = 0;
-        if (rule == ISO_ROOTS_ALL) {
+        if (all) {
             for (root = rep; root < n; root++) {
                 if (fp[root] != -1 && orbit_find(parent, root) == rep) {
                     if (roots != NULL)
@@ -1006,14 +1162,16 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
     int *start = cls + n;
     int *cnt = start + n + 1;
     int follow_ties = nc > 0 || all_leaves;
+    int all = (rule & ~ISO_ROOTS_DATA) == ISO_ROOTS_ALL;
     int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, m = 0;
     int root, best_root, blen, len, k, cmp, ret, i, j, h, c, found;
 
     ne = iso_num_edges(n, fp);
-    if (rule != ISO_ROOTS_ALL) {
-        /* r, rinv, lr and lrinv (4 n) are free until they are cleared below;
+    if (!all) {
+        /* r, rinv, lr and lrinv (4 n) are free until they are cleared below,
+         * cand (the ranks of the data values) until the first block;
          * cnt[c] is the number of half-edges of the class c not labelled */
-        m = root_classes(n, fp, rule, order, cls, start, work);
+        m = root_classes(n, fp, rule, nd, data, order, cls, start, work, cand);
         for (c = 0; c < m; c++)
             cnt[c] = start[c + 1] - start[c];
     }
@@ -1052,7 +1210,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
              * in place in seq, and its first root */
             best_root = -1;
             blen = 0;
-            if (rule == ISO_ROOTS_ALL) {
+            if (all) {
                 for (root = 0; root < n; root++) {
                     if (fp[root] == -1 || r[root] != -1)
                         continue;
@@ -1093,7 +1251,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
             found = 0;
             while (!found && depth > 0) {
                 depth--;
-                if (rule != ISO_ROOTS_ALL)
+                if (!all)
                     for (i = lvl_used[depth]; i < used; i++)
                         if (rinv[i] != -1)
                             cnt[cls[rinv[i]]]++;
@@ -1120,7 +1278,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
                  * the one of the level, already in seq; under a rule, they
                  * are in the class of the root of the level, the one chosen
                  * at the level since the state is back to it */
-                if (rule == ISO_ROOTS_ALL) {
+                if (all) {
                     for (root = lvl_root[depth] + 1; root < n; root++) {
                         if (fp[root] == -1 || r[root] != -1)
                             continue;
@@ -1153,7 +1311,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
         }
 
         /* label the component of the root of the level depth */
-        root = rule == ISO_ROOTS_ALL ? lvl_root[depth] : order[lvl_root[depth]];
+        root = all ? lvl_root[depth] : order[lvl_root[depth]];
         k = local_walk(fp, root, lr, lrinv, queue);
         for (i = 0; i < k; i += 2) {
             h = lrinv[i];
@@ -1163,7 +1321,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
             rinv[used + i + 1] = lrinv[i + 1];
         }
         component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names, next, 1, cand);
-        if (rule != ISO_ROOTS_ALL)
+        if (!all)
             for (i = 0; i < k; i++)
                 if (lrinv[i] != -1)
                     cnt[cls[lrinv[i]]]--;

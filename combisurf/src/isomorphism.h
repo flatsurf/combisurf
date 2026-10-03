@@ -47,9 +47,14 @@
  * class, and only the half-edges of one class are tried: under *_MAX the
  * class of the largest invariant (tuples compared lexicographically), under
  * *_FEWEST the class with the fewest half-edges, ties broken by the largest
- * invariant. The invariants are computed once per call on the whole map,
- * from fp alone (never from the decorations). Under ISO_ROOTS_ALL every
- * active half-edge is a root.
+ * invariant. The invariants are computed once per call on the whole map.
+ * The base rules read fp alone. The flag ISO_ROOTS_DATA, combined with a
+ * rule other than ISO_ROOTS_ALL by |, appends to the invariant the values
+ * of the data arrays (signed ints, never the class arrays, whose values are
+ * renumbered and so not invariant): data_0[h], ..., data_{nd-1}[h] under the
+ * half-edge rules, followed by data_0[t], ..., data_{nd-1}[t] under the edge
+ * rules; with nd = 0 it changes nothing. Under ISO_ROOTS_ALL every active
+ * half-edge is a root.
  *
  * No function allocates memory: every buffer is handed in by the caller,
  * with the sizes documented below.
@@ -71,14 +76,17 @@ enum {
 
 /*
  * The rules restricting the roots, with the values of the constants
- * ROOTS_ALL, ..., ROOTS_EDGE_FEWEST of isomorphism_naive.
+ * ROOTS_ALL, ..., ROOTS_EDGE_FEWEST and ROOTS_DATA of isomorphism_naive:
+ * a base rule (0 to 4), possibly combined with the flag ISO_ROOTS_DATA by |.
+ * The functions below read the base rule as rule & ~ISO_ROOTS_DATA.
  */
 typedef enum {
     ISO_ROOTS_ALL = 0,
     ISO_ROOTS_HALF_EDGE_MAX = 1,
     ISO_ROOTS_HALF_EDGE_FEWEST = 2,
     ISO_ROOTS_EDGE_MAX = 3,
-    ISO_ROOTS_EDGE_FEWEST = 4
+    ISO_ROOTS_EDGE_FEWEST = 4,
+    ISO_ROOTS_DATA = 8
 } iso_root_rule;
 
 /*
@@ -94,7 +102,9 @@ typedef enum {
  * active half-edges sorted by invariant, the class of each half-edge and
  * the start of each class in that order (3 n + 1), then the relabelling of
  * the best root and the parents of the union-find of the orbits of the
- * automorphisms found (2 n).
+ * automorphisms found (2 n). Under ISO_ROOTS_DATA the ranks of the data
+ * values (nd n) live in the candidate key, which is not used before the
+ * classes are computed, so that the flag needs no more room.
  */
 #define ISO_WORK_SIZE(n, nd, nc) (9 * (n) + 1 + ISO_KEY_SIZE(n, nd, nc))
 
@@ -172,7 +182,9 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * The roots of minimal key are the orbit of the best root, written by a
  * final scan. Under a rule other than ISO_ROOTS_ALL, the classes cost O(n)
  * more: the half-edges are sorted by invariant by counting sorts on its 2
- * or 6 entries.
+ * or 6 entries. Under ISO_ROOTS_DATA each data array is first replaced by
+ * the ranks of its values among the active half-edges (a heap sort,
+ * O(n log n) per array), which add nd or 2 nd entries.
  */
 int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
                   iso_root_rule rule, int *key, int *relabelling, int *roots, int *nroots,
@@ -208,7 +220,10 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
  * (ISO_SEQUENCE_SIZE), one candidate block (ISO_KEY_SIZE + 1), and for the
  * rules other than ISO_ROOTS_ALL the active half-edges sorted by invariant,
  * the class of each half-edge, the start of each class in that order and
- * the number of half-edges not labelled yet in each class (4 n + 1).
+ * the number of half-edges not labelled yet in each class (4 n + 1). Under
+ * ISO_ROOTS_DATA the ranks of the data values (nd n) live in the candidate
+ * block, which is not used before the classes are computed, so that the
+ * flag needs no more room.
  *
  * These sizes are computed in int and overflow for about
  * 2^31 / (13.5 + 2 nd + 3.5 nc) half-edges; the caller checks them first.

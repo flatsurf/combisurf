@@ -89,12 +89,23 @@ invariant:
   on a folded edge). It extends the invariant of the good starts of the fat
   graphs of surface-dynamics.
 
+The flag :data:`ROOTS_DATA`, combined by ``|`` with one of the four rules
+other than :data:`ROOTS_ALL` (``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``,
+...), appends to the invariant of ``h`` the values of the arrays of
+``data`` at ``h``, in order, followed under the edge rules by their values
+at ``t``. Every isomorphism preserves ``data`` exactly, hence these
+invariants as well, and the classes are finer: fewer roots are tried on a
+decorated map. Without ``data`` the flag changes nothing. The values of
+``classes`` are never used, since they are only defined up to a
+relabelling. ``ROOTS_ALL | ROOTS_DATA`` and every other value raise a
+``ValueError``.
+
 The half-edges are grouped into classes of equal invariant, and only the
 half-edges of one class are tried as roots: with ``*_MAX`` the class of the
 largest invariant (tuples compared lexicographically), with ``*_FEWEST``
 the class with the fewest half-edges, ties broken by the largest invariant.
-The invariants depend on the map only, not on ``data`` nor ``classes``,
-and are computed once on the whole map; the degrees are local to a
+The invariants of the base rules depend on the map only, not on ``data``
+nor ``classes``. They are computed once on the whole map; the degrees are local to a
 component. On a disconnected map the class is chosen at each step of the
 search among the active half-edges not labelled yet, and the roots tried
 are the half-edges of that class not labelled yet; the rest of the search
@@ -156,6 +167,25 @@ and the folded edge (the class with one half-edge) under
     ((2, 5, 4, 1, 0, 3, 6, -1),)
     sage: canonical_form(fp)
     ((0, -1, 4, 7, 6, 3, 2, 5),)
+
+With the faces of the triangle decorated by ``0`` and ``1``, the rule
+``ROOTS_HALF_EDGE_MAX | ROOTS_DATA`` tries the three half-edges of the face
+of value ``1`` instead of the six of the triangle::
+
+    sage: from combisurf.isomorphism_naive import _roots, _root_invariants, ROOTS_ALL, ROOTS_DATA
+    sage: d = [0, 1, 0, 1, 0, 1, 0, 0]
+    sage: r = [-1] * 8
+    sage: rule = ROOTS_HALF_EDGE_MAX | ROOTS_DATA
+    sage: len(_roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_MAX, (d,)), ROOTS_HALF_EDGE_MAX))
+    6
+    sage: len(_roots(fp, r, _root_invariants(fp, rule, (d,)), rule))
+    3
+    sage: canonical_form(fp, (d,), root_rule=rule)
+    ((2, 5, 4, 1, 0, 3, 6, -1), (1, 0, 1, 0, 1, 0, 0))
+    sage: canonical_form(fp, (d,), root_rule=ROOTS_ALL | ROOTS_DATA)
+    Traceback (most recent call last):
+    ...
+    ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 8
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -187,6 +217,7 @@ ROOTS_HALF_EDGE_MAX = 1
 ROOTS_HALF_EDGE_FEWEST = 2
 ROOTS_EDGE_MAX = 3
 ROOTS_EDGE_FEWEST = 4
+ROOTS_DATA = 8
 
 
 def _check_root_rule(root_rule):
@@ -194,41 +225,54 @@ def _check_root_rule(root_rule):
     Return ``root_rule`` as a Python ``int`` after checking that it is one
     of the integers :data:`ROOTS_ALL`, :data:`ROOTS_HALF_EDGE_MAX`,
     :data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and
-    :data:`ROOTS_EDGE_FEWEST`.
+    :data:`ROOTS_EDGE_FEWEST`, or one of the last four combined with
+    :data:`ROOTS_DATA` by ``|``.
 
     EXAMPLES::
 
-        sage: from combisurf.isomorphism_naive import _check_root_rule, ROOTS_ALL, ROOTS_EDGE_FEWEST
-        sage: ROOTS_ALL, ROOTS_EDGE_FEWEST
-        (0, 4)
+        sage: from combisurf.isomorphism_naive import _check_root_rule, ROOTS_ALL, ROOTS_EDGE_FEWEST, ROOTS_HALF_EDGE_MAX, ROOTS_DATA
+        sage: ROOTS_ALL, ROOTS_EDGE_FEWEST, ROOTS_DATA
+        (0, 4, 8)
         sage: _check_root_rule(ROOTS_EDGE_FEWEST)
         4
         sage: _check_root_rule(3)
         3
+        sage: _check_root_rule(ROOTS_HALF_EDGE_MAX | ROOTS_DATA)
+        9
 
     TESTS::
 
         sage: _check_root_rule(5)
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 5
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 5
+        sage: _check_root_rule(ROOTS_ALL | ROOTS_DATA)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 8
+        sage: _check_root_rule(13)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 13
         sage: _check_root_rule("all")
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 'all'
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 'all'
         sage: _check_root_rule(1.0r)
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 1.0
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 1.0
         sage: _check_root_rule(True)
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got True
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got True
     """
     if (isinstance(root_rule, bool) or not isinstance(root_rule, Integral)
-            or not ROOTS_ALL <= root_rule <= ROOTS_EDGE_FEWEST):
+            or not (ROOTS_ALL <= root_rule <= ROOTS_EDGE_FEWEST
+                    or ROOTS_HALF_EDGE_MAX | ROOTS_DATA <= root_rule <= ROOTS_EDGE_FEWEST | ROOTS_DATA)):
         raise ValueError("root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, "
-                         "ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got {!r}".format(root_rule))
+                         "ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 "
+                         "(the last four | ROOTS_DATA), got {!r}".format(root_rule))
     return int(root_rule)
 
 
@@ -264,7 +308,7 @@ def _cells(p):
     return cell, size
 
 
-def _root_invariants(fp, root_rule):
+def _root_invariants(fp, root_rule, data=()):
     r"""
     Return the list of the invariants of the half-edges of ``fp`` under the
     rule ``root_rule`` (``None`` on the inactive half-edges).
@@ -272,9 +316,12 @@ def _root_invariants(fp, root_rule):
     The invariant of an active half-edge ``h`` is ``()`` under
     :data:`ROOTS_ALL`, ``(vdeg(h), fdeg(h))`` under the ``ROOTS_HALF_EDGE_*``
     rules and ``(vdeg(h), fdeg(h), vdeg(t), fdeg(t), loop, monogon)`` under
-    the ``ROOTS_EDGE_*`` rules (see the module documentation). The vertex
-    permutation is built from ``fp`` as :class:`~combisurf.oriented_map.OrientedMap`
-    builds it: ``vp[fp[t]] = h`` with ``t`` the twin of ``h``.
+    the ``ROOTS_EDGE_*`` rules (see the module documentation). Under
+    :data:`ROOTS_DATA` it is followed by the values of the arrays of
+    ``data`` at ``h``, then under the edge rules by those at ``t``. The
+    vertex permutation is built from ``fp`` as
+    :class:`~combisurf.oriented_map.OrientedMap` builds it: ``vp[fp[t]] =
+    h`` with ``t`` the twin of ``h``.
 
     EXAMPLES:
 
@@ -301,10 +348,23 @@ def _root_invariants(fp, root_rule):
     ``(4,8,5,10)`` holds both halves of the edge ``2`` (a loop) and the
     half-edge ``8`` of the edge ``4``, whose other half ``9`` is alone at
     its vertex and in the face ``(4,8,9)`` of ``8`` (a monogon edge).
+
+    Under :data:`ROOTS_DATA`, the values of ``data`` follow, at ``8`` then
+    at its twin ``9`` under the edge rules::
+
+        sage: from combisurf.isomorphism_naive import ROOTS_DATA
+        sage: d = list(range(18))
+        sage: inv = _root_invariants(fp, ROOTS_HALF_EDGE_MAX | ROOTS_DATA, (d,))
+        sage: inv[8]
+        (4, 3, 8)
+        sage: inv = _root_invariants(fp, ROOTS_EDGE_MAX | ROOTS_DATA, (d, [-x for x in d]))
+        sage: inv[8]
+        (4, 3, 1, 3, 0, 1, 8, -8, 9, -9)
     """
     root_rule = _check_root_rule(root_rule)
+    base = root_rule & ~ROOTS_DATA
     n = len(fp)
-    if root_rule == ROOTS_ALL:
+    if base == ROOTS_ALL:
         return [None if x == -1 else () for x in fp]
     vp = [-1] * n
     for h in range(n):
@@ -313,16 +373,19 @@ def _root_invariants(fp, root_rule):
             vp[fp[t]] = h
     vertex, vdeg = _cells(vp)
     face, fdeg = _cells(fp)
+    if not root_rule & ROOTS_DATA:
+        data = ()
     invariants = [None] * n
     for h in range(n):
         if fp[h] == -1:
             continue
-        if root_rule in (ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST):
-            invariants[h] = (vdeg[h], fdeg[h])
+        if base in (ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST):
+            invariants[h] = (vdeg[h], fdeg[h]) + tuple(d[h] for d in data)
         else:
             t = h ^ 1 if fp[h ^ 1] != -1 else h
-            invariants[h] = (vdeg[h], fdeg[h], vdeg[t], fdeg[t],
-                             int(vertex[h] == vertex[t]), int(face[h] == face[t]))
+            invariants[h] = ((vdeg[h], fdeg[h], vdeg[t], fdeg[t],
+                              int(vertex[h] == vertex[t]), int(face[h] == face[t]))
+                             + tuple(d[h] for d in data) + tuple(d[t] for d in data))
     return invariants
 
 
@@ -353,6 +416,16 @@ def _roots(fp, r, invariants, root_rule):
         sage: r = [-1] * 6 + [0, 1]
         sage: _roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_FEWEST), ROOTS_HALF_EDGE_FEWEST)
         [0, 1, 2, 3, 4, 5]
+
+    Under ``ROOTS_HALF_EDGE_MAX | ROOTS_DATA``, a decoration of the faces of
+    the triangle splits its class, and the class of the larger value is
+    tried::
+
+        sage: from combisurf.isomorphism_naive import ROOTS_DATA
+        sage: rule = ROOTS_HALF_EDGE_MAX | ROOTS_DATA
+        sage: d = [0, 1, 0, 1, 0, 1, 0, 0]
+        sage: _roots(fp, r, _root_invariants(fp, rule, (d,)), rule)
+        [1, 3, 5]
     """
     groups = {}
     for h in range(len(fp)):
@@ -360,7 +433,7 @@ def _roots(fp, r, invariants, root_rule):
             groups.setdefault(invariants[h], []).append(h)
     if not groups:
         return []
-    if root_rule in (ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_FEWEST):
+    if root_rule & ~ROOTS_DATA in (ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_FEWEST):
         chosen = max(groups, key=lambda i: (-len(groups[i]), i))
     else:
         chosen = max(groups)
@@ -605,7 +678,7 @@ def _search(fp, data, classes=(), all_leaves=False, root_rule=ROOTS_HALF_EDGE_FE
         8
     """
     n, ne = _check_input(fp, data, classes)
-    invariants = _root_invariants(fp, root_rule)
+    invariants = _root_invariants(fp, root_rule, data)
     best = None
     leaves = []
     # a state is (blocks, relabelling, number of labels used, numberings
@@ -685,7 +758,8 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
 
     - ``root_rule`` -- one of the integers :data:`ROOTS_ALL`,
       :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST` (the
-      default), :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`: the
+      default), :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`, or one
+      of the last four combined with :data:`ROOTS_DATA` by ``|``: the
       half-edges tried as roots, the default because it tries fewer of
       them (see the module documentation); any other value raises a
       ``ValueError``
@@ -765,7 +839,7 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
         sage: canonical_labelling(fp, root_rule="all")
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 'all'
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 'all'
     """
     root_rule = _check_root_rule(root_rule)
     n, ne = _check_input(fp, data, classes)
@@ -870,7 +944,7 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
         sage: canonical_form(fp, root_rule=-1)
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got -1
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got -1
     """
     root_rule = _check_root_rule(root_rule)
     n, ne = _check_input(fp, data, classes)

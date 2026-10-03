@@ -44,8 +44,8 @@ to 400 half-edges.
 The properties on random maps of up to 48 half-edges, the comparison of
 the two implementations on them, the automorphism counts and the
 isomorphism verdicts of cylinder diagrams are checked under each rule of
-the roots (the keyword ``root_rule``) as well; under every rule the
-automorphisms form the same group.
+the roots (the keyword ``root_rule``) as well, with and without the flag
+``ROOTS_DATA``; under every rule the automorphisms form the same group.
 """
 import math
 import random
@@ -67,10 +67,12 @@ NOT_IMPLEMENTED = pytest.mark.xfail(raises=NotImplementedError, strict=True)
 
 # the rules of the roots, by their names in OrientedMap and their integers
 # in the modules isomorphism and isomorphism_naive
-ROOT_RULE_NAMES = ["all", "half-edge-max", "half-edge-fewest", "edge-max", "edge-fewest"]
-ROOT_RULES = [isomorphism_naive.ROOTS_ALL, isomorphism_naive.ROOTS_HALF_EDGE_MAX,
-              isomorphism_naive.ROOTS_HALF_EDGE_FEWEST, isomorphism_naive.ROOTS_EDGE_MAX,
-              isomorphism_naive.ROOTS_EDGE_FEWEST]
+ROOT_RULE_NAMES = ["all", "half-edge-max", "half-edge-fewest", "edge-max", "edge-fewest",
+                   "half-edge-max+data", "half-edge-fewest+data", "edge-max+data", "edge-fewest+data"]
+BASE_ROOT_RULES = [isomorphism_naive.ROOTS_ALL, isomorphism_naive.ROOTS_HALF_EDGE_MAX,
+                   isomorphism_naive.ROOTS_HALF_EDGE_FEWEST, isomorphism_naive.ROOTS_EDGE_MAX,
+                   isomorphism_naive.ROOTS_EDGE_FEWEST]
+ROOT_RULES = BASE_ROOT_RULES + [rule | isomorphism_naive.ROOTS_DATA for rule in BASE_ROOT_RULES[1:]]
 WITH_ROOT_RULES = pytest.mark.parametrize("root_rule", ROOT_RULES, ids=ROOT_RULE_NAMES)
 WITH_ROOT_RULE_NAMES = pytest.mark.parametrize("root_rule", ROOT_RULE_NAMES)
 
@@ -2156,9 +2158,10 @@ def test_fast_malformed_input():
 
 def test_root_rule_constants():
     for name in ("ROOTS_ALL", "ROOTS_HALF_EDGE_MAX", "ROOTS_HALF_EDGE_FEWEST",
-                 "ROOTS_EDGE_MAX", "ROOTS_EDGE_FEWEST"):
+                 "ROOTS_EDGE_MAX", "ROOTS_EDGE_FEWEST", "ROOTS_DATA"):
         assert getattr(isomorphism_fast, name) == getattr(isomorphism_naive, name)
-    assert ROOT_RULES == list(range(5))
+    assert isomorphism_naive.ROOTS_DATA == 8
+    assert ROOT_RULES == list(range(5)) + list(range(9, 13))
     assert [OrientedMap._root_rule(name) for name in ROOT_RULE_NAMES] == ROOT_RULES
 
 
@@ -2186,7 +2189,57 @@ def test_root_rule_restricts():
     assert distinct
 
 
-@pytest.mark.parametrize("root_rule", [5, -1, 2**70, "all", "edge-max", 1.0, True, None])
+@pytest.mark.parametrize("base", BASE_ROOT_RULES[1:], ids=ROOT_RULE_NAMES[1:5])
+def test_root_rule_data_without_data(base):
+    # without data the flag adds nothing to the invariants: the results are
+    # those of the base rule, in both modules and in OrientedMap
+    rng = random.Random(1)
+    flagged = base | isomorphism_naive.ROOTS_DATA
+    name = ROOT_RULE_NAMES[base]
+    for fp in [random_connected_fp(rng) for _ in range(10)] + [random_disconnected_fp(rng) for _ in range(10)]:
+        classes = random_classes(rng, fp)
+        for module in (isomorphism_naive, isomorphism_fast):
+            for f in ("canonical_labelling", "canonical_form", "automorphisms", "automorphism_generators"):
+                assert getattr(module, f)(fp, (), classes, root_rule=flagged) == \
+                    getattr(module, f)(fp, (), classes, root_rule=base)
+            assert module.isomorphism(fp, (), fp, (), classes, classes, root_rule=flagged) == \
+                module.isomorphism(fp, (), fp, (), classes, classes, root_rule=base)
+        assert isomorphism_fast.canonical_key(fp, (), classes, relabelling=True, automorphism_count=True,
+                                              root_rule=flagged) == \
+            isomorphism_fast.canonical_key(fp, (), classes, relabelling=True, automorphism_count=True,
+                                           root_rule=base)
+        m = OrientedMap(fp=fp)
+        assert m.canonical_labelling(root_rule=name + "+data") == m.canonical_labelling(root_rule=name)
+        assert m.canonical_form(root_rule=name + "+data") == m.canonical_form(root_rule=name)
+
+
+def test_root_rule_data_restricts():
+    # on decorated maps the flag splits the classes of the base rule: under
+    # *_MAX its roots are among those of the base rule, under *_FEWEST its
+    # class is no larger than the smallest class of the base rule, and on
+    # some maps it has fewer roots; the fast module follows the reference
+    # with values negative and beyond the number of half-edges
+    rng = random.Random(2)
+    wide = [-2**31, 2**31 - 1, -3, 1000]
+    fewer = {rule: 0 for rule in BASE_ROOT_RULES[1:]}
+    for _ in range(50):
+        fp = random_connected_fp(rng)
+        data = tuple([rng.choice(wide) for _ in fp] for _ in range(1 + rng.randrange(2)))
+        unlabelled = [-1] * len(fp)
+        for base in BASE_ROOT_RULES[1:]:
+            flagged = base | isomorphism_naive.ROOTS_DATA
+            roots = isomorphism_naive._roots(fp, unlabelled, isomorphism_naive._root_invariants(fp, base, data), base)
+            roots_data = isomorphism_naive._roots(fp, unlabelled,
+                                                  isomorphism_naive._root_invariants(fp, flagged, data), flagged)
+            assert 0 < len(roots_data) <= len(roots)
+            if base in (isomorphism_naive.ROOTS_HALF_EDGE_MAX, isomorphism_naive.ROOTS_EDGE_MAX):
+                assert set(roots_data) <= set(roots)
+            fewer[base] += len(roots_data) < len(roots)
+            check_fast_against_naive(rng, fp, data, (), flagged)
+    assert all(fewer.values())
+
+
+@pytest.mark.parametrize("root_rule", [5, -1, 8, 13, 2**70, "all", "edge-max", 1.0, True, None])
 def test_root_rule_invalid_integer(root_rule):
     fp, fp2 = [2, 5, 4, 1, 0, 3], [4, 3, 0, 5, 2, 1]
     for module in (isomorphism_fast, isomorphism_naive):
@@ -2200,7 +2253,7 @@ def test_root_rule_invalid_integer(root_rule):
             module.isomorphism(fp, (), fp2, (), root_rule=root_rule)
 
 
-@pytest.mark.parametrize("root_rule", ["edge", "EDGE-MAX", "edge_max", 0, 3, None, ["all"]])
+@pytest.mark.parametrize("root_rule", ["edge", "EDGE-MAX", "edge_max", 0, 3, None, ["all"], "all+data", "data"])
 def test_root_rule_invalid_string(root_rule):
     m = OrientedMap(fp="(0,1,2)(~0,~2,~1)")
     for check in (True, False):

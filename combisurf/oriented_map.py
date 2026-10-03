@@ -3986,42 +3986,55 @@ class OrientedMap:
                    "half-edge-max": isomorphism.ROOTS_HALF_EDGE_MAX,
                    "half-edge-fewest": isomorphism.ROOTS_HALF_EDGE_FEWEST,
                    "edge-max": isomorphism.ROOTS_EDGE_MAX,
-                   "edge-fewest": isomorphism.ROOTS_EDGE_FEWEST}
+                   "edge-fewest": isomorphism.ROOTS_EDGE_FEWEST,
+                   "half-edge-max+data": isomorphism.ROOTS_HALF_EDGE_MAX | isomorphism.ROOTS_DATA,
+                   "half-edge-fewest+data": isomorphism.ROOTS_HALF_EDGE_FEWEST | isomorphism.ROOTS_DATA,
+                   "edge-max+data": isomorphism.ROOTS_EDGE_MAX | isomorphism.ROOTS_DATA,
+                   "edge-fewest+data": isomorphism.ROOTS_EDGE_FEWEST | isomorphism.ROOTS_DATA}
 
     @staticmethod
     def _root_rule(root_rule):
         r"""
         Return the integer of :mod:`combisurf.isomorphism` for the rule
         ``root_rule``, one of the strings ``"all"``, ``"half-edge-max"``,
-        ``"half-edge-fewest"``, ``"edge-max"`` and ``"edge-fewest"``; any
-        other value raises a ``ValueError``.
+        ``"half-edge-fewest"``, ``"edge-max"`` and ``"edge-fewest"``, or one
+        of the last four followed by ``"+data"``; any other value raises a
+        ``ValueError``.
 
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
             sage: OrientedMap._root_rule("all"), OrientedMap._root_rule("edge-fewest")
             (0, 4)
+            sage: OrientedMap._root_rule("half-edge-fewest+data"), OrientedMap._root_rule("edge-fewest+data")
+            (10, 12)
 
         TESTS::
+
+            sage: OrientedMap._root_rule("all+data")
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 'all+data'
 
             sage: OrientedMap._root_rule("edge_max")
             Traceback (most recent call last):
             ...
-            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 'edge_max'
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 'edge_max'
             sage: OrientedMap._root_rule(3)
             Traceback (most recent call last):
             ...
-            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 3
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 3
             sage: OrientedMap._root_rule([])
             Traceback (most recent call last):
             ...
-            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got []
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got []
         """
         try:
             return OrientedMap._ROOT_RULES[root_rule]
         except (KeyError, TypeError):
             raise ValueError("root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', "
-                             "'edge-max', 'edge-fewest', got {!r}".format(root_rule)) from None
+                             "'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', "
+                             "'edge-max+data', 'edge-fewest+data', got {!r}".format(root_rule)) from None
 
     def canonical_labelling(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                             half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
@@ -4072,7 +4085,15 @@ class OrientedMap:
           largest invariant, ``"*-fewest"`` the class with the fewest
           half-edges (ties broken by the largest invariant); on a
           disconnected map the class is chosen among the half-edges not
-          labelled yet, component after component. The labellings and the
+          labelled yet, component after component. Each rule but ``"all"``
+          followed by ``"+data"`` (``"half-edge-max+data"``,
+          ``"half-edge-fewest+data"``, ``"edge-max+data"``,
+          ``"edge-fewest+data"``) appends to the invariant of a half-edge
+          the values of the ``*_data`` decorations at it (and at its twin
+          under the edge rules), never those of the ``*_classes``: the
+          classes are finer, so fewer roots are tried on a decorated map,
+          and without ``*_data`` the results are those of the rule without
+          ``"+data"``. The labellings and the
           canonical forms under two rules are not comparable. Any other
           value raises a ``ValueError``, whatever ``check``. See
           :mod:`combisurf.isomorphism_naive` for the definitions.
@@ -4220,11 +4241,30 @@ class OrientedMap:
             sage: m.canonical_labelling(root_rule="edge")
             Traceback (most recent call last):
             ...
-            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 'edge'
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 'edge'
             sage: m.canonical_labelling(root_rule=3, check=False)
             Traceback (most recent call last):
             ...
-            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 3
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 3
+
+        With the faces of the triangle decorated by ``0`` and ``1``,
+        ``"half-edge-max+data"`` tries the three half-edges of the face of
+        value ``1`` instead of the six of the triangle (as counted by
+        :mod:`combisurf.isomorphism_naive`), while ``"all+data"`` is not a
+        rule::
+
+            sage: from combisurf import isomorphism_naive
+            sage: fp = list(m.face_permutation())
+            sage: d = [0, 1, 0, 1, 0, 1, 0, 0]
+            sage: rules = [OrientedMap._root_rule(x) for x in ["half-edge-max", "half-edge-max+data"]]
+            sage: [len(isomorphism_naive._roots(fp, [-1] * 8, isomorphism_naive._root_invariants(fp, x, (d,)), x)) for x in rules]
+            [6, 3]
+            sage: m.canonical_labelling(face_data=d, root_rule="half-edge-max+data")
+            array('i', [1, 0, 5, 4, 3, 2, 6, 7])
+            sage: m.canonical_labelling(face_data=d, root_rule="all+data")
+            Traceback (most recent call last):
+            ...
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 'all+data'
         """
         rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
@@ -4424,7 +4464,7 @@ class OrientedMap:
             sage: m.automorphisms(root_rule="max")
             Traceback (most recent call last):
             ...
-            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 'max'
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 'max'
         """
         rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
@@ -4627,7 +4667,7 @@ class OrientedMap:
             sage: m1.is_isomorphic(m2, root_rule="edge")
             Traceback (most recent call last):
             ...
-            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', got 'edge'
+            ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 'edge'
 
         TESTS::
 

@@ -69,8 +69,13 @@ half-edges tried as roots. The default tries fewer roots: against
 :data:`ROOTS_ALL`, one run each, a GL(2, Z)-orbit exploration of 50
 squares took 1.44 s instead of 2.81 s and the canonical labelling of an
 origami of 1000 squares 307 us instead of 446 us, while a random
-triangulation of 4092 half-edges took 118 us instead of 91.1 us. Any
-other value, a string included, raises a
+triangulation of 4092 half-edges took 118 us instead of 91.1 us. The
+flag :data:`ROOTS_DATA`, combined by ``|`` with one of the four rules
+other than :data:`ROOTS_ALL`, appends the values of ``data`` to the
+invariants, as in :mod:`combisurf.isomorphism_naive`, so that fewer roots
+are tried on a decorated map; the C code sorts each data array once per
+call to rank its values, `O(n \log n)`. Any other value, a string or
+``ROOTS_ALL | ROOTS_DATA`` included, raises a
 ``ValueError``. The C code computes the invariants of the half-edges once
 per call and tries only the roots of the class of the rule, on a
 disconnected map the class chosen at each step among the half-edges not
@@ -115,6 +120,25 @@ computed in C::
     ((2, 5, 4, 1, 0, 3, 6, -1),)
     sage: canonical_form(fp, root_rule=ROOTS_HALF_EDGE_MAX) == isomorphism_naive.canonical_form(fp, root_rule=isomorphism_naive.ROOTS_HALF_EDGE_MAX)
     True
+
+With the faces of the triangle decorated by ``0`` and ``1``, the rule
+``ROOTS_HALF_EDGE_MAX | ROOTS_DATA`` tries three roots instead of six, as
+counted by the reference, and gives its results::
+
+    sage: from combisurf.isomorphism import ROOTS_DATA
+    sage: d = [0, 1, 0, 1, 0, 1, 0, 0]
+    sage: rule = ROOTS_HALF_EDGE_MAX | ROOTS_DATA
+    sage: r = [-1] * 8
+    sage: [len(isomorphism_naive._roots(fp, r, isomorphism_naive._root_invariants(fp, x, (d,)), x)) for x in (ROOTS_HALF_EDGE_MAX, rule)]
+    [6, 3]
+    sage: canonical_form(fp, (d,), root_rule=rule)
+    ((2, 5, 4, 1, 0, 3, 6, -1), (1, 0, 1, 0, 1, 0, 0))
+    sage: canonical_form(fp, (d,), root_rule=rule) == isomorphism_naive.canonical_form(fp, (d,), root_rule=rule)
+    True
+    sage: canonical_form(fp, (d,), root_rule=ROOTS_ALL | ROOTS_DATA)
+    Traceback (most recent call last):
+    ...
+    ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 8
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -157,25 +181,29 @@ ROOTS_HALF_EDGE_MAX = 1
 ROOTS_HALF_EDGE_FEWEST = 2
 ROOTS_EDGE_MAX = 3
 ROOTS_EDGE_FEWEST = 4
+ROOTS_DATA = 8
 
 
 cdef int _check_root_rule(root_rule) except -1:
     r"""
     Return ``root_rule`` as a C ``int`` after checking that it is one of the
-    integers ``ROOTS_ALL``, ..., ``ROOTS_EDGE_FEWEST``, with the message of
-    ``isomorphism_naive._check_root_rule``.
+    integers ``ROOTS_ALL``, ..., ``ROOTS_EDGE_FEWEST``, or one of the last
+    four combined with ``ROOTS_DATA`` by ``|`` (9 to 12), with the message
+    of ``isomorphism_naive._check_root_rule``.
 
     A Python ``int`` is checked first, without the lookup of
     :class:`numbers.Integral`: :func:`canonical_key` may be called millions
     of times in an exploration.
     """
     if type(root_rule) is int:
-        if 0 <= root_rule <= 4:
+        if 0 <= root_rule <= 4 or 9 <= root_rule <= 12:
             return root_rule
-    elif not isinstance(root_rule, bool) and isinstance(root_rule, Integral) and 0 <= root_rule <= 4:
+    elif (not isinstance(root_rule, bool) and isinstance(root_rule, Integral)
+            and (0 <= root_rule <= 4 or 9 <= root_rule <= 12)):
         return int(root_rule)
     raise ValueError("root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, "
-                     "ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got {!r}".format(root_rule))
+                     "ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 "
+                     "(the last four | ROOTS_DATA), got {!r}".format(root_rule))
 
 
 def _check_sizes(n, nd, nc):
@@ -479,7 +507,8 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
     - ``root_rule`` -- one of the integers :data:`ROOTS_ALL`,
       :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST` (the
       default, which tries fewer roots), :data:`ROOTS_EDGE_MAX` and
-      :data:`ROOTS_EDGE_FEWEST`: the half-edges tried as roots (see
+      :data:`ROOTS_EDGE_FEWEST`, or one of the last four combined with
+      :data:`ROOTS_DATA` by ``|``: the half-edges tried as roots (see
       :mod:`combisurf.isomorphism_naive`); any other value raises a
       ``ValueError``
 
@@ -557,18 +586,25 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
         sage: canonical_labelling([2, 5, 4, 1, 0, 3, 6, -1], root_rule=ROOTS_HALF_EDGE_MAX)
         array('i', [0, 1, 2, 3, 4, 5, 6, 7])
 
-    A rule that is not one of the five integers::
+    A rule that is not one of the nine integers::
 
         sage: canonical_labelling([0, -1], root_rule=5)
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 5
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 5
         sage: canonical_labelling([0, -1], root_rule="edge-max")
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 'edge-max'
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 'edge-max'
         sage: canonical_labelling([0, -1], root_rule=int(3))
         array('i', [0, 1])
+        sage: from combisurf.isomorphism import ROOTS_DATA
+        sage: canonical_labelling([0, -1], root_rule=ROOTS_HALF_EDGE_MAX | ROOTS_DATA)
+        array('i', [0, 1])
+        sage: canonical_labelling([0, -1], root_rule=13)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 13
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
@@ -1796,7 +1832,7 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         sage: canonical_key(fp, root_rule="all")
         Traceback (most recent call last):
         ...
-        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST), got 'all'
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 'all'
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef _Map m = _prepare(fp, data, classes)
