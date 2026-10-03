@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: prefix-dev/setup-pixi@v0.10.2
         with: { pixi-version: v0.81.0 }
       - name: build documentation
@@ -26,11 +26,11 @@ jobs:
       - name: detect broken links
         run: pixi run -e dev doc-linkcheck
       - name: provide documentation as artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: doc
           path: doc/_build/html
-      - uses: JamesIves/github-pages-deploy-action@v4.7.6
+      - uses: JamesIves/github-pages-deploy-action@v4.9.0
         with:
           branch: gh-pages
           folder: doc/_build/html
