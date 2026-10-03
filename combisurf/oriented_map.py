@@ -3915,7 +3915,7 @@ class OrientedMap:
             ...
             ValueError: edge_data must contain integers, got 0.5
             sage: m1.canonical_labelling(edge_data=[ZZ(0), True, 2])
-            array('i', [0, 1, 2, 3, 4, 5])
+            array('i', [2, 3, 4, 5, 0, 1])
             sage: m1.canonical_labelling(half_edge_data=((0,)*6,))
             array('i', [0, 1, 2, 3, 4, 5])
 
@@ -4038,7 +4038,7 @@ class OrientedMap:
 
     def canonical_labelling(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                             half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                            check=True, root_rule="half-edge-fewest"):
+                            check=True, root_rule="half-edge-fewest+data"):
         r"""
         Return the canonical labelling of this map with the given
         decorations.
@@ -4071,10 +4071,11 @@ class OrientedMap:
           the constancy of ``vertex_data``, ``face_data``,
           ``vertex_classes`` and ``face_classes``
 
-        - ``root_rule`` -- string (default ``"half-edge-fewest"``, which
-          tries fewer roots than ``"all"``: an exploration of the
-          GL(2, Z)-orbit of an origami of 50 squares took 1.44 s instead of
-          2.81 s); the half-edges tried
+        - ``root_rule`` -- string (default ``"half-edge-fewest+data"``:
+          decorations narrow the roots tried, and on an undecorated map it
+          is ``"half-edge-fewest"``, which tries fewer roots than
+          ``"all"``: an exploration of the GL(2, Z)-orbit of an origami of
+          50 squares took 1.44 s instead of 2.81 s); the half-edges tried
           as roots of the canonical labelling, among those of one class of
           half-edges preserved by every isomorphism: ``"all"`` tries every
           half-edge; ``"half-edge-max"`` and ``"half-edge-fewest"`` group
@@ -4273,7 +4274,7 @@ class OrientedMap:
 
     def canonical_form(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                        half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                       check=True, root_rule="half-edge-fewest"):
+                       check=True, root_rule="half-edge-fewest+data"):
         r"""
         Return the canonical form of this map with the given decorations.
 
@@ -4309,7 +4310,7 @@ class OrientedMap:
         With a decoration::
 
             sage: m1.canonical_form(edge_data=[0, 0, 1])
-            ((2, 5, 4, 1, 0, 3), (0, 0, 0, 0, 1, 1))
+            ((2, 5, 4, 1, 0, 3), (1, 1, 0, 0, 0, 0))
 
         With a decoration matched up to relabelling, renumbered by first
         appearance::
@@ -4317,7 +4318,7 @@ class OrientedMap:
             sage: m1.canonical_form(edge_classes=[5, 5, 2])
             ((2, 5, 4, 1, 0, 3), (0, 0, 0, 0, 1, 1))
             sage: m3.canonical_form(face_data=[0, 1, 0, 1, 0, 1], face_classes=[4, 7, 4, 7, 4, 7])
-            ((2, 3, 4, 5, 0, 1), (0, 1, 0, 1, 0, 1), (0, 1, 0, 1, 0, 1))
+            ((2, 3, 4, 5, 0, 1), (1, 0, 1, 0, 1, 0), (0, 1, 0, 1, 0, 1))
 
         A disconnected map, whose components are listed in any order, and
         the classes renumbered across its two components::
@@ -4351,7 +4352,7 @@ class OrientedMap:
 
     def automorphisms(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                      check=True, root_rule="half-edge-fewest"):
+                      check=True, root_rule="half-edge-fewest+data"):
         r"""
         Return the automorphisms of this map with the given decorations.
 
@@ -4473,7 +4474,7 @@ class OrientedMap:
 
     def automorphism_generators(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                                 half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                                check=True, root_rule="half-edge-fewest"):
+                                check=True, root_rule="half-edge-fewest+data"):
         r"""
         Return generators of the automorphism group of this map with the
         given decorations.
@@ -4535,7 +4536,7 @@ class OrientedMap:
 
     def is_isomorphic(self, other, certificate=False, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                      check=True, root_rule="half-edge-fewest"):
+                      check=True, root_rule="half-edge-fewest+data"):
         r"""
         Return whether this map is isomorphic to ``other`` with the given
         decorations.
@@ -4568,7 +4569,7 @@ class OrientedMap:
         - ``check`` -- boolean (default ``True``); whether to check the
           decorations
 
-        - ``root_rule`` -- string (default ``"half-edge-fewest"``); the
+        - ``root_rule`` -- string (default ``"half-edge-fewest+data"``); the
           half-edges tried as roots in both maps, as in :meth:`canonical_labelling`; the
           verdict does not depend on it, the isomorphism returned may
           differ from a rule to another

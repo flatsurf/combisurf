@@ -79,8 +79,7 @@ invariant:
 - :data:`ROOTS_ALL`: the same invariant for all, so that every active
   half-edge is a root;
 
-- :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST` (the
-  default): the pair ``(vdeg(h), fdeg(h))``;
+- :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`: the pair ``(vdeg(h), fdeg(h))``;
 
 - :data:`ROOTS_EDGE_MAX`, :data:`ROOTS_EDGE_FEWEST`: the tuple ``(vdeg(h),
   fdeg(h), vdeg(t), fdeg(t), loop, monogon)``, with ``loop`` equal to
@@ -112,8 +111,10 @@ are the half-edges of that class not labelled yet; the rest of the search
 is unchanged. Since an isomorphism preserves the invariants, the result
 under a rule has the properties above, but the canonical labelling and the
 canonical form may differ from one rule to another: two of them compare
-only under the same rule. The default is :data:`ROOTS_HALF_EDGE_FEWEST`
-because it tries fewer roots: against :data:`ROOTS_ALL`, one run each, a
+only under the same rule. The default is ``ROOTS_HALF_EDGE_FEWEST |
+ROOTS_DATA`` (the integer ``10``): decorations narrow the roots tried, and
+on an undecorated map it is :data:`ROOTS_HALF_EDGE_FEWEST`, which tries
+fewer roots than :data:`ROOTS_ALL`: against :data:`ROOTS_ALL`, one run each, a
 GL(2, Z)-orbit exploration of 50 squares took 1.44 s instead of 2.81 s and
 the canonical labelling of an origami of 1000 squares 307 us instead of
 446 us, while a random triangulation of 4092 half-edges took 118 us
@@ -157,7 +158,8 @@ The triangle ``(0,1,2)(~0,~2,~1)`` beside the folded edge ``(3)``: every
 active half-edge is a root under ``ROOTS_ALL``, the half-edges of the
 triangle (at a vertex of degree 2 and a face of degree 3) under ``ROOTS_HALF_EDGE_MAX``
 and the folded edge (the class with one half-edge) under
-``ROOTS_HALF_EDGE_FEWEST``, the default::
+``ROOTS_HALF_EDGE_FEWEST``, which is the default rule on a map without
+``data``::
 
     sage: from combisurf.isomorphism_naive import canonical_form, ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST
     sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]
@@ -647,7 +649,7 @@ def _block(fp, data, classes, r, k, names):
     return tuple(block), new_names
 
 
-def _search(fp, data, classes=(), all_leaves=False, root_rule=ROOTS_HALF_EDGE_FEWEST):
+def _search(fp, data, classes=(), all_leaves=False, root_rule=ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA):
     r"""
     Return ``(key, leaves)``: the lexicographically minimal sequence of
     blocks over the labellings component after component, and the
@@ -736,7 +738,7 @@ def _complete(r, n, ne):
     return r
 
 
-def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
+def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA):
     r"""
     Return the canonical labelling of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -757,12 +759,13 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
       decoration)
 
     - ``root_rule`` -- one of the integers :data:`ROOTS_ALL`,
-      :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST` (the
-      default), :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`, or one
-      of the last four combined with :data:`ROOTS_DATA` by ``|``: the
-      half-edges tried as roots, the default because it tries fewer of
-      them (see the module documentation); any other value raises a
-      ``ValueError``
+      :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`,
+      :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`, or one of the
+      last four combined with :data:`ROOTS_DATA` by ``|``: the half-edges
+      tried as roots (see the module documentation); any other value raises
+      a ``ValueError``. The default is ``ROOTS_HALF_EDGE_FEWEST |
+      ROOTS_DATA``: decorations narrow the roots tried, and on an
+      undecorated map it is :data:`ROOTS_HALF_EDGE_FEWEST`
 
     OUTPUT: an ``array('i')`` ``r`` that maps each half-edge to its
     canonical label. It is a permutation of ``range(len(fp))`` that
@@ -779,7 +782,7 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
         sage: canonical_labelling([2, 5, 4, 1, 0, 3])
         array('i', [0, 1, 2, 3, 4, 5])
         sage: canonical_labelling([2, 5, 4, 1, 0, 3], ([0, 0, 1, 0, 0, 0],))
-        array('i', [1, 0, 5, 4, 3, 2])
+        array('i', [4, 5, 0, 1, 2, 3])
 
     The same labelling when the marked half-edge is given as a class::
 
@@ -847,7 +850,7 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
     return _complete(leaves[0], n, ne)
 
 
-def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
+def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA):
     r"""
     Return the canonical form of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -865,7 +868,7 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
       decoration)
 
     - ``root_rule`` -- the half-edges tried as roots, as in
-      :func:`canonical_labelling` (default: :data:`ROOTS_HALF_EDGE_FEWEST`)
+      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)
 
     OUTPUT: a tuple ``(fp_c, d_1, ..., d_k, c_1, ..., c_m)`` of tuples:
     ``fp_c`` is the face permutation in the canonical labels (of length
@@ -888,7 +891,7 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
         sage: canonical_form([2, 3, 4, 5, 0, 1])
         ((2, 3, 4, 5, 0, 1),)
         sage: canonical_form([2, 5, 4, 1, 0, 3], ([0, 0, 1, 0, 0, 0],))
-        ((2, 5, 4, 1, 0, 3), (0, 0, 0, 0, 0, 1))
+        ((2, 5, 4, 1, 0, 3), (1, 0, 0, 0, 0, 0))
 
     A class array is renumbered, so renaming its values leaves the canonical
     form unchanged::
@@ -898,7 +901,7 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
         sage: canonical_form([2, 3, 4, 5, 0, 1], classes=([7, 3, 7, 3, 7, 3],))
         ((2, 3, 4, 5, 0, 1), (0, 1, 0, 1, 0, 1))
         sage: canonical_form([2, 3, 4, 5, 0, 1], ([1, 0, 1, 0, 1, 0],), ([7, 3, 7, 3, 7, 3],))
-        ((2, 3, 4, 5, 0, 1), (0, 1, 0, 1, 0, 1), (0, 1, 0, 1, 0, 1))
+        ((2, 3, 4, 5, 0, 1), (1, 0, 1, 0, 1, 0), (0, 1, 0, 1, 0, 1))
 
     TESTS:
 
@@ -952,7 +955,7 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
     return _key(fp, data, leaves[0], 2 * ne, classes)
 
 
-def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
+def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA):
     r"""
     Return the automorphisms of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
@@ -970,7 +973,7 @@ def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
       decoration)
 
     - ``root_rule`` -- the half-edges tried as roots, as in
-      :func:`canonical_labelling` (default: :data:`ROOTS_HALF_EDGE_FEWEST`)
+      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)
 
     OUTPUT: the list of the automorphisms, each an ``array('i')``
     permutation ``g`` of ``range(len(fp))`` with ``g[fp[h]] == fp[g[h]]``
@@ -1088,7 +1091,7 @@ def _group_closure(gens, n):
     return elements
 
 
-def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
+def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA):
     r"""
     Return generators of the automorphism group of the map with face
     permutation ``fp`` decorated by ``data`` and ``classes``.
@@ -1106,7 +1109,7 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
       decoration)
 
     - ``root_rule`` -- the half-edges tried as roots, as in
-      :func:`canonical_labelling` (default: :data:`ROOTS_HALF_EDGE_FEWEST`)
+      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)
 
     OUTPUT: a list of automorphisms (as in :func:`automorphisms`) that
     generate the group; empty when the group is trivial. The automorphisms
@@ -1164,7 +1167,7 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
     return gens
 
 
-def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOTS_HALF_EDGE_FEWEST):
+def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA):
     r"""
     Return an isomorphism from the first decorated map to the second, or
     ``None`` if they are not isomorphic.
@@ -1186,7 +1189,7 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
       up to a relabelling of their values (default: no decoration)
 
     - ``root_rule`` -- the half-edges tried as roots in both maps, as in
-      :func:`canonical_labelling` (default: :data:`ROOTS_HALF_EDGE_FEWEST`)
+      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)
 
     OUTPUT: ``None`` or an ``array('i')`` ``r`` of length ``len(fp1)`` with
     ``r[fp1[h]] == fp2[r[h]]`` and ``data2[i][r[h]] == data1[i][h]`` for

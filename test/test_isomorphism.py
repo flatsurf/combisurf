@@ -1786,9 +1786,12 @@ def test_fast_against_naive_large_disconnected(seed, root_rule):
 
 
 def test_default_root_rule():
-    # omitting root_rule is the rule half-edge-fewest in each layer
+    # omitting root_rule is the rule half-edge-fewest+data in each layer
+    # (ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA, the integer 10); the decoration
+    # of the OrientedMap part makes the flag matter
     rng = random.Random(0)
-    fewest = isomorphism_naive.ROOTS_HALF_EDGE_FEWEST
+    fewest = isomorphism_naive.ROOTS_HALF_EDGE_FEWEST | isomorphism_naive.ROOTS_DATA
+    assert fewest == 10
     for fp in [random_connected_fp(rng) for _ in range(10)] + [random_disconnected_fp(rng) for _ in range(10)]:
         data, classes = random_data(rng, fp), random_classes(rng, fp)
         for module in (isomorphism_naive, isomorphism_fast):
@@ -1800,10 +1803,14 @@ def test_default_root_rule():
         assert isomorphism_fast.canonical_key(fp, data, classes) == \
             isomorphism_fast.canonical_key(fp, data, classes, root_rule=fewest)
         m = OrientedMap(fp=fp)
-        assert m.canonical_labelling() == m.canonical_labelling(root_rule="half-edge-fewest")
-        assert m.canonical_form() == m.canonical_form(root_rule="half-edge-fewest")
-        assert m.automorphisms() == m.automorphisms(root_rule="half-edge-fewest")
-        assert m.is_isomorphic(m, certificate=True) == m.is_isomorphic(m, certificate=True, root_rule="half-edge-fewest")
+        rule = "half-edge-fewest+data"
+        options = {"half_edge_data": data[0]} if data else {}
+        assert m.canonical_labelling(**options) == m.canonical_labelling(root_rule=rule, **options)
+        assert m.canonical_form(**options) == m.canonical_form(root_rule=rule, **options)
+        assert m.automorphisms(**options) == m.automorphisms(root_rule=rule, **options)
+        assert m.automorphism_generators(**options) == m.automorphism_generators(root_rule=rule, **options)
+        pair = {"half_edge_data": (data[0], data[0])} if data else {}
+        assert m.is_isomorphic(m, certificate=True, **pair) == m.is_isomorphic(m, certificate=True, root_rule=rule, **pair)
 
 
 def random_origami(rng, n):
