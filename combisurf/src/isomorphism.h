@@ -90,11 +90,13 @@ typedef enum {
 /*
  * Size of the work buffer of iso_canonical, in ints: the relabelling, its
  * inverse, the queue and the numbering of the class values (4 n), a
- * candidate key (ISO_KEY_SIZE), and under a rule other than ISO_ROOTS_ALL
- * the active half-edges sorted by invariant, the class of each half-edge
- * and the start of each class in that order (3 n + 1).
+ * candidate key (ISO_KEY_SIZE), under a rule other than ISO_ROOTS_ALL the
+ * active half-edges sorted by invariant, the class of each half-edge and
+ * the start of each class in that order (3 n + 1), then the relabelling of
+ * the best root and the parents of the union-find of the orbits of the
+ * automorphisms found (2 n).
  */
-#define ISO_WORK_SIZE(n, nd, nc) (7 * (n) + 1 + ISO_KEY_SIZE(n, nd, nc))
+#define ISO_WORK_SIZE(n, nd, nc) (9 * (n) + 1 + ISO_KEY_SIZE(n, nd, nc))
 
 /* Return the number of active edges of fp. */
 int iso_num_edges(int n, const int *fp);
@@ -153,10 +155,24 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * smaller, it becomes the best root and is walked and keyed in full. When
  * the face permutation parts are equal, the data then the class parts are
  * compared as they are built, with the same rejection. A root that ties
- * with or beats the best one costs O(n (1 + nd + nc)), so a map whose
- * roots all tie still costs O(n^2 (1 + nd + nc)). Under a rule other than
- * ISO_ROOTS_ALL, the classes cost O(n) more: the half-edges are sorted by
- * invariant by counting sorts on its 2 or 6 entries.
+ * with or beats the best one costs O(n (1 + nd + nc)).
+ *
+ * A root that ties with the best one gives an automorphism of the decorated
+ * map, which sends the best root to it; the orbits of the group generated
+ * by the automorphisms found are kept in a union-find over the half-edges
+ * (O(n) to initialise), represented by their smallest half-edge. Every
+ * half-edge of an orbit has the same key, so a root whose representative is
+ * smaller than itself has the key of an earlier root and is skipped at the
+ * cost of one find: either that key was rejected, or the root is in the
+ * orbit of the best root. A tie is thus only met outside the orbit of the
+ * best root and strictly enlarges the group found: there are at most
+ * log2 |Aut| of them, each costing O(n (1 + nd + nc)) for the key and the
+ * automorphism. A map whose roots all tie (a regular map) costs
+ * O(n log2 |Aut| (1 + nd + nc)) for them instead of O(n^2 (1 + nd + nc)).
+ * The roots of minimal key are the orbit of the best root, written by a
+ * final scan. Under a rule other than ISO_ROOTS_ALL, the classes cost O(n)
+ * more: the half-edges are sorted by invariant by counting sorts on its 2
+ * or 6 entries.
  */
 int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
                   iso_root_rule rule, int *key, int *relabelling, int *roots, int *nroots,

@@ -12,7 +12,8 @@
  * sequence of blocks and the number of leaves reaching it are checked).
  * iso_canonical, which rejects a root as soon as its key exceeds the best
  * one, is also compared with a reference that walks and keys every root in
- * full, on random maps and on square-tiled surfaces decorated by h % 4.
+ * full, on random maps, on square-tiled surfaces decorated by h % 4 and on
+ * relabelled copies of the tetrahedron and of the cube, whose roots all tie.
  * Under the rules restricting the roots, both are compared with a
  * reference of the classes that computes the invariants by walking the
  * cycles and compares every pair of half-edges: iso_canonical tries the
@@ -696,6 +697,80 @@ static void random_permutation(int m, int *p)
     }
 }
 
+/*
+ * The map of the nf faces of degree deg of a polyhedron on the vertices 0,
+ * ..., nv - 1, each face given by its vertices in counterclockwise order
+ * (faces holds nf * deg ints), into fp; return its number of half-edges.
+ * The edges are numbered by first appearance, the half-edge 2 e going in
+ * the direction of that appearance.
+ */
+static int polyhedron(int nv, int nf, int deg, const int *faces, int *fp)
+{
+    int he[16][16], f, i, a, b, c, n = 0;
+    CHECK(nv <= 16);
+    for (a = 0; a < nv; a++)
+        for (b = 0; b < nv; b++)
+            he[a][b] = -1;
+    for (f = 0; f < nf; f++) {
+        for (i = 0; i < deg; i++) {
+            a = faces[f * deg + i];
+            b = faces[f * deg + (i + 1) % deg];
+            if (he[a][b] == -1) {
+                CHECK(he[b][a] == -1 && n + 2 <= MAX_N);
+                he[a][b] = n;
+                he[b][a] = n + 1;
+                n += 2;
+            }
+        }
+    }
+    for (f = 0; f < nf; f++) {
+        for (i = 0; i < deg; i++) {
+            a = faces[f * deg + i];
+            b = faces[f * deg + (i + 1) % deg];
+            c = faces[f * deg + (i + 2) % deg];
+            fp[he[a][b]] = he[b][c];
+        }
+    }
+    return n;
+}
+
+/*
+ * Regular maps, where every root ties in the face permutation: the
+ * tetrahedron (12 rotations) and the cube (24 rotations), relabelled at
+ * random so that the roots of minimal key come in various orders, without
+ * decoration and with a constant data array, under every rule.
+ */
+static void test_reference_regular(void)
+{
+    static const int tetrahedron[] = {0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2};
+    static const int cube[] = {0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 1, 2, 6, 5, 2, 3, 7, 6, 3, 0, 4, 7};
+    int fp[MAX_N], fp2[MAX_N], r[MAX_N], zero[MAX_N];
+    int trial, n, i, len, count, solid;
+
+    for (i = 0; i < MAX_N; i++)
+        zero[i] = 0;
+    for (solid = 0; solid < 2; solid++) {
+        current_case = solid == 0 ? "reference, tetrahedron" : "reference, cube";
+        n = solid == 0 ? polyhedron(4, 4, 3, tetrahedron, fp) : polyhedron(8, 6, 4, cube, fp);
+        for (trial = 0; trial < 20; trial++) {
+            if (trial == 0) {
+                memcpy(fp2, fp, (size_t) n * sizeof(int));
+            } else {
+                random_relabelling(n, r);
+                relabel_fp(n, fp, r, fp2);
+            }
+            check_reference(n, fp2, 0, NULL, 0, NULL);
+            check_reference(n, fp2, 1, zero, 0, NULL);
+            check_reference(n, fp2, 0, NULL, 1, zero);
+            for (i = 0; i < NUM_RULES; i++) {
+                len = iso_canonical(n, fp2, 0, NULL, 0, NULL, rules[i], key, relabelling, roots,
+                                    &count, work);
+                CHECK(len == n && count == (solid == 0 ? 12 : 24));
+            }
+        }
+    }
+}
+
 static void test_reference(void)
 {
     int fp[MAX_N], dec[2 * MAX_ARRAYS * MAX_N], right[MAX_N / 4], up[MAX_N / 4];
@@ -867,6 +942,7 @@ int main(int argc, char **argv)
     test_fixed();
     test_random();
     test_reference();
+    test_reference_regular();
     test_search_fixed();
     test_search_random();
     printf("test_isomorphism: %ld checks passed\n", num_checks);

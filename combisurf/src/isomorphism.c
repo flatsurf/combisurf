@@ -7,8 +7,12 @@
  * walk is compared with the best key so far as it goes and stops at the
  * first entry larger, so that a rejected root costs the labels it gave
  * (they alone are reset afterwards), and a root costs O(n) only when it
- * ties with or beats the best one. A map whose roots all tie (a regular
- * map) still costs O(n^2) for n half-edges.
+ * ties with or beats the best one. A tie gives an automorphism, and the
+ * orbits of the automorphisms found are kept in a union-find: a root of an
+ * orbit already met costs one find, so that ties are only met outside the
+ * orbit of the best root, at most log2 |Aut| of them at O(n) each. A map
+ * whose roots all tie (a regular map) costs O(n log2 |Aut|) instead of
+ * O(n^2) for n half-edges.
  *
  * On any map (iso_search), the search goes component after component. Its
  * memory does not grow with the depth beyond a few ints per level: the
@@ -517,31 +521,132 @@ static void debug_root(int n, const int *fp, int nd, const int *data, int nc, co
         for (i = 0; i < len; i++)
             ISO_CHECK(cur[i] == key2[i]);
 }
+
+/*
+ * Check that h -> rinv[rbest[h]] on the active half-edges, from the
+ * relabellings of two roots of equal keys, is an automorphism of the
+ * decorated map: a permutation of the active half-edges that commutes with
+ * fp and with the twin, keeps the data arrays and the class arrays up to a
+ * bijection of their values. scratch holds 4 n ints.
+ */
+static void debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
+                               const int *classes, const int *rbest, const int *rinv, int *scratch)
+{
+    int *aut = scratch, *seen = scratch + n, *fwd = scratch + 2 * n, *bwd = scratch + 3 * n;
+    int h, j, v, w;
+    const int *a;
+
+    for (h = 0; h < n; h++)
+        seen[h] = 0;
+    for (h = 0; h < n; h++) {
+        if (fp[h] == -1)
+            continue;
+        ISO_CHECK(0 <= rbest[h] && rbest[h] < n);
+        aut[h] = rinv[rbest[h]];
+        ISO_CHECK(0 <= aut[h] && aut[h] < n && fp[aut[h]] != -1 && !seen[aut[h]]);
+        seen[aut[h]] = 1;
+    }
+    for (h = 0; h < n; h++) {
+        if (fp[h] == -1)
+            continue;
+        ISO_CHECK(aut[fp[h]] == fp[aut[h]]);
+        if (fp[h ^ 1] != -1)
+            ISO_CHECK(aut[h ^ 1] == (aut[h] ^ 1));
+        else
+            ISO_CHECK(fp[aut[h] ^ 1] == -1);
+    }
+    for (j = 0; j < nd; j++) {
+        a = data + (long) j * n;
+        for (h = 0; h < n; h++)
+            if (fp[h] != -1)
+                ISO_CHECK(a[aut[h]] == a[h]);
+    }
+    for (j = 0; j < nc; j++) {
+        a = classes + (long) j * n;
+        for (v = 0; v < n; v++) {
+            fwd[v] = -1;
+            bwd[v] = -1;
+        }
+        for (h = 0; h < n; h++) {
+            if (fp[h] == -1)
+                continue;
+            v = a[h];
+            w = a[aut[h]];
+            ISO_CHECK((fwd[v] == -1 && bwd[w] == -1) || (fwd[v] == w && bwd[w] == v));
+            fwd[v] = w;
+            bwd[w] = v;
+        }
+    }
+}
 #endif
+
+/*
+ * The representative of the orbit of h in the union-find parent, its
+ * smallest half-edge, with path halving.
+ */
+static inline int orbit_find(int *parent, int h)
+{
+    while (parent[h] != h) {
+        parent[h] = parent[parent[h]];
+        h = parent[h];
+    }
+    return h;
+}
+
+/* Merge the orbits of a and b, the larger representative under the smaller. */
+static inline void orbit_union(int *parent, int a, int b)
+{
+    a = orbit_find(parent, a);
+    b = orbit_find(parent, b);
+    if (a < b)
+        parent[b] = a;
+    else if (b < a)
+        parent[a] = b;
+}
 
 /*
  * The state of iso_canonical while it tries the roots after the first one:
  * the buffers, the best key so far and the candidate key (swapped when a
- * root beats the best one), the length of the keys, the number of roots of
- * minimal key so far and the outputs.
+ * root beats the best one), the length of the keys, the best root and its
+ * relabelling, and the parents of the union-find of the orbits of the
+ * automorphisms found, set up at the first tie only (merged nonzero): until
+ * then every orbit is a single half-edge and no root is skipped, so that a
+ * map whose roots are all rejected pays nothing for the union-find.
  */
 struct canonical_state {
-    int n, nd, nc, ne, len, count;
+    int n, nd, nc, ne, len, best_root, merged;
     const int *fp, *data, *classes;
-    int *r, *rinv, *queue, *names, *best, *cur, *relabelling, *roots;
+    int *r, *rinv, *queue, *names, *best, *cur, *rbest, *parent;
 #ifdef ISO_DEBUG
     int *scratch;
 #endif
 };
 
 /*
- * Try root after the first one: compare its key with the best one, and
- * record it when it ties with or beats it. r is -1 on entry and on return.
+ * Try root after the first one: skip it when its orbit has a smaller
+ * half-edge, which has the same key and was tried or skipped before;
+ * otherwise compare its key with the best one, merge the orbits by the
+ * automorphism it gives when it ties, and make it the best root when it
+ * beats it. r is -1 on entry and on return.
+ *
+ * A skipped root has a key larger than the best one, or is in the orbit of
+ * the best root: the earlier root of its key was rejected, or tied with or
+ * was the best root then, and the later best roots only have smaller keys.
+ * Hence a root that ties is outside the orbit of the best root.
  */
 static inline void canonical_root(struct canonical_state *s, int root)
 {
-    int n = s->n, k, cmp;
+    int n = s->n, k, cmp, h;
     int *r = s->r, *rinv = s->rinv, *tmp;
+
+    if (s->merged && orbit_find(s->parent, root) < root) {
+#ifdef ISO_DEBUG
+        cmp = orbit_find(s->parent, root) == orbit_find(s->parent, s->best_root) ? 0 : 1;
+        debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp, s->best, s->cur,
+                   s->len, s->names, s->scratch);
+#endif
+        return;
+    }
 
     cmp = walk_compare(s->fp, root, r, rinv, s->queue, s->best, &k);
     if (cmp < 0) {
@@ -560,14 +665,23 @@ static inline void canonical_root(struct canonical_state *s, int root)
         tmp = s->best;
         s->best = s->cur;
         s->cur = tmp;
-        s->count = 0;
-        if (s->relabelling != NULL)
-            memcpy(s->relabelling, r, (size_t) n * sizeof(int));
-    }
-    if (cmp <= 0) {
-        if (s->roots != NULL)
-            s->roots[s->count] = root;
-        s->count++;
+        s->best_root = root;
+        memcpy(s->rbest, r, (size_t) n * sizeof(int));
+    } else if (cmp == 0) {
+        /* the automorphism h -> rinv[rbest[h]] sends the best root to root */
+        if (!s->merged) {
+            for (h = 0; h < n; h++)
+                s->parent[h] = h;
+            s->merged = 1;
+        }
+#ifdef ISO_DEBUG
+        ISO_CHECK(orbit_find(s->parent, root) != orbit_find(s->parent, s->best_root));
+        debug_automorphism(n, s->fp, s->nd, s->data, s->nc, s->classes, s->rbest, rinv,
+                           s->scratch);
+#endif
+        for (h = 0; h < n; h++)
+            if (s->fp[h] != -1)
+                orbit_union(s->parent, h, rinv[s->rbest[h]]);
     }
     /* past n / 2 labels, a sequential clear (all bytes 0xff, the int
      * -1) is cheaper than the scattered writes of reset_local: 6 to
@@ -598,8 +712,10 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     int *order = cur + ISO_KEY_SIZE(n, nd, nc);
     int *cls = order + n;
     int *start = cls + n;
+    int *rbest = start + n + 1;
+    int *parent = rbest + n;
     struct canonical_state s;
-    int ne, first, root, k, i, c, m, lo = 0, hi = 0;
+    int ne, first, root, k, i, c, m, rep, count, lo = 0, hi = 0;
 
     ne = iso_num_edges(n, fp);
     for (first = 0; first < n && fp[first] == -1; first++)
@@ -646,14 +762,12 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     s.names = names;
     s.best = key;
     s.cur = cur;
-    s.relabelling = relabelling;
-    s.roots = roots;
+    s.rbest = rbest;
+    s.parent = parent;
+    s.best_root = first;
+    s.merged = 0;
     s.len = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, s.best, names);
-    if (relabelling != NULL)
-        memcpy(relabelling, r, (size_t) n * sizeof(int));
-    if (roots != NULL)
-        roots[0] = first;
-    s.count = 1;
+    memcpy(rbest, r, (size_t) n * sizeof(int));
     reset_local(k, rinv, r);
 #ifdef ISO_DEBUG
     s.scratch = malloc(((size_t) 3 * n + (size_t) ISO_KEY_SIZE(n, nd, nc)) * sizeof(int));
@@ -676,8 +790,43 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
 #endif
     if (s.best != key)
         memcpy(key, s.best, (size_t) s.len * sizeof(int));
+    if (relabelling != NULL)
+        memcpy(relabelling, rbest, (size_t) n * sizeof(int));
+
+    /* the roots of minimal key: the orbit of the best root, which is its
+     * smallest half-edge (a smaller one would have been tried first) */
+    if (!s.merged) {
+        if (roots != NULL)
+            roots[0] = s.best_root;
+        count = 1;
+    } else {
+        rep = orbit_find(parent, s.best_root);
+#ifdef ISO_DEBUG
+        ISO_CHECK(rep == s.best_root);
+#endif
+        count = 0;
+        if (rule == ISO_ROOTS_ALL) {
+            for (root = rep; root < n; root++) {
+                if (fp[root] != -1 && orbit_find(parent, root) == rep) {
+                    if (roots != NULL)
+                        roots[count] = root;
+                    count++;
+                }
+            }
+        } else {
+            /* the orbit lies in the class, increasing in order[lo..hi) */
+            for (i = lo; i < hi; i++) {
+                root = order[i];
+                if (orbit_find(parent, root) == rep) {
+                    if (roots != NULL)
+                        roots[count] = root;
+                    count++;
+                }
+            }
+        }
+    }
     if (nroots != NULL)
-        *nroots = s.count;
+        *nroots = count;
     return s.len;
 }
 

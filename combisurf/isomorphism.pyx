@@ -201,7 +201,7 @@ def _check_sizes(n, nd, nc):
         OverflowError: map too large: 2147483648 half-edges with 0 arrays of data and 0 of classes
     """
     key = n * (1 + nd + nc)
-    work = 7 * n + 1 + key
+    work = 9 * n + 1 + key
     sequence = key + n // 2
     search = (5 + nc) * n + (4 + nc) * (n // 2 + 1) + nc + sequence + key + 1 + 4 * n + 1
     if max(n, key, work, sequence, search) > INT_MAX:
