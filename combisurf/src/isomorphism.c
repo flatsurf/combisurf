@@ -26,8 +26,9 @@
  * computed once per call (root_classes: a radix sort of the active
  * half-edges by invariant, O(n)). Under ISO_ROOTS_DATA, whose invariants
  * end with data values, arbitrary ints, each data array is first replaced
- * by the ranks of its values, O(n log n), so that every entry of the radix
- * sort lies in 0, ..., n - 1. The flag is masked wherever the base rule is
+ * by order-preserving numbers of 0, ..., n - 1 (O(n) when its values span
+ * fewer than n values, O(n log n) otherwise), so that every entry of the
+ * radix sort lies in 0, ..., n - 1. The flag is masked wherever the base rule is
  * tested. iso_canonical then tries the half-edges
  * of the chosen class only. iso_search keeps the number of half-edges not
  * labelled yet in each class, updated as components are labelled and
@@ -243,9 +244,9 @@ static int invariant_entry(int j, int h, const int *fp, const int *vid, const in
 /*
  * The entries of the invariants of a rule other than ISO_ROOTS_ALL, each in
  * 0, ..., n - 1: the base entries of invariant_entry, then, under
- * ISO_ROOTS_DATA, the ranks of the data values at h (nd entries), and under
- * the edge rules those at the twin t (nd more). rank holds the nd arrays of
- * ranks, nd being 0 without the flag.
+ * ISO_ROOTS_DATA, the order-preserving numbers of data_ranks for the data
+ * values at h (nd entries), and under the edge rules those at the twin t (nd
+ * more). rank holds the nd arrays of numbers, nd being 0 without the flag.
  */
 struct invariants {
     const int *fp, *vid, *vdeg, *fid, *fdeg, *rank;
@@ -282,17 +283,36 @@ static void sift_down(int *a, int i, int len, const int *v)
 }
 
 /*
- * Write into rank (n ints) the rank of the value of the array a at each
- * active half-edge of fp among the distinct values of a on the active
- * half-edges, in 0, ..., k - 1 in increasing order of value (not written on
- * the inactive half-edges). tmp holds n ints. The active half-edges are
- * sorted by value by a heap sort, which needs no buffer beyond them and
- * runs in O(n log n) whatever the values.
+ * Write into rank (n ints), at each active half-edge of fp, a value of
+ * 0, ..., n - 1 that increases with the value of the array a there (not
+ * written on the inactive half-edges), so that equal values of a, and only
+ * those, get equal numbers. When the values of a on the active half-edges
+ * span fewer than n values (max - min < n, compared in long) the number is
+ * a - min, in O(n); the numbers are then not dense. Otherwise it is the rank
+ * among the distinct values, in 0, ..., k - 1: tmp (n ints) receives the
+ * active half-edges, sorted by value by a heap sort, which needs no buffer
+ * beyond them and runs in O(n log n) whatever the values.
  */
 static void data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
 {
-    int h, i, x, na = 0, k = 0;
+    int h, i, x, na = 0, k = 0, lo = 0, hi = 0;
 
+    for (h = 0; h < n; h++) {
+        if (fp[h] == -1)
+            continue;
+        if (na == 0 || a[h] < lo)
+            lo = a[h];
+        if (na == 0 || a[h] > hi)
+            hi = a[h];
+        na++;
+    }
+    if ((long) hi - (long) lo < (long) n) {
+        for (h = 0; h < n; h++)
+            if (fp[h] != -1)
+                rank[h] = (int) ((long) a[h] - (long) lo);
+        return;
+    }
+    na = 0;
     for (h = 0; h < n; h++)
         if (fp[h] != -1)
             tmp[na++] = h;
@@ -372,10 +392,10 @@ static void debug_classes(const struct invariants *iv, const int *data, int na, 
  * by the number of active half-edges (the class c is order[start[c]],
  * ..., order[start[c + 1] - 1]). order holds n ints, start n + 1 and tmp
  * 4 n. Under ISO_ROOTS_DATA, the nd data arrays (nd n ints) are read and
- * ranks (nd n ints) receives their ranks. Return the number of classes.
+ * ranks (nd n ints) receives their numbers of data_ranks. Return the number of classes.
  *
  * The sort is a least significant digit radix sort: one stable counting
- * sort per entry of the invariant (2 or 6 of them, plus nd or 2 nd ranks
+ * sort per entry of the invariant (2 or 6 of them, plus nd or 2 nd data entries
  * under ISO_ROOTS_DATA, each in 0, ..., n - 1), from the last to the
  * first, O(n) each.
  */
@@ -407,7 +427,7 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const 
     iv.edge = edge;
     entries = iv.base + (edge ? 2 * nd : nd);
 
-    /* the ranks first, while aux is free */
+    /* the data numbers first, while aux is free */
     for (j = 0; j < nd; j++)
         data_ranks(n, fp, data + (long) j * n, ranks + (long) j * n, aux);
 
@@ -886,7 +906,7 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
 
     if (!all) {
         /* r, rinv, queue and names (4 n) are free until the first walk, cur
-         * (the ranks of the data values) until the first key; the sizes of
+         * (the numbers of the data values) until the first key; the sizes of
          * the classes go into r */
         m = root_classes(n, fp, rule, nd, data, order, cls, start, work, cur);
         for (c = 0; c < m; c++)
@@ -1169,7 +1189,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
     ne = iso_num_edges(n, fp);
     if (!all) {
         /* r, rinv, lr and lrinv (4 n) are free until they are cleared below,
-         * cand (the ranks of the data values) until the first block;
+         * cand (the numbers of the data values) until the first block;
          * cnt[c] is the number of half-edges of the class c not labelled */
         m = root_classes(n, fp, rule, nd, data, order, cls, start, work, cand);
         for (c = 0; c < m; c++)

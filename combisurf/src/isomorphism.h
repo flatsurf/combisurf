@@ -102,8 +102,8 @@ typedef enum {
  * active half-edges sorted by invariant, the class of each half-edge and
  * the start of each class in that order (3 n + 1), then the relabelling of
  * the best root and the parents of the union-find of the orbits of the
- * automorphisms found (2 n). Under ISO_ROOTS_DATA the ranks of the data
- * values (nd n) live in the candidate key, which is not used before the
+ * automorphisms found (2 n). Under ISO_ROOTS_DATA the order-preserving
+ * numbers of the data values (nd n) live in the candidate key, which is not used before the
  * classes are computed, so that the flag needs no more room.
  */
 #define ISO_WORK_SIZE(n, nd, nc) (9 * (n) + 1 + ISO_KEY_SIZE(n, nd, nc))
@@ -183,8 +183,10 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * final scan. Under a rule other than ISO_ROOTS_ALL, the classes cost O(n)
  * more: the half-edges are sorted by invariant by counting sorts on its 2
  * or 6 entries. Under ISO_ROOTS_DATA each data array is first replaced by
- * the ranks of its values among the active half-edges (a heap sort,
- * O(n log n) per array), which add nd or 2 nd entries.
+ * order-preserving numbers of 0, ..., n - 1: the values minus their minimum
+ * when they span fewer than n values (O(n)), else their ranks among the
+ * active half-edges (a heap sort, O(n log n) per array). They add nd or
+ * 2 nd entries.
  */
 int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
                   iso_root_rule rule, int *key, int *relabelling, int *roots, int *nroots,
@@ -221,8 +223,8 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
  * rules other than ISO_ROOTS_ALL the active half-edges sorted by invariant,
  * the class of each half-edge, the start of each class in that order and
  * the number of half-edges not labelled yet in each class (4 n + 1). Under
- * ISO_ROOTS_DATA the ranks of the data values (nd n) live in the candidate
- * block, which is not used before the classes are computed, so that the
+ * ISO_ROOTS_DATA the order-preserving numbers of the data values (nd n) live
+ * in the candidate block, which is not used before the classes are computed, so that the
  * flag needs no more room.
  *
  * These sizes are computed in int and overflow for about

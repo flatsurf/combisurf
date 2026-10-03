@@ -816,7 +816,7 @@ static void test_reference_regular(void)
 static void test_reference(void)
 {
     int fp[MAX_N], dec[2 * MAX_ARRAYS * MAX_N], right[MAX_N / 4], up[MAX_N / 4];
-    int trial, ne, n, m, nd, nc, i, h, s;
+    int trial, ne, n, m, nd, nc, i, j, h, s;
 
     current_case = "reference, random maps";
     for (trial = 0; trial < 300; trial++) {
@@ -834,6 +834,44 @@ static void test_reference(void)
             spread_values(n, nd * n, dec);
         check_reference(n, fp, nd, dec, nc, dec + nd * n);
         check_reference(n, fp, 0, NULL, 0, NULL);
+    }
+
+    /* data arrays whose values span exactly n - 1 (the offsets of the
+     * values by their minimum) or exactly n (the ranks), from a minimum
+     * that is negative, 0, or near INT_MAX */
+    current_case = "reference, data range at the threshold";
+    for (trial = 0; trial < 300; trial++) {
+        const int low[] = {-5, 0, 3, INT_MIN, INT_MAX};
+        int lo, span, first, last;
+        ne = 2 + rng_below(trial < 250 ? 20 : MAX_N / 2 - 2);
+        n = 2 * ne;
+        CHECK(random_connected(ne, rng_below(4), fp));
+        nd = 1 + rng_below(MAX_ARRAYS);
+        nc = rng_below(MAX_ARRAYS + 1);
+        for (i = 0; i < nc * n; i++)
+            dec[nd * n + i] = rng_below(2);
+        for (j = 0; j < nd; j++) {
+            span = n - 1 + rng_below(2);
+            lo = low[rng_below(5)];
+            /* the values lo ... lo + span, without overflow */
+            if (lo > INT_MAX - span)
+                lo = INT_MAX - span;
+            first = last = -1;
+            for (h = 0; h < n; h++) {
+                if (fp[h] == -1)
+                    continue;
+                if (first == -1)
+                    first = h;
+                last = h;
+                dec[j * n + h] = lo + (rng_below(3) == 0 ? rng_below(span + 1) : rng_below(2) * span);
+            }
+            dec[j * n + first] = lo;
+            dec[j * n + last] = lo + span;
+            for (h = 0; h < n; h++)
+                if (fp[h] == -1)
+                    dec[j * n + h] = 0;
+        }
+        check_reference(n, fp, nd, dec, nc, dec + nd * n);
     }
 
     current_case = "reference, origamis";
