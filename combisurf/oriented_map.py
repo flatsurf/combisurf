@@ -59,7 +59,7 @@ from combisurf.permutation import (perm_init, perm_check, perm_trim, perm_cycles
                           perm_orbit, perm_orbit_size,
                           perms_are_transitive, perm_edge_orbits)
 from combisurf.word import word_init, word_string
-from combisurf import isomorphism
+from combisurf import isomorphism, isomorphism_naive
 
 def check_relabelling(arg, ne):
     r"""
@@ -4065,9 +4065,68 @@ class OrientedMap:
                              "'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', "
                              "'edge-max+data', 'edge-fewest+data', got {!r}".format(root_rule)) from None
 
+    @staticmethod
+    def _keyed_minimisers(fp, data, classes, rule, key):
+        r"""
+        Return ``(r, stab, value)``: the first of the relabellings ``r0 ∘ a``
+        of smallest value of ``key``, with ``r0`` the canonical labelling
+        and ``a`` running through the automorphisms in the order of
+        :meth:`automorphisms`; the automorphisms ``a`` with ``key(r ∘ a) ==
+        key(r)``, in that order; and ``key(r)``.
+
+        The relabellings that reach the minimal canonical key are exactly the
+        ``r0 ∘ a``. As ``a`` runs through the automorphisms, so does
+        ``a0 ∘ a`` for a fixed ``a0``, hence the stabiliser is read from the
+        values already computed: ``key`` is called once per automorphism.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: r, stab, value = OrientedMap._keyed_minimisers(m._fp, (), (), 0, lambda r: r[0] // 2)
+            sage: r, len(stab), value
+            (array('i', [0, 1, 2, 3, 4, 5]), 2, 0)
+        """
+        r0 = isomorphism.canonical_labelling(fp, data, classes, root_rule=rule)
+        automorphisms = isomorphism.automorphisms(fp, data, classes, root_rule=rule)
+        values = [key(array('i', [r0[x] for x in a])) for a in automorphisms]
+        best = values[0]
+        for v in values:
+            if v < best:
+                best = v
+        minimal = [a for a, v in zip(automorphisms, values) if v == best]
+        a0 = minimal[0]
+        inverse = array('i', a0)
+        for h, x in enumerate(a0):
+            inverse[x] = h
+        kept = {tuple([inverse[x] for x in b]) for b in minimal}
+        stabiliser = [a for a in automorphisms if tuple(a) in kept]
+        return array('i', [r0[x] for x in a0]), stabiliser, best
+
+    def _keyed_isomorphism(self, other, data1, data2, classes1, classes2, rule, key):
+        r"""
+        Return an isomorphism from this map to ``other`` (as in
+        :meth:`is_isomorphic`) or ``None``, the canonical forms being
+        followed by the value of the pair ``key`` on the labellings of
+        smallest value.
+        """
+        r, _, value1 = self._keyed_minimisers(self._fp, data1, classes1, rule, key[0])
+        s, _, value2 = self._keyed_minimisers(other._fp, data2, classes2, rule, key[1])
+        form1 = isomorphism.canonical_form(self._fp, data1, classes1, root_rule=rule) + (value1,)
+        form2 = isomorphism.canonical_form(other._fp, data2, classes2, root_rule=rule) + (value2,)
+        if form1 != form2:
+            return None
+        inverse = array('i', s)
+        for h, x in enumerate(s):
+            inverse[x] = h
+        fp1 = self._fp
+        n1 = len(fp1)
+        same = n1 == len(other._fp)
+        return array('i', [inverse[r[h]] if same or fp1[h] != -1 or fp1[h ^ 1] != -1 else -1 for h in range(n1)])
+
     def canonical_labelling(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                             half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                            check=True, root_rule="half-edge-fewest+data"):
+                            check=True, root_rule="half-edge-fewest+data", key=None):
         r"""
         Return the canonical labelling of this map with the given
         decorations.
@@ -4128,6 +4187,20 @@ class OrientedMap:
           value raises a ``ValueError``, whatever ``check``. See
           :mod:`combisurf.isomorphism_naive` for the definitions.
 
+        - ``key`` -- optional; a callable that takes a relabelling of this
+          map (an ``array('i')`` sending each half-edge to its new label, as
+          returned here) and returns a value comparable with ``<`` and
+          ``==``. The relabellings that reach the minimal canonical key are
+          the ``r0 ∘ a`` (``h`` goes to ``r0[a[h]]``) for ``a`` in
+          :meth:`automorphisms`, ``r0`` the labelling without ``key``; with
+          ``key`` the result is the first of them of smallest value of
+          ``key``. One call of ``key`` is made per automorphism, on the full
+          list of automorphisms (at least `k!` on `k` isomorphic
+          components). With ``check=True`` a ``key`` that is not callable
+          raises a ``TypeError``. The labels given to the inactive edges are
+          not determined by the isomorphism class: a ``key`` that depends on
+          them does not give the same value on isomorphic maps.
+
         The values of a decoration are integers (Python ``int``, Sage
         ``Integer``, or anything with an ``__index__`` method); the values
         on inactive half-edges are ignored. With ``check=True`` any other
@@ -4187,7 +4260,30 @@ class OrientedMap:
             sage: m.canonical_form(edge_data=colours) == m.canonical_form(edge_data=swapped)
             False
 
+        All the relabellings that reach the minimal canonical key, and a
+        ``key`` that breaks the symmetry: the label of the edge ``0`` of the
+        triangle pair, which is kept in 2 of the 6 labellings. The first
+        labelling of smallest value is returned::
+
+            sage: from array import array
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: r0 = m.canonical_labelling()
+            sage: minimisers = [array('i', [r0[x] for x in a]) for a in m.automorphisms()]
+            sage: len(minimisers), len(set(tuple(r) for r in minimisers))
+            (6, 6)
+            sage: m.canonical_labelling(key=lambda r: -(r[0] // 2))
+            array('i', [4, 5, 0, 1, 2, 3])
+            sage: m.canonical_labelling(key=lambda r: r[0] // 2)
+            array('i', [0, 1, 2, 3, 4, 5])
+
         TESTS:
+
+        A ``key`` that is not callable::
+
+            sage: m.canonical_labelling(key=3)
+            Traceback (most recent call last):
+            ...
+            TypeError: key must be callable
 
         A label gap (the edge ``1`` is inactive) and a folded edge::
 
@@ -4299,11 +4395,22 @@ class OrientedMap:
         rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism.canonical_labelling(self._fp, data, classes, root_rule=rule)
+        if key is None:
+            return isomorphism.canonical_labelling(self._fp, data, classes, root_rule=rule)
+        self._check_key(key, check)
+        return self._keyed_minimisers(self._fp, data, classes, rule, key)[0]
+
+    @staticmethod
+    def _check_key(key, check):
+        r"""
+        Raise a ``TypeError`` when ``check`` is true and ``key`` is not callable.
+        """
+        if check and not callable(key):
+            raise TypeError("key must be callable")
 
     def canonical_form(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                        half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                       check=True, root_rule="half-edge-fewest+data"):
+                       check=True, root_rule="half-edge-fewest+data", key=None):
         r"""
         Return the canonical form of this map with the given decorations.
 
@@ -4323,6 +4430,13 @@ class OrientedMap:
         decoration (in the same order) read in the same order of half-edges
         and renumbered ``0, 1, 2, ...`` by first appearance.
 
+        With a ``key`` (a callable on relabellings, see
+        :meth:`canonical_labelling`), the tuple has one more entry, the value
+        of ``key`` on the labelling of :meth:`canonical_labelling` with the
+        same ``key``; the form is hashable when this value is. This costs one
+        call of ``key`` per automorphism, on the full list of automorphisms
+        (at least `k!` on `k` isomorphic components).
+
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
@@ -4340,6 +4454,11 @@ class OrientedMap:
 
             sage: m1.canonical_form(edge_data=[0, 0, 1])
             ((2, 5, 4, 1, 0, 3), (1, 1, 0, 0, 0, 0))
+
+        With a ``key``, here the label of the edge ``0``::
+
+            sage: m3.canonical_form(key=lambda r: r[0] // 2)
+            ((2, 3, 4, 5, 0, 1), 0)
 
         With a decoration matched up to relabelling, renumbered by first
         appearance::
@@ -4377,11 +4496,15 @@ class OrientedMap:
         rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism.canonical_form(self._fp, data, classes, root_rule=rule)
+        form = isomorphism.canonical_form(self._fp, data, classes, root_rule=rule)
+        if key is None:
+            return form
+        self._check_key(key, check)
+        return form + (self._keyed_minimisers(self._fp, data, classes, rule, key)[2],)
 
     def automorphisms(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                      check=True, root_rule="half-edge-fewest+data"):
+                      check=True, root_rule="half-edge-fewest+data", key=None):
         r"""
         Return the automorphisms of this map with the given decorations.
 
@@ -4395,6 +4518,13 @@ class OrientedMap:
         is computed in full under every ``root_rule``: it has at least `k!`
         elements on a map with `k` isomorphic components, which
         :meth:`automorphism_generators` avoids.
+
+        With a ``key`` (a callable on relabellings, see
+        :meth:`canonical_labelling`), the list is reduced to the
+        automorphisms ``a`` with ``key(r ∘ a) == key(r)``, ``r`` the
+        labelling of :meth:`canonical_labelling` with the same ``key``, in
+        the same order: the stabiliser of what ``key`` encodes. One call of
+        ``key`` is made per automorphism of the full list.
 
         OUTPUT: the list of the automorphisms, the identity first, each an
         ``array('i')`` permutation of the half-edges that commutes with the
@@ -4458,6 +4588,18 @@ class OrientedMap:
             sage: A[1]
             array('i', [1, 0, 3, 2, 5, 4])
 
+        A ``key`` that marks the edge ``0`` keeps the 2 automorphisms that
+        fix it, among the 6 of the triangle pair::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: A = m.automorphisms(key=lambda r: r[0] // 2)
+            sage: len(A)
+            2
+            sage: A[0]
+            array('i', [0, 1, 2, 3, 4, 5])
+            sage: all(a[0] // 2 == 0 for a in A)
+            True
+
         TESTS:
 
         Folded edges and label gaps (the edges ``1`` and ``3`` are
@@ -4499,11 +4641,14 @@ class OrientedMap:
         rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism.automorphisms(self._fp, data, classes, root_rule=rule)
+        if key is None:
+            return isomorphism.automorphisms(self._fp, data, classes, root_rule=rule)
+        self._check_key(key, check)
+        return self._keyed_minimisers(self._fp, data, classes, rule, key)[1]
 
     def automorphism_generators(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                                 half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                                check=True, root_rule="half-edge-fewest+data"):
+                                check=True, root_rule="half-edge-fewest+data", key=None):
         r"""
         Return generators of the automorphism group of this map with the
         given decorations.
@@ -4522,6 +4667,14 @@ class OrientedMap:
         disconnected map the generators do not depend on it, and the list of
         all the automorphisms (of length at least `k!` on `k` isomorphic
         components) is never computed.
+
+        With a ``key`` (a callable on relabellings, see
+        :meth:`canonical_labelling`), the group is the subgroup of
+        :meth:`automorphisms` with the same ``key``, and the generators are
+        taken from the list of its elements, which is computed in full: one
+        call of ``key`` per automorphism of the whole group (at least `k!`
+        on `k` isomorphic components). An element is kept when it is not in
+        the group generated by those kept so far.
 
         OUTPUT: a list of automorphisms (as in :meth:`automorphisms`) that
         generate the group; empty when the group is trivial.
@@ -4557,15 +4710,107 @@ class OrientedMap:
 
             sage: OrientedMap(fp="(0)(~0)(1)(~1)").automorphism_generators(root_rule="edge-max")
             [array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]
+
+        With a ``key`` marking the edge ``0``, the group of order 2 fixing
+        it::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: len(m.automorphism_generators(key=lambda r: r[0] // 2))
+            1
+            sage: m.automorphism_generators(key=lambda r: 0 if r[0] // 2 == 0 else 1)
+            [array('i', [1, 0, 3, 2, 5, 4])]
         """
         rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
         classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
-        return isomorphism.automorphism_generators(self._fp, data, classes, root_rule=rule)
+        if key is None:
+            return isomorphism.automorphism_generators(self._fp, data, classes, root_rule=rule)
+        self._check_key(key, check)
+        stabiliser = self._keyed_minimisers(self._fp, data, classes, rule, key)[1]
+        n = len(self._fp)
+        generators = []
+        elements = {tuple(range(n))}
+        for a in stabiliser:
+            if tuple(a) not in elements:
+                generators.append(a)
+                elements = isomorphism_naive._group_closure(generators, n)
+        return generators
+
+    def canonical_roots(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
+                        half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
+                        key=None, check=True, root_rule="half-edge-fewest+data"):
+        r"""
+        Return the half-edges that some minimiser of the canonical key
+        labels ``0``.
+
+        The decorations and ``root_rule`` are given as in
+        :meth:`canonical_labelling`. The relabellings reaching the minimal
+        canonical key are the ``r0 ∘ a`` for ``a`` in
+        :meth:`automorphisms`; this is the orbit of the root of ``r0`` (the
+        half-edge labelled ``0``) under the automorphisms. McKay's
+        augmentation keeps the augmentation by a half-edge ``h`` when ``h``
+        is in this list.
+
+        INPUT:
+
+        - ``key`` -- optional; a callable on relabellings as in
+          :meth:`canonical_labelling`: only the minimisers of smallest value
+          of ``key`` are considered, and the automorphisms kept are those of
+          :meth:`automorphisms` with ``key``. It is called once per
+          automorphism, on the full list of automorphisms (at least `k!` on
+          `k` isomorphic components).
+
+        OUTPUT: the sorted list of the half-edges, empty for the empty map.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: m.canonical_roots()
+            [0, 1, 2, 3, 4, 5]
+            sage: m.canonical_roots(half_edge_data=[0, 1, 0, 1, 0, 2])
+            [5]
+            sage: m.canonical_roots(half_edge_data=[0, 1, 0, 1, 0, 1])
+            [1, 3, 5]
+
+        With a ``key`` that marks the edge ``0``, the roots are the
+        half-edges of the marked edge::
+
+            sage: m.canonical_roots(key=lambda r: r[0] // 2)
+            [0, 1]
+
+        TESTS::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~2,~1)(3)")
+            sage: m.canonical_roots()
+            [6]
+            sage: m = OrientedMap(fp="(0)(~0)(1)(~1)")
+            sage: m.canonical_roots()
+            [0, 1, 2, 3]
+            sage: m.canonical_roots(face_classes=[0, 1, 1, 0])
+            [0, 1, 2, 3]
+            sage: OrientedMap(fp="(0,1,2)(~0,~1,~2)").canonical_roots(key=3)
+            Traceback (most recent call last):
+            ...
+            TypeError: key must be callable
+        """
+        rule = self._root_rule(root_rule)
+        data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)
+        classes = self._decoration_data(half_edge_classes, edge_classes, vertex_classes, face_classes, check, kind="classes")
+        if key is None:
+            r = isomorphism.canonical_labelling(self._fp, data, classes, root_rule=rule)
+            stabiliser = isomorphism.automorphisms(self._fp, data, classes, root_rule=rule)
+        else:
+            self._check_key(key, check)
+            r, stabiliser, _ = self._keyed_minimisers(self._fp, data, classes, rule, key)
+        if len(r) == 0 or 0 not in r:
+            return []
+        root = r.index(0)
+        return sorted({a[root] for a in stabiliser})
 
     def is_isomorphic(self, other, certificate=False, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                       half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
-                      check=True, root_rule="half-edge-fewest+data"):
+                      check=True, root_rule="half-edge-fewest+data", key=None):
         r"""
         Return whether this map is isomorphic to ``other`` with the given
         decorations.
@@ -4602,6 +4847,14 @@ class OrientedMap:
           half-edges tried as roots in both maps, as in :meth:`canonical_labelling`; the
           verdict does not depend on it, the isomorphism returned may
           differ from a rule to another
+
+        - ``key`` -- optional; a pair ``(key of self, key of other)`` of
+          callables, as in :meth:`canonical_labelling`; given for one map
+          only, a ``ValueError`` is raised. The maps are isomorphic when
+          their canonical forms followed by the value of ``key`` on their
+          labellings of smallest ``key`` value are equal. This calls ``key``
+          once per automorphism of each map, on the full list of
+          automorphisms (at least `k!` on `k` isomorphic components).
 
         A ``*_data`` decoration given for one map only (``None`` for the
         other) makes the maps not isomorphic. A ``*_classes`` decoration
@@ -4699,6 +4952,23 @@ class OrientedMap:
             ...
             ValueError: root_rule must be one of 'all', 'half-edge-max', 'half-edge-fewest', 'edge-max', 'edge-fewest', 'half-edge-max+data', 'half-edge-fewest+data', 'edge-max+data', 'edge-fewest+data', got 'edge'
 
+        With a ``key`` for each map, here the label of the edge ``0``
+        (the edge ``0`` of the first map against the edge ``1`` of the
+        second): the isomorphism returned sends the edge ``0`` to the edge
+        ``1``; keys whose minimal values differ give ``False``::
+
+            sage: key = lambda r: r[0] // 2
+            sage: m3.is_isomorphic(m3, key=(key, key))
+            True
+            sage: m3.is_isomorphic(m3, key=(key, lambda r: r[2] // 2), certificate=True)
+            (True, array('i', [2, 3, 4, 5, 0, 1]))
+            sage: m3.is_isomorphic(m3, key=(key, lambda r: r[0] // 2 + 1))
+            False
+            sage: m3.is_isomorphic(m3, key=(key, None))
+            Traceback (most recent call last):
+            ...
+            ValueError: key must be given for both maps or for none
+
         TESTS::
 
             sage: m1.is_isomorphic(m2, edge_data=[0, 0, 1])
@@ -4785,8 +5055,20 @@ class OrientedMap:
                     one_sided = True
                 decorations[kind][0].extend(a1)
                 decorations[kind][1].extend(a2)
+        if key is not None:
+            if not isinstance(key, (tuple, list)) or len(key) != 2:
+                raise ValueError("key must be a pair (of self, of other)")
+            if (key[0] is None) != (key[1] is None):
+                raise ValueError("key must be given for both maps or for none")
+            if key[0] is None:
+                key = None
+            elif check and not all(callable(k) for k in key):
+                raise TypeError("key must be a pair of callables")
         if one_sided:
             r = None
+        elif key is not None:
+            (data1, data2), (classes1, classes2) = decorations['data'], decorations['classes']
+            r = self._keyed_isomorphism(other, tuple(data1), tuple(data2), tuple(classes1), tuple(classes2), rule, key)
         else:
             (data1, data2), (classes1, classes2) = decorations['data'], decorations['classes']
             r = isomorphism.isomorphism(self._fp, tuple(data1), other._fp, tuple(data2),

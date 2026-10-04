@@ -566,3 +566,19 @@ class ColoredOrientedMap(OrientedMap):
             NotImplementedError: colours are not supported yet
         """
         raise NotImplementedError("colours are not supported yet")
+
+    def canonical_roots(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None, check=True):
+        r"""
+        Return the half-edges that some minimiser of the canonical key
+        labels ``0``.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.canonical_roots()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")

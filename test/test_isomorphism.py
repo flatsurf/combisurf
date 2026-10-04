@@ -10,9 +10,10 @@ expected values are copied from their doctests, whose location is given
 next to each test.
 
 The functionality under test is reached only through the adapter functions
-below. They raise ``NotImplementedError`` for what combisurf does not
-offer yet (subspaces, tuples of permutations), and the tests that need it
-are expected to fail with that exception. Disconnected maps are supported,
+below. Subspaces are supported through the keyword ``key``; they raise
+``NotImplementedError`` for what combisurf does not offer yet (tuples of
+permutations), and the tests that need it are expected to fail with that
+exception. Disconnected maps are supported,
 among them the cylinder diagrams whose components are joined only by the
 pairing of their cylinders.
 
@@ -86,12 +87,33 @@ def decoration_keywords(half_edge_data=None, edge_data=None, face_data=None,
     Return the keywords of the decorations, as the methods of
     :class:`OrientedMap` take them: ``half_edge_data``, ``edge_data`` and
     ``face_data`` matched exactly, ``face_classes`` up to relabelling of its
-    values; raise ``NotImplementedError`` for ``edge_subspace``.
+    values; ``edge_subspace`` becomes the keyword ``key`` (see
+    :func:`subspace_key`).
     """
-    if edge_subspace is not None:
-        raise NotImplementedError
     return {'half_edge_data': half_edge_data, 'edge_data': edge_data,
-            'face_data': face_data, 'face_classes': face_classes}
+            'face_data': face_data, 'face_classes': face_classes,
+            'key': None if edge_subspace is None else subspace_key(edge_subspace)}
+
+
+def subspace_key(rows):
+    r"""
+    Return the ``key`` of a linear subspace of ``QQ^E`` spanned by ``rows``
+    (lists indexed by edges): the function of a relabelling ``r`` that moves
+    the column ``e`` to the edge ``r[2 * e] // 2`` (the sign of the half-edge
+    is dropped) and returns the reduced echelon form over ``QQ`` as a tuple
+    of tuples of its nonzero rows.
+    """
+    from sage.all import QQ, matrix
+
+    def key(r):
+        columns = len(rows[0])
+        new = [[0] * columns for _ in rows]
+        for i, row in enumerate(rows):
+            for e, x in enumerate(row):
+                new[i][r[2 * e] // 2] = x
+        echelon = matrix(QQ, new).echelon_form()
+        return tuple(tuple(row) for row in echelon.rows() if any(row))
+    return key
 
 
 def automorphism_count(m, half_edge_data=None, edge_data=None,
@@ -110,7 +132,7 @@ def automorphism_count(m, half_edge_data=None, edge_data=None,
     - ``edge_subspace``: a list of rows indexed by edges spanning a
       subspace; an automorphism permutes the columns by the permutation it
       induces on edges (signs ignored) and must preserve the row space
-      (not supported: raises ``NotImplementedError``).
+      (matched through ``key``).
     """
     keywords = decoration_keywords(half_edge_data, edge_data, face_data,
                                    face_classes, edge_subspace)
@@ -154,10 +176,13 @@ def isomorphism(a, b, root_rule="all", **decorations):
     of the roots ``root_rule``.
 
     Each decoration keyword (as in :func:`automorphism_count`) takes a pair
-    ``(decoration of a, decoration of b)``.
+    ``(decoration of a, decoration of b)``, the subspaces included.
     """
+    subspaces = decorations.pop('edge_subspace', None)
     keywords = decoration_keywords(**decorations)
     keywords = {key: value for key, value in keywords.items() if value is not None}
+    if subspaces is not None:
+        keywords['key'] = (subspace_key(subspaces[0]), subspace_key(subspaces[1]))
     ok, r = a.is_isomorphic(b, certificate=True, root_rule=root_rule, **keywords)
     return list(r) if ok else None
 
@@ -718,14 +743,11 @@ def test_automorphism_group_I8():
     # veerer/constellation.py:1798-1800
     (lambda: map_from_fp(O7), {'half_edge_data': [0, 1, 0, 1, 0, 2]}, 1),
     # veerer/constellation.py:1805-1809
-    pytest.param(lambda: map_from_fp(O4), {'edge_subspace': O9_SUBSPACE}, 2,
-                 marks=NOT_IMPLEMENTED),
+    (lambda: map_from_fp(O4), {'edge_subspace': O9_SUBSPACE}, 2),
     # veerer/linear_family.py:745-747, over the disconnected map
-    pytest.param(lambda: OrientedMap(fp=O20_FP), O20_DATA, 8,
-                 marks=NOT_IMPLEMENTED),
+    (lambda: OrientedMap(fp=O20_FP), O20_DATA, 8),
     # veerer/linear_family.py:749-751
-    pytest.param(lambda: map_from_fp(O21), {'edge_subspace': O21_SUBSPACE}, 2,
-                 marks=NOT_IMPLEMENTED),
+    (lambda: map_from_fp(O21), {'edge_subspace': O21_SUBSPACE}, 2),
 ], ids=["O5", "O6", "O7", "O8", "O9", "O20", "O21"])
 def test_automorphism_count_decorated(build, decorations, expected):
     assert automorphism_count(build(), **decorations) == expected
@@ -932,7 +954,7 @@ def test_isomorphism_cylinder_diagram_relabelled(s):
     (lambda: map_from_fp(O3), {}),
     (lambda: map_from_fp(O4), {}),
     (lambda: map_from_fp(O1), {'edge_data': O5_EDGE_DATA}),
-    pytest.param(lambda: OrientedMap(fp=O20_FP), O20_DATA, marks=NOT_IMPLEMENTED),
+    (lambda: OrientedMap(fp=O20_FP), O20_DATA),
 ], ids=["O1", "O2", "O3", "O4", "O5", "O20"])
 def test_canonical_form_invariance(build, decorations):
     m = build()
@@ -1031,11 +1053,12 @@ def test_origami_mutations():
     lambda m: m.canonical_form(),
     lambda m: m.automorphisms(),
     lambda m: m.is_isomorphic(m),
+    lambda m: m.canonical_roots(),
 ], ids=["canonical_labelling", "canonical_form", "automorphisms",
-        "is_isomorphic"])
+        "is_isomorphic", "canonical_roots"])
 def test_coloured_map_methods(call):
     r"""
-    Coloured maps raise NotImplementedError on the four isomorphism methods.
+    Coloured maps raise NotImplementedError on the isomorphism methods.
     """
     from combisurf import ColoredOrientedMap
     m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
@@ -2535,3 +2558,182 @@ def test_canonical_key_data_float_active():
     d = decoration_with([1.5], [8], HALF_EDGE_BASE)
     assert isomorphism_fast.canonical_key(DECORATED_FP, (d,)) == \
         isomorphism_fast.canonical_key(DECORATED_FP, (decoration_with([1], [8], HALF_EDGE_BASE),))
+
+
+# The hook key (a function of the relabelling, here a linear subspace) and
+# the method canonical_roots
+
+def preserves_subspace(rows, a):
+    r"""
+    Return whether the half-edge permutation ``a`` preserves the row space
+    of ``rows``: the columns are permuted by the edges ``a[2 * e] // 2``, and
+    the rank of the union of the two row spaces is that of ``rows``.
+    """
+    from sage.all import QQ, matrix
+    columns = len(rows[0])
+    moved = [[0] * columns for _ in rows]
+    for i, row in enumerate(rows):
+        for e, x in enumerate(row):
+            moved[i][a[2 * e] // 2] = x
+    rank = matrix(QQ, rows).rank()
+    return matrix(QQ, rows + moved).rank() == rank == matrix(QQ, moved).rank()
+
+
+def random_subspace(rng, fp):
+    r"""
+    Return one or two random rows indexed by the edges of ``fp``, small
+    integers on the active edges (the labels of the inactive edges are not
+    determined by the isomorphism class, so the rows vanish there), not all
+    zero.
+    """
+    active = [fp[2 * e] != -1 or fp[2 * e + 1] != -1 for e in range(len(fp) // 2)]
+    while True:
+        rows = [[rng.randint(-1, 2) if a else 0 for a in active] for _ in range(rng.randint(1, 2))]
+        if all(any(row) for row in rows):
+            return rows
+
+
+def carry_subspace(rows, r):
+    r"""
+    Return ``rows`` with the column of the edge ``e`` moved to the edge
+    ``r[2 * e] // 2``.
+    """
+    carried = []
+    for row in rows:
+        new = [0] * len(row)
+        for e, x in enumerate(row):
+            new[r[2 * e] // 2] = x
+        carried.append(new)
+    return carried
+
+
+@pytest.mark.parametrize("build, edge_count, expected", [
+    (lambda: map_from_fp(O7), 3, 2),
+    (lambda: map_from_fp(O1), 12, 2),
+], ids=["O7", "O1"])
+def test_subspace_removes_automorphisms(build, edge_count, expected):
+    m = build()
+    rows = [[1] + [0] * (edge_count - 1)]
+    direct = [a for a in m.automorphisms() if preserves_subspace(rows, a)]
+    assert len(direct) == expected < len(m.automorphisms())
+    assert automorphism_count(m, edge_subspace=rows) == expected
+    assert sorted(tuple(a) for a in direct) == sorted(tuple(a) for a in m.automorphisms(**decoration_keywords(edge_subspace=rows)))
+
+
+def random_fps(rng):
+    r"""
+    Return a random face permutation, connected or disconnected.
+    """
+    return random_connected_fp(rng) if rng.random() < 0.5 else random_disconnected_fp(rng)
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_key_random_maps(seed):
+    rng = random.Random(seed)
+    for _ in range(10):
+        fp = random_fps(rng)
+        m = OrientedMap(fp=fp)
+        rows = random_subspace(rng, fp)
+        key = subspace_key(rows)
+        stabiliser = m.automorphisms(key=key)
+        everything = m.automorphisms()
+        assert stabiliser[0] == everything[0]
+        assert [a for a in everything if tuple(a) in {tuple(b) for b in stabiliser}] == stabiliser
+        r = m.canonical_labelling(key=key)
+        assert {tuple(a) for a in stabiliser} == {tuple(a) for a in everything if key(array('i', [r[x] for x in a])) == key(r)}
+        # the labelling is a minimiser of the key among those of the canonical form
+        r0 = m.canonical_labelling()
+        assert key(r) == min(key(array('i', [r0[x] for x in a])) for a in everything)
+        assert m.canonical_form(key=key) == m.canonical_form() + (key(r),)
+        generators = m.automorphism_generators(key=key)
+        assert group_closure(generators, len(fp)) == {tuple(a) for a in stabiliser}
+        assert (generators == []) == (len(stabiliser) == 1)
+        assert all(preserves_subspace(rows, a) for a in stabiliser)
+        # carried by a relabelling
+        s = random_edge_relabelling(rng, fp)
+        fp2 = relabel_arrays(fp, (), s)[0]
+        m2 = OrientedMap(fp=fp2)
+        rows2 = carry_subspace(rows, s)
+        key2 = subspace_key(rows2)
+        assert m2.canonical_form(key=key2) == m.canonical_form(key=key)
+        ok, cert = m.is_isomorphic(m2, certificate=True, key=(key, key2))
+        assert ok
+        assert relabel_map(m, cert) == m2
+        assert key(cert) == key2(array('i', range(len(fp2))))
+        assert m.is_isomorphic(m2, key=(key, key2))
+        assert len(m2.automorphisms(key=key2)) == len(stabiliser)
+
+
+def test_key_is_isomorphic_errors():
+    m = map_from_fp(O7)
+    key = subspace_key([[1, 0, 0]])
+    with pytest.raises(ValueError, match="key must be given for both maps or for none"):
+        m.is_isomorphic(m, key=(key, None))
+    with pytest.raises(ValueError, match="key must be a pair"):
+        m.is_isomorphic(m, key=key)
+    with pytest.raises(TypeError, match="key must be a pair of callables"):
+        m.is_isomorphic(m, key=(key, 3))
+    assert not m.is_isomorphic(m, key=(key, subspace_key([[0, 1, 1]])))
+    assert m.is_isomorphic(m, key=(None, None))
+
+
+@pytest.mark.parametrize("call", [
+    lambda m, key: m.canonical_labelling(key=key),
+    lambda m, key: m.canonical_form(key=key),
+    lambda m, key: m.automorphisms(key=key),
+    lambda m, key: m.automorphism_generators(key=key),
+    lambda m, key: m.canonical_roots(key=key),
+], ids=["canonical_labelling", "canonical_form", "automorphisms",
+        "automorphism_generators", "canonical_roots"])
+def test_key_not_callable(call):
+    m = map_from_fp(O7)
+    with pytest.raises(TypeError, match="key must be callable"):
+        call(m, 3)
+
+
+def test_key_none_is_unchanged():
+    m = map_from_fp(O1)
+    assert m.canonical_labelling(key=None) == m.canonical_labelling()
+    assert m.canonical_form(key=None) == m.canonical_form()
+    assert m.automorphisms(key=None) == m.automorphisms()
+    assert m.automorphism_generators(key=None) == m.automorphism_generators()
+    assert m.canonical_roots(key=None) == m.canonical_roots()
+
+
+@pytest.mark.parametrize("fp, decorations, expected", [
+    (O7, {}, [0, 1, 2, 3, 4, 5]),
+    (O7, {'half_edge_data': [0, 1, 0, 1, 0, 2]}, [5]),
+    (O7, {'half_edge_data': [0, 1, 0, 1, 0, 1]}, [1, 3, 5]),
+    ("(0,1,2)(~0,~2,~1)(3)", {}, [6]),
+    ("(0)(~0)(1)(~1)", {}, [0, 1, 2, 3]),
+    ("(0)(~0)(1)(~1)", {'face_classes': [0, 1, 1, 0]}, [0, 1, 2, 3]),
+], ids=["O7", "O7-marked", "O7-half", "triangle-folded", "two-edges", "two-edges-classes"])
+def test_canonical_roots_examples(fp, decorations, expected):
+    assert map_from_fp(fp).canonical_roots(**decorations) == expected
+
+
+def test_canonical_roots_key():
+    m = map_from_fp(O7)
+    assert m.canonical_roots(key=lambda r: r[0] // 2) == [0, 1]
+    assert m.canonical_roots(key=lambda r: 0) == m.canonical_roots()
+    assert OrientedMap(fp=[]).canonical_roots() == []
+
+
+@pytest.mark.parametrize("root_rule", ROOT_RULE_NAMES)
+@pytest.mark.parametrize("seed", range(4))
+def test_canonical_roots_random(seed, root_rule):
+    rng = random.Random(seed)
+    for _ in range(8):
+        fp = random_fps(rng)
+        m = OrientedMap(fp=fp)
+        data = [rng.randrange(2) for _ in fp] if rng.random() < 0.5 else None
+        keywords = {} if data is None else {'half_edge_data': data}
+        roots = m.canonical_roots(root_rule=root_rule, **keywords)
+        r = m.canonical_labelling(root_rule=root_rule, **keywords)
+        group = m.automorphisms(root_rule=root_rule, **keywords)
+        assert roots == [h for h in range(len(fp)) if any(r[a[h]] == 0 for a in group)]
+        s = random_edge_relabelling(rng, fp)
+        fp2, carried = relabel_arrays(fp, () if data is None else (data,), s)
+        keywords2 = {} if data is None else {'half_edge_data': carried[0]}
+        roots2 = OrientedMap(fp=fp2).canonical_roots(root_rule=root_rule, **keywords2)
+        assert roots2 == sorted(s[h] for h in roots)
