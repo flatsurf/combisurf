@@ -243,14 +243,209 @@ cdef inline array.array _new(Py_ssize_t size):
     return array.clone(_int_array, size, False)
 
 
+ctypedef fused _sequence:
+    list
+    tuple
+
+
+cdef bint _ints_from(_sequence s, const int *f, int *out, int n, bint edges) except -1:
+    r"""
+    Write the values of ``s`` as C ``int`` into ``out``, of ``n`` entries,
+    and return whether every value converted is a Python ``int`` in the
+    range of a C ``int``; on ``False``, ``out`` is partly written.
+
+    Without ``edges``, ``s`` has ``n`` entries and ``out[h]`` is ``s[h]``.
+    With ``edges``, ``s`` has ``n // 2`` entries, one per edge, and
+    ``out[2*e]`` and ``out[2*e + 1]`` are ``s[e]``. If ``f`` is not ``NULL``,
+    the values on the half-edges ``h`` with ``f[h] == -1`` (on the edges
+    whose two halves have it, with ``edges``) are neither read nor checked
+    and ``out`` holds ``0`` there.
+
+    Only the exact type ``int`` is converted here: the conversion of other
+    types (``bool``, the integers of Sage, ``float``, the objects with
+    ``__index__``) differs between ``array.array`` and Cython, so they are
+    left to the generic path of the caller, which then raises the same
+    exception as before or none.
+    """
+    cdef int h, e
+    cdef object v
+    try:
+        if edges:
+            for e in range(n // 2):
+                if f != NULL and f[2 * e] == -1 and f[2 * e + 1] == -1:
+                    out[2 * e] = out[2 * e + 1] = 0
+                    continue
+                v = s[e]
+                if type(v) is not int:
+                    return False
+                out[2 * e] = out[2 * e + 1] = v
+        else:
+            for h in range(n):
+                if f != NULL and f[h] == -1:
+                    out[h] = 0
+                    continue
+                v = s[h]
+                if type(v) is not int:
+                    return False
+                out[h] = v
+    except OverflowError:
+        return False
+    return True
+
+
 cdef array.array _as_int_array(a):
     r"""
     Return ``a`` if it is an array of typecode ``'i'`` and a copy of it as
     such an array otherwise.
+
+    A list of Python ``int`` is copied by a typed loop; any other input, or
+    a list holding another value, goes through ``array.array('i', a)``,
+    which raises the exceptions of :mod:`array` on invalid values.
     """
+    cdef array.array out
+    cdef Py_ssize_t size
     if type(a) is array.array and (<array.array> a).ob_descr.typecode == b'i':
         return <array.array> a
+    if type(a) is list:
+        size = len(<list> a)
+        if size <= INT_MAX:
+            out = _new(size)
+            if _ints_from(<list> a, NULL, out.data.as_ints, <int> size, False):
+                return out
     return array.array('i', a)
+
+
+def _decoration_array(d, array.array fp, bint edges=False):
+    r"""
+    Return the decoration ``d`` of the map of face permutation ``fp`` as an
+    array of typecode ``'i'`` indexed by half-edges, or ``None`` if this
+    fast conversion does not apply.
+
+    ``d`` is indexed by half-edges, or by edges with ``edges`` (its value
+    is then copied to both halves of each edge). The values on the inactive
+    half-edges (``fp[h] == -1``; with ``edges``, on the edges whose two
+    halves are inactive) are neither read nor checked and replaced by
+    ``0``, except that an array of typecode ``'i'`` indexed by half-edges is
+    returned as it is.
+
+    The conversion applies to a list, a tuple or an array of typecode
+    ``'i'`` of the right length whose values read are Python ``int`` in the
+    range of a C ``int``. On any other input it returns ``None``, and
+    :meth:`~combisurf.oriented_map.OrientedMap._decoration_data` checks
+    and passes ``d`` as before.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.isomorphism import _decoration_array
+        sage: fp = array('i', [2, 7, 6, 1, -1, -1, 8, 3, 0, -1])
+        sage: d = list(range(10))
+        sage: d[4] = d[5] = d[9] = None
+        sage: _decoration_array(d, fp)
+        array('i', [0, 1, 2, 3, 0, 0, 6, 7, 8, 0])
+        sage: _decoration_array((0r, 1r, 'a', 3r, 4r), fp, edges=True)
+        array('i', [0, 0, 1, 1, 0, 0, 3, 3, 4, 4])
+
+    The integers of Sage, and values outside the range of a C ``int``, are
+    left to the generic path::
+
+        sage: _decoration_array([0] * 10, fp) is None
+        True
+        sage: d = list(range(10))
+        sage: d[8] = int(2**31)
+        sage: _decoration_array(d, fp) is None
+        True
+
+    TESTS::
+
+        sage: d[8] = 0.5r
+        sage: _decoration_array(d, fp) is None
+        True
+        sage: _decoration_array(list(range(3)), fp) is None
+        True
+        sage: _decoration_array(array('l', [0] * 10), fp) is None
+        True
+        sage: a = array('i', [1] * 10)
+        sage: _decoration_array(a, fp) is a
+        True
+        sage: _decoration_array(array('i', [5, 6, 7, 8, 9]), fp, edges=True)
+        array('i', [5, 5, 6, 6, 0, 0, 8, 8, 9, 9])
+    """
+    cdef int n = len(fp)
+    cdef int m = n // 2 if edges else n
+    cdef int e
+    cdef int *f = fp.data.as_ints
+    cdef int *a
+    cdef array.array out
+    if fp.ob_descr.typecode != b'i':
+        return None
+    if type(d) is array.array and (<array.array> d).ob_descr.typecode == b'i':
+        if len(<array.array> d) != m:
+            return None
+        if not edges:
+            return d
+        out = _new(n)
+        a = (<array.array> d).data.as_ints
+        for e in range(m):
+            if f[2 * e] == -1 and f[2 * e + 1] == -1:
+                out.data.as_ints[2 * e] = out.data.as_ints[2 * e + 1] = 0
+            else:
+                out.data.as_ints[2 * e] = out.data.as_ints[2 * e + 1] = a[e]
+        return out
+    out = _new(n)
+    if type(d) is list:
+        if len(<list> d) == m and _ints_from(<list> d, f, out.data.as_ints, n, edges):
+            return out
+    elif type(d) is tuple:
+        if len(<tuple> d) == m and _ints_from(<tuple> d, f, out.data.as_ints, n, edges):
+            return out
+    return None
+
+
+def _constant_on_cycles(array.array d, array.array p):
+    r"""
+    Return whether the array ``d`` of typecode ``'i'`` is constant on the
+    cycles of the partial permutation ``p``, comparing ``d[h]`` and
+    ``d[p[h]]`` for every half-edge ``h`` with ``p[h] != -1``.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.isomorphism import _constant_on_cycles
+        sage: p = array('i', [1, 0, -1, 3])
+        sage: _constant_on_cycles(array('i', [5, 5, 7, 6]), p)
+        True
+        sage: _constant_on_cycles(array('i', [5, 4, 7, 6]), p)
+        False
+
+    TESTS::
+
+        sage: _constant_on_cycles(array('i', [5, 5, 7]), p)
+        Traceback (most recent call last):
+        ...
+        ValueError: d and p must have the same length
+        sage: _constant_on_cycles(array('i', [5, 5, 7, 6]), array('i', [1, 0, -1, 4]))
+        Traceback (most recent call last):
+        ...
+        ValueError: p must have values in range(4) or -1
+    """
+    cdef int n = len(p)
+    cdef int h, x
+    cdef int *a = d.data.as_ints
+    cdef int *q = p.data.as_ints
+    if d.ob_descr.typecode != b'i' or p.ob_descr.typecode != b'i':
+        raise TypeError("d and p must be arrays of typecode 'i'")
+    if len(d) != n:
+        raise ValueError("d and p must have the same length")
+    for h in range(n):
+        x = q[h]
+        if x == -1:
+            continue
+        if x < 0 or x >= n:
+            raise ValueError("p must have values in range({}) or -1".format(n))
+        if a[x] != a[h]:
+            return False
+    return True
 
 
 cdef class _Map:
@@ -346,7 +541,10 @@ cdef _Map _convert(fp, tuple data, tuple classes):
             for h in range(n):
                 if f[h] == -1:
                     dec[off + h] = 0
-        else:
+        elif not (type(d) is list and len(<list> d) == n and _ints_from(<list> d, f, dec + off, n, False)):
+            # a list of Python int is converted by the typed loop above;
+            # anything else by the generic conversion of Cython, value by
+            # value, which raises on invalid values
             for h in range(n):
                 if f[h] == -1:
                     dec[off + h] = 0

@@ -49,6 +49,7 @@ the roots (the keyword ``root_rule``) as well, with and without the flag
 """
 import math
 import random
+import re
 from array import array
 
 import pytest
@@ -2270,3 +2271,228 @@ def test_root_rule_invalid_string(root_rule):
                 call(root_rule=root_rule, check=check)
         with pytest.raises(ValueError, match="root_rule must be one of 'all'"):
             m.is_isomorphic(m, root_rule=root_rule, check=check)
+
+
+# faces (0,2,6,8)(1,7,3); the edge (4,5) is inactive and the half-edge 9 is
+# the inactive twin of the folded half-edge 8
+DECORATED_FP = [2, 7, 6, 1, -1, -1, 8, 3, 0, -1]
+INACTIVE = (4, 5, 9)
+
+
+class IndexOnly:
+    r"""
+    An integer that defines ``__index__`` but not ``__int__``.
+    """
+    def __init__(self, value):
+        self.value = value
+
+    def __index__(self):
+        return self.value
+
+
+def decoration_with(values, positions, base):
+    r"""
+    Return a copy of the list ``base`` with ``values`` written at
+    ``positions``.
+    """
+    d = list(base)
+    for p, v in zip(positions, values):
+        d[p] = v
+    return d
+
+
+HALF_EDGE_BASE = [0, 1, 0, 1, 0, 0, 0, 1, 0, 0]
+FACE_BASE = [0, 1, 0, 1, 0, 0, 0, 1, 0, 0]
+VERTEX_BASE = [1, 0, 0, 0, 0, 0, 0, 1, 1, 0]
+EDGE_BASE = [0, 1, 0, 3, 4]
+
+
+def decorated_labelling(**decorations):
+    r"""
+    Return the canonical labelling of the map of ``DECORATED_FP`` with
+    the given decorations of :meth:`OrientedMap.canonical_labelling`
+    converted by hand to half-edge arrays.
+    """
+    data = []
+    for keyword in ("half_edge_data", "edge_data", "vertex_data", "face_data"):
+        d = decorations.get(keyword)
+        if d is None:
+            continue
+        if keyword == "edge_data":
+            d = [d[h // 2] for h in range(len(DECORATED_FP))]
+        data.append(array('i', [0 if DECORATED_FP[h] == -1 else int(d[h]) for h in range(len(d))]))
+    return isomorphism_fast.canonical_labelling(DECORATED_FP, tuple(data))
+
+
+@pytest.mark.parametrize("check", [True, False])
+@pytest.mark.parametrize("value", [None, "a", 0.5, 2**31, -2**31 - 1])
+@pytest.mark.parametrize("container", [list, tuple])
+def test_decoration_inactive_values_ignored(value, container, check):
+    # values on inactive half-edges are neither checked nor converted
+    m = OrientedMap(fp=DECORATED_FP)
+    he = container(decoration_with([value] * 3, INACTIVE, HALF_EDGE_BASE))
+    face = container(decoration_with([value] * 3, INACTIVE, FACE_BASE))
+    vertex = container(decoration_with([value] * 3, INACTIVE, VERTEX_BASE))
+    edge = container(decoration_with([value], [2], EDGE_BASE))
+    expected = decorated_labelling(half_edge_data=HALF_EDGE_BASE, edge_data=EDGE_BASE,
+                                   vertex_data=VERTEX_BASE, face_data=FACE_BASE)
+    assert m.canonical_labelling(half_edge_data=he, edge_data=edge, vertex_data=vertex,
+                                 face_data=face, check=check) == expected
+    assert m.canonical_labelling(half_edge_classes=he, check=check) == \
+        m.canonical_labelling(half_edge_classes=HALF_EDGE_BASE)
+    assert m.is_isomorphic(m, half_edge_data=(he, HALF_EDGE_BASE), check=check)
+    assert len(m.automorphisms(half_edge_data=he, check=check)) == \
+        len(m.automorphisms(half_edge_data=HALF_EDGE_BASE))
+
+
+@pytest.mark.parametrize("check", [True, False])
+def test_decoration_containers(check):
+    m = OrientedMap(fp=DECORATED_FP)
+    expected = decorated_labelling(half_edge_data=HALF_EDGE_BASE)
+    for d in (HALF_EDGE_BASE, tuple(HALF_EDGE_BASE), array('i', HALF_EDGE_BASE), array('l', HALF_EDGE_BASE),
+              decoration_with([2**40] * 3, INACTIVE, HALF_EDGE_BASE)):
+        assert m.canonical_labelling(half_edge_data=d, check=check) == expected
+        assert m.canonical_labelling(half_edge_data=(d, HALF_EDGE_BASE), check=check) == expected
+    expected = decorated_labelling(edge_data=EDGE_BASE)
+    for d in (EDGE_BASE, tuple(EDGE_BASE), array('i', EDGE_BASE), array('q', EDGE_BASE)):
+        assert m.canonical_labelling(edge_data=d, check=check) == expected
+
+
+@pytest.mark.parametrize("value", [None, "a", 0.5])
+@pytest.mark.parametrize("kind", ["data", "classes"])
+def test_decoration_non_integer_active(value, kind):
+    m = OrientedMap(fp=DECORATED_FP)
+    for keyword, base, position in (("half_edge", HALF_EDGE_BASE, 3), ("edge", EDGE_BASE, 4),
+                                    ("vertex", VERTEX_BASE, 0), ("face", FACE_BASE, 8)):
+        name = keyword + "_" + kind
+        for container in (list, tuple):
+            d = container(decoration_with([value], [position], base))
+            with pytest.raises(ValueError, match="^{} must contain integers, got {}$".format(
+                    name, re.escape(repr(value)))):
+                m.canonical_labelling(**{name: d})
+
+
+def test_decoration_non_integer_active_unchecked():
+    # without the check, a float is truncated by the conversion to C int
+    # and a string fails in it
+    m = OrientedMap(fp=DECORATED_FP)
+    d = decoration_with([0.5], [0], HALF_EDGE_BASE)
+    assert m.canonical_labelling(half_edge_data=d, check=False) == decorated_labelling(half_edge_data=d)
+    d = decoration_with(["a"], [0], HALF_EDGE_BASE)
+    with pytest.raises(TypeError, match="an integer is required"):
+        m.canonical_labelling(half_edge_data=d, check=False)
+
+
+def test_decoration_integer_types():
+    from sage.rings.integer_ring import ZZ
+    m = OrientedMap(fp=DECORATED_FP)
+    kinds = [ZZ, bool]
+    try:
+        import numpy
+    except ImportError:
+        pass
+    else:
+        kinds.append(numpy.int64)
+    for check in (True, False):
+        for kind in kinds:
+            d = [kind(x) for x in HALF_EDGE_BASE]
+            e = [kind(x) for x in [0, 1, 0, 1, 1]]
+            assert m.canonical_labelling(half_edge_data=d, check=check) == \
+                decorated_labelling(half_edge_data=HALF_EDGE_BASE)
+            assert m.canonical_labelling(edge_data=e, check=check) == \
+                decorated_labelling(edge_data=[0, 1, 0, 1, 1])
+
+
+@pytest.mark.parametrize("check", [True, False])
+def test_decoration_index_only(check):
+    # the check accepts objects with __index__, while the conversion to C
+    # int, which goes through __int__, rejects them
+    m = OrientedMap(fp=DECORATED_FP)
+    d = decoration_with([IndexOnly(1)], [0], HALF_EDGE_BASE)
+    with pytest.raises(TypeError, match="an integer is required"):
+        m.canonical_labelling(half_edge_data=d, check=check)
+
+
+@pytest.mark.parametrize("check", [True, False])
+@pytest.mark.parametrize("value", [2**31, -2**31 - 1])
+def test_decoration_overflow(value, check):
+    m = OrientedMap(fp=DECORATED_FP)
+    for keyword, base, position in (("half_edge_data", HALF_EDGE_BASE, 3), ("edge_data", EDGE_BASE, 4),
+                                    ("vertex_data", [value] * 10, 0), ("face_data", [value] * 10, 0)):
+        d = decoration_with([value], [position], base)
+        with pytest.raises(OverflowError, match="value too large to convert to int"):
+            m.canonical_labelling(**{keyword: d}, check=check)
+    # classes are renumbered before the conversion
+    d = decoration_with([value], [3], HALF_EDGE_BASE)
+    assert m.canonical_labelling(half_edge_classes=d, check=check) == \
+        m.canonical_labelling(half_edge_classes=HALF_EDGE_BASE)
+
+
+def test_decoration_order_of_errors():
+    m = OrientedMap(fp=DECORATED_FP)
+    big = decoration_with([2**31], [0], HALF_EDGE_BASE)
+    with pytest.raises(ValueError, match="^face_data must have length 10$"):
+        m.canonical_labelling(half_edge_data=big, face_data=[0])
+    with pytest.raises(ValueError, match="^vertex_data must be constant on vertices$"):
+        m.canonical_labelling(half_edge_data=big, vertex_data=HALF_EDGE_BASE)
+    with pytest.raises(ValueError, match="^half_edge_data must contain integers, got 0.5$"):
+        m.canonical_labelling(half_edge_data=[0.5] * 10, face_data=[0])
+    with pytest.raises(ValueError, match="^vertex_data must contain integers, got 0.5$"):
+        m.canonical_labelling(vertex_data=decoration_with([0.5], [0], HALF_EDGE_BASE))
+    with pytest.raises(ValueError, match="^face_data must be constant on faces$"):
+        m.canonical_labelling(face_data=VERTEX_BASE)
+    with pytest.raises(ValueError, match="^edge_data must have length 5$"):
+        m.canonical_labelling(edge_data=[0.5] * 4)
+    assert m.canonical_labelling(face_data=VERTEX_BASE, check=False) == \
+        decorated_labelling(face_data=VERTEX_BASE)
+
+
+def test_canonical_key_containers():
+    expected = isomorphism_fast.canonical_key(array('i', DECORATED_FP), (), relabelling=True)
+    for fp in (DECORATED_FP, tuple(DECORATED_FP), array('i', DECORATED_FP), array('l', DECORATED_FP),
+               [IndexOnly(x) for x in DECORATED_FP]):
+        assert isomorphism_fast.canonical_key(fp, (), relabelling=True) == expected
+    data = array('i', HALF_EDGE_BASE)
+    expected = isomorphism_fast.canonical_key(DECORATED_FP, (data,), relabelling=True)
+    for value in (None, "a", 0.5, 2**31, -2**31 - 1):
+        d = decoration_with([value] * 3, INACTIVE, HALF_EDGE_BASE)
+        for fp in (DECORATED_FP, array('i', DECORATED_FP)):
+            assert isomorphism_fast.canonical_key(fp, (d,), relabelling=True) == expected
+            assert isomorphism_fast.canonical_key(fp, (tuple(d),), relabelling=True) == expected
+    assert isomorphism_fast.canonical_key(DECORATED_FP, ([True] + HALF_EDGE_BASE[1:],), relabelling=True) == \
+        isomorphism_fast.canonical_key(DECORATED_FP, ([1] + HALF_EDGE_BASE[1:],), relabelling=True)
+
+
+@pytest.mark.parametrize("value, error, message", [
+    (0.5, TypeError, "'float' object cannot be interpreted as an integer"),
+    ("a", TypeError, "'str' object cannot be interpreted as an integer"),
+    (None, TypeError, "'NoneType' object cannot be interpreted as an integer"),
+    (2**31, OverflowError, "signed integer is greater than maximum"),
+    (-2**31 - 1, OverflowError, "signed integer is less than minimum"),
+])
+def test_canonical_key_fp_list_invalid(value, error, message):
+    for position in (0, 4, 9):
+        fp = decoration_with([value], [position], DECORATED_FP)
+        with pytest.raises(error, match="^{}$".format(re.escape(message))):
+            isomorphism_fast.canonical_key(fp, ())
+
+
+@pytest.mark.parametrize("value, error, message", [
+    ("a", TypeError, "an integer is required"),
+    (None, TypeError, "an integer is required"),
+    (IndexOnly(1), TypeError, "an integer is required"),
+    (2**31, OverflowError, "value too large to convert to int"),
+    (-2**31 - 1, OverflowError, "value too large to convert to int"),
+])
+def test_canonical_key_data_invalid_active(value, error, message):
+    for container in (list, tuple):
+        d = container(decoration_with([value], [8], HALF_EDGE_BASE))
+        with pytest.raises(error, match="^{}$".format(re.escape(message))):
+            isomorphism_fast.canonical_key(DECORATED_FP, (d,))
+
+
+def test_canonical_key_data_float_active():
+    # a float on an active half-edge is truncated by the conversion to C int
+    d = decoration_with([1.5], [8], HALF_EDGE_BASE)
+    assert isomorphism_fast.canonical_key(DECORATED_FP, (d,)) == \
+        isomorphism_fast.canonical_key(DECORATED_FP, (decoration_with([1], [8], HALF_EDGE_BASE),))

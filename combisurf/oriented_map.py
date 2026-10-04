@@ -3867,10 +3867,20 @@ class OrientedMap:
         ``"data"`` or ``"classes"``, the suffix of the keyword names used in
         the error messages.
 
+        A list, a tuple or an array of Python ``int`` in the range of a C
+        ``int`` is converted to an array of typecode ``'i'``, with ``0`` on
+        the inactive half-edges, by
+        :func:`combisurf.isomorphism._decoration_array`, which the
+        isomorphism module copies as it is. Any other decoration (with the
+        integers of Sage, for example) is returned as it is, or spread to
+        the half-edges as a list for ``edge_data``.
+
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
             sage: m = OrientedMap(fp="(0,1)(~0,~1)")
+            sage: m._decoration_data(half_edge_data=[0r, 1r, 2r, 3r], edge_data=(8r, 9r))
+            (array('i', [0, 1, 2, 3]), array('i', [8, 8, 9, 9]))
             sage: m._decoration_data(half_edge_data=([0, 1, 2, 3], (4, 5, 6, 7)), edge_data=[8, 9])
             ([0, 1, 2, 3], (4, 5, 6, 7), [8, 8, 9, 9])
             sage: m._decoration_data(half_edge_data=(0, 1, 2, 3))
@@ -3953,33 +3963,52 @@ class OrientedMap:
                     except TypeError:
                         raise ValueError("{} must contain integers, got {!r}".format(name, x)) from None
 
+        # each decoration is first converted by isomorphism._decoration_array,
+        # a typed loop that applies to lists, tuples and arrays of Python int
+        # in the range of a C int and checks them on the way; on any other
+        # input it returns None and the decoration is checked in Python and
+        # passed as it is, its values converted later by the isomorphism
+        # module (an OverflowError is raised there)
+        convert = isomorphism._decoration_array
         if half_edge_data is not None:
             if isinstance(half_edge_data, tuple) and half_edge_data and all(isinstance(d, (list, tuple, array)) for d in half_edge_data):
-                data.extend(half_edge_data)
+                arrays = half_edge_data
             else:
-                data.append(half_edge_data)
-            if check:
-                for d in data:
-                    if len(d) != n:
-                        raise ValueError("{} must have length {}".format(half_edge_name, n))
-                    check_integers(d, half_edge_name)
+                arrays = (half_edge_data,)
+            for d in arrays:
+                if check and len(d) != n:
+                    raise ValueError("{} must have length {}".format(half_edge_name, n))
+                a = convert(d, fp)
+                if a is None:
+                    if check:
+                        check_integers(d, half_edge_name)
+                    a = d
+                data.append(a)
         if edge_data is not None:
-            if check:
-                if len(edge_data) != n // 2:
-                    raise ValueError("{} must have length {}".format(edge_name, n // 2))
-                check_integers(edge_data, edge_name, edges=True)
-            data.append([edge_data[h // 2] for h in range(n)])
+            if check and len(edge_data) != n // 2:
+                raise ValueError("{} must have length {}".format(edge_name, n // 2))
+            a = convert(edge_data, fp, True)
+            if a is None:
+                if check:
+                    check_integers(edge_data, edge_name, edges=True)
+                a = [edge_data[h // 2] for h in range(n)]
+            data.append(a)
         for d, p, name, cells in ((vertex_data, self._vp, "vertex_" + kind, "vertices"),
                                   (face_data, self._fp, "face_" + kind, "faces")):
             if d is None:
                 continue
-            if check:
-                if len(d) != n:
-                    raise ValueError("{} must have length {}".format(name, n))
-                check_integers(d, name)
-                if any(p[h] != -1 and d[p[h]] != d[h] for h in range(n)):
-                    raise ValueError("{} must be constant on {}".format(name, cells))
-            data.append(d)
+            if check and len(d) != n:
+                raise ValueError("{} must have length {}".format(name, n))
+            a = convert(d, fp)
+            if a is None:
+                if check:
+                    check_integers(d, name)
+                    if any(p[h] != -1 and d[p[h]] != d[h] for h in range(n)):
+                        raise ValueError("{} must be constant on {}".format(name, cells))
+                a = d
+            elif check and not isomorphism._constant_on_cycles(a, p):
+                raise ValueError("{} must be constant on {}".format(name, cells))
+            data.append(a)
         return tuple(data)
 
     _ROOT_RULES = {"all": isomorphism.ROOTS_ALL,
