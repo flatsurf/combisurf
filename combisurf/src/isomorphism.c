@@ -1377,7 +1377,8 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
     int *lvl_used = lvl_root + levels;
     int *lvl_pos = lvl_used + levels;
     int *lvl_len = lvl_pos + levels;
-    int *lvl_next = lvl_len + levels;
+    int *lvl_best = lvl_len + levels;
+    int *lvl_next = lvl_best + levels;
     int *next = lvl_next + (long) nc * levels;
     int *seq = next + nc;
     int *cand = seq + ISO_SEQUENCE_SIZE(n, nd, nc);
@@ -1387,7 +1388,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
     int *cnt = start + n + 1;
     int follow_ties = nc > 0 || all_leaves;
     int all = (rule & ~ISO_ROOTS_DATA) == ISO_ROOTS_ALL;
-    int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, m = 0;
+    int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, m = 0, target, t;
     int root, best_root, blen, len, k, cmp, ret, i, j, h, c, found;
 
     ne = iso_num_edges(n, fp);
@@ -1413,18 +1414,39 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
          * in seq[0:seqlen] */
         int cut = bestlen >= 0 && exceeds_prefix(seq, seqlen, sequence, bestlen);
 
+        /* the deepest level whose further tied roots are tried when the
+         * search backtracks from this state */
+        target = depth - 1;
         if (!cut && used == 2 * ne) {
             cmp = bestlen < 0 ? -1 : compare_sequences(seq, seqlen, sequence, bestlen);
             if (cmp < 0) {
                 memcpy(sequence, seq, (size_t) seqlen * sizeof(int));
                 bestlen = seqlen;
+                memcpy(lvl_best, lvl_root, (size_t) depth * sizeof(int));
                 if (relabelling != NULL)
                     memcpy(relabelling, r, (size_t) n * sizeof(int));
                 if (callback != NULL && (ret = callback(r, 1, arg)) != 0)
                     return ret;
-            } else if (cmp == 0 && all_leaves && callback != NULL) {
-                if ((ret = callback(r, 0, arg)) != 0)
+            } else if (cmp == 0 && all_leaves) {
+                if (callback != NULL && (ret = callback(r, 0, arg)) != 0)
                     return ret;
+            } else if (cmp == 0) {
+                /* Backjump. Both leaves have the same sequence, so the
+                 * relabelling of the best leaf followed by the inverse of
+                 * the one of this leaf is an automorphism of fp and data,
+                 * and of classes up to a relabelling of their values.
+                 * It fixes the components labelled at the levels before the
+                 * first one, t, where the roots of the two leaves differ, and
+                 * with them the state at level t. The root of this leaf at t
+                 * comes after the one of the best leaf, whose subtree has been
+                 * searched; the subtree of the root of this leaf is its image,
+                 * with the same sequences, none smaller than the best. */
+                for (t = 0; t < depth && lvl_root[t] == lvl_best[t]; t++)
+                    ;
+#ifdef ISO_DEBUG
+                ISO_CHECK(t < depth && lvl_root[t] > lvl_best[t]);
+#endif
+                target = t;
             }
             cut = 1;
         }
@@ -1496,7 +1518,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
                     next[j] = lvl_next[(long) depth * nc + j];
                 used = lvl_used[depth];
                 seqlen = lvl_pos[depth];
-                if (!follow_ties)
+                if (!follow_ties || depth > target)
                     continue;
                 /* the tied roots after the current one: their block is
                  * the one of the level, already in seq; under a rule, they

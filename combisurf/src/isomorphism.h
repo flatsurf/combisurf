@@ -220,9 +220,10 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
  * Size of the work buffer of iso_search, in ints: the global and local
  * relabellings with their inverses and the queue (5 n), the numberings of
  * the class values (nc n), the state of each of the at most n / 2 + 1
- * levels of the search (its root, its first label, the position and the
- * length of its block, and the counts of class values before it: (4 + nc)
- * (n / 2 + 1)), the counts of class values (nc), the current sequence
+ * levels of the search (its root, the root of the best leaf at that level,
+ * its first label, the position and the length of its block, and the counts
+ * of class values before it: (5 + nc) (n / 2 + 1)), the counts of class
+ * values (nc), the current sequence
  * (ISO_SEQUENCE_SIZE), one candidate block (ISO_KEY_SIZE + 1), and for the
  * rules other than ISO_ROOTS_ALL the active half-edges sorted by invariant,
  * the class of each half-edge, the start of each class in that order and
@@ -232,10 +233,10 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
  * flag needs no more room.
  *
  * These sizes are computed in int and overflow for about
- * 2^31 / (13.5 + 2 nd + 3.5 nc) half-edges; the caller checks them first.
+ * 2^31 / (14 + 2 nd + 3.5 nc) half-edges; the caller checks them first.
  */
 #define ISO_SEARCH_WORK_SIZE(n, nd, nc) \
-    ((5 + (nc)) * (n) + (4 + (nc)) * ((n) / 2 + 1) + (nc) \
+    ((5 + (nc)) * (n) + (5 + (nc)) * ((n) / 2 + 1) + (nc) \
      + ISO_SEQUENCE_SIZE(n, nd, nc) + ISO_KEY_SIZE(n, nd, nc) + 1 + 4 * (n) + 1)
 
 /*
@@ -264,6 +265,17 @@ typedef int (*iso_leaf_callback)(const int *leaf, int first, void *arg);
  * followed if nc > 0 or all_leaves is nonzero, only the first one
  * otherwise. A state whose sequence exceeds the prefix of the best
  * sequence found is cut.
+ *
+ * When all_leaves is 0, a leaf equal to the best one gives a backjump: the
+ * map from the best leaf to it is an automorphism (of the classes up to a
+ * relabelling of their values) fixing the components of the levels where
+ * the two leaves have the same roots, so the subtree of its root at the
+ * first level where they differ is the image of the one of the best leaf,
+ * already searched, and the search returns at once to that level and its
+ * next tied root. Each tied root then costs one path down to an equal leaf
+ * when its subtree is such an image: k tied copies of a component cost
+ * about k^2 paths of k blocks instead of a number of leaves growing as the
+ * automorphisms (2^k k! for k isolated edges with one class value).
  *
  * Any map is accepted, connected or not; a connected map gives a single
  * block, which is its key preceded by k. The empty map gives the empty

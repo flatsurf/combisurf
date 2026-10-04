@@ -275,8 +275,9 @@ static int count_leaf(const int *leaf, int first, void *arg)
 /*
  * Run iso_search on fp with all leaves, into sequence and relabelling;
  * store its length into *len and return the number of leaves reaching the
- * minimal sequence. The search without all leaves must give the same
- * sequence and relabelling.
+ * minimal sequence. The search without all leaves, which backjumps from
+ * the leaves equal to the best one, must give the same sequence and
+ * relabelling.
  */
 static long search(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
                    iso_root_rule rule, int *len, long *calls)
@@ -1139,6 +1140,103 @@ static void test_search_random(void)
     }
 }
 
+/*
+ * Disjoint unions whose components tie, with classes: every root tied in a
+ * component is followed, and the search without all leaves backjumps from
+ * each leaf equal to the best one. The searches with every leaf, whose
+ * number of leaves is the number of automorphisms, are kept small.
+ */
+static void test_search_tied(void)
+{
+    static const int edge_block[] = {2, 0, 1, 0, 0};
+    int fp[MAX_N], fp2[MAX_N], r[MAX_N], comp[MAX_N], rc[MAX_N];
+    int dec[2 * MAX_N], dec2[2 * MAX_N], cdec[2 * MAX_N], cdec2[2 * MAX_N];
+    int trial, k, n, size, nd, nvals, len, len2, i, j, h, c;
+    long leaves, leaves2, expected, all_leaves = 0;
+
+    /* k isolated edges with one class value: 2^k k! automorphisms, and k
+     * blocks (2, 0, 1, 0, 0) */
+    current_case = "search, isolated edges with one class value";
+    for (k = 1; k <= 7; k++) {
+        n = 2 * k;
+        for (h = 0; h < n; h++) {
+            fp[h] = h;
+            dec[h] = 0;
+        }
+        expected = 1;
+        for (i = 1; i <= k; i++)
+            expected *= 2 * i;
+        for (j = 0; j < NUM_RULES; j++) {
+            CHECK(search(n, fp, 0, NULL, 1, dec, rules[j], &len, NULL) == expected);
+            CHECK(len == 5 * k);
+            for (i = 0; i < len; i++)
+                CHECK(sequence[i] == edge_block[i % 5]);
+        }
+    }
+
+    /* the same with 20 edges, without all leaves only: 2^20 20! leaves */
+    current_case = "search, 20 isolated edges with one class value";
+    n = 40;
+    for (h = 0; h < n; h++) {
+        fp[h] = h;
+        dec[h] = 0;
+    }
+    for (j = 0; j < NUM_RULES; j++) {
+        CHECK(iso_search(n, fp, 0, NULL, 1, dec, rules[j], 0, sequence, &len, relabelling, NULL, NULL,
+                         search_work) == 0);
+        CHECK(len == 100);
+        for (i = 0; i < len; i++)
+            CHECK(sequence[i] == edge_block[i % 5]);
+        if (j == 0)
+            for (h = 0; h < n; h++)
+                CHECK(relabelling[h] == h);
+    }
+
+    /* two to four relabelled copies of a random component, its data and
+     * its classes copied along, with one or two class values */
+    current_case = "search, copies of a component with classes";
+    for (trial = 0; trial < 200; trial++) {
+        size = 2 * (1 + rng_below(3));
+        k = 2 + rng_below(3);
+        nd = rng_below(2);
+        nvals = 1 + rng_below(2);
+        CHECK(random_connected(size / 2, rng_below(3), comp));
+        for (h = 0; h < nd * size; h++)
+            cdec[h] = rng_below(2);
+        for (h = 0; h < size; h++)
+            cdec[nd * size + h] = rng_below(nvals);
+        n = k * size;
+        for (c = 0; c < k; c++) {
+            random_relabelling(size, rc);
+            relabel_fp(size, comp, rc, fp2);
+            relabel_arrays(size, nd + 1, cdec, rc, cdec2);
+            for (h = 0; h < size; h++) {
+                fp[c * size + h] = fp2[h] == -1 ? -1 : fp2[h] + c * size;
+                for (i = 0; i < nd + 1; i++)
+                    dec[i * n + c * size + h] = cdec2[i * size + h];
+            }
+        }
+        for (j = 0; j < NUM_RULES; j++) {
+            leaves = search(n, fp, nd, dec, 1, dec + nd * n, rules[j], &len, NULL);
+            if (j == 0)
+                all_leaves = leaves;
+            CHECK(leaves == all_leaves);
+            CHECK(sequence[0] == size);
+
+            random_relabelling(n, r);
+            relabel_fp(n, fp, r, fp2);
+            relabel_arrays(n, nd + 1, dec, r, dec2);
+            for (i = nd * n; i < (nd + 1) * n; i++)
+                dec2[i] = 1 - dec2[i];
+            memcpy(sequence2, sequence, (size_t) len * sizeof(int));
+            leaves2 = search(n, fp2, nd, dec2, 1, dec2 + nd * n, rules[j], &len2, NULL);
+            CHECK(len2 == len);
+            CHECK(leaves2 == leaves);
+            CHECK(memcmp(sequence, sequence2, (size_t) len * sizeof(int)) == 0);
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     rng_state = argc > 1 ? strtoull(argv[1], NULL, 10) : 1;
@@ -1149,6 +1247,7 @@ int main(int argc, char **argv)
     test_reference_paths();
     test_search_fixed();
     test_search_random();
+    test_search_tied();
     printf("test_isomorphism: %ld checks passed\n", num_checks);
     return 0;
 }

@@ -2023,13 +2023,12 @@ CLASSES_CASES = [
     (list(range(8)), (), ([0, 1, 0, 1, 2, 3, 2, 3],)),
     (list(range(14)), (), ([(h // 4) * 2 + h % 2 for h in range(14)],)),
     (list(range(12)), (), ([0] * 12,)),
-    (list(range(14)), (), ([0] * 14,)),
     (wreath_fp(5, [2, 5, 4, 1, 0, 3]), (), ([h % 3 for h in range(30)],)),
 ] + [cylinder_diagram_case(s) for s in (CD_I3_A, CD_I3_B, CD_I6_A, CD_I6_B)]
 
 
 @pytest.mark.parametrize("fp, data, classes", CLASSES_CASES,
-                         ids=["4-edges", "7-edges-pairs", "6-edges-one-value", "7-edges-one-value",
+                         ids=["4-edges", "7-edges-pairs", "6-edges-one-value",
                               "5-triangles", "I3a", "I3b", "I6a", "I6b"])
 def test_fast_generators_classes(fp, data, classes):
     check_generated_group(fp, data, classes)
@@ -2038,9 +2037,8 @@ def test_fast_generators_classes(fp, data, classes):
 def test_fast_generators_classes_twenty_edges():
     from sage.all import PermutationGroup
 
-    # 2^20 * 20! automorphisms: too many for a closure, and for the search
-    # of the canonical key, which follows every tied root when there are
-    # classes; the order of the group generated is computed by Sage
+    # 2^20 * 20! automorphisms: too many for a closure; the order of the
+    # group generated is computed by Sage
     fp = list(range(40))
     c = [0] * 40
     gens = isomorphism_fast.automorphism_generators(fp, classes=(c,))
@@ -2049,6 +2047,47 @@ def test_fast_generators_classes_twenty_edges():
         check_classes_carried(fp, c, c, g)
     G = PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, 41)))
     assert G.order() == 2**20 * math.factorial(20)
+
+
+def test_fast_canonical_key_classes_twenty_edges():
+    # the search of the key follows every tied root, and returns from each
+    # leaf equal to the best one to the first level where their roots
+    # differ, instead of visiting the 2^20 * 20! leaves of the minimum
+    rng = random.Random(0)
+    fp = list(range(40))
+    c = [0] * 40
+    key, count = isomorphism_fast.canonical_key(fp, classes=(c,), automorphism_count=True)
+    assert count == 2**20 * math.factorial(20)
+    assert key == flatten((tuple(range(40)), tuple([0] * 40)))
+    for _ in range(5):
+        fp2, classes2 = relabel_arrays(fp, (c,), random_edge_relabelling(rng, fp))
+        assert isomorphism_fast.canonical_key(fp2, (), rename_values(rng, classes2)) == key
+
+
+@WITH_ROOT_RULES
+@pytest.mark.parametrize("seed", range(5))
+def test_fast_against_naive_classes_copies(seed, root_rule):
+    # two or three copies of a component, its classes repeated on each copy
+    # so that the copies tie: the search of the key backjumps from the leaves
+    # equal to the best one, the reference visits them all
+    rng = random.Random(seed)
+    fast, naive = isomorphism_fast, isomorphism_naive
+    rule = {'root_rule': root_rule}
+    for _ in range(4):
+        component = random_connected_fp(rng, max_half_edges=12)
+        k = rng.randint(2, 3)
+        values = rng.randint(1, 2)
+        classes = tuple([rng.randrange(values) for _ in component] * k for _ in range(rng.randint(1, 2)))
+        union = wreath_fp(k, component)
+        fp, classes = relabel_arrays(union, classes, random_edge_relabelling(rng, union))
+        form = naive.canonical_form(fp, (), classes, **rule)
+        r = naive.canonical_labelling(fp, (), classes, **rule)
+        assert fast.canonical_form(fp, (), classes, **rule) == form
+        assert fast.canonical_labelling(fp, (), classes, **rule) == r
+        assert fast.canonical_key(fp, (), classes, relabelling=True, **rule) == (flatten(form), r)
+        s = random_edge_relabelling(rng, fp)
+        fp2, classes2 = relabel_arrays(fp, classes, s)
+        assert fast.canonical_key(fp2, (), rename_values(rng, classes2), **rule) == flatten(form)
 
 
 @pytest.mark.parametrize("seed", range(5))
@@ -2089,7 +2128,7 @@ def test_fast_generators_classes_mixed_copies(seed):
 def test_fast_generators_classes_without_naive(monkeypatch, root_rule):
     assert not hasattr(isomorphism_fast, "isomorphism_naive")
     rng = random.Random(1)
-    cases = CLASSES_CASES[:3] + CLASSES_CASES[4:]
+    cases = list(CLASSES_CASES)
     for _ in range(3):
         fp = wreath_fp(3, random_connected_fp(rng, max_half_edges=16))
         cases.append((fp, (), ([rng.randrange(2) for _ in fp],)))

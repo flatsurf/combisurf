@@ -32,7 +32,7 @@ kept, which costs `O(n^2)` for `n` half-edges. A disconnected map is
 searched in C as well, component after component, by the search of
 :mod:`combisurf.isomorphism_naive` over the sequences of blocks. Without
 ``classes``, the automorphism group of a disconnected map
-is a product of wreath products `\mathrm{Aut}(C) \wr S_k` over the classes
+is a product of wreath products `\mathrm{Aut}(C) \wr S_k` over the kinds
 of `k` isomorphic components `C`: :func:`automorphism_generators` and the
 count of :func:`canonical_key` come from this structure, component by
 component, without listing the automorphisms (their number is at least
@@ -42,9 +42,12 @@ its generators and its order come from a backtrack search of this
 subgroup (the subgroup search of Sims, one base point per component),
 exponential in the number of components in the worst case. The search
 of the canonical key itself follows every root tied in a component when
-there are ``classes``, so its cost grows with the number of
-automorphisms. The buffers of the C code are counted in C ``int``: a map
-too large for them (about `2^{31} / (13.5 + 2 nd + 3.5 nc)` half-edges with
+there are ``classes``, and returns from a leaf equal to the best one to
+the first level where their roots differ, since the subtree left is then
+the image of one already searched by an automorphism: `k` tied copies of
+a component cost about `k^2` paths of `k` components. The buffers of the C
+code are counted in C ``int``: a map
+too large for them (about `2^{31} / (14 + 2 nd + 3.5 nc)` half-edges with
 ``nd`` arrays of ``data`` and ``nc`` of ``classes``) raises an
 ``OverflowError``.
 
@@ -234,7 +237,7 @@ def _check_sizes(n, nd, nc):
     key = n * (1 + nd + nc)
     work = 9 * n + 1 + key
     sequence = key + n // 2
-    search = (5 + nc) * n + (4 + nc) * (n // 2 + 1) + nc + sequence + key + 1 + 4 * n + 1
+    search = (5 + nc) * n + (5 + nc) * (n // 2 + 1) + nc + sequence + key + 1 + 4 * n + 1
     if max(n, key, work, sequence, search) > INT_MAX:
         raise OverflowError("map too large: {} half-edges with {} arrays of data and {} of classes".format(n, nd, nc))
 
@@ -1032,11 +1035,12 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
 
     The components are taken as connected maps of their own (their
     half-edges in increasing order, ``data`` restricted, ``classes``
-    ignored) and grouped by canonical key. The result lists the classes of
-    isomorphic components, ordered by the smallest half-edge of their first
-    copy, as tuples ``(copies, generators, count, local, roots)``:
+    ignored) and grouped by canonical key into kinds, a kind being the set
+    of the components isomorphic to a given one. The result lists the kinds,
+    ordered by the smallest half-edge of their first copy, as tuples
+    ``(copies, generators, count, local, roots)``:
 
-    - ``copies`` -- the list of the copies of the class, ordered by their
+    - ``copies`` -- the list of the copies of the kind, ordered by their
       smallest half-edge, each a pair ``(halves, r)`` of an ``array('i')``
       of the half-edges of the component in increasing order and of the
       canonical relabelling ``r`` of the component as a map of its own
@@ -1055,7 +1059,7 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
       one of label ``l`` exists exactly for these ``l``) if ``labels``,
       ``None`` otherwise
 
-    The group is the product over the classes of the wreath product of the
+    The group is the product over the kinds of the wreath product of the
     group of a copy by the symmetric group on the copies.
     """
     cdef int n = m.n, c, h, x, y, i, j, size, cnt, length, top
@@ -1094,7 +1098,7 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
             halves[comp.data.as_ints[h]].append(h)
 
     position = {}
-    classes = []
+    kinds = []
     for c in range(ncomp):
         halves_c = array.array('i', halves[c])
         size = len(halves_c)
@@ -1115,9 +1119,9 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
             raise RuntimeError("a component of a map is not connected")
         kb = (<char *> key.data.as_ints)[:length * sizeof(int)]
         if kb in position:
-            classes[position[kb]][0].append((halves_c, ra))
+            kinds[position[kb]][0].append((halves_c, ra))
             continue
-        position[kb] = len(classes)
+        position[kb] = len(kinds)
         gens = []
         if lift:
             for gl in _connected_generators(mc, ra, roots, cnt):
@@ -1126,11 +1130,11 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
                     g.data.as_ints[halves_c.data.as_ints[i]] = halves_c.data.as_ints[gl.data.as_ints[i]]
                 gens.append(g)
         if labels:
-            classes.append(([(halves_c, ra)], gens, cnt, mc,
-                            array.array('i', sorted([ra.data.as_ints[roots.data.as_ints[i]] for i in range(cnt)]))))
+            kinds.append(([(halves_c, ra)], gens, cnt, mc,
+                          array.array('i', sorted([ra.data.as_ints[roots.data.as_ints[i]] for i in range(cnt)]))))
         else:
-            classes.append(([(halves_c, ra)], gens, cnt, None, None))
-    return classes
+            kinds.append(([(halves_c, ra)], gens, cnt, None, None))
+    return kinds
 
 
 cdef int _place(array.array g, tuple a, tuple b) except -1:
@@ -1152,7 +1156,7 @@ cdef int _place(array.array g, tuple a, tuple b) except -1:
 cdef list _wreath_generators(_Map m):
     r"""
     Return the generators of the automorphism group of the disconnected map
-    ``m`` without arrays of ``classes``: for each class of isomorphic
+    ``m`` without arrays of ``classes``: for each kind of isomorphic
     components (see ``_wreath``), the generators of the group of its first
     copy, then the transposition of its first two copies when it has at
     least two, then the cycle of its copies when it has at least three.
@@ -1179,7 +1183,7 @@ cdef list _wreath_generators(_Map m):
 cdef _wreath_order(_Map m):
     r"""
     Return the number of automorphisms of the disconnected map ``m`` without
-    arrays of ``classes``, as a Python integer: the product over the classes
+    arrays of ``classes``, as a Python integer: the product over the kinds
     of `|Aut(C)|^k k!` (see ``_wreath``).
     """
     order = 1
@@ -1192,10 +1196,10 @@ cdef class _Stabiliser:
     r"""
     The state of the search of :func:`_stabiliser` on a disconnected map.
 
-    The levels are the components, in the order of ``_wreath`` (classes in
-    order, copies in order). Per level ``j``: ``kind[j]`` its class and
+    The levels are the components, in the order of ``_wreath`` (kinds in
+    order, copies in order). Per level ``j``: ``kind[j]`` its kind and
     ``off[j]`` the offset of its half-edges in ``lab``, by canonical label
-    (``lab[off[j] + i]`` is its half-edge of label ``i``). Per class ``t``:
+    (``lab[off[j] + i]`` is its half-edge of label ``i``). Per kind ``t``:
     its copies are the levels ``start[t], ..., start[t + 1] - 1``; its
     first copy as a map of its own has the face permutation ``cfp``, the
     canonical relabelling ``cra`` (local index to label) and its inverse
@@ -1225,7 +1229,7 @@ cdef class _Stabiliser:
 
     cdef int relabel(self, int t, int l) except -1:
         r"""
-        Write into ``perm`` the automorphism of the first copy of the class
+        Write into ``perm`` the automorphism of the first copy of the kind
         ``t`` sending the half-edge of label ``0`` to the one of label
         ``l``, on the labels: ``perm[i]`` is the label of the image of the
         half-edge of label ``i``.
@@ -1298,7 +1302,7 @@ cdef class _Stabiliser:
     cdef int extend(self, int i) except -1:
         r"""
         Search images for the levels ``i + 1, ..., ncomp - 1``, each a copy
-        of its class not used yet, through any label of its roots, in
+        of its kind not used yet, through any label of its roots, in
         order; return ``1`` at the first leaf, the choices left in
         ``target`` and ``choice``, and ``0`` if there is none.
         """
@@ -1454,13 +1458,13 @@ cdef tuple _stabiliser(_Map m):
     the pointwise stabiliser of ``b_1, ..., b_{i-1}`` in `G` fixes their
     components and permutes the others as the wreath products do, so the
     orbit of ``b_i`` in it is made of the half-edges whose label is the one
-    of a root of minimal key in the copies of the class of ``b_i`` at the
+    of a root of minimal key in the copies of the kind of ``b_i`` at the
     levels ``>= i``. The levels are processed from the last to the first:
     each point ``x`` of that orbit outside the orbit of ``b_i`` under the
     generators found so far (a union-find over the half-edges) is tried by
     a depth-first search for an element of `H`, the identity on the levels
     ``< i``, sending ``b_i`` to ``x``, which maps the following levels one
-    after the other to unused copies of their classes and rejects a step
+    after the other to unused copies of their kinds and rejects a step
     whose values contradict the bijections of values built so far. The
     first element found is a generator. The generators found at the levels
     ``>= i`` generate the stabiliser of ``b_1, ..., b_{i-1}`` in `H`, so
@@ -1671,10 +1675,10 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
       group closure are never computed.
 
     - On a disconnected map without ``classes`` the group is the product,
-      over the classes of isomorphic components, of `\mathrm{Aut}(C) \wr
-      S_k` (``data`` links no two components). The classes are ordered by
+      over the kinds of isomorphic components, of `\mathrm{Aut}(C) \wr
+      S_k` (``data`` links no two components). The kinds are ordered by
       the smallest half-edge of their first copy `C`, and the copies of a
-      class likewise; for each class the generators are those of
+      kind likewise; for each kind the generators are those of
       `\mathrm{Aut}(C)` (by the connected scan), then the transposition of
       the first two copies if `k \geq 2`, then the cycle of the copies if
       `k \geq 3`. The copies are exchanged by the isomorphism sending the
@@ -1694,7 +1698,7 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
       that is outside its orbit under the generators found so far is
       tried by a depth-first search for an element of `H` sending `b_i`
       to it, which maps the following components one after the other to
-      copies of their classes. The first element found is a generator; the
+      copies of their kinds. The first element found is a generator; the
       generators come in the order found. The search is exponential in the
       number of components in the worst case, when many components are
       isomorphic and the values of ``classes`` reject the candidates only
@@ -1940,12 +1944,18 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     (the length of the list of :func:`automorphisms`), a Python integer
     that may exceed 64 bits. On a disconnected map without ``classes`` it
     is the order `\prod |\mathrm{Aut}(C)|^k k!` of the product of wreath
-    products over the classes of `k` isomorphic components `C`, computed
+    products over the kinds of `k` isomorphic components `C`, computed
     without listing the automorphisms; with ``classes`` it is the order
     of the subgroup that preserves the partitions of ``classes``, computed
     by the search of :func:`automorphism_generators`. With ``classes`` the
     search of the key on a disconnected map follows every root tied in a
-    component, and its cost grows with the number of automorphisms.
+    component; a leaf equal to the best one so far differs from it by an
+    automorphism fixing the components where their roots agree, so the
+    search returns at once to the first level where their roots differ
+    and tries its next tied root. On `k` tied copies of a component each
+    tied root then costs about one path of `k` components, about `k^2`
+    paths in all instead of a number of leaves growing as the
+    automorphisms (`2^k k!` for `k` isolated edges with one class value).
 
     EXAMPLES::
 
