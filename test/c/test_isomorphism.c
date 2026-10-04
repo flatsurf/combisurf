@@ -902,6 +902,125 @@ static void test_reference(void)
 }
 
 /*
+ * Whether iso_canonical takes its counting path under rule (not
+ * ISO_ROOTS_ALL) rather than the sort of all the classes: the product of
+ * the ranges (max - min + 1 over the active half-edges) of the entries of
+ * the reference invariant, loop and monogon counting 2 each, is at most
+ * 2 n, and 2 nd <= n + 1. This mirrors the bound of isomorphism.c, so that
+ * the cases below are known to cover both paths.
+ */
+static int counting_path(int n, const int *fp, iso_root_rule rule, int nd, const int *data)
+{
+    static int inv[MAX_N][INV_SIZE], finv[MAX_N];
+    int h, i, lo, hi, first = 1, base = base_rule(rule);
+    int edge = base == ISO_ROOTS_EDGE_MAX || base == ISO_ROOTS_EDGE_FEWEST;
+    int entries = (edge ? 6 : 2) + ((rule & ISO_ROOTS_DATA) ? (edge ? 2 : 1) * nd : 0);
+    long long prod = 1;
+
+    if ((rule & ISO_ROOTS_DATA) && 2 * nd > n + 1)
+        return 0;
+    for (h = 0; h < n; h++)
+        if (fp[h] != -1)
+            finv[fp[h]] = h;
+    for (h = 0; h < n; h++)
+        if (fp[h] != -1)
+            ref_invariant(fp, finv, rule, n, nd, data, h, inv[h]);
+    for (i = 0; i < entries; i++) {
+        /* the data entries start at 6 */
+        int e = i < (edge ? 6 : 2) ? i : 6 + i - (edge ? 6 : 2);
+        if (e == 4 || e == 5) {
+            prod *= 2;
+        } else {
+            first = 1;
+            lo = hi = 0;
+            for (h = 0; h < n; h++) {
+                if (fp[h] == -1)
+                    continue;
+                if (first || inv[h][e] < lo)
+                    lo = inv[h][e];
+                if (first || inv[h][e] > hi)
+                    hi = inv[h][e];
+                first = 0;
+            }
+            prod *= (long long) hi - lo + 1;
+        }
+        if (prod > 2 * (long long) n)
+            return 0;
+    }
+    return 1;
+}
+
+/*
+ * The two faces (0,1,...,k-1)(~(k-1),...,~1,~0) of a polygon on k edges,
+ * into fp: every vertex of degree 2 and both faces of degree k, so that the
+ * degrees span one value each.
+ */
+static void polygon(int k, int *fp)
+{
+    int i;
+    for (i = 0; i < k; i++) {
+        fp[2 * i] = 2 * ((i + 1) % k);
+        fp[2 * i + 1] = 2 * ((i + k - 1) % k) + 1;
+    }
+}
+
+/*
+ * iso_canonical against the reference under every rule, on inputs that take
+ * its counting path and inputs that take the sort of all the classes:
+ * relabelled polygons (one degree each for the vertices and the faces)
+ * with data of two values, random maps with data of two values, of values
+ * spread over n + 1 (wide ranges) or of the values far apart of
+ * spread_values, and random maps without data, whose degrees spread over
+ * more values as the maps grow. The cases run until each rule other than
+ * ISO_ROOTS_ALL has taken each path at least 20 times.
+ */
+static void test_reference_paths(void)
+{
+    int fp[MAX_N], fp2[MAX_N], r[MAX_N], dec[2 * MAX_ARRAYS * MAX_N];
+    int fast[NUM_RULES], slow[NUM_RULES];
+    int trial, done = 0, kind, ne, n, nd, nc, i, s;
+
+    current_case = "reference, both paths of the classes";
+    for (i = 0; i < NUM_RULES; i++)
+        fast[i] = slow[i] = 0;
+    for (trial = 0; !done; trial++) {
+        CHECK(trial < 20000);
+        kind = trial % 4;
+        if (kind == 0) {
+            ne = 1 + rng_below(20);
+            n = 2 * ne;
+            polygon(ne, fp);
+            random_relabelling(n, r);
+            relabel_fp(n, fp, r, fp2);
+            memcpy(fp, fp2, (size_t) n * sizeof(int));
+        } else {
+            ne = 1 + rng_below(kind == 3 ? 40 : 20);
+            n = 2 * ne;
+            CHECK(random_connected(ne, rng_below(4), fp));
+        }
+        nd = kind == 3 ? 0 : rng_below(MAX_ARRAYS + 1);
+        nc = rng_below(MAX_ARRAYS + 1);
+        s = kind == 2 ? n + 1 : 2;
+        for (i = 0; i < nd * n; i++)
+            dec[i] = rng_below(s);
+        if (kind == 1 && trial % 8 == 5)
+            spread_values(n, nd * n, dec);
+        for (i = 0; i < nc * n; i++)
+            dec[nd * n + i] = rng_below(2);
+        check_reference(n, fp, nd, dec, nc, dec + nd * n);
+        done = 1;
+        for (i = 1; i < NUM_RULES; i++) {
+            if (counting_path(n, fp, rules[i], nd, dec))
+                fast[i]++;
+            else
+                slow[i]++;
+            if (fast[i] < 20 || slow[i] < 20)
+                done = 0;
+        }
+    }
+}
+
+/*
  * A random disjoint union of one to three connected maps of at most 12
  * half-edges, each a relabelled copy of an earlier one with probability
  * 1/2, into fp; return its number of half-edges.
@@ -1027,6 +1146,7 @@ int main(int argc, char **argv)
     test_random();
     test_reference();
     test_reference_regular();
+    test_reference_paths();
     test_search_fixed();
     test_search_random();
     printf("test_isomorphism: %ld checks passed\n", num_checks);

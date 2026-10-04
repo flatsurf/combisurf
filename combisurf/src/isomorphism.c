@@ -22,15 +22,23 @@
  * tied root is found again by scanning the roots after the current one for
  * a block equal to the one of the level, which is still in the sequence.
  *
- * Under a rule other than ISO_ROOTS_ALL, the classes of the half-edges are
- * computed once per call (root_classes: a radix sort of the active
- * half-edges by invariant, O(n)). Under ISO_ROOTS_DATA, whose invariants
- * end with data values, arbitrary ints, each data array is first replaced
- * by order-preserving numbers of 0, ..., n - 1 (O(n) when its values span
+ * Under a rule other than ISO_ROOTS_ALL, iso_canonical needs the chosen
+ * class only, in increasing order. packed_class packs the entries of the
+ * invariant of each active half-edge, shifted by their minimum, into one
+ * int in mixed radix over their ranges, whose order is the lexicographic
+ * order of the invariants; when the product of the ranges is at most 2 n,
+ * it counts the half-edges per packed value, chooses the class from these
+ * counts and collects its half-edges by one scan, in O(n (1 + nd)) with
+ * one cycle walk for the vertices and one for the faces. Otherwise, and
+ * always in iso_search, which needs every class, the classes are computed
+ * by root_classes: a radix sort of the active half-edges by invariant,
+ * O(n) per entry. Under ISO_ROOTS_DATA, whose invariants end with data
+ * values, arbitrary ints, root_classes first replaces each data array by
+ * order-preserving numbers of 0, ..., n - 1 (O(n) when its values span
  * fewer than n values, O(n log n) otherwise), so that every entry of the
- * radix sort lies in 0, ..., n - 1. The flag is masked wherever the base rule is
- * tested. iso_canonical then tries the half-edges
- * of the chosen class only. iso_search keeps the number of half-edges not
+ * radix sort lies in 0, ..., n - 1. The flag is masked wherever the base
+ * rule is tested. iso_canonical then tries the half-edges of the chosen
+ * class only. iso_search keeps the number of half-edges not
  * labelled yet in each class, updated as components are labelled and
  * undone, and chooses the class at each step from these numbers (O(number
  * of classes)); its scans run over the half-edges of that class. Under
@@ -505,6 +513,162 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const 
 }
 
 /*
+ * Write into deg (n ints, 0 on entry) the length of the cycle of each active
+ * half-edge in the vertex permutation (vertex nonzero) or in fp, and when id
+ * is not NULL the index of that cycle into id (neither written on the
+ * inactive half-edges); store the smallest and the largest length into *lo
+ * and *hi (fp has an active half-edge). The vertex permutation is not
+ * stored: x -> fp[t], t the twin of x (x itself on a folded edge), is its
+ * inverse, whose cycles are the same; storing it first was 6 % slower on a
+ * random triangulation of 4092 half-edges. Each cycle is walked once, its
+ * half-edges kept in stack (n ints) for the writes.
+ */
+static inline void cycle_degrees(int n, const int *fp, int vertex, int *id, int *deg, int *stack,
+                                 int *lo, int *hi)
+{
+    int h, x, i, len, c = 0;
+
+    for (h = 0; h < n; h++) {
+        if (fp[h] == -1 || deg[h] != 0)
+            continue;
+        len = 0;
+        x = h;
+        do {
+            stack[len++] = x;
+            x = vertex ? fp[fp[x ^ 1] != -1 ? x ^ 1 : x] : fp[x];
+        } while (x != h);
+        for (i = 0; i < len; i++)
+            deg[stack[i]] = len;
+        if (id != NULL)
+            for (i = 0; i < len; i++)
+                id[stack[i]] = c;
+        if (c == 0 || len < *lo)
+            *lo = len;
+        if (c == 0 || len > *hi)
+            *hi = len;
+        c++;
+    }
+}
+
+/*
+ * Multiply *prod by range and return whether the product is at most bound.
+ * With *prod at most bound < 2^31 and range at most 2^32, the product fits
+ * in long long. A test by division, range > bound / *prod, cost 4 % on the
+ * maps of 30 half-edges of the core automaton of H(4) (1.12 against
+ * 1.08 µs per map).
+ */
+static inline int radix_fits(long long *prod, long long range, long long bound)
+{
+    *prod *= range;
+    return *prod <= bound;
+}
+
+static int choose_class(iso_root_rule rule, int m, const int *cnt);
+
+/*
+ * The class of the rule (not ISO_ROOTS_ALL) chosen by choose_class among
+ * the classes of root_classes, without sorting: every entry of the
+ * invariant is shifted by its minimum over the active half-edges (the
+ * degrees, the data values; loop and monogon are 0 or 1) and the entries
+ * are packed in mixed radix over their ranges, the first entry most
+ * significant, so that the order of the packed values is the lexicographic
+ * order of the invariants. When the product of the ranges is at most
+ * bound, the half-edges are counted per packed value in count (bound
+ * ints), the class is chosen from these counts, and a scan writes its
+ * half-edges into out in increasing order; their number is returned. When
+ * the product exceeds bound, or when 2 nd > n + 1, 0 is returned and out,
+ * which serves as a work buffer before, holds nothing. tmp holds 4 n ints
+ * (the degrees, and the indices of the vertices and of the faces under the
+ * edge rules), pv n ints (the packed values) and aux n + 1 ints (the
+ * minimum and the range of each data array).
+ *
+ * The cost is O(n (1 + nd) + bound): one walk of each cycle of the vertices
+ * and of the faces, one scan per data array for its range, one scan packing
+ * and counting, one scan collecting the class; root_classes runs one
+ * counting sort of n buckets per entry of the invariant (2 or 6, plus nd or
+ * 2 nd data entries) and its data ranks first.
+ */
+static int packed_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
+                        long long bound, int *out, int *tmp, int *pv, int *aux, int *count)
+{
+    int *vdeg = tmp, *fdeg = tmp + n, *vid = tmp + 2 * n, *fid = tmp + 3 * n;
+    int *dmin = aux, *drange = aux + nd;
+    int base_rule = rule & ~ISO_ROOTS_DATA;
+    int edge = base_rule == ISO_ROOTS_EDGE_MAX || base_rule == ISO_ROOTS_EDGE_FEWEST;
+    int h, t, j, c, v, k, vmin = 0, vmax = 0, fmin = 0, fmax = 0, lo, hi, rv, rf;
+    long long prod = 1;
+    const int *a;
+
+    if (!(rule & ISO_ROOTS_DATA))
+        nd = 0;
+    if (2 * (long) nd > (long) n + 1)
+        return 0;
+    /* out serves as the stack of the cycle walks */
+    for (h = 0; h < n; h++) {
+        vdeg[h] = 0;
+        fdeg[h] = 0;
+    }
+    cycle_degrees(n, fp, 1, edge ? vid : NULL, vdeg, out, &vmin, &vmax);
+    cycle_degrees(n, fp, 0, edge ? fid : NULL, fdeg, out, &fmin, &fmax);
+    /* the degrees are at most n, their ranges fit in int; under the edge
+     * rules, the degrees at the twins span the same values, the twins of
+     * the active half-edges being the active half-edges */
+    rv = vmax - vmin + 1;
+    rf = fmax - fmin + 1;
+    if (!radix_fits(&prod, rv, bound) || !radix_fits(&prod, rf, bound))
+        return 0;
+    if (edge && (!radix_fits(&prod, rv, bound) || !radix_fits(&prod, rf, bound)
+                 || !radix_fits(&prod, 4, bound)))
+        return 0;
+    /* the data values span the same values at h and at its twin */
+    for (j = 0; j < nd; j++) {
+        a = data + (long) j * n;
+        lo = hi = 0;
+        k = 0;
+        for (h = 0; h < n; h++) {
+            if (fp[h] == -1)
+                continue;
+            if (k == 0 || a[h] < lo)
+                lo = a[h];
+            if (k == 0 || a[h] > hi)
+                hi = a[h];
+            k = 1;
+        }
+        if (!radix_fits(&prod, (long long) hi - lo + 1, bound))
+            return 0;
+        if (edge && !radix_fits(&prod, (long long) hi - lo + 1, bound))
+            return 0;
+        dmin[j] = lo;
+        drange[j] = (int) ((long long) hi - lo + 1);
+    }
+
+    /* every value below is below prod <= bound, which fits in int */
+    memset(count, 0, (size_t) prod * sizeof(int));
+    for (h = 0; h < n; h++) {
+        if (fp[h] == -1)
+            continue;
+        v = (vdeg[h] - vmin) * rf + (fdeg[h] - fmin);
+        t = fp[h ^ 1] != -1 ? h ^ 1 : h;
+        if (edge)
+            v = ((v * rv + (vdeg[t] - vmin)) * rf + (fdeg[t] - fmin)) * 4
+                + 2 * (vid[h] == vid[t]) + (fid[h] == fid[t]);
+        for (j = 0; j < nd; j++)
+            v = v * drange[j] + (int) ((long long) data[(long) j * n + h] - dmin[j]);
+        if (edge)
+            for (j = 0; j < nd; j++)
+                v = v * drange[j] + (int) ((long long) data[(long) j * n + t] - dmin[j]);
+        pv[h] = v;
+        count[v]++;
+    }
+    c = choose_class(rule, (int) prod, count);
+    k = 0;
+    for (h = 0; h < n; h++)
+        if (fp[h] != -1 && pv[h] == c)
+            out[k++] = h;
+    return k;
+}
+
+/*
  * The class tried among the m classes of root_classes, cnt[c] being the
  * number of half-edges of the class c that may be roots (at least one class
  * has one): under *_MAX the largest class of positive count, under *_FEWEST
@@ -526,6 +690,33 @@ static int choose_class(iso_root_rule rule, int m, const int *cnt)
             best = c;
     return best;
 }
+
+#ifdef ISO_DEBUG
+/*
+ * Check the class of packed_class, the half-edges out[0:len], against the
+ * class chosen among the classes of root_classes on the same input, in
+ * buffers of its own.
+ */
+static void debug_packed_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
+                               const int *out, int len)
+{
+    int *buf = malloc(((size_t) 8 * n + 1 + (size_t) nd * n) * sizeof(int));
+    int *order = buf, *cls = buf + n, *start = buf + 2 * n, *tmp = buf + 3 * n + 1;
+    int *ranks = buf + 7 * n + 1;
+    int m, c, i;
+
+    ISO_CHECK(buf != NULL);
+    m = root_classes(n, fp, rule, nd, data, order, cls, start, tmp, ranks);
+    /* the sizes of the classes, in tmp */
+    for (c = 0; c < m; c++)
+        tmp[c] = start[c + 1] - start[c];
+    c = choose_class(rule, m, tmp);
+    ISO_CHECK(len == start[c + 1] - start[c]);
+    for (i = 0; i < len; i++)
+        ISO_CHECK(out[i] == order[start[c] + i]);
+    free(buf);
+}
+#endif
 
 /*
  * The walk of iso_relabelling_from from root, on r all -1 on entry, with the
@@ -905,15 +1096,28 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     }
 
     if (!all) {
-        /* r, rinv, queue and names (4 n) are free until the first walk, cur
-         * (the numbers of the data values) until the first key; the sizes of
-         * the classes go into r */
-        m = root_classes(n, fp, rule, nd, data, order, cls, start, work, cur);
-        for (c = 0; c < m; c++)
-            r[c] = start[c + 1] - start[c];
-        c = choose_class(rule, m, r);
-        lo = start[c];
-        hi = start[c + 1];
+        /* r, rinv, queue and names (4 n) are free until the first walk, cls
+         * and start until the walks (they serve root_classes only), cur (the
+         * numbers of the data values of root_classes) until the first key,
+         * rbest and parent (2 n, contiguous) until the first key too. The
+         * packed values of packed_class go into cls, the ranges of the data
+         * into start, its counts into rbest and parent, which bounds the
+         * product of the ranges by 2 n; the sizes of the classes of
+         * root_classes go into r. */
+        hi = packed_class(n, fp, rule, nd, data, 2 * (long long) n, order, work, cls, start, rbest);
+        if (hi == 0) {
+            m = root_classes(n, fp, rule, nd, data, order, cls, start, work, cur);
+            for (c = 0; c < m; c++)
+                r[c] = start[c + 1] - start[c];
+            c = choose_class(rule, m, r);
+            lo = start[c];
+            hi = start[c + 1];
+        }
+#ifdef ISO_DEBUG
+        else {
+            debug_packed_class(n, fp, rule, nd, data, order, hi);
+        }
+#endif
         first = order[lo];
     }
 

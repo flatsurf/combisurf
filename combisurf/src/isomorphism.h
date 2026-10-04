@@ -180,9 +180,13 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * automorphism. A map whose roots all tie (a regular map) costs
  * O(n log2 |Aut| (1 + nd + nc)) for them instead of O(n^2 (1 + nd + nc)).
  * The roots of minimal key are the orbit of the best root, written by a
- * final scan. Under a rule other than ISO_ROOTS_ALL, the classes cost O(n)
- * more: the half-edges are sorted by invariant by counting sorts on its 2
- * or 6 entries. Under ISO_ROOTS_DATA each data array is first replaced by
+ * final scan. Under a rule other than ISO_ROOTS_ALL, the class costs O(n)
+ * more. The entries of the invariant, shifted by their minimum, are packed
+ * into one int in mixed radix over their ranges; when the product of the
+ * ranges is at most 2 n, the half-edges are counted per packed value and
+ * the class is collected by one scan, in O(n (1 + nd)). Otherwise the
+ * half-edges are sorted by invariant by counting sorts on its 2 or 6
+ * entries. Under ISO_ROOTS_DATA each data array is then first replaced by
  * order-preserving numbers of 0, ..., n - 1: the values minus their minimum
  * when they span fewer than n values (O(n)), else their ranks among the
  * active half-edges (a heap sort, O(n log n) per array). They add nd or
