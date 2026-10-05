@@ -173,6 +173,13 @@ from math import factorial
 from numbers import Integral
 
 
+cdef extern from "isomorphism.h":
+    int ISO_INVARIANTS_WORK_SIZE(int n)
+    int iso_invariants_differ(int n1, const int *fp1, const int *data1, const int *classes1,
+                              int n2, const int *fp2, const int *data2, const int *classes2,
+                              int nd, int nc, int *work)
+
+
 cdef array.array _int_array = array.array('i', [])
 
 
@@ -238,7 +245,8 @@ def _check_sizes(n, nd, nc):
     work = 9 * n + 1 + key
     sequence = key + n // 2
     search = (5 + nc) * n + (5 + nc) * (n // 2 + 1) + nc + sequence + key + 1 + 4 * n + 1
-    if max(n, key, work, sequence, search) > INT_MAX:
+    invariants = 2 * n + 1
+    if max(n, key, work, sequence, search, invariants) > INT_MAX:
         raise OverflowError("map too large: {} half-edges with {} arrays of data and {} of classes".format(n, nd, nc))
 
 
@@ -1859,12 +1867,26 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
     cdef _Map m1 = _convert(fp1, data1, classes1)
     cdef _Map m2 = _convert(fp2, data2, classes2)
     cdef int n1 = m1.n, n2 = m2.n
-    cdef array.array key1 = _new(ISO_KEY_SIZE(n1, m1.nd, m1.nc))
-    cdef array.array key2 = _new(ISO_KEY_SIZE(n2, m2.nd, m2.nc))
-    cdef array.array ra = _new(n1)
-    cdef array.array rb = _new(n2)
     cdef int len1, len2, h, e, i
-    cdef array.array seq1, seq2
+    cdef array.array key1, key2, ra, rb, seq1, seq2
+    cdef array.array work = None
+    cdef int *dec1 = m1.dec.data.as_ints
+    cdef int *dec2 = m2.dec.data.as_ints
+    # an isomorphism is a bijection of the active half-edges preserving the
+    # twins, hence the numbers of active edges and half-edges; the invariants
+    # of iso_invariants_differ, O(n), are compared before the two searches
+    if m1.ne != m2.ne or m1.na != m2.na:
+        return None
+    if m1.nc:
+        work = _new(ISO_INVARIANTS_WORK_SIZE(n1 if n1 > n2 else n2))
+    if iso_invariants_differ(n1, m1.fp.data.as_ints, dec1, dec1 + m1.nd * n1,
+                             n2, m2.fp.data.as_ints, dec2, dec2 + m2.nd * n2,
+                             m1.nd, m1.nc, NULL if work is None else work.data.as_ints):
+        return None
+    key1 = _new(ISO_KEY_SIZE(n1, m1.nd, m1.nc))
+    key2 = _new(ISO_KEY_SIZE(n2, m2.nd, m2.nc))
+    ra = _new(n1)
+    rb = _new(n2)
     len1 = _run(m1, rule, key1, ra.data.as_ints, NULL, NULL)
     len2 = _run(m2, rule, key2, rb.data.as_ints, NULL, NULL)
     if len1 == ISO_DISCONNECTED or len2 == ISO_DISCONNECTED:

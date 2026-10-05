@@ -1777,6 +1777,95 @@ def test_fast_against_naive_disconnected(seed, root_rule):
         check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
 
 
+def check_same_verdict(fp1, data1, fp2, data2, classes1=(), classes2=(), expected=None):
+    r"""
+    Check that :func:`combisurf.isomorphism.isomorphism` returns the result
+    of :func:`combisurf.isomorphism_naive.isomorphism` on the two decorated
+    maps, in both orders; with ``expected="none"`` that both results are
+    ``None``.
+    """
+    for a, b in [((fp1, data1, classes1), (fp2, data2, classes2)),
+                 ((fp2, data2, classes2), (fp1, data1, classes1))]:
+        naive = isomorphism_naive.isomorphism(a[0], a[1], b[0], b[1], a[2], b[2])
+        assert isomorphism_fast.isomorphism(a[0], a[1], b[0], b[1], a[2], b[2]) == naive
+        if expected == "none":
+            assert naive is None
+
+
+def test_isomorphism_rejects_active_counts():
+    # the same number of half-edges, edges active or not: two edges against
+    # one, and one folded edge against one edge with two monogons; then the
+    # same counts of active edges and half-edges, placed differently
+    check_same_verdict([1, 0, 2, 3], (), [1, 0, -1, -1], (), expected="none")
+    check_same_verdict([0, -1], (), [0, 1], (), expected="none")
+    check_same_verdict([0, -1, 2, 3], (), [0, 1, 2, -1], ())
+    assert isomorphism_fast.isomorphism([0, -1, 2, 3], (), [0, 1, 2, -1], ()) is not None
+
+
+def test_isomorphism_rejects_degrees():
+    # three edges and two triangles each: the sphere (three vertices of
+    # degree 2) against the torus (one vertex of degree 6), then their duals
+    # (the same vertex degrees, faces of degrees 2, 2, 2 against 6)
+    sphere = OrientedMap(fp=[2, 5, 4, 1, 0, 3])
+    torus = OrientedMap(fp=[2, 3, 4, 5, 0, 1])
+    check_same_verdict(list(sphere._fp), (), list(torus._fp), (), expected="none")
+    check_same_verdict(list(sphere.dual()._fp), (), list(torus.dual()._fp), (), expected="none")
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_isomorphism_rejects_data_multiset(seed):
+    # a relabelled copy whose data differs by one value on one half-edge, at
+    # the extremes of a C int as well, against the copy whose values are
+    # moved between half-edges (the same multiset)
+    rng = random.Random(seed)
+    for _ in range(10):
+        fp = random_connected_fp(rng)
+        values = [0, 1, -2**31, 2**31 - 1]
+        data = ([rng.choice(values) for _ in fp], [rng.randrange(2) for _ in fp])
+        fp2, data2 = relabel_arrays(fp, data, random_edge_relabelling(rng, fp))
+        check_same_verdict(fp, data, fp2, data2)
+        assert isomorphism_fast.isomorphism(fp, data, fp2, data2) is not None
+        active = [x for x in range(len(fp2)) if fp2[x] != -1]
+        h = rng.choice(active)
+        for j in range(2):
+            changed = list(data2)
+            changed[j] = changed[j][:]
+            changed[j][h] = values[(values.index(changed[j][h]) + 1) % 4]
+            check_same_verdict(fp, data, fp2, tuple(changed), expected="none")
+        if len(active) < 2:
+            continue
+        a, b = rng.sample(active, 2)
+        moved = data2[0][:]
+        moved[a], moved[b] = moved[b], moved[a]
+        check_same_verdict(fp, data, fp2, (moved, data2[1]))
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_isomorphism_rejects_class_sizes(seed):
+    # a relabelled copy whose classes are renamed, against one where a
+    # half-edge leaves its class (other sizes) and one where two half-edges
+    # of different classes swap them (the same sizes)
+    rng = random.Random(seed)
+    for _ in range(10):
+        fp = random_connected_fp(rng)
+        classes = ([rng.randrange(3) for _ in fp], [0] * len(fp))
+        fp2, classes2 = relabel_arrays(fp, classes, random_edge_relabelling(rng, fp))
+        classes2 = rename_values(rng, classes2)
+        check_same_verdict(fp, (), fp2, (), classes, classes2)
+        assert isomorphism_fast.isomorphism(fp, (), fp2, (), classes, classes2) is not None
+        active = [x for x in range(len(fp2)) if fp2[x] != -1]
+        if len(active) < 2:
+            continue
+        h = rng.choice(active)
+        split = classes2[1][:]
+        split[h] = max(split) + 1
+        check_same_verdict(fp, (), fp2, (), classes, (classes2[0], split), expected="none")
+        a, b = rng.sample(active, 2)
+        swapped = classes2[0][:]
+        swapped[a], swapped[b] = swapped[b], swapped[a]
+        check_same_verdict(fp, (), fp2, (), classes, (swapped, classes2[1]))
+
+
 def random_large_disconnected_fp(rng):
     r"""
     Return the face permutation of the disjoint union of two or three

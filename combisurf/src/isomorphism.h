@@ -135,6 +135,34 @@ int iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv, int 
 int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
             const int *r, const int *rinv, int k, int *key, int *names);
 
+/* Size of the work buffer of iso_invariants_differ, in ints. */
+#define ISO_INVARIANTS_WORK_SIZE(n) (2 * (n) + 1)
+
+/*
+ * Return 1 when an invariant of the decorated maps (n1, fp1, data1,
+ * classes1) and (n2, fp2, data2, classes2), with nd data arrays and nc class
+ * arrays each, differs, so that they are not isomorphic, and 0 otherwise.
+ * The two maps must have as many active half-edges. An isomorphism is a
+ * bijection of the active half-edges that keeps the data values, and that
+ * relabels the values of each class array, sending a class to a class of the
+ * same size. Compared, in this order, stopping at the first difference: for
+ * each data array a hash of the multiset of its values on the active
+ * half-edges (one pass, O(n)), then for each class array the multiset of
+ * the sizes of its classes (counted, O(n)). work is a buffer of
+ * ISO_INVARIANTS_WORK_SIZE(n) ints, n = max(n1, n2), read only when nc > 0
+ * (it may be NULL otherwise).
+ *
+ * The multisets of the face degrees and of the vertex degrees are not
+ * compared: walking the cycles of the two maps cost about 10 % of the time
+ * of the isomorphism of two isomorphic maps (random triangulations of 4092
+ * half-edges: 372 against 327 µs per pair), and rejected none of the 193
+ * pairs of non-isomorphic triangulations tried (192 pairs of veering
+ * triangulations of H(1^12), one pair of 1092 half-edges).
+ */
+int iso_invariants_differ(int n1, const int *fp1, const int *data1, const int *classes1,
+                          int n2, const int *fp2, const int *data2, const int *classes2,
+                          int nd, int nc, int *work);
+
 /*
  * Try every active half-edge of fp of the class of the rule as a root (every
  * active half-edge under ISO_ROOTS_ALL), in increasing order, and write

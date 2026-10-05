@@ -194,6 +194,91 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
     return pos;
 }
 
+/* A bijective mixing of the 32 bits of x into 64 bits (multiplications by
+ * odd constants and xorshifts, each invertible). */
+static inline unsigned long long mix_value(int x)
+{
+    unsigned long long y = (unsigned long long) (unsigned int) x * 0x9E3779B97F4A7C15ULL;
+    y ^= y >> 29;
+    y *= 0xBF58476D1CE4E5B9ULL;
+    return y ^ (y >> 32);
+}
+
+/*
+ * The hash of the multiset of the values of a on the active half-edges of
+ * fp: the sum modulo 2^64 of their mixed values, independent of their order.
+ * Equal multisets have equal hashes, so different hashes prove different
+ * multisets. One pass without a buffer or a branch: comparing the sorted
+ * values instead, counted per value or heap sorted, was 3 times slower on the
+ * pairs of veering triangulations of H(1^12) (0.9 against 0.3 µs per pair).
+ */
+static unsigned long long values_hash(int n, const int *fp, const int *a)
+{
+    unsigned long long s = 0;
+    int h;
+    for (h = 0; h < n; h++)
+        s += fp[h] != -1 ? mix_value(a[h]) : 0;
+    return s;
+}
+
+/*
+ * Return whether the class arrays a1 on fp1 and a2 on fp2 (values in 0,
+ * ..., n1 - 1 and 0, ..., n2 - 1) have different multisets of class sizes
+ * on the active half-edges, as many on both sides. sz (n ints) and cnt
+ * (n + 1 ints) are zero on entry and, when they are equal, on return.
+ */
+static int class_sizes_differ(int n1, const int *fp1, const int *a1, int n2, const int *fp2,
+                              const int *a2, int *sz, int *cnt)
+{
+    int h;
+
+    for (h = 0; h < n1; h++)
+        if (fp1[h] != -1)
+            sz[a1[h]]++;
+    /* each class counted at its first half-edge, its size then reset */
+    for (h = 0; h < n1; h++) {
+        if (fp1[h] != -1 && sz[a1[h]] != 0) {
+            cnt[sz[a1[h]]]++;
+            sz[a1[h]] = 0;
+        }
+    }
+    for (h = 0; h < n2; h++)
+        if (fp2[h] != -1)
+            sz[a2[h]]++;
+    /* the sizes sum to the same number of half-edges on both sides, so no
+     * count going negative means equal counts */
+    for (h = 0; h < n2; h++) {
+        if (fp2[h] != -1 && sz[a2[h]] != 0) {
+            if (--cnt[sz[a2[h]]] < 0)
+                return 1;
+            sz[a2[h]] = 0;
+        }
+    }
+    return 0;
+}
+
+int iso_invariants_differ(int n1, const int *fp1, const int *data1, const int *classes1,
+                          int n2, const int *fp2, const int *data2, const int *classes2,
+                          int nd, int nc, int *work)
+{
+    int n = n1 > n2 ? n1 : n2;
+    int j;
+
+    for (j = 0; j < nd; j++)
+        if (values_hash(n1, fp1, data1 + (long) j * n1) != values_hash(n2, fp2, data2 + (long) j * n2))
+            return 1;
+    if (nc == 0)
+        return 0;
+    for (j = 0; j < 2 * n + 1; j++)
+        work[j] = 0;
+    /* each check leaves the buffers zero when it finds no difference */
+    for (j = 0; j < nc; j++)
+        if (class_sizes_differ(n1, fp1, classes1 + (long) j * n1, n2, fp2,
+                               classes2 + (long) j * n2, work, work + n))
+            return 1;
+    return 0;
+}
+
 /*
  * Write into id the index of the cycle of p (n ints, -1 on the inactive
  * half-edges) of each active half-edge, -1 on the inactive ones, and into
