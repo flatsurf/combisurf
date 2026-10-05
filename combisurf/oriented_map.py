@@ -4760,6 +4760,13 @@ class OrientedMap:
         full (the requirement on ``key`` is stated in
         :meth:`canonical_labelling`).
 
+        INPUT:
+
+        - ``half_edge_data``, ``edge_data``, ``vertex_data``, ``face_data``,
+          ``half_edge_classes``, ``edge_classes``, ``vertex_classes``,
+          ``face_classes``, ``check``, ``root_rule``, ``key`` -- as in
+          :meth:`canonical_labelling`
+
         OUTPUT: a Python integer, possibly larger than 64 bits.
 
         EXAMPLES::
@@ -4799,7 +4806,10 @@ class OrientedMap:
         fp = self._fp
         seen = [False] * n
         for h in range(n):
-            x = a[h]
+            try:
+                x = operator.index(a[h])
+            except TypeError:
+                raise ValueError("an automorphism must be a permutation of the half-edges")
             if not 0 <= x < n or seen[x]:
                 raise ValueError("an automorphism must be a permutation of the half-edges")
             seen[x] = True
@@ -4929,7 +4939,7 @@ class OrientedMap:
         to_face = self.half_edge_to_face()
         return array('i', [to_face[a[f[0]]] for f in self.faces()])
 
-    def canonical_roots(self,half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
+    def canonical_roots(self, half_edge_data=None, edge_data=None, vertex_data=None, face_data=None,
                         half_edge_classes=None, edge_classes=None, vertex_classes=None, face_classes=None,
                         check=True, root_rule="half-edge-fewest+data", key=None):
         r"""
@@ -4988,6 +4998,10 @@ class OrientedMap:
             [0, 1, 2, 3]
             sage: m.canonical_roots(face_classes=[0, 1, 1, 0])
             [0, 1, 2, 3]
+            sage: OrientedMap(fp="(0,1,2)(~0,~1,~2)").canonical_roots(key=3)
+            Traceback (most recent call last):
+            ...
+            TypeError: key must be callable
 
         Eight isolated edges, whose full group has `2^8 8! = 10321920`
         elements (the orbit is computed from the generators)::
@@ -4995,10 +5009,6 @@ class OrientedMap:
             sage: m = OrientedMap(fp="".join("(%d)(~%d)" % (i, i) for i in range(8)))
             sage: len(m.canonical_roots())
             16
-            sage: OrientedMap(fp="(0,1,2)(~0,~1,~2)").canonical_roots(key=3)
-            Traceback (most recent call last):
-            ...
-            TypeError: key must be callable
         """
         rule = self._root_rule(root_rule)
         data = self._decoration_data(half_edge_data, edge_data, vertex_data, face_data, check)

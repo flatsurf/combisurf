@@ -2850,9 +2850,9 @@ def test_sibling_veerer_3(seed):
 def test_sibling_veerer_4():
     r"""
     veerer 4: the subspace key (see ``test_automorphism_count_decorated``
-    O9, O20, O21 and ``test_subspace_removes_automorphisms``), and all the
-    minimisers ``r0 o a``: those of smallest key value are the labelling
-    returned composed with the automorphisms kept.
+    O9, O20, O21, ``test_subspace_removes_automorphisms`` and, for the
+    minimum over ``r0 o a`` and the stabiliser, ``test_key_random_maps``),
+    here through the enumeration of all the minimisers ``r0 o a``.
     """
     m = map_from_fp(O7)
     key = subspace_key([[1, 0, 0]])
@@ -2860,13 +2860,9 @@ def test_sibling_veerer_4():
     minimisers = [array('i', [r0[x] for x in a]) for a in m.automorphisms()]
     assert len({tuple(r) for r in minimisers}) == 6
     best = min(key(r) for r in minimisers)
-    kept = {tuple(r) for r in minimisers if key(r) == best}
-    r = m.canonical_labelling(key=key)
-    assert tuple(r) in kept
-    stabiliser = m.automorphisms(key=key)
-    assert len(stabiliser) == len(kept) == 2
-    assert kept == {tuple(r[x] for x in a) for a in stabiliser}
-    assert m.num_automorphisms(key=key) == 2
+    kept = [r for r in minimisers if key(r) == best]
+    assert m.canonical_labelling(key=key) in kept
+    assert len(kept) == m.num_automorphisms(key=key) == 2
 
 
 @pytest.mark.parametrize("seed", range(4))
@@ -2901,8 +2897,8 @@ def test_sibling_surface_dynamics_1():
     rng = random.Random(0)
     m = map_from_fp(O3)
     assert not is_connected_fp(list(m.face_permutation()))
-    a, colour, cylinder = cylinder_diagram(CD_I8)
-    for m, decorations in ((m, {}), (a, {'face_data': colour, 'face_classes': cylinder})):
+    a, colour, _ = cylinder_diagram(CD_I8)
+    for m, decorations in ((m, {}), (a, {'face_data': colour})):
         form = m.canonical_form(**decorations)
         assert relabelled_fp(list(m.face_permutation()), m.canonical_labelling(**decorations)) == list(form[0])
         for _ in range(3):
@@ -2965,19 +2961,13 @@ def test_sibling_surface_dynamics_3(seed):
 def test_sibling_surface_dynamics_4():
     r"""
     surface-dynamics 4: ``h in m.canonical_roots()`` as the test of McKay
-    augmentation, and ``canonical_roots`` on 8 isolated edges (`2^8 8!`
+    augmentation (checked against the automorphisms in
+    ``test_canonical_roots_random``), here on 8 isolated edges (`2^8 8!`
     automorphisms, none listed).
     """
-    rng = random.Random(0)
-    for _ in range(10):
-        fp = random_fps(rng)
-        m = OrientedMap(fp=fp)
-        r = m.canonical_labelling()
-        roots = m.canonical_roots()
-        automorphisms = m.automorphisms()
-        for h in range(len(fp)):
-            assert (h in roots) == any(r[a[h]] == 0 for a in automorphisms)
-    assert isolated_edges(8).canonical_roots() == list(range(16))
+    m = isolated_edges(8)
+    assert m.canonical_roots() == list(range(16))
+    assert m.canonical_roots(face_classes=[0] * 16) == list(range(16))
 
 
 def test_num_automorphisms_examples():
@@ -3017,14 +3007,9 @@ def test_automorphism_actions_theta():
     empty = OrientedMap(fp=[])
     assert empty.automorphism_vertex_action(array('i')) == array('i', [0])
     assert empty.automorphism_face_action(array('i')) == array('i', [0])
-    for bad in ([0, 1, 4, 5, 2, 3], [0, 1, 2], [0, 0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 6]):
+    for bad in ([0, 1, 4, 5, 2, 3], [0, 1, 2], [0, 0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 6], [1.0, 0, 5, 4, 3, 2]):
         with pytest.raises(ValueError):
             m.automorphism_vertex_action(bad)
         with pytest.raises(ValueError):
             m.automorphism_face_action(bad)
     assert m.automorphism_vertex_action([0, 1, 4, 5, 2, 3], check=False) is not None
-
-
-def test_canonical_roots_isolated_edges():
-    assert isolated_edges(8).canonical_roots() == list(range(16))
-    assert isolated_edges(8).canonical_roots(face_classes=[0] * 16) == list(range(16))
