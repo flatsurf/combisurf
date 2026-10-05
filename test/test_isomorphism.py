@@ -1054,8 +1054,12 @@ def test_origami_mutations():
     lambda m: m.automorphisms(),
     lambda m: m.is_isomorphic(m),
     lambda m: m.canonical_roots(),
+    lambda m: m.num_automorphisms(),
+    lambda m: m.automorphism_vertex_action([0, 1, 2, 3, 4, 5]),
+    lambda m: m.automorphism_face_action([0, 1, 2, 3, 4, 5]),
 ], ids=["canonical_labelling", "canonical_form", "automorphisms",
-        "is_isomorphic", "canonical_roots"])
+        "is_isomorphic", "canonical_roots", "num_automorphisms",
+        "automorphism_vertex_action", "automorphism_face_action"])
 def test_coloured_map_methods(call):
     r"""
     Coloured maps raise NotImplementedError on the isomorphism methods.
@@ -2737,3 +2741,290 @@ def test_canonical_roots_random(seed, root_rule):
         keywords2 = {} if data is None else {'half_edge_data': carried[0]}
         roots2 = OrientedMap(fp=fp2).canonical_roots(root_rule=root_rule, **keywords2)
         assert roots2 == sorted(s[h] for h in roots)
+
+
+# Sibling API: what veerer and surface-dynamics call
+
+def sibling_case(rng):
+    r"""
+    Return a random map, connected or disconnected, a half-edge decoration
+    and an edge decoration with two values each.
+    """
+    fp = random_fps(rng)
+    return (OrientedMap(fp=fp), [rng.randrange(2) for _ in fp],
+            [rng.randrange(2) for _ in range(len(fp) // 2)])
+
+
+def sibling_relabelling(rng, m, hd, ed):
+    r"""
+    Return ``(r, carried, m2)``: a random relabelling of ``m`` that keeps
+    its last edge active (a trailing inactive edge is not a valid map), the
+    decorations ``hd`` and ``ed`` carried by it as keywords, and the
+    relabelled map.
+    """
+    r = random_edge_relabelling(rng, list(m.face_permutation()))
+    sigma = [r[2 * e] // 2 for e in range(len(r) // 2)]
+    carried = carry_decorations(r, sigma, {'half_edge_data': hd, 'edge_data': ed})
+    return r, carried, relabel_map(m, r)
+
+
+def relabelled_fp(fp, r):
+    r"""
+    Return the face permutation ``fp`` relabelled by ``r``, without its
+    trailing inactive edges, as the first entry of a canonical form.
+    """
+    new = relabel_arrays(fp, (), r)[0]
+    while new and new[-1] == -1 and new[-2] == -1:
+        del new[-2:]
+    return new
+
+
+def isolated_edges(k):
+    r"""
+    Return the map of ``k`` isolated edges.
+    """
+    return OrientedMap(fp="".join("(%d)(~%d)" % (i, i) for i in range(k)))
+
+
+@pytest.mark.parametrize("seed", range(4))
+def test_sibling_veerer_1(seed):
+    r"""
+    veerer 1: the canonical labelling of a disconnected map with
+    ``half_edge_data`` and ``edge_data``: the relabelled map is the map of
+    the canonical form, and the form does not change under a random
+    relabelling.
+    """
+    rng = random.Random(seed)
+    for _ in range(6):
+        m, hd, ed = sibling_case(rng)
+        form = m.canonical_form(half_edge_data=hd, edge_data=ed)
+        r = m.canonical_labelling(half_edge_data=hd, edge_data=ed)
+        fp = list(m.face_permutation())
+        assert relabelled_fp(fp, r) == list(form[0])
+        r2, carried, m2 = sibling_relabelling(rng, m, hd, ed)
+        assert m2.canonical_form(**carried) == form
+        fp2 = list(m2.face_permutation())
+        assert relabelled_fp(fp2, m2.canonical_labelling(**carried)) == list(form[0])
+
+
+@pytest.mark.parametrize("seed", range(4))
+def test_sibling_veerer_2(seed):
+    r"""
+    veerer 2: ``automorphisms`` and ``automorphism_generators`` with the same
+    decorations: the group generated is the list, and ``num_automorphisms``
+    is its length.
+    """
+    rng = random.Random(seed)
+    for _ in range(6):
+        m, hd, ed = sibling_case(rng)
+        for keywords in ({}, {'half_edge_data': hd, 'edge_data': ed}):
+            automorphisms = m.automorphisms(**keywords)
+            generators = m.automorphism_generators(**keywords)
+            assert group_closure(generators, len(hd)) == {tuple(a) for a in automorphisms}
+            assert m.num_automorphisms(**keywords) == len(automorphisms)
+
+
+@pytest.mark.parametrize("seed", range(4))
+def test_sibling_veerer_3(seed):
+    r"""
+    veerer 3: ``is_isomorphic`` with a certificate and the same decorations,
+    as pairs, between a map and a relabelling.
+    """
+    rng = random.Random(seed)
+    for _ in range(6):
+        m, hd, ed = sibling_case(rng)
+        r, carried, m2 = sibling_relabelling(rng, m, hd, ed)
+        pairs = {'half_edge_data': (hd, carried['half_edge_data']), 'edge_data': (ed, carried['edge_data'])}
+        ok, cert = m.is_isomorphic(m2, certificate=True, **pairs)
+        assert ok
+        assert relabel_map(m, cert) == m2
+        for h in m.half_edges():
+            assert carried['half_edge_data'][cert[h]] == hd[h]
+            assert carried['edge_data'][cert[h] // 2] == ed[h // 2]
+        changed = list(carried['half_edge_data'])
+        h0 = next(m.half_edges())
+        changed[cert[h0]] = 1 - changed[cert[h0]]
+        assert not m.is_isomorphic(m2, half_edge_data=(hd, changed))
+
+
+def test_sibling_veerer_4():
+    r"""
+    veerer 4: the subspace key (see ``test_automorphism_count_decorated``
+    O9, O20, O21 and ``test_subspace_removes_automorphisms``), and all the
+    minimisers ``r0 o a``: those of smallest key value are the labelling
+    returned composed with the automorphisms kept.
+    """
+    m = map_from_fp(O7)
+    key = subspace_key([[1, 0, 0]])
+    r0 = m.canonical_labelling()
+    minimisers = [array('i', [r0[x] for x in a]) for a in m.automorphisms()]
+    assert len({tuple(r) for r in minimisers}) == 6
+    best = min(key(r) for r in minimisers)
+    kept = {tuple(r) for r in minimisers if key(r) == best}
+    r = m.canonical_labelling(key=key)
+    assert tuple(r) in kept
+    stabiliser = m.automorphisms(key=key)
+    assert len(stabiliser) == len(kept) == 2
+    assert kept == {tuple(r[x] for x in a) for a in stabiliser}
+    assert m.num_automorphisms(key=key) == 2
+
+
+@pytest.mark.parametrize("seed", range(4))
+def test_sibling_veerer_5(seed):
+    r"""
+    veerer 5: the entry point ``isomorphism.canonical_key`` on ``array('i')``
+    face permutation and decoration arrays, with ``relabelling=True`` and
+    ``automorphism_count=True``, agrees with the methods of ``OrientedMap``
+    (speed is measured by the benchmark).
+    """
+    rng = random.Random(seed)
+    for _ in range(6):
+        fp = random_fps(rng)
+        m = OrientedMap(fp=fp)
+        hd = [rng.randrange(2) for _ in fp]
+        cl = [rng.randrange(3) for _ in fp]
+        key, r, count = isomorphism_fast.canonical_key(
+            array('i', fp), (array('i', hd),), (array('i', cl),), relabelling=True, automorphism_count=True)
+        keywords = {'half_edge_data': hd, 'half_edge_classes': cl}
+        assert r == m.canonical_labelling(**keywords)
+        assert count == m.num_automorphisms(**keywords) == len(m.automorphisms(**keywords))
+        s = random_edge_relabelling(rng, fp)
+        fp2, (hd2, cl2) = relabel_arrays(fp, (hd, cl), s)
+        assert isomorphism_fast.canonical_key(array('i', fp2), (array('i', hd2),), (array('i', cl2),)) == key
+
+
+def test_sibling_surface_dynamics_1():
+    r"""
+    surface-dynamics 1: the canonical labelling of a disconnected fat graph
+    and of a separatrix diagram (a face 2-colouring as ``face_data``).
+    """
+    rng = random.Random(0)
+    m = map_from_fp(O3)
+    assert not is_connected_fp(list(m.face_permutation()))
+    a, colour, cylinder = cylinder_diagram(CD_I8)
+    for m, decorations in ((m, {}), (a, {'face_data': colour, 'face_classes': cylinder})):
+        form = m.canonical_form(**decorations)
+        assert relabelled_fp(list(m.face_permutation()), m.canonical_labelling(**decorations)) == list(form[0])
+        for _ in range(3):
+            r, sigma = random_relabelling(m, rng)
+            carried = carry_decorations(r, sigma, decorations)
+            assert relabel_map(m, r).canonical_form(**carried) == form
+
+
+def test_sibling_surface_dynamics_2():
+    r"""
+    surface-dynamics 2: cylinder diagrams through ``face_classes`` (see
+    ``test_isomorphism_cylinder_diagram``).
+    """
+    forms = {}
+    for name, s in [("I3a", CD_I3_A), ("I3b", CD_I3_B), ("I4b", CD_I4_B), ("I5b", CD_I5_B)]:
+        m, colour, cylinder = cylinder_diagram(s)
+        forms[name] = m.canonical_form(face_data=colour, face_classes=cylinder)
+    assert forms["I3a"] == forms["I4b"]
+    assert forms["I3b"] == forms["I5b"]
+    assert forms["I3a"] != forms["I3b"]
+
+
+@pytest.mark.parametrize("seed", range(4))
+def test_sibling_surface_dynamics_3(seed):
+    r"""
+    surface-dynamics 3: ``fix_vertices`` and ``fix_faces`` as ``vertex_data``
+    and ``face_data`` by distinct values (see
+    ``test_automorphism_count_faces_fixed``), ``num_automorphisms``, and the
+    actions of the automorphisms on the vertices and the faces.
+    """
+    rng = random.Random(seed)
+    for _ in range(6):
+        fp = random_fps(rng)
+        m = OrientedMap(fp=fp)
+        n = len(fp)
+        nv, nf = m.num_vertices(), m.num_faces()
+        automorphisms = m.automorphisms()
+        vertex_actions = [m.automorphism_vertex_action(a) for a in automorphisms]
+        face_actions = [m.automorphism_face_action(a) for a in automorphisms]
+        for va, fa in zip(vertex_actions, face_actions):
+            assert sorted(va) == list(range(nv))
+            assert sorted(fa) == list(range(nf))
+        for _ in range(5):
+            i = rng.randrange(len(automorphisms))
+            j = rng.randrange(len(automorphisms))
+            a, b = automorphisms[i], automorphisms[j]
+            ab = array('i', [a[b[h]] for h in range(n)])
+            assert m.automorphism_vertex_action(ab) == array('i', [vertex_actions[i][x] for x in vertex_actions[j]])
+            assert m.automorphism_face_action(ab) == array('i', [face_actions[i][x] for x in face_actions[j]])
+        to_vertex = list(m.half_edge_to_vertex())
+        to_face = list(m.half_edge_to_face())
+        fixed = m.automorphisms(vertex_data=to_vertex)
+        assert m.num_automorphisms(vertex_data=to_vertex) == len(fixed)
+        assert all(m.automorphism_vertex_action(a) == array('i', range(nv)) for a in fixed)
+        fixed = m.automorphisms(face_data=to_face)
+        assert m.num_automorphisms(face_data=to_face) == len(fixed)
+        assert all(m.automorphism_face_action(a) == array('i', range(nf)) for a in fixed)
+
+
+def test_sibling_surface_dynamics_4():
+    r"""
+    surface-dynamics 4: ``h in m.canonical_roots()`` as the test of McKay
+    augmentation, and ``canonical_roots`` on 8 isolated edges (`2^8 8!`
+    automorphisms, none listed).
+    """
+    rng = random.Random(0)
+    for _ in range(10):
+        fp = random_fps(rng)
+        m = OrientedMap(fp=fp)
+        r = m.canonical_labelling()
+        roots = m.canonical_roots()
+        automorphisms = m.automorphisms()
+        for h in range(len(fp)):
+            assert (h in roots) == any(r[a[h]] == 0 for a in automorphisms)
+    assert isolated_edges(8).canonical_roots() == list(range(16))
+
+
+def test_num_automorphisms_examples():
+    assert map_from_fp(O7).num_automorphisms() == 6
+    assert map_from_fp(O7).num_automorphisms(key=lambda r: r[0] // 2) == 2
+    assert OrientedMap(fp=[]).num_automorphisms() == 1
+    count = isolated_edges(8).num_automorphisms()
+    assert count == 2**8 * math.factorial(8) == 10321920
+    assert type(count) is int
+
+
+@pytest.mark.parametrize("root_rule", ROOT_RULE_NAMES)
+@pytest.mark.parametrize("seed", range(3))
+def test_num_automorphisms_random(seed, root_rule):
+    rng = random.Random(seed)
+    for _ in range(6):
+        fp = random_fps(rng)
+        m = OrientedMap(fp=fp)
+        hd = [rng.randrange(2) for _ in fp]
+        cl = [rng.randrange(3) for _ in fp]
+        for keywords in ({}, {'half_edge_data': hd}, {'half_edge_classes': cl},
+                         {'half_edge_data': hd, 'half_edge_classes': cl}):
+            assert m.num_automorphisms(root_rule=root_rule, **keywords) == len(m.automorphisms(root_rule=root_rule, **keywords))
+        key = subspace_key(random_subspace(rng, fp))
+        assert m.num_automorphisms(root_rule=root_rule, key=key) == len(m.automorphisms(root_rule=root_rule, key=key))
+
+
+def test_automorphism_actions_theta():
+    m = map_from_fp("(0,1,2)(~0,~2,~1)")
+    assert m.vertices() == [[0, 5], [1, 2], [3, 4]]
+    assert m.faces() == [[0, 2, 4], [1, 5, 3]]
+    for a, vertices, faces in [([1, 0, 5, 4, 3, 2], [1, 0, 2], [1, 0]),
+                               ([2, 3, 4, 5, 0, 1], [1, 2, 0], [0, 1]),
+                               ([5, 4, 3, 2, 1, 0], [0, 2, 1], [1, 0])]:
+        assert m.automorphism_vertex_action(a) == array('i', vertices)
+        assert m.automorphism_face_action(array('i', a)) == array('i', faces)
+    empty = OrientedMap(fp=[])
+    assert empty.automorphism_vertex_action(array('i')) == array('i', [0])
+    assert empty.automorphism_face_action(array('i')) == array('i', [0])
+    for bad in ([0, 1, 4, 5, 2, 3], [0, 1, 2], [0, 0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 6]):
+        with pytest.raises(ValueError):
+            m.automorphism_vertex_action(bad)
+        with pytest.raises(ValueError):
+            m.automorphism_face_action(bad)
+    assert m.automorphism_vertex_action([0, 1, 4, 5, 2, 3], check=False) is not None
+
+
+def test_canonical_roots_isolated_edges():
+    assert isolated_edges(8).canonical_roots() == list(range(16))
+    assert isolated_edges(8).canonical_roots(face_classes=[0] * 16) == list(range(16))
