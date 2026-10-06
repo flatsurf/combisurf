@@ -40,7 +40,19 @@ component, without listing the automorphisms (their number is at least
 preserves the partitions of the half-edges by the values of ``classes``:
 its generators and its order come from a backtrack search of this
 subgroup (the subgroup search of Sims, one base point per component),
-exponential in the number of components in the worst case. The search
+which maps the components one after the other to copies of their kinds.
+Once a placement of a component that maps no new value of ``classes`` has
+failed, the later placements of that component mapping no new value are
+skipped: the automorphism of the copy relating the two placements carries
+the values, so it exchanges the two images. Tied copies whose values are
+all mapped after the first components, as `k` isolated edges with one or
+two class values in any pattern, then take a time polynomial in `k`. The
+search stays exponential in the worst case, where it is a search for the
+automorphisms of a structure on the class values: on a graph given by
+its edges as isolated edges (the two values of an edge being its
+endpoints), it is a backtrack search for the automorphisms of the graph,
+which takes over 20 seconds on a random cubic graph with 40 vertices or
+on the `8 \times 8` grid, whose keys take a fraction of a second. The search
 of the canonical key itself, when there are ``classes``, follows among
 the roots tied in a component the first one of each way of extending the
 numbering of the class values, since two tied roots extending it alike
@@ -1245,8 +1257,11 @@ cdef class _Stabiliser:
     values of each array of ``classes`` (``-1`` where unset, the array
     ``q`` at the offset ``q * n``), ``trail`` the entries of ``fw`` set, in
     order, ``used`` the copies already images, and per level its image
-    ``target``, the index ``choice`` of its label in ``labels`` and the
-    length ``mark`` of the trail before its step. ``rb``, ``rbinv``,
+    ``target``, the index ``choice`` of its label in ``labels``, the
+    length ``mark`` of the trail before its step and the flag ``dead``, set
+    when a placement of the level adding no entry to the trail had no
+    completion since the level was entered (the later placements adding
+    none are then skipped, see ``extend``). ``rb``, ``rbinv``,
     ``queue``, ``perm`` and ``ident`` are buffers of the size of the
     largest component.
     """
@@ -1258,7 +1273,7 @@ cdef class _Stabiliser:
     cdef array.array fp
     cdef array.array dec
     cdef array.array kind, off, lab, start, coff, csize, cfp, cra, crainv, loff, labels
-    cdef array.array fw, bw, trail, used, target, choice, mark
+    cdef array.array fw, bw, trail, used, target, choice, mark, dead
     cdef array.array rb, rbinv, queue, perm, ident
 
     cdef int relabel(self, int t, int l) except -1:
@@ -1338,7 +1353,9 @@ cdef class _Stabiliser:
         Search images for the levels ``i + 1, ..., ncomp - 1``, each a copy
         of its kind not used yet, through any label of its roots, in
         order; return ``1`` at the first leaf, the choices left in
-        ``target`` and ``choice``, and ``0`` if there is none.
+        ``target`` and ``choice``, and ``0`` if there is none. A placement
+        adding no entry to the trail is skipped when one such placement of
+        its level already failed since the level was entered (``dead``).
         """
         cdef int *kind = self.kind.data.as_ints
         cdef int *start = self.start.data.as_ints
@@ -1348,10 +1365,12 @@ cdef class _Stabiliser:
         cdef int *target = self.target.data.as_ints
         cdef int *choice = self.choice.data.as_ints
         cdef int *mark = self.mark.data.as_ints
+        cdef int *dead = self.dead.data.as_ints
         cdef int j = i + 1, t, b, placed
         if j < self.ncomp:
             target[j] = start[kind[j]]
             choice[j] = 0
+            dead[j] = 0
         while True:
             if j == self.ncomp:
                 return 1
@@ -1368,6 +1387,16 @@ cdef class _Stabiliser:
                 mark[j] = self.ntrail
                 self.relabel(t, labels[loff[t] + choice[j]])
                 if self.step(j, b, self.perm.data.as_ints):
+                    # Two placements of the level adding no entry to the maps
+                    # of values, onto the copies b1 and b2 (or twice onto
+                    # one copy), put equal values at the labels they match:
+                    # the automorphism of the copy relating their labels is
+                    # an isomorphism from b1 to b2 carrying the values, and
+                    # exchanging b1 and b2 through it sends a completion of
+                    # either placement onto one of the other.
+                    if self.ntrail == mark[j] and dead[j]:
+                        choice[j] += 1
+                        continue
                     used[b] = 1
                     placed = 1
                     break
@@ -1378,9 +1407,14 @@ cdef class _Stabiliser:
                 if j < self.ncomp:
                     target[j] = start[kind[j]]
                     choice[j] = 0
+                    dead[j] = 0
             else:
                 j -= 1
                 if j > i:
+                    # the trail is back to its length after the step of the
+                    # level j, whose subtree failed
+                    if self.ntrail == mark[j]:
+                        dead[j] = 1
                     self.undo(mark[j])
                     used[target[j]] = 0
                     choice[j] += 1
@@ -1471,6 +1505,7 @@ cdef _Stabiliser _stabiliser_state(_Map m):
     s.target = _new(s.ncomp)
     s.choice = _new(s.ncomp)
     s.mark = _new(s.ncomp)
+    s.dead = array.array('i', [0]) * s.ncomp
     s.rb = _new(largest)
     s.rbinv = _new(largest)
     s.queue = _new(largest)
@@ -1505,12 +1540,21 @@ cdef tuple _stabiliser(_Map m):
     the order of `H` is the product over the levels of the size of the
     orbit of ``b_i`` right after its level.
 
-    The search is exponential in the number of components in the worst
-    case, when many copies tie and the values of ``classes`` reject the
-    candidates only deep in the search.
+    Two placements of a level adding no entry to the bijections of values
+    are related by an element of `H` fixing the levels placed before (see
+    ``extend``): after one of them failed, the others are skipped, at the
+    levels of ``extend`` and among the candidates ``x``. On tied copies
+    whose values are all mapped after the first levels, each level then
+    descends into at most one failed subtree per entry, and the search
+    takes a time polynomial in the number of components (``k`` isolated
+    edges with one or two class values in any pattern). It stays
+    exponential in the worst case, when the placements map new values and
+    the values of ``classes`` reject them only deep in the search, as on a
+    graph on the class values given by its edges as isolated edges.
     """
     cdef _Stabiliser s = _stabiliser_state(m)
     cdef int n = m.n, i, t, b, q, h, x, y, bi, nl
+    cdef bint dead, empty, found
     cdef array.array parent = _new(n)
     cdef array.array sizes = _new(n)
     cdef array.array g
@@ -1537,6 +1581,7 @@ cdef tuple _stabiliser(_Map m):
         for b in range(i):
             used[b] = 1
             s.step(b, b, s.ident.data.as_ints)
+        dead = 0
         for b in range(max(start[t], i), start[t + 1]):
             for q in range(nl):
                 x = lab[off[b] + labels[loff[t] + q]]
@@ -1547,7 +1592,18 @@ cdef tuple _stabiliser(_Map m):
                 s.mark.data.as_ints[i] = s.ntrail
                 used[b] = 1
                 s.relabel(t, labels[loff[t] + q])
-                if s.step(i, b, s.perm.data.as_ints) and s.extend(i):
+                found = 0
+                if s.step(i, b, s.perm.data.as_ints):
+                    # as in extend: a candidate adding no entry to the maps of
+                    # values is the image of an earlier one adding none by
+                    # an element of H fixing the levels < i, so it is in the
+                    # orbit of b_i exactly when that one is
+                    empty = s.ntrail == s.mark.data.as_ints[i]
+                    if not (empty and dead):
+                        found = s.extend(i)
+                        if empty and not found:
+                            dead = 1
+                if found:
                     g = s.leaf(i)
                     gens.append(g)
                     for h in range(n):
@@ -1733,10 +1789,16 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
       tried by a depth-first search for an element of `H` sending `b_i`
       to it, which maps the following components one after the other to
       copies of their kinds. The first element found is a generator; the
-      generators come in the order found. The search is exponential in the
-      number of components in the worst case, when many components are
-      isomorphic and the values of ``classes`` reject the candidates only
-      deep in the search.
+      generators come in the order found. After a placement of a component
+      mapping no new value of ``classes`` failed, the later placements of
+      that component mapping no new value are skipped, an automorphism of
+      the copy exchanging the two images. Tied copies whose values are all
+      mapped after the first components (`k` isolated edges with one or two
+      class values in any pattern) then take a time polynomial in `k`. The
+      search stays exponential in the worst case, when the placements map
+      new values that the values of ``classes`` reject only deep in the
+      search, as on a graph on the class values given by its edges as
+      isolated edges.
 
     EXAMPLES::
 
@@ -2009,7 +2071,9 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     instead of `2^k k!` leaves. Tied roots with different numberings are
     all followed, so the search remains exponential in the worst case.
     The count goes through the search of :func:`automorphism_generators`,
-    which these cuts do not shorten.
+    which has a cut of its own: polynomial on tied copies whose values are
+    all mapped after the first components, such as isolated edges with one
+    or two class values, it stays exponential in the worst case.
 
     EXAMPLES::
 
@@ -2083,6 +2147,16 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         sage: fp = list(range(82))
         sage: c = [0] * 42 + [1] * 40
         sage: array('i', canonical_key(fp, classes=(c,))) == array('i', fp + c)
+        True
+
+    Their count `21! \cdot 2^{21} \cdot 20! \cdot 2^{20}`, by the search of
+    :func:`automorphism_generators`, whose placements of an edge mapping no
+    new value are skipped after the first that failed::
+
+        sage: count = canonical_key(fp, classes=(c,), automorphism_count=True)[1]
+        sage: count
+        273336954172212502469698893548133708673843200000000
+        sage: count == factorial(21) * 2**21 * factorial(20) * 2**20
         True
 
     A value of ``data`` outside the range of a C ``int``, and one on an

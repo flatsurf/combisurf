@@ -53,6 +53,7 @@ the roots (the keyword ``root_rule``) as well, with and without the flag
 import math
 import random
 import re
+import time
 from array import array
 
 import pytest
@@ -2039,7 +2040,10 @@ def mixed_edges_pattern(p, q, r):
     Return the classes of ``p`` isolated edges ``1, 0``, ``q`` edges ``0, 1``
     and ``r`` edges ``1, 1``, and the order of their automorphism group: the
     mixed edges permute with their orientation forced, the others permute
-    and flip freely.
+    and flip freely. The order holds for ``r >= 1``; with ``r = 0`` the flip
+    of every edge, which exchanges the two values on each, is an
+    automorphism as well (the classes are kept up to renaming their
+    values), and the group is twice as large.
     """
     count = math.factorial(p + q) * math.factorial(r) * 2**r
     return [(1, 0)] * p + [(0, 1)] * q + [(1, 1)] * r, count
@@ -2112,25 +2116,65 @@ def test_symmetric_inputs_have_automorphisms(seed):
     assert nontrivial >= total // 2
 
 
-LARGE_TIED_PATTERNS = [tied_edges_pattern(4), mixed_edges_pattern(5, 4, 2)]
+LARGE_TIED_PATTERNS = [tied_edges_pattern(4), mixed_edges_pattern(5, 4, 2), tied_edges_pattern(8),
+                       mixed_edges_pattern(6, 5, 4), mixed_edges_pattern(7, 5, 2), mixed_edges_pattern(9, 2, 7)]
+LARGE_TIED_IDS = ["tied-4", "mixed-5-4-2", "tied-8", "mixed-6-5-4", "mixed-7-5-2", "mixed-9-2-7"]
 
 
-@pytest.mark.parametrize("pattern", LARGE_TIED_PATTERNS, ids=["tied-4", "mixed-5-4-2"])
-def test_fast_tied_edges_count(pattern):
-    # too many automorphisms for the reference: the count of the key against
-    # the formula, and each generator an automorphism carrying the classes
-    # with the order of the group they generate
+def check_tied_edges_group(fp, classes, count):
+    r"""
+    Check that the generators of :func:`isomorphism_fast.automorphism_generators`
+    are automorphisms carrying the classes and generate a group of order
+    ``count``.
+    """
     from sage.all import PermutationGroup
 
-    pairs, count = pattern
-    fp, data, classes = isolated_edges_case(pairs)
-    assert isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True)[1] == count
-    gens = isomorphism_fast.automorphism_generators(fp, data, classes)
+    gens = isomorphism_fast.automorphism_generators(fp, (), classes)
     for g in gens:
         assert is_automorphism(g, fp)
         check_classes_carried(fp, classes[0], classes[0], g)
     group = PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, len(fp) + 1)))
     assert group.order() == count
+
+
+@pytest.mark.parametrize("pattern", LARGE_TIED_PATTERNS, ids=LARGE_TIED_IDS)
+def test_fast_tied_edges_count(pattern):
+    # too many automorphisms for the reference: the count of the key against
+    # the formula, and each generator an automorphism carrying the classes
+    # with the order of the group they generate
+    pairs, count = pattern
+    fp, data, classes = isolated_edges_case(pairs)
+    assert isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True)[1] == count
+    check_tied_edges_group(fp, classes, count)
+
+
+def test_fast_count_mixed_and_doubled_edges_in_time():
+    # 7 edges 10, 5 edges 01 and 2 edges 11: the 12 mixed edges permute with
+    # their orientation forced, the two 11 edges freely; exchanging the
+    # values would send 11 to 00, absent
+    fp = list(range(28))
+    classes = ([1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1],)
+    start = time.perf_counter()
+    count = isomorphism_fast.canonical_key(fp, (), classes, automorphism_count=True)[1]
+    gens = isomorphism_fast.automorphism_generators(fp, (), classes)
+    elapsed = time.perf_counter() - start
+    assert count == math.factorial(12) * math.factorial(2) * 2**2 == 3832012800
+    assert elapsed < 1.0
+    assert gens
+    check_tied_edges_group(fp, classes, count)
+
+
+@pytest.mark.parametrize("b", [8, 20])
+def test_fast_count_tied_edges_in_time(b):
+    # b + 1 edges with the classes 0, 0 beside b with 1, 1
+    pairs, count = tied_edges_pattern(b)
+    fp, data, classes = isolated_edges_case(pairs)
+    start = time.perf_counter()
+    assert isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True)[1] == count
+    isomorphism_fast.automorphism_generators(fp, data, classes)
+    assert time.perf_counter() - start < 1.0
+    if b == 8:
+        check_tied_edges_group(fp, classes, count)
 
 
 def check_search_against_uncut(fp, data, classes, root_rule):

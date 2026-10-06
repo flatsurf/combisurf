@@ -4711,8 +4711,13 @@ class OrientedMap:
         automorphisms: without ``*_classes`` the group is a product of
         wreath products over the classes of isomorphic components, and with
         ``*_classes`` its subgroup preserving the partitions they define,
-        searched by backtracking (exponential in the number of components
-        in the worst case). This holds under every ``root_rule``: on a
+        searched by backtracking. The backtracking skips the placements of
+        a component that are exchanged by an automorphism of its copy, so
+        tied copies whose values are all mapped after the first components
+        (`k` isolated edges with one or two class values) take a time
+        polynomial in `k`; it stays exponential in the worst case, as on a
+        graph on the class values given by its edges as isolated edges.
+        This holds under every ``root_rule``: on a
         disconnected map the generators do not depend on it, and the list of
         all the automorphisms (of length at least `k!` on `k` isomorphic
         components) is never computed.
