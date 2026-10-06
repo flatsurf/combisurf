@@ -6,6 +6,7 @@ authors = [
   {name = "Vincent Delecroix"},
 ]
 dependencies = [
+  "cysignals",
 ]
 description = "Cell decomposition of surfaces in Python"
 requires-python = ">= 3.9"
@@ -70,7 +71,7 @@ dev = ["dev", "lint", "doc", "sagemath-109"]
 # TASKS #
 #########
 [tool.pixi.tasks.build]
-cmd = "pip install --ignore-installed --no-build-isolation -ve ."
+cmd = "pip install --ignore-installed --no-deps --no-build-isolation -ve ."
 inputs = [
     "pyproject.toml",
     "combisurf/misc.pxd",
