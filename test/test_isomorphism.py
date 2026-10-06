@@ -10,12 +10,9 @@ expected values are copied from their doctests, whose location is given
 next to each test.
 
 The functionality under test is reached only through the adapter functions
-below. Subspaces are supported through the keyword ``key``; they raise
-``NotImplementedError`` for what combisurf does not offer yet (tuples of
-permutations), and the tests that need it are expected to fail with that
-exception. Disconnected maps are supported,
-among them the cylinder diagrams whose components are joined only by the
-pairing of their cylinders.
+below. Subspaces are supported through the keyword ``key``. Disconnected
+maps are supported, among them the cylinder diagrams whose components are
+joined only by the pairing of their cylinders.
 
 Regular maps of ``S_5`` and ``PSL(2, 7)`` (built with Sage groups) and
 origamis as maps (decorated by ``h % 4``) give automorphism counts that
@@ -64,8 +61,6 @@ from explorations import (BLUE, RED, combisurf_key, explore, flip_neighbours,
                           origami_face_permutation, origami_i, origami_l,
                           parse_colours, reduced_core_neighbours,
                           reduced_core_seed)
-
-NOT_IMPLEMENTED = pytest.mark.xfail(raises=NotImplementedError, strict=True)
 
 # the rules of the roots, by their names in OrientedMap and their integers
 # in the modules isomorphism and isomorphism_naive
@@ -196,15 +191,6 @@ def canonical_form(m, root_rule="all", **decorations):
     The decorations are as in :func:`automorphism_count`.
     """
     return m.canonical_form(root_rule=root_rule, **decoration_keywords(**decorations))
-
-
-def tuple_automorphism_count(perms):
-    r"""
-    Return the number of permutations that commute with every permutation
-    of ``perms`` (a list of permutations of ``{0, ..., n-1}`` given as
-    lists), for tuples of permutations without an involution.
-    """
-    raise NotImplementedError
 
 
 # Encodings
@@ -390,40 +376,40 @@ def carry_decorations(r, sigma, decorations):
     return carried
 
 
-# Data of the oracles
+# Maps and decorations with known answers
 
-O1 = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
-O2 = "(0,8,~7)(1,9,~0)(2,10,~1)(3,11,~2)(4,12,~3)(5,13,~4)(6,14,~5)(7,15,~6)"
-O3 = "(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)"
-O4 = "(0,3,7,~6,~2,1)(2,5,~4,~3,~1,~0)(4,8,~5)(6,~8,~7)"
-O5_EDGE_DATA = [2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1]  # "BRBBBRRBBBBR", R=1, B=2
-O6 = "(0,1,2)(~0)(~1)(~2)"
-O7 = "(0,1,2)(~0,~1,~2)"
-O9_SUBSPACE = [(2, 0, 0, 0, 1, 0, 1, 0, 2),
+TRIANGULATION_12_EDGES = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
+FOLDED_TRIANGULATION_16_EDGES = "(0,8,~7)(1,9,~0)(2,10,~1)(3,11,~2)(4,12,~3)(5,13,~4)(6,14,~5)(7,15,~6)"
+DISCONNECTED_FOLDED_9_EDGES = "(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)"
+TRIANGULATION_9_EDGES = "(0,3,7,~6,~2,1)(2,5,~4,~3,~1,~0)(4,8,~5)(6,~8,~7)"
+TRIANGULATION_12_EDGES_COLOURS = [2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1]  # "BRBBBRRBBBBR", R=1, B=2
+TRIANGLE_WITH_MONOGONS = "(0,1,2)(~0)(~1)(~2)"
+TWO_TRIANGLES = "(0,1,2)(~0,~1,~2)"
+TRIANGULATION_9_EDGES_SUBSPACE = [(2, 0, 0, 0, 1, 0, 1, 0, 2),
                (0, 2, 0, 0, 0, 1, 0, 1, 2),
                (0, 0, 1, 1, 0, 0, 0, 0, 2)]
 
 UNICELLULAR = {
-    'O10': [0, 1, 0, 1, 2, 3, 2, 3],
-    'O11': [0, 1, 0, 2, 1, 3, 2, 3],
-    'O12': [0, 1, 0, 2, 3, 1, 2, 3],
-    'O13': [0, 1, 2, 3, 0, 1, 2, 3],
-    'O14': [0, 1, 2, 3, 0, 4, 1, 2, 3, 4],
+    '01012323': [0, 1, 0, 1, 2, 3, 2, 3],
+    '01021323': [0, 1, 0, 2, 1, 3, 2, 3],
+    '01023123': [0, 1, 0, 2, 3, 1, 2, 3],
+    '01230123': [0, 1, 2, 3, 0, 1, 2, 3],
+    '0123041234': [0, 1, 2, 3, 0, 4, 1, 2, 3, 4],
 }
 
 DARTS = {
-    'O15': ('(0,9,6,5,7,4,8,2,1,3)', '(0,2,1,3,8)(4,6,5,7,9)'),
-    'O16': ('(0,5,4)(1,2,3)', '(0,3,1,4)(2)(5)'),
-    'O17': ('(0,4,3)(5,2,1)', '(0,2,4,1,3,5)'),
-    'O18': ('(0,2,1,3)', '(0,2,1,3)'),
-    'O19': ('(0,8,6,4,3,7)(1,9,11,5,2,10)', '(0,10,9)(2,4,11)(1,7,8)(3,5,6)'),
+    'five-edges': ('(0,9,6,5,7,4,8,2,1,3)', '(0,2,1,3,8)(4,6,5,7,9)'),
+    'three-edges-a': ('(0,5,4)(1,2,3)', '(0,3,1,4)(2)(5)'),
+    'three-edges-b': ('(0,4,3)(5,2,1)', '(0,2,4,1,3,5)'),
+    'two-edges': ('(0,2,1,3)', '(0,2,1,3)'),
+    'six-edges': ('(0,8,6,4,3,7)(1,9,11,5,2,10)', '(0,10,9)(2,4,11)(1,7,8)(3,5,6)'),
 }
 
 # the triangulation with boundary of veerer/linear_family.py:745-747 as
 # veerer stores it (_fp, _half_edges_data, _edges_data, _subspace)
-O20_FP = [2, 3, 4, 6, 0, 13, 1, 12, 24, 14, 5, 7, 18, 16, 9, 20, 10, 26, 11,
+BOUNDARY_TRIANGULATION_FP = [2, 3, 4, 6, 0, 13, 1, 12, 24, 14, 5, 7, 18, 16, 9, 20, 10, 26, 11,
           27, 22, 23, 15, 25, 8, 21, 28, 29, 17, 19]
-O20_DATA = {
+BOUNDARY_TRIANGULATION_DATA = {
     'half_edge_data': [0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0,
                        1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
     'edge_data': [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 2],
@@ -432,34 +418,34 @@ O20_DATA = {
                       (0, 0, 0, 0, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0)],
 }
 
-O21 = "(0,2,3,1,5,6)(~0,~5,7,~8,~2,~6)(~1,4,~3)(~4,~7,8)"
-O21_SUBSPACE = [(2, 1, 0, 0, 2, 0, 0, 0, 1),
+MIXED_FACES_9_EDGES = "(0,2,3,1,5,6)(~0,~5,7,~8,~2,~6)(~1,4,~3)(~4,~7,8)"
+MIXED_FACES_9_EDGES_SUBSPACE = [(2, 1, 0, 0, 2, 0, 0, 0, 1),
                 (0, 0, 1, 0, 2, 1, 0, 0, 0),
                 (0, 0, 0, 1, 2, 0, 2, 1, 0)]
 
-CD_I3_A = '(0,2,1)-(3,4,5) (3)-(1) (4)-(2) (5)-(0)'
-CD_I3_B = '(0,2,1)-(3,5,4) (3)-(1) (4)-(2) (5)-(0)'
-CD_I4_B = '(1,3,5)-(2,4,0) (2)-(5) (4)-(3) (0)-(1)'
-CD_I5_B = '(4,2,3)-(1,5,0) (1)-(3) (0)-(2) (5)-(4)'
-CD_I6_A = '(0,5)-(3,4) (1,4)-(2,5) (2)-(0) (3)-(1)'
-CD_I6_B = '(0,5)-(3,4) (1,4)-(2,5) (2)-(1) (3)-(0)'
-CD_I7 = ['(0,1)-(4,5) (2,4)-(0,3) (3,5)-(1,2)',
+CD_3111_A = '(0,2,1)-(3,4,5) (3)-(1) (4)-(2) (5)-(0)'
+CD_3111_B = '(0,2,1)-(3,5,4) (3)-(1) (4)-(2) (5)-(0)'
+CD_3111_C = '(1,3,5)-(2,4,0) (2)-(5) (4)-(3) (0)-(1)'
+CD_3111_D = '(4,2,3)-(1,5,0) (1)-(3) (0)-(2) (5)-(4)'
+CD_2211_A = '(0,5)-(3,4) (1,4)-(2,5) (2)-(0) (3)-(1)'
+CD_2211_B = '(0,5)-(3,4) (1,4)-(2,5) (2)-(1) (3)-(0)'
+CD_THREE_CYLINDERS = ['(0,1)-(4,5) (2,4)-(0,3) (3,5)-(1,2)',
          '(0,1)-(2,3) (2,4)-(1,4) (3,5)-(0,5)',
          '(0,5)-(2,5) (1,4)-(0,4) (2,3)-(1,3)']
-CD_I8 = '(0,1)-(0,2) (2,3)-(1,3)'
+CD_TWO_CYLINDERS = '(0,1)-(0,2) (2,3)-(1,3)'
 
 
 # Tests of the encodings
 
 @pytest.mark.parametrize("fp, half_edges, edges, folded, connected", [
-    (O1, 24, 12, 0, True),
-    (O2, 24, 16, 8, True),
-    (O3, 12, 9, 6, False),
-    (O4, 18, 9, 0, True),
-    (O6, 6, 3, 0, True),
-    (O7, 6, 3, 0, True),
-    (O21, 18, 9, 0, True),
-], ids=["O1", "O2", "O3", "O4", "O6", "O7", "O21"])
+    (TRIANGULATION_12_EDGES, 24, 12, 0, True),
+    (FOLDED_TRIANGULATION_16_EDGES, 24, 16, 8, True),
+    (DISCONNECTED_FOLDED_9_EDGES, 12, 9, 6, False),
+    (TRIANGULATION_9_EDGES, 18, 9, 0, True),
+    (TRIANGLE_WITH_MONOGONS, 6, 3, 0, True),
+    (TWO_TRIANGLES, 6, 3, 0, True),
+    (MIXED_FACES_9_EDGES, 18, 9, 0, True),
+], ids=["triangulation-12", "folded-triangulation", "disconnected-folded", "triangulation-9", "triangle-monogons", "two-triangles", "mixed-faces-subspace"])
 def test_map_from_fp(fp, half_edges, edges, folded, connected):
     m = map_from_fp(fp)
     assert m.num_half_edges() == half_edges
@@ -468,18 +454,18 @@ def test_map_from_fp(fp, half_edges, edges, folded, connected):
     assert m.is_connected() == connected
 
 
-def test_map_from_fp_list_O20():
-    m = OrientedMap(fp=O20_FP)
+def test_map_from_fp_list_boundary_triangulation():
+    m = OrientedMap(fp=BOUNDARY_TRIANGULATION_FP)
     assert m.num_half_edges() == 30
     assert m.num_edges() == 15
     assert not m.is_connected()
-    assert len(O20_DATA['half_edge_data']) == 30
-    assert len(O20_DATA['edge_data']) == 15
-    assert all(len(row) == 15 for row in O20_DATA['edge_subspace'])
+    assert len(BOUNDARY_TRIANGULATION_DATA['half_edge_data']) == 30
+    assert len(BOUNDARY_TRIANGULATION_DATA['edge_data']) == 15
+    assert all(len(row) == 15 for row in BOUNDARY_TRIANGULATION_DATA['edge_subspace'])
 
 
 @pytest.mark.parametrize("name, half_edges", [
-    ("O10", 8), ("O11", 8), ("O12", 8), ("O13", 8), ("O14", 10)])
+    ("01012323", 8), ("01021323", 8), ("01023123", 8), ("01230123", 8), ("0123041234", 10)])
 def test_map_from_unicellular_word(name, half_edges):
     w = UNICELLULAR[name]
     m = map_from_unicellular_word(w)
@@ -503,7 +489,7 @@ def test_map_from_unicellular_word_invalid():
 
 
 @pytest.mark.parametrize("name, half_edges", [
-    ("O15", 10), ("O16", 6), ("O17", 6), ("O18", 4), ("O19", 12)])
+    ("five-edges", 10), ("three-edges-a", 6), ("three-edges-b", 6), ("two-edges", 4), ("six-edges", 12)])
 def test_map_from_darts(name, half_edges):
     vp, fp = DARTS[name]
     m = map_from_darts(vp, fp)
@@ -521,20 +507,20 @@ def test_darts_perm():
 
 
 @pytest.mark.parametrize("s, vertices, faces, connected", [
-    (CD_I3_A, 2, 8, False),
-    (CD_I3_B, 2, 8, False),
-    (CD_I4_B, 2, 8, False),
-    (CD_I5_B, 2, 8, False),
-    (CD_I6_A, 2, 8, False),
-    (CD_I6_B, 2, 8, False),
-    (CD_I7[0], 2, 6, True),
-    (CD_I7[1], 2, 6, True),
-    (CD_I7[2], 2, 6, True),
-    (CD_I8, 2, 4, True),
-], ids=["I3a", "I3b", "I4b", "I5b", "I6a", "I6b", "I7a", "I7b", "I7c", "I8"])
+    (CD_3111_A, 2, 8, False),
+    (CD_3111_B, 2, 8, False),
+    (CD_3111_C, 2, 8, False),
+    (CD_3111_D, 2, 8, False),
+    (CD_2211_A, 2, 8, False),
+    (CD_2211_B, 2, 8, False),
+    (CD_THREE_CYLINDERS[0], 2, 6, True),
+    (CD_THREE_CYLINDERS[1], 2, 6, True),
+    (CD_THREE_CYLINDERS[2], 2, 6, True),
+    (CD_TWO_CYLINDERS, 2, 4, True),
+], ids=["3111-a", "3111-b", "3111-c", "3111-d", "2211-a", "2211-b", "three-a", "three-b", "three-c", "two"])
 def test_cylinder_diagram(s, vertices, faces, connected):
     m, colour, cylinder = cylinder_diagram(s)
-    assert m.num_half_edges() == (8 if s == CD_I8 else 12)
+    assert m.num_half_edges() == (8 if s == CD_TWO_CYLINDERS else 12)
     assert m.num_folded_edges() == 0
     assert m.num_vertices() == vertices
     assert m.num_faces() == faces
@@ -556,7 +542,7 @@ def test_separatrix_to_half_edge():
 
 def test_random_relabelling():
     rng = random.Random(0)
-    for fp in (O1, O3):
+    for fp in (TRIANGULATION_12_EDGES, DISCONNECTED_FOLDED_9_EDGES):
         m = map_from_fp(fp)
         r, sigma = random_relabelling(m, rng)
         mm = relabel_map(m, r)
@@ -569,24 +555,24 @@ def test_random_relabelling():
 # Automorphism counts, undecorated maps
 
 @pytest.mark.parametrize("build, expected", [
-    (lambda: map_from_fp(O1), 4),   # veerer/constellation.py:1769-1773
-    (lambda: map_from_fp(O2), 8),   # veerer/constellation.py:1777-1779
+    (lambda: map_from_fp(TRIANGULATION_12_EDGES), 4),   # veerer/constellation.py:1769-1773
+    (lambda: map_from_fp(FOLDED_TRIANGULATION_16_EDGES), 8),   # veerer/constellation.py:1777-1779
     # veerer/constellation.py:1813-1815, disconnected
-    (lambda: map_from_fp(O3), 36),
-    (lambda: map_from_fp(O4), 2),   # veerer/constellation.py:1805-1807
+    (lambda: map_from_fp(DISCONNECTED_FOLDED_9_EDGES), 36),
+    (lambda: map_from_fp(TRIANGULATION_9_EDGES), 2),   # veerer/constellation.py:1805-1807
     # surface-dynamics/fat_graph.py:2968-2982
-    (lambda: map_from_unicellular_word(UNICELLULAR['O10']), 2),
-    (lambda: map_from_unicellular_word(UNICELLULAR['O11']), 1),
-    (lambda: map_from_unicellular_word(UNICELLULAR['O12']), 1),
-    (lambda: map_from_unicellular_word(UNICELLULAR['O13']), 8),
+    (lambda: map_from_unicellular_word(UNICELLULAR['01012323']), 2),
+    (lambda: map_from_unicellular_word(UNICELLULAR['01021323']), 1),
+    (lambda: map_from_unicellular_word(UNICELLULAR['01023123']), 1),
+    (lambda: map_from_unicellular_word(UNICELLULAR['01230123']), 8),
     # surface-dynamics/fat_graph.py:2987-2989
-    (lambda: map_from_unicellular_word(UNICELLULAR['O14']), 2),
-    (lambda: map_from_darts(*DARTS['O16']), 2),  # surface-dynamics/fat_graph.py:3001-3005
-    (lambda: map_from_darts(*DARTS['O17']), 6),  # surface-dynamics/fat_graph.py:3006-3011
-    (lambda: map_from_darts(*DARTS['O18']), 4),  # surface-dynamics/fat_graph.py:3013-3015
-    (lambda: map_from_darts(*DARTS['O19']), 4),  # surface-dynamics/fat_graph.py:2868-2880
-], ids=["O1", "O2", "O3", "O4", "O10", "O11", "O12", "O13", "O14", "O16",
-        "O17", "O18", "O19"])
+    (lambda: map_from_unicellular_word(UNICELLULAR['0123041234']), 2),
+    (lambda: map_from_darts(*DARTS['three-edges-a']), 2),  # surface-dynamics/fat_graph.py:3001-3005
+    (lambda: map_from_darts(*DARTS['three-edges-b']), 6),  # surface-dynamics/fat_graph.py:3006-3011
+    (lambda: map_from_darts(*DARTS['two-edges']), 4),  # surface-dynamics/fat_graph.py:3013-3015
+    (lambda: map_from_darts(*DARTS['six-edges']), 4),  # surface-dynamics/fat_graph.py:2868-2880
+], ids=["triangulation-12", "folded-triangulation", "disconnected-folded", "triangulation-9", "01012323", "01021323", "01023123", "01230123", "0123041234", "three-edges-a",
+        "three-edges-b", "two-edges", "six-edges"])
 def test_automorphism_count(build, expected):
     assert automorphism_count(build()) == expected
 
@@ -657,7 +643,7 @@ def regular_map_PSL27():
 @pytest.mark.parametrize("build, expected", [
     (regular_map_S5, 120),      # the order of S_5
     (regular_map_PSL27, 168),   # the order of PSL(2, 7)
-], ids=["O22", "O23"])
+], ids=["regular-S5", "regular-PSL27"])
 def test_automorphism_count_regular_map(build, expected):
     # the left multiplication by the group is a family of automorphisms
     # that is regular on the half-edges
@@ -669,7 +655,7 @@ def test_automorphism_count_regular_map(build, expected):
     assert sorted(g[h0] for g in automorphisms) == sorted(m.half_edges())
 
 
-@pytest.mark.parametrize("build", [regular_map_S5, regular_map_PSL27], ids=["O22", "O23"])
+@pytest.mark.parametrize("build", [regular_map_S5, regular_map_PSL27], ids=["regular-S5", "regular-PSL27"])
 def test_fast_generators_regular_map(build):
     fp = list(build().face_permutation())
     fast = isomorphism_fast.automorphism_generators(fp)
@@ -706,9 +692,9 @@ def face_indices(m):
 
 
 @pytest.mark.parametrize("name, expected", [
-    ("O16", 1),  # surface-dynamics/fat_graph.py:3001-3005
-    ("O17", 6),  # surface-dynamics/fat_graph.py:3006-3011
-], ids=["O16", "O17"])
+    ("three-edges-a", 1),  # surface-dynamics/fat_graph.py:3001-3005
+    ("three-edges-b", 6),  # surface-dynamics/fat_graph.py:3006-3011
+], ids=["three-edges-a", "three-edges-b"])
 def test_automorphism_count_faces_fixed(name, expected):
     m = map_from_darts(*DARTS[name])
     assert automorphism_count(m, face_data=face_indices(m)) == expected
@@ -716,16 +702,16 @@ def test_automorphism_count_faces_fixed(name, expected):
 
 # Automorphism groups
 
-def test_automorphism_group_O15():
+def test_automorphism_group_five_edges():
     # surface-dynamics/fat_graph.py:2993-2997
-    m = map_from_darts(*DARTS['O15'])
+    m = map_from_darts(*DARTS['five-edges'])
     g = darts_perm('(0,4)(1,5)(2,6)(3,7)(8,9)', 10)
     assert automorphism_group_generated(m, [g])
 
 
-def test_automorphism_group_I8():
+def test_automorphism_group_two_cylinders():
     # surface-dynamics/separatrix_diagram.py:3058-3062
-    m, colour, cylinder = cylinder_diagram(CD_I8)
+    m, colour, cylinder = cylinder_diagram(CD_TWO_CYLINDERS)
     g = separatrix_to_half_edge([3, 2, 1, 0])
     assert automorphism_group_generated(m, [g], face_data=colour,
                                         face_classes=cylinder)
@@ -735,20 +721,20 @@ def test_automorphism_group_I8():
 
 @pytest.mark.parametrize("build, decorations, expected", [
     # veerer/constellation.py:1782-1788
-    (lambda: map_from_fp(O1), {'edge_data': O5_EDGE_DATA}, 4),
+    (lambda: map_from_fp(TRIANGULATION_12_EDGES), {'edge_data': TRIANGULATION_12_EDGES_COLOURS}, 4),
     # veerer/constellation.py:1792-1794
-    (lambda: map_from_fp(O6), {'half_edge_data': [0, 1, 0, 1, 0, 1]}, 3),
+    (lambda: map_from_fp(TRIANGLE_WITH_MONOGONS), {'half_edge_data': [0, 1, 0, 1, 0, 1]}, 3),
     # veerer/constellation.py:1795-1797
-    (lambda: map_from_fp(O7), {'half_edge_data': [0, 1, 0, 1, 0, 1]}, 3),
+    (lambda: map_from_fp(TWO_TRIANGLES), {'half_edge_data': [0, 1, 0, 1, 0, 1]}, 3),
     # veerer/constellation.py:1798-1800
-    (lambda: map_from_fp(O7), {'half_edge_data': [0, 1, 0, 1, 0, 2]}, 1),
+    (lambda: map_from_fp(TWO_TRIANGLES), {'half_edge_data': [0, 1, 0, 1, 0, 2]}, 1),
     # veerer/constellation.py:1805-1809
-    (lambda: map_from_fp(O4), {'edge_subspace': O9_SUBSPACE}, 2),
+    (lambda: map_from_fp(TRIANGULATION_9_EDGES), {'edge_subspace': TRIANGULATION_9_EDGES_SUBSPACE}, 2),
     # veerer/linear_family.py:745-747, over the disconnected map
-    (lambda: OrientedMap(fp=O20_FP), O20_DATA, 8),
+    (lambda: OrientedMap(fp=BOUNDARY_TRIANGULATION_FP), BOUNDARY_TRIANGULATION_DATA, 8),
     # veerer/linear_family.py:749-751
-    (lambda: map_from_fp(O21), {'edge_subspace': O21_SUBSPACE}, 2),
-], ids=["O5", "O6", "O7", "O8", "O9", "O20", "O21"])
+    (lambda: map_from_fp(MIXED_FACES_9_EDGES), {'edge_subspace': MIXED_FACES_9_EDGES_SUBSPACE}, 2),
+], ids=["triangulation-12-colours", "triangle-monogons", "two-triangles", "two-triangles-distinct", "triangulation-9-subspace", "boundary-triangulation", "mixed-faces-subspace"])
 def test_automorphism_count_decorated(build, decorations, expected):
     assert automorphism_count(build(), **decorations) == expected
 
@@ -773,7 +759,7 @@ def origami_map(r, u):
     ([1, 0, 3, 2], [0, 2, 1, 3], 4, 2),
     ([1, 2, 3, 4, 5, 0], [0, 1, 2, 3, 4, 5], None, 6),
     ([1, 2, 0, 4, 5, 3], [3, 4, 5, 1, 2, 0], None, 6),
-], ids=["O24", "O25", "O26-cylinder", "O26-sheared"])
+], ids=["origami-3", "origami-4", "torus-cylinder", "torus-sheared"])
 def test_automorphism_count_origami(r, u, undecorated, decorated):
     m, d = origami_map(r, u)
     assert automorphism_count(m, half_edge_data=d) == decorated
@@ -789,23 +775,23 @@ def half_edge_array_of_edges(m, values):
 
 
 BRUTE_FORCE_CASES = [
-    (lambda: map_from_fp(O1), {}),
-    (lambda: map_from_fp(O2), {}),
-    (lambda: map_from_fp(O3), {}),
-    (lambda: map_from_fp(O4), {}),
-    (lambda: map_from_unicellular_word(UNICELLULAR['O10']), {}),
-    (lambda: map_from_unicellular_word(UNICELLULAR['O11']), {}),
-    (lambda: map_from_unicellular_word(UNICELLULAR['O12']), {}),
-    (lambda: map_from_unicellular_word(UNICELLULAR['O13']), {}),
-    (lambda: map_from_unicellular_word(UNICELLULAR['O14']), {}),
-    (lambda: map_from_darts(*DARTS['O16']), {}),
-    (lambda: map_from_darts(*DARTS['O17']), {}),
-    (lambda: map_from_darts(*DARTS['O18']), {}),
-    (lambda: map_from_darts(*DARTS['O19']), {}),
-    (lambda: map_from_fp(O1), {'edge_data': O5_EDGE_DATA}),
-    (lambda: map_from_fp(O6), {'half_edge_data': [0, 1, 0, 1, 0, 1]}),
-    (lambda: map_from_fp(O7), {'half_edge_data': [0, 1, 0, 1, 0, 1]}),
-    (lambda: map_from_fp(O7), {'half_edge_data': [0, 1, 0, 1, 0, 2]}),
+    (lambda: map_from_fp(TRIANGULATION_12_EDGES), {}),
+    (lambda: map_from_fp(FOLDED_TRIANGULATION_16_EDGES), {}),
+    (lambda: map_from_fp(DISCONNECTED_FOLDED_9_EDGES), {}),
+    (lambda: map_from_fp(TRIANGULATION_9_EDGES), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['01012323']), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['01021323']), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['01023123']), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['01230123']), {}),
+    (lambda: map_from_unicellular_word(UNICELLULAR['0123041234']), {}),
+    (lambda: map_from_darts(*DARTS['three-edges-a']), {}),
+    (lambda: map_from_darts(*DARTS['three-edges-b']), {}),
+    (lambda: map_from_darts(*DARTS['two-edges']), {}),
+    (lambda: map_from_darts(*DARTS['six-edges']), {}),
+    (lambda: map_from_fp(TRIANGULATION_12_EDGES), {'edge_data': TRIANGULATION_12_EDGES_COLOURS}),
+    (lambda: map_from_fp(TRIANGLE_WITH_MONOGONS), {'half_edge_data': [0, 1, 0, 1, 0, 1]}),
+    (lambda: map_from_fp(TWO_TRIANGLES), {'half_edge_data': [0, 1, 0, 1, 0, 1]}),
+    (lambda: map_from_fp(TWO_TRIANGLES), {'half_edge_data': [0, 1, 0, 1, 0, 2]}),
     (regular_map_S5, {}),
     (regular_map_PSL27, {}),
     (lambda: origami_map([1, 0, 2], [2, 1, 0])[0], {}),
@@ -900,27 +886,27 @@ def check_isomorphism(a, b, expected, colours=None, cylinders=None, root_rule="a
 @pytest.mark.parametrize("fa, fb, expected", [
     ("(0,1,2)(~0,~2,~1)", "(0,2,1)(~0,~1,~2)", True),   # veerer/constellation.py:2165-2169
     ("(0,1,2)(~0,~2,~1)", "(0,1,2)(~0,~1,~2)", False),  # veerer/constellation.py:2167-2171
-], ids=["I1", "I2"])
+], ids=["isomorphic", "not-isomorphic"])
 def test_isomorphism_fp(fa, fb, expected):
     check_isomorphism(map_from_fp(fa), map_from_fp(fb), expected)
 
 
 @WITH_ROOT_RULE_NAMES
 @pytest.mark.parametrize("sa, sb, expected", [
-    # the maps of I3-I6 are disconnected, their components tied together
-    # by the cylinders (face classes)
+    # the maps of the first four cases are disconnected, their components
+    # tied together by the cylinders (face classes)
     # surface-dynamics/separatrix_diagram.py:2376-2379
-    (CD_I3_A, CD_I3_B, False),
+    (CD_3111_A, CD_3111_B, False),
     # surface-dynamics/separatrix_diagram.py:2381-2385
-    (CD_I3_A, CD_I4_B, True),
+    (CD_3111_A, CD_3111_C, True),
     # surface-dynamics/separatrix_diagram.py:2387-2391
-    (CD_I3_B, CD_I5_B, True),
+    (CD_3111_B, CD_3111_D, True),
     # surface-dynamics/separatrix_diagram.py:2393-2396
-    (CD_I6_A, CD_I6_B, False),
-    (CD_I7[0], CD_I7[1], False),  # surface-dynamics/separatrix_diagram.py:2398-2406
-    (CD_I7[0], CD_I7[2], False),
-    (CD_I7[1], CD_I7[2], False),
-], ids=["I3", "I4", "I5", "I6", "I7ab", "I7ac", "I7bc"])
+    (CD_2211_A, CD_2211_B, False),
+    (CD_THREE_CYLINDERS[0], CD_THREE_CYLINDERS[1], False),  # surface-dynamics/separatrix_diagram.py:2398-2406
+    (CD_THREE_CYLINDERS[0], CD_THREE_CYLINDERS[2], False),
+    (CD_THREE_CYLINDERS[1], CD_THREE_CYLINDERS[2], False),
+], ids=["3111-a-b", "3111-a-c", "3111-b-d", "2211-a-b", "three-a-b", "three-a-c", "three-b-c"])
 def test_isomorphism_cylinder_diagram(sa, sb, expected, root_rule):
     a, colour_a, cylinder_a = cylinder_diagram(sa)
     b, colour_b, cylinder_b = cylinder_diagram(sb)
@@ -928,7 +914,7 @@ def test_isomorphism_cylinder_diagram(sa, sb, expected, root_rule):
                       cylinders=(cylinder_a, cylinder_b), root_rule=root_rule)
 
 
-@pytest.mark.parametrize("s", CD_I7 + [CD_I8], ids=["I7a", "I7b", "I7c", "I8"])
+@pytest.mark.parametrize("s", CD_THREE_CYLINDERS + [CD_TWO_CYLINDERS], ids=["three-a", "three-b", "three-c", "two"])
 def test_isomorphism_cylinder_diagram_relabelled(s):
     # a cylinder diagram is isomorphic to its relabellings, with the
     # cylinders renumbered
@@ -949,13 +935,13 @@ def test_isomorphism_cylinder_diagram_relabelled(s):
 # iso_sig doctests of veerer/constellation.py:2075-2133
 
 @pytest.mark.parametrize("build, decorations", [
-    (lambda: map_from_fp(O1), {}),
-    (lambda: map_from_fp(O2), {}),
-    (lambda: map_from_fp(O3), {}),
-    (lambda: map_from_fp(O4), {}),
-    (lambda: map_from_fp(O1), {'edge_data': O5_EDGE_DATA}),
-    (lambda: OrientedMap(fp=O20_FP), O20_DATA),
-], ids=["O1", "O2", "O3", "O4", "O5", "O20"])
+    (lambda: map_from_fp(TRIANGULATION_12_EDGES), {}),
+    (lambda: map_from_fp(FOLDED_TRIANGULATION_16_EDGES), {}),
+    (lambda: map_from_fp(DISCONNECTED_FOLDED_9_EDGES), {}),
+    (lambda: map_from_fp(TRIANGULATION_9_EDGES), {}),
+    (lambda: map_from_fp(TRIANGULATION_12_EDGES), {'edge_data': TRIANGULATION_12_EDGES_COLOURS}),
+    (lambda: OrientedMap(fp=BOUNDARY_TRIANGULATION_FP), BOUNDARY_TRIANGULATION_DATA),
+], ids=["triangulation-12", "folded-triangulation", "disconnected-folded", "triangulation-9", "triangulation-12-colours", "boundary-triangulation"])
 def test_canonical_form_invariance(build, decorations):
     m = build()
     c = canonical_form(m, **decorations)
@@ -968,11 +954,12 @@ def test_canonical_form_invariance(build, decorations):
 
 @pytest.mark.parametrize("root_rule", ROOT_RULE_NAMES[1:])
 def test_canonical_form_invariance_root_rule(root_rule):
-    # O1-O5 under the other rules; O3 has folded edges and two non-folded
+    # the undecorated maps and the coloured triangulation under the other
+    # rules; DISCONNECTED_FOLDED_9_EDGES has folded edges and two non-folded
     # edges whose invariants differ, so that the classes differ by rule
-    for build, decorations in [(lambda: map_from_fp(O1), {}), (lambda: map_from_fp(O2), {}),
-                               (lambda: map_from_fp(O3), {}), (lambda: map_from_fp(O4), {}),
-                               (lambda: map_from_fp(O1), {'edge_data': O5_EDGE_DATA})]:
+    for build, decorations in [(lambda: map_from_fp(TRIANGULATION_12_EDGES), {}), (lambda: map_from_fp(FOLDED_TRIANGULATION_16_EDGES), {}),
+                               (lambda: map_from_fp(DISCONNECTED_FOLDED_9_EDGES), {}), (lambda: map_from_fp(TRIANGULATION_9_EDGES), {}),
+                               (lambda: map_from_fp(TRIANGULATION_12_EDGES), {'edge_data': TRIANGULATION_12_EDGES_COLOURS})]:
         m = build()
         c = canonical_form(m, root_rule=root_rule, **decorations)
         rng = random.Random(0)
@@ -980,20 +967,8 @@ def test_canonical_form_invariance_root_rule(root_rule):
             r, sigma = random_relabelling(m, rng)
             mm = relabel_map(m, r)
             assert canonical_form(mm, root_rule=root_rule, **carry_decorations(r, sigma, decorations)) == c
-    m = map_from_fp(O3)
+    m = map_from_fp(DISCONNECTED_FOLDED_9_EDGES)
     assert m.is_isomorphic(relabel_map(m, random_relabelling(m, random.Random(1))[0]), root_rule=root_rule)
-
-
-# Tuples of permutations: surface-dynamics origami_dense.pyx:2838-2850,
-# Origami('(1,2)','(1,3)') and Origami('(1,2)(3,4)','(2,3)'), 0-based here
-
-@NOT_IMPLEMENTED
-@pytest.mark.parametrize("perms, expected", [
-    ([[1, 0, 2], [2, 1, 0]], 1),
-    ([[1, 0, 3, 2], [0, 2, 1, 3]], 2),
-], ids=["origami-3", "origami-4"])
-def test_tuple_automorphism_count(perms, expected):
-    assert tuple_automorphism_count(perms) == expected
 
 
 # Sizes of collections up to isomorphism, explored by local mutations
@@ -1016,7 +991,7 @@ def test_explore_reduced_core_automaton():
     assert count == 234
 
 
-def test_explore_gl2z_orbit_O31():
+def test_explore_gl2z_orbit_50_squares():
     # surface-dynamics automata.py, gl2z_orbit_small: the orbit of
     # Origami("(1,2,...,49)", "(1,50)") has 32400 states; each state has two
     # images, hence 2 * 32400 + 1 keys computed
@@ -1107,16 +1082,21 @@ def is_connected_fp(fp):
     return k == 2 * ne
 
 
-def random_fp(rng, ne, folded_probability):
+def random_fp(rng, ne, folded_probability, odd_folded=False):
     r"""
     Return a random face permutation with ``ne`` edges, each folded with
-    probability ``folded_probability``.
+    probability ``folded_probability``. The active half of a folded edge is
+    its even half, or either of its two halves with ``odd_folded``: the
+    modules :mod:`combisurf.isomorphism` and
+    :mod:`combisurf.isomorphism_naive` accept both, whereas
+    :class:`OrientedMap` requires the even half.
     """
     active = []
     for e in range(ne):
-        active.append(2 * e)
         if rng.random() >= folded_probability:
-            active.append(2 * e + 1)
+            active.extend((2 * e, 2 * e + 1))
+        else:
+            active.append(2 * e + (rng.randrange(2) if odd_folded else 0))
     images = active[:]
     rng.shuffle(images)
     fp = [-1] * (2 * ne)
@@ -1154,29 +1134,29 @@ def insert_gap(fp, g):
     return new
 
 
-def random_connected_fp(rng, max_half_edges=40):
+def random_connected_fp(rng, max_half_edges=40, odd_folded=False):
     r"""
     Return a random connected face permutation of at most
-    ``max_half_edges`` half-edge labels, sometimes with folded edges,
-    sometimes a cyclic cover (with automorphisms), sometimes with a label
-    gap that is not the last edge.
+    ``max_half_edges`` half-edge labels, sometimes with folded edges (see
+    :func:`random_fp` for ``odd_folded``), sometimes a cyclic cover (with
+    automorphisms), sometimes with a label gap that is not the last edge.
     """
     for _ in range(MAX_ATTEMPTS):
         k = rng.choice([1, 1, 2, 3, 4])
         ne = rng.randint(1, max(1, (max_half_edges - 2) // (2 * k)))
-        fp = random_fp(rng, ne, rng.choice([0, 0.2, 0.5]))
+        fp = random_fp(rng, ne, rng.choice([0, 0.2, 0.5]), odd_folded)
         if k > 1:
             fp = cyclic_cover(fp, k, [rng.randrange(k) for _ in fp])
-        if not is_connected_fp(fp):
+        if len(fp) > max_half_edges or not is_connected_fp(fp):
             continue
-        if len(fp) >= 4 and rng.random() < 0.5:
+        # a gap adds one edge, that is two labels
+        if len(fp) >= 4 and len(fp) + 2 <= max_half_edges and rng.random() < 0.5:
             fp = insert_gap(fp, rng.randrange(len(fp) // 2))
-        assert len(fp) <= max_half_edges
         return fp
     raise RuntimeError("no connected map found in {} attempts".format(MAX_ATTEMPTS))
 
 
-def random_disconnected_fp(rng):
+def random_disconnected_fp(rng, odd_folded=False):
     r"""
     Return the face permutation of the disjoint union of one to three
     random connected maps of at most 16 half-edge labels each (at most 48
@@ -1189,7 +1169,7 @@ def random_disconnected_fp(rng):
             fp = rng.choice(components)
             fp = relabel_arrays(fp, (), random_edge_relabelling(rng, fp))[0]
         else:
-            fp = random_connected_fp(rng, max_half_edges=16)
+            fp = random_connected_fp(rng, max_half_edges=16, odd_folded=odd_folded)
         components.append(fp)
     union = []
     for fp in components:
@@ -1251,7 +1231,8 @@ def random_edge_relabelling(rng, fp):
     for _ in range(MAX_ATTEMPTS):
         sigma = list(range(ne))
         rng.shuffle(sigma)
-        if fp[2 * sigma.index(ne - 1)] != -1:
+        last = sigma.index(ne - 1)
+        if fp[2 * last] != -1 or fp[2 * last + 1] != -1:
             break
     else:
         raise RuntimeError("no relabelling found in {} attempts".format(MAX_ATTEMPTS))
@@ -1428,12 +1409,52 @@ def test_random_connected_fp():
     assert folded and gaps and symmetric
 
 
+@pytest.mark.parametrize("max_half_edges", range(2, 13))
+def test_random_connected_fp_bound(max_half_edges):
+    rng = random.Random(max_half_edges)
+    for odd_folded in (False, True):
+        for _ in range(100):
+            fp = random_connected_fp(rng, max_half_edges, odd_folded)
+            assert len(fp) <= max_half_edges
+            assert is_connected_fp(fp)
+
+
+def test_random_fp_odd_folded():
+    # folded edges with an active odd half are generated on request only,
+    # and kept by the random relabellings, which keep the last edge active
+    rng = random.Random(0)
+    odd = {False: 0, True: 0}
+    for odd_folded in (False, True):
+        for _ in range(100):
+            for fp in (random_connected_fp(rng, odd_folded=odd_folded),
+                       random_disconnected_fp(rng, odd_folded=odd_folded)):
+                folded_odd = [e for e in range(len(fp) // 2) if fp[2 * e] == -1 and fp[2 * e + 1] != -1]
+                odd[odd_folded] += bool(folded_odd)
+                r = random_edge_relabelling(rng, fp)
+                assert sorted(r) == list(range(len(fp)))
+                assert all(r[h ^ 1] == r[h] ^ 1 for h in range(len(fp)))
+                fp2 = relabel_arrays(fp, (), r)[0]
+                assert fp2[-2] != -1 or fp2[-1] != -1
+                assert sum(x != -1 for x in fp2) == sum(x != -1 for x in fp)
+                assert len([e for e in range(len(fp) // 2) if fp2[2 * e] == -1 and fp2[2 * e + 1] != -1]) == len(folded_odd)
+    assert odd[False] == 0 and odd[True] > 50
+
+
+@WITH_ROOT_RULES
+@pytest.mark.parametrize("fp", [[-1, 1], [3, -1, -1, 0], [-1, 2, 1, -1], [3, -1, -1, 0, 4, 5]],
+                         ids=["odd-monogon", "two-folded-edges", "odd-even-folded", "folded-and-edge"])
+def test_odd_folded_edges_fast_against_naive(fp, root_rule):
+    rng = random.Random(0)
+    check_fast_against_naive(rng, fp, (), (), root_rule)
+    check_fast_against_naive(rng, fp, ([0, 1] * (len(fp) // 2),), ([0, 1, 1, 0, 0, 1][:len(fp)],), root_rule)
+
+
 @WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
 def test_naive_canonical_form_invariance(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
-        fp = random_connected_fp(rng)
+        fp = random_connected_fp(rng, odd_folded=True)
         data = random_data(rng, fp)
         c = isomorphism_naive.canonical_form(fp, data, root_rule=root_rule)
         r = isomorphism_naive.canonical_labelling(fp, data, root_rule=root_rule)
@@ -1465,7 +1486,7 @@ def check_same_group(fp, data, classes, automorphisms, root_rule):
 def test_naive_automorphisms(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
-        fp = random_connected_fp(rng)
+        fp = random_connected_fp(rng, odd_folded=True)
         data = random_data(rng, fp)
         automorphisms = isomorphism_naive.automorphisms(fp, data, root_rule=root_rule)
         assert list(automorphisms[0]) == list(range(len(fp)))
@@ -1521,7 +1542,7 @@ def test_edge_data_as_half_edge_data(seed):
 def test_naive_automorphisms_classes(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
-        fp = random_connected_fp(rng)
+        fp = random_connected_fp(rng, odd_folded=True)
         data = random_data(rng, fp)
         classes = random_classes(rng, fp)
         automorphisms = isomorphism_naive.automorphisms(fp, data, classes, root_rule=root_rule)
@@ -1540,7 +1561,7 @@ def test_naive_automorphisms_classes(seed, root_rule):
 def test_naive_canonical_form_classes(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
-        fp = random_connected_fp(rng)
+        fp = random_connected_fp(rng, odd_folded=True)
         data = random_data(rng, fp)
         classes = random_classes(rng, fp)
         c = isomorphism_naive.canonical_form(fp, data, classes, root_rule=root_rule)
@@ -1615,7 +1636,7 @@ def test_random_disconnected_fp():
 def test_naive_automorphisms_disconnected(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
-        fp = random_disconnected_fp(rng)
+        fp = random_disconnected_fp(rng, odd_folded=True)
         data = random_data(rng, fp)
         classes = random_classes(rng, fp)
         automorphisms = isomorphism_naive.automorphisms(fp, data, classes, root_rule=root_rule)
@@ -1626,8 +1647,7 @@ def test_naive_automorphisms_disconnected(seed, root_rule):
             for c in classes:
                 check_classes_carried(fp, c, c, g)
         assert len(automorphisms) == brute_force_automorphism_count(fp, data, classes)
-        if root_rule != isomorphism_naive.ROOTS_ALL:
-            check_same_group(fp, data, classes, automorphisms, root_rule)
+        check_same_group(fp, data, classes, automorphisms, root_rule)
 
 
 @WITH_ROOT_RULES
@@ -1635,7 +1655,7 @@ def test_naive_automorphisms_disconnected(seed, root_rule):
 def test_naive_canonical_form_disconnected(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
-        fp = random_disconnected_fp(rng)
+        fp = random_disconnected_fp(rng, odd_folded=True)
         data = random_data(rng, fp)
         classes = random_classes(rng, fp)
         c = isomorphism_naive.canonical_form(fp, data, classes, root_rule=root_rule)
@@ -1673,13 +1693,13 @@ def test_is_isomorphic_disconnected(seed):
 
 # The fast implementation against the reference one
 
-def random_large_connected_fp(rng):
+def random_large_connected_fp(rng, odd_folded=False):
     r"""
     Return a random connected face permutation of 200 to 400 half-edge
     labels, as :func:`random_connected_fp`.
     """
     for _ in range(MAX_ATTEMPTS):
-        fp = random_connected_fp(rng, max_half_edges=400)
+        fp = random_connected_fp(rng, max_half_edges=400, odd_folded=odd_folded)
         if len(fp) >= 200:
             return fp
     raise RuntimeError("no large map found in {} attempts".format(MAX_ATTEMPTS))
@@ -1756,13 +1776,33 @@ def check_fast_against_naive(rng, fp, data, classes, root_rule=isomorphism_naive
     assert fast.isomorphism(fp1, data1 + (zeros,), fp2a, data2a + (marked,), classes, classes2, **rule) is None
     assert naive.isomorphism(fp, data + (zeros,), fp2, data2 + (marked,), classes, classes2, **rule) is None
 
+    # two values of different half-edges swapped in one array of the copy:
+    # the multisets of values are those of the original, so the verdict is
+    # that of the searches
+    # (the reference canonical form of the swapped copy costs a search: not
+    # on the large maps)
+    for j, d in enumerate(data2 if len(fp2) <= 100 else ()):
+        active = [h for h in range(len(fp2)) if fp2[h] != -1]
+        pairs = [(a, b) for a in active for b in active if a < b and d[a] != d[b]]
+        if not pairs:
+            continue
+        a, b = rng.choice(pairs)
+        swapped = [list(x) for x in data2]
+        swapped[j][a], swapped[j][b] = swapped[j][b], swapped[j][a]
+        swapped = tuple(swapped)
+        if naive.canonical_form(fp2, swapped, classes2, **rule) == form:
+            continue
+        fp2b, swappedb = arrays(fp2, swapped)
+        assert fast.isomorphism(fp1, data1, fp2b, swappedb, classes, classes2, **rule) is None
+        assert naive.isomorphism(fp, data, fp2, swapped, classes, classes2, **rule) is None
+
 
 @WITH_ROOT_RULES
 @pytest.mark.parametrize("seed", range(5))
 def test_fast_against_naive(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(20):
-        fp = random_connected_fp(rng)
+        fp = random_connected_fp(rng, odd_folded=True)
         check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
 
 
@@ -1780,7 +1820,7 @@ def test_fast_against_naive_large(seed, root_rule):
 def test_fast_against_naive_disconnected(seed, root_rule):
     rng = random.Random(seed)
     for _ in range(10):
-        fp = random_disconnected_fp(rng)
+        fp = random_disconnected_fp(rng, odd_folded=True)
         check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
 
 
@@ -1826,7 +1866,7 @@ def test_isomorphism_rejects_data_multiset(seed):
     # moved between half-edges (the same multiset)
     rng = random.Random(seed)
     for _ in range(10):
-        fp = random_connected_fp(rng)
+        fp = random_connected_fp(rng, odd_folded=True)
         values = [0, 1, -2**31, 2**31 - 1]
         data = ([rng.choice(values) for _ in fp], [rng.randrange(2) for _ in fp])
         fp2, data2 = relabel_arrays(fp, data, random_edge_relabelling(rng, fp))
@@ -1854,7 +1894,7 @@ def test_isomorphism_rejects_class_sizes(seed):
     # of different classes swap them (the same sizes)
     rng = random.Random(seed)
     for _ in range(10):
-        fp = random_connected_fp(rng)
+        fp = random_connected_fp(rng, odd_folded=True)
         classes = ([rng.randrange(3) for _ in fp], [0] * len(fp))
         fp2, classes2 = relabel_arrays(fp, classes, random_edge_relabelling(rng, fp))
         classes2 = rename_values(rng, classes2)
@@ -1873,7 +1913,7 @@ def test_isomorphism_rejects_class_sizes(seed):
         check_same_verdict(fp, (), fp2, (), classes, (swapped, classes2[1]))
 
 
-def random_large_disconnected_fp(rng):
+def random_large_disconnected_fp(rng, odd_folded=False):
     r"""
     Return the face permutation of the disjoint union of two or three
     random connected maps of 60 to 150 half-edge labels each, a component
@@ -1887,7 +1927,7 @@ def random_large_disconnected_fp(rng):
             fp = relabel_arrays(fp, (), random_edge_relabelling(rng, fp))[0]
         else:
             for _ in range(MAX_ATTEMPTS):
-                fp = random_connected_fp(rng, max_half_edges=150)
+                fp = random_connected_fp(rng, max_half_edges=150, odd_folded=odd_folded)
                 if len(fp) >= 60:
                     break
             else:
@@ -1907,6 +1947,185 @@ def test_fast_against_naive_large_disconnected(seed, root_rule):
     for _ in range(3):
         fp = random_large_disconnected_fp(rng)
         check_fast_against_naive(rng, fp, random_data(rng, fp), random_classes(rng, fp), root_rule)
+
+
+# Inputs with automorphisms: the random decorations above break every
+# symmetry of the large maps, these keep some
+
+def lift_array(array_, k):
+    r"""
+    Return the half-edge array of the ``k``-fold cover of :func:`cyclic_cover`
+    taking on each sheet the values of ``array_`` on the base map.
+    """
+    lifted = [None] * (k * len(array_))
+    for h, x in enumerate(array_):
+        for i in range(k):
+            lifted[2 * (k * (h // 2) + i) + h % 2] = x
+    return lifted
+
+
+def relabelled_symmetric_case(rng, fp, data, classes):
+    r"""
+    Return the case ``(fp, data, classes)`` relabelled by a random
+    relabelling of the edges of ``fp``, the classes with their values kept.
+    """
+    r = random_edge_relabelling(rng, fp)
+    fp2, arrays_ = relabel_arrays(fp, data + classes, r)
+    return fp2, arrays_[:len(data)], arrays_[len(data):]
+
+
+def cyclic_cover_case(rng):
+    r"""
+    Return ``(fp, data, classes)`` where ``fp`` is a cyclic cover of a random
+    connected map and ``data`` and ``classes`` are lifted from random
+    decorations of the base map: the rotation of the sheets is an
+    automorphism.
+    """
+    base = random_connected_fp(rng, max_half_edges=10, odd_folded=True)
+    k = rng.randint(2, 3)
+    fp = cyclic_cover(base, k, [rng.randrange(k) for _ in base])
+    data = tuple(lift_array(d, k) for d in random_data(rng, base))
+    classes = tuple(lift_array(c, k) for c in random_classes(rng, base))
+    return relabelled_symmetric_case(rng, fp, data, classes)
+
+
+def copies_case(rng):
+    r"""
+    Return ``(fp, data, classes)`` where ``fp`` is the disjoint union of two
+    or three relabelled copies of a random connected map, the decorations
+    carried along by the relabellings, the classes sharing their values.
+    """
+    component = random_connected_fp(rng, max_half_edges=10, odd_folded=True)
+    data = random_data(rng, component)
+    classes = random_classes(rng, component)
+    union, union_data, union_classes = [], [[] for _ in data], [[] for _ in classes]
+    for _ in range(rng.randint(2, 3)):
+        fp, arrays_ = relabel_arrays(component, data + classes, random_edge_relabelling(rng, component))
+        shift = len(union)
+        union.extend(-1 if x == -1 else x + shift for x in fp)
+        for target, a in zip(union_data + union_classes, arrays_):
+            target.extend(a)
+    return relabelled_symmetric_case(rng, union, tuple(union_data), tuple(union_classes))
+
+
+def isolated_edges_case(classes_of_edges):
+    r"""
+    Return ``(fp, data, classes)`` for isolated edges (a fixed point of the
+    face permutation on each half-edge), the classes of the two halves of
+    edge ``i`` being ``classes_of_edges[i]``.
+    """
+    fp = list(range(2 * len(classes_of_edges)))
+    return fp, (), ([x for pair in classes_of_edges for x in pair],)
+
+
+def tied_edges_pattern(b):
+    r"""
+    Return the classes of ``b + 1`` isolated edges with the classes ``0, 0``
+    and of ``b`` isolated edges with ``1, 1``, and the order of their
+    automorphism group.
+    """
+    count = math.factorial(b + 1) * 2**(b + 1) * math.factorial(b) * 2**b
+    return [(0, 0)] * (b + 1) + [(1, 1)] * b, count
+
+
+def mixed_edges_pattern(p, q, r):
+    r"""
+    Return the classes of ``p`` isolated edges ``1, 0``, ``q`` edges ``0, 1``
+    and ``r`` edges ``1, 1``, and the order of their automorphism group: the
+    mixed edges permute with their orientation forced, the others permute
+    and flip freely.
+    """
+    count = math.factorial(p + q) * math.factorial(r) * 2**r
+    return [(1, 0)] * p + [(0, 1)] * q + [(1, 1)] * r, count
+
+
+SMALL_TIED_PATTERNS = ([tied_edges_pattern(b) for b in (1, 2, 3)]
+                       + [mixed_edges_pattern(*pqr) for pqr in ((2, 1, 1), (3, 2, 1), (3, 2, 2))])
+SMALL_TIED_IDS = ["tied-1", "tied-2", "tied-3", "mixed-2-1-1", "mixed-3-2-1", "mixed-3-2-2"]
+
+
+@WITH_ROOT_RULES
+@pytest.mark.parametrize("seed", range(3))
+def test_fast_against_naive_cyclic_covers(seed, root_rule):
+    rng = random.Random(seed)
+    for _ in range(6):
+        fp, data, classes = cyclic_cover_case(rng)
+        check_fast_against_naive(rng, fp, data, classes, root_rule)
+
+
+@WITH_ROOT_RULES
+@pytest.mark.parametrize("seed", range(3))
+def test_fast_against_naive_relabelled_copies(seed, root_rule):
+    rng = random.Random(seed)
+    for _ in range(6):
+        fp, data, classes = copies_case(rng)
+        check_fast_against_naive(rng, fp, data, classes, root_rule)
+
+
+def tied_edges_parameters():
+    r"""
+    Return the parameters ``(pattern, root_rule)`` of
+    :func:`test_fast_against_naive_tied_edges`: every pattern under every
+    rule, except the pattern of 18432 automorphisms, whose list and group
+    closure take 1.6 s per rule, under two rules.
+    """
+    parameters = []
+    for pattern, name in zip(SMALL_TIED_PATTERNS, SMALL_TIED_IDS):
+        for rule, rule_name in zip(ROOT_RULES, ROOT_RULE_NAMES):
+            if pattern[1] > 10000 and rule_name not in ("all", "half-edge-fewest+data"):
+                continue
+            parameters.append(pytest.param(pattern, rule, id="%s-%s" % (name, rule_name)))
+    return parameters
+
+
+@pytest.mark.parametrize("pattern, root_rule", tied_edges_parameters())
+def test_fast_against_naive_tied_edges(pattern, root_rule):
+    pairs, count = pattern
+    fp, data, classes = isolated_edges_case(pairs)
+    check_fast_against_naive(random.Random(0), fp, data, classes, root_rule)
+    assert len(isomorphism_naive.automorphisms(fp, data, classes, root_rule=root_rule)) == count
+
+
+@pytest.mark.parametrize("pattern", SMALL_TIED_PATTERNS[:2] + SMALL_TIED_PATTERNS[3:5],
+                         ids=SMALL_TIED_IDS[:2] + SMALL_TIED_IDS[3:5])
+def test_tied_edges_brute_force_count(pattern):
+    pairs, count = pattern
+    fp, data, classes = isolated_edges_case(pairs)
+    assert brute_force_automorphism_count(fp, data, classes) == count
+
+
+@pytest.mark.parametrize("seed", range(3))
+def test_symmetric_inputs_have_automorphisms(seed):
+    # the inputs of the cross-tests above keep nontrivial groups
+    rng = random.Random(seed)
+    nontrivial = total = 0
+    for case in (cyclic_cover_case, copies_case):
+        for _ in range(10):
+            fp, data, classes = case(rng)
+            total += 1
+            nontrivial += isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True)[1] > 1
+    assert nontrivial >= total // 2
+
+
+LARGE_TIED_PATTERNS = [tied_edges_pattern(4), mixed_edges_pattern(5, 4, 2)]
+
+
+@pytest.mark.parametrize("pattern", LARGE_TIED_PATTERNS, ids=["tied-4", "mixed-5-4-2"])
+def test_fast_tied_edges_count(pattern):
+    # too many automorphisms for the reference: the count of the key against
+    # the formula, and each generator an automorphism carrying the classes
+    # with the order of the group they generate
+    from sage.all import PermutationGroup
+
+    pairs, count = pattern
+    fp, data, classes = isolated_edges_case(pairs)
+    assert isomorphism_fast.canonical_key(fp, data, classes, automorphism_count=True)[1] == count
+    gens = isomorphism_fast.automorphism_generators(fp, data, classes)
+    for g in gens:
+        assert is_automorphism(g, fp)
+        check_classes_carried(fp, classes[0], classes[0], g)
+    group = PermutationGroup([[x + 1 for x in g] for g in gens], domain=list(range(1, len(fp) + 1)))
+    assert group.order() == count
 
 
 def test_default_root_rule():
@@ -1968,7 +2187,7 @@ def test_fast_against_naive_origamis(seed):
         check_fast_against_naive(rng, fp, (), ())
 
 
-@pytest.mark.parametrize("build", [regular_map_S5, regular_map_PSL27], ids=["O22", "O23"])
+@pytest.mark.parametrize("build", [regular_map_S5, regular_map_PSL27], ids=["regular-S5", "regular-PSL27"])
 def test_fast_against_naive_regular_map(build):
     # every root ties: no root is rejected early
     rng = random.Random(0)
@@ -2077,9 +2296,9 @@ def test_fast_disconnected_without_naive(monkeypatch, root_rule):
              (list(range(8)), (), ([0, 1, 0, 1, 2, 3, 2, 3],)),
              ([2, 5, 4, 1, 0, 3, 6, -1], ([0, 1, 0, 0, 1, 1, 0, 0],), ())]
     for _ in range(3):
-        fp = random_disconnected_fp(rng)
+        fp = random_disconnected_fp(rng, odd_folded=True)
         while is_connected_fp(fp):
-            fp = random_disconnected_fp(rng)
+            fp = random_disconnected_fp(rng, odd_folded=True)
         cases.append((fp, random_data(rng, fp), random_classes(rng, fp)))
 
     # the results of the reference, then the reference made unusable
@@ -2147,12 +2366,12 @@ CLASSES_CASES = [
     (list(range(14)), (), ([(h // 4) * 2 + h % 2 for h in range(14)],)),
     (list(range(12)), (), ([0] * 12,)),
     (wreath_fp(5, [2, 5, 4, 1, 0, 3]), (), ([h % 3 for h in range(30)],)),
-] + [cylinder_diagram_case(s) for s in (CD_I3_A, CD_I3_B, CD_I6_A, CD_I6_B)]
+] + [cylinder_diagram_case(s) for s in (CD_3111_A, CD_3111_B, CD_2211_A, CD_2211_B)]
 
 
 @pytest.mark.parametrize("fp, data, classes", CLASSES_CASES,
                          ids=["4-edges", "7-edges-pairs", "6-edges-one-value",
-                              "5-triangles", "I3a", "I3b", "I6a", "I6b"])
+                              "5-triangles", "3111-a", "3111-b", "2211-a", "2211-b"])
 def test_fast_generators_classes(fp, data, classes):
     check_generated_group(fp, data, classes)
 
@@ -2197,7 +2416,7 @@ def test_fast_against_naive_classes_copies(seed, root_rule):
     fast, naive = isomorphism_fast, isomorphism_naive
     rule = {'root_rule': root_rule}
     for _ in range(4):
-        component = random_connected_fp(rng, max_half_edges=12)
+        component = random_connected_fp(rng, max_half_edges=12, odd_folded=True)
         k = rng.randint(2, 3)
         values = rng.randint(1, 2)
         classes = tuple([rng.randrange(values) for _ in component] * k for _ in range(rng.randint(1, 2)))
@@ -2217,7 +2436,7 @@ def test_fast_against_naive_classes_copies(seed, root_rule):
 def test_fast_generators_classes_copies(seed):
     rng = random.Random(seed)
     for _ in range(3):
-        fp = wreath_fp(rng.randint(2, 4), random_connected_fp(rng, max_half_edges=16))
+        fp = wreath_fp(rng.randint(2, 4), random_connected_fp(rng, max_half_edges=16, odd_folded=True))
         for values in (2, 3):
             classes = tuple([rng.randrange(values) for _ in fp] for _ in range(rng.randint(1, 2)))
             fp2, classes2 = relabel_arrays(fp, classes, random_edge_relabelling(rng, fp))
@@ -2233,7 +2452,7 @@ def test_fast_generators_classes_mixed_copies(seed):
     for _ in range(3):
         union, data, classes = [], [], []
         for _ in range(2):
-            component = random_connected_fp(rng, max_half_edges=12)
+            component = random_connected_fp(rng, max_half_edges=12, odd_folded=True)
             d = [rng.randrange(2) for _ in component]
             patterns = [[rng.randrange(2) for _ in component] for _ in range(2)]
             for _ in range(rng.randint(1, 3)):
@@ -2253,7 +2472,7 @@ def test_fast_generators_classes_without_naive(monkeypatch, root_rule):
     rng = random.Random(1)
     cases = list(CLASSES_CASES)
     for _ in range(3):
-        fp = wreath_fp(3, random_connected_fp(rng, max_half_edges=16))
+        fp = wreath_fp(3, random_connected_fp(rng, max_half_edges=16, odd_folded=True))
         cases.append((fp, (), ([rng.randrange(2) for _ in fp],)))
     expected = [{tuple(g) for g in isomorphism_naive.automorphisms(fp, data, classes)}
                 for fp, data, classes in cases]
@@ -2283,7 +2502,7 @@ def test_fast_generators_rules_disconnected(seed, root_rule):
              (wreath_fp(3, triangle) + [18, -1], (), ([h % 2 for h in range(20)],)),
              ([2, 5, 4, 1, 0, 3, 6, -1], ([0, 1, 0, 0, 1, 1, 0, 0],), ())]
     while len(cases) < 9:
-        fp = random_disconnected_fp(rng)
+        fp = random_disconnected_fp(rng, odd_folded=True)
         if is_connected_fp(fp):
             continue
         classes = random_classes(rng, fp) if len(cases) % 2 else ()
@@ -2320,6 +2539,19 @@ def test_fast_malformed_input():
                 continue
             with pytest.raises((ValueError, TypeError)) as naive_error:
                 getattr(isomorphism_naive, name)(fp, data, classes)
+            assert fast_error.type is naive_error.type
+            assert str(fast_error.value) == str(naive_error.value)
+        # isomorphism, the malformed map in either position, the other map
+        # a valid one of the same length
+        valid = list(range(len(fp)))
+        other_data = tuple([0] * len(fp) for _ in data)
+        other_classes = tuple([0] * len(fp) for _ in classes)
+        for arguments in [(fp, data, valid, other_data, classes, other_classes),
+                          (valid, other_data, fp, data, other_classes, classes)]:
+            with pytest.raises((ValueError, TypeError)) as fast_error:
+                isomorphism_fast.isomorphism(*arguments)
+            with pytest.raises((ValueError, TypeError)) as naive_error:
+                isomorphism_naive.isomorphism(*arguments)
             assert fast_error.type is naive_error.type
             assert str(fast_error.value) == str(naive_error.value)
     with pytest.raises(ValueError, match="permutation"):
@@ -2732,9 +2964,9 @@ def carry_subspace(rows, r):
 
 
 @pytest.mark.parametrize("build, edge_count, expected", [
-    (lambda: map_from_fp(O7), 3, 2),
-    (lambda: map_from_fp(O1), 12, 2),
-], ids=["O7", "O1"])
+    (lambda: map_from_fp(TWO_TRIANGLES), 3, 2),
+    (lambda: map_from_fp(TRIANGULATION_12_EDGES), 12, 2),
+], ids=["two-triangles", "triangulation-12"])
 def test_subspace_removes_automorphisms(build, edge_count, expected):
     m = build()
     rows = [[1] + [0] * (edge_count - 1)]
@@ -2789,7 +3021,7 @@ def test_key_random_maps(seed):
 
 
 def test_key_is_isomorphic_errors():
-    m = map_from_fp(O7)
+    m = map_from_fp(TWO_TRIANGLES)
     key = subspace_key([[1, 0, 0]])
     with pytest.raises(ValueError, match="key must be given for both maps or for none"):
         m.is_isomorphic(m, key=(key, None))
@@ -2810,13 +3042,13 @@ def test_key_is_isomorphic_errors():
 ], ids=["canonical_labelling", "canonical_form", "automorphisms",
         "automorphism_generators", "canonical_roots"])
 def test_key_not_callable(call):
-    m = map_from_fp(O7)
+    m = map_from_fp(TWO_TRIANGLES)
     with pytest.raises(TypeError, match="key must be callable"):
         call(m, 3)
 
 
 def test_key_none_is_unchanged():
-    m = map_from_fp(O1)
+    m = map_from_fp(TRIANGULATION_12_EDGES)
     assert m.canonical_labelling(key=None) == m.canonical_labelling()
     assert m.canonical_form(key=None) == m.canonical_form()
     assert m.automorphisms(key=None) == m.automorphisms()
@@ -2825,19 +3057,19 @@ def test_key_none_is_unchanged():
 
 
 @pytest.mark.parametrize("fp, decorations, expected", [
-    (O7, {}, [0, 1, 2, 3, 4, 5]),
-    (O7, {'half_edge_data': [0, 1, 0, 1, 0, 2]}, [5]),
-    (O7, {'half_edge_data': [0, 1, 0, 1, 0, 1]}, [1, 3, 5]),
+    (TWO_TRIANGLES, {}, [0, 1, 2, 3, 4, 5]),
+    (TWO_TRIANGLES, {'half_edge_data': [0, 1, 0, 1, 0, 2]}, [5]),
+    (TWO_TRIANGLES, {'half_edge_data': [0, 1, 0, 1, 0, 1]}, [1, 3, 5]),
     ("(0,1,2)(~0,~2,~1)(3)", {}, [6]),
     ("(0)(~0)(1)(~1)", {}, [0, 1, 2, 3]),
     ("(0)(~0)(1)(~1)", {'face_classes': [0, 1, 1, 0]}, [0, 1, 2, 3]),
-], ids=["O7", "O7-marked", "O7-half", "triangle-folded", "two-edges", "two-edges-classes"])
+], ids=["two-triangles", "two-triangles-marked", "two-triangles-half", "triangle-folded", "two-edges", "two-edges-classes"])
 def test_canonical_roots_examples(fp, decorations, expected):
     assert map_from_fp(fp).canonical_roots(**decorations) == expected
 
 
 def test_canonical_roots_key():
-    m = map_from_fp(O7)
+    m = map_from_fp(TWO_TRIANGLES)
     assert m.canonical_roots(key=lambda r: r[0] // 2) == [0, 1]
     assert m.canonical_roots(key=lambda r: 0) == m.canonical_roots()
     assert OrientedMap(fp=[]).canonical_roots() == []
@@ -2863,9 +3095,9 @@ def test_canonical_roots_random(seed, root_rule):
         assert roots2 == sorted(s[h] for h in roots)
 
 
-# Sibling API: what veerer and surface-dynamics call
+# Methods called by veerer and surface-dynamics
 
-def sibling_case(rng):
+def random_decorated_map(rng):
     r"""
     Return a random map, connected or disconnected, a half-edge decoration
     and an edge decoration with two values each.
@@ -2875,7 +3107,7 @@ def sibling_case(rng):
             [rng.randrange(2) for _ in range(len(fp) // 2)])
 
 
-def sibling_relabelling(rng, m, hd, ed):
+def relabel_decorated_map(rng, m, hd, ed):
     r"""
     Return ``(r, carried, m2)``: a random relabelling of ``m`` that keeps
     its last edge active (a trailing inactive edge is not a valid map), the
@@ -2907,36 +3139,36 @@ def isolated_edges(k):
 
 
 @pytest.mark.parametrize("seed", range(4))
-def test_sibling_veerer_1(seed):
+def test_disconnected_canonical_labelling(seed):
     r"""
-    veerer 1: the canonical labelling of a disconnected map with
+    The canonical labelling of a disconnected map with
     ``half_edge_data`` and ``edge_data``: the relabelled map is the map of
     the canonical form, and the form does not change under a random
     relabelling.
     """
     rng = random.Random(seed)
     for _ in range(6):
-        m, hd, ed = sibling_case(rng)
+        m, hd, ed = random_decorated_map(rng)
         form = m.canonical_form(half_edge_data=hd, edge_data=ed)
         r = m.canonical_labelling(half_edge_data=hd, edge_data=ed)
         fp = list(m.face_permutation())
         assert relabelled_fp(fp, r) == list(form[0])
-        r2, carried, m2 = sibling_relabelling(rng, m, hd, ed)
+        r2, carried, m2 = relabel_decorated_map(rng, m, hd, ed)
         assert m2.canonical_form(**carried) == form
         fp2 = list(m2.face_permutation())
         assert relabelled_fp(fp2, m2.canonical_labelling(**carried)) == list(form[0])
 
 
 @pytest.mark.parametrize("seed", range(4))
-def test_sibling_veerer_2(seed):
+def test_automorphism_generators_generate_list(seed):
     r"""
-    veerer 2: ``automorphisms`` and ``automorphism_generators`` with the same
+    ``automorphisms`` and ``automorphism_generators`` with the same
     decorations: the group generated is the list, and ``num_automorphisms``
     is its length.
     """
     rng = random.Random(seed)
     for _ in range(6):
-        m, hd, ed = sibling_case(rng)
+        m, hd, ed = random_decorated_map(rng)
         for keywords in ({}, {'half_edge_data': hd, 'edge_data': ed}):
             automorphisms = m.automorphisms(**keywords)
             generators = m.automorphism_generators(**keywords)
@@ -2945,15 +3177,15 @@ def test_sibling_veerer_2(seed):
 
 
 @pytest.mark.parametrize("seed", range(4))
-def test_sibling_veerer_3(seed):
+def test_is_isomorphic_certificate_pairs(seed):
     r"""
-    veerer 3: ``is_isomorphic`` with a certificate and the same decorations,
+    ``is_isomorphic`` with a certificate and the same decorations,
     as pairs, between a map and a relabelling.
     """
     rng = random.Random(seed)
     for _ in range(6):
-        m, hd, ed = sibling_case(rng)
-        r, carried, m2 = sibling_relabelling(rng, m, hd, ed)
+        m, hd, ed = random_decorated_map(rng)
+        r, carried, m2 = relabel_decorated_map(rng, m, hd, ed)
         pairs = {'half_edge_data': (hd, carried['half_edge_data']), 'edge_data': (ed, carried['edge_data'])}
         ok, cert = m.is_isomorphic(m2, certificate=True, **pairs)
         assert ok
@@ -2967,14 +3199,14 @@ def test_sibling_veerer_3(seed):
         assert not m.is_isomorphic(m2, half_edge_data=(hd, changed))
 
 
-def test_sibling_veerer_4():
+def test_subspace_key_minimisers():
     r"""
-    veerer 4: the subspace key (see ``test_automorphism_count_decorated``
-    O9, O20, O21, ``test_subspace_removes_automorphisms`` and, for the
+    The subspace key (see ``test_automorphism_count_decorated``,
+    ``test_subspace_removes_automorphisms`` and, for the
     minimum over ``r0 o a`` and the stabiliser, ``test_key_random_maps``),
     here through the enumeration of all the minimisers ``r0 o a``.
     """
-    m = map_from_fp(O7)
+    m = map_from_fp(TWO_TRIANGLES)
     key = subspace_key([[1, 0, 0]])
     r0 = m.canonical_labelling()
     minimisers = [array('i', [r0[x] for x in a]) for a in m.automorphisms()]
@@ -2986,12 +3218,11 @@ def test_sibling_veerer_4():
 
 
 @pytest.mark.parametrize("seed", range(4))
-def test_sibling_veerer_5(seed):
+def test_canonical_key_matches_methods(seed):
     r"""
-    veerer 5: the entry point ``isomorphism.canonical_key`` on ``array('i')``
+    The entry point ``isomorphism.canonical_key`` on ``array('i')``
     face permutation and decoration arrays, with ``relabelling=True`` and
-    ``automorphism_count=True``, agrees with the methods of ``OrientedMap``
-    (speed is measured by the benchmark).
+    ``automorphism_count=True``, agrees with the methods of ``OrientedMap``.
     """
     rng = random.Random(seed)
     for _ in range(6):
@@ -3009,15 +3240,15 @@ def test_sibling_veerer_5(seed):
         assert isomorphism_fast.canonical_key(array('i', fp2), (array('i', hd2),), (array('i', cl2),)) == key
 
 
-def test_sibling_surface_dynamics_1():
+def test_canonical_labelling_fat_graph_and_diagram():
     r"""
-    surface-dynamics 1: the canonical labelling of a disconnected fat graph
+    The canonical labelling of a disconnected fat graph
     and of a separatrix diagram (a face 2-colouring as ``face_data``).
     """
     rng = random.Random(0)
-    m = map_from_fp(O3)
+    m = map_from_fp(DISCONNECTED_FOLDED_9_EDGES)
     assert not is_connected_fp(list(m.face_permutation()))
-    a, colour, _ = cylinder_diagram(CD_I8)
+    a, colour, _ = cylinder_diagram(CD_TWO_CYLINDERS)
     for m, decorations in ((m, {}), (a, {'face_data': colour})):
         form = m.canonical_form(**decorations)
         assert relabelled_fp(list(m.face_permutation()), m.canonical_labelling(**decorations)) == list(form[0])
@@ -3027,24 +3258,24 @@ def test_sibling_surface_dynamics_1():
             assert relabel_map(m, r).canonical_form(**carried) == form
 
 
-def test_sibling_surface_dynamics_2():
+def test_canonical_form_cylinder_diagrams():
     r"""
-    surface-dynamics 2: cylinder diagrams through ``face_classes`` (see
+    Cylinder diagrams through ``face_classes`` (see
     ``test_isomorphism_cylinder_diagram``).
     """
     forms = {}
-    for name, s in [("I3a", CD_I3_A), ("I3b", CD_I3_B), ("I4b", CD_I4_B), ("I5b", CD_I5_B)]:
+    for name, s in [("3111-a", CD_3111_A), ("3111-b", CD_3111_B), ("3111-c", CD_3111_C), ("3111-d", CD_3111_D)]:
         m, colour, cylinder = cylinder_diagram(s)
         forms[name] = m.canonical_form(face_data=colour, face_classes=cylinder)
-    assert forms["I3a"] == forms["I4b"]
-    assert forms["I3b"] == forms["I5b"]
-    assert forms["I3a"] != forms["I3b"]
+    assert forms["3111-a"] == forms["3111-c"]
+    assert forms["3111-b"] == forms["3111-d"]
+    assert forms["3111-a"] != forms["3111-b"]
 
 
 @pytest.mark.parametrize("seed", range(4))
-def test_sibling_surface_dynamics_3(seed):
+def test_fixed_vertices_and_faces_actions(seed):
     r"""
-    surface-dynamics 3: ``fix_vertices`` and ``fix_faces`` as ``vertex_data``
+    ``fix_vertices`` and ``fix_faces`` as ``vertex_data``
     and ``face_data`` by distinct values (see
     ``test_automorphism_count_faces_fixed``), ``num_automorphisms``, and the
     actions of the automorphisms on the vertices and the faces.
@@ -3078,9 +3309,9 @@ def test_sibling_surface_dynamics_3(seed):
         assert all(m.automorphism_face_action(a) == array('i', range(nf)) for a in fixed)
 
 
-def test_sibling_surface_dynamics_4():
+def test_canonical_roots_isolated_edges():
     r"""
-    surface-dynamics 4: ``h in m.canonical_roots()`` as the test of McKay
+    ``h in m.canonical_roots()`` as the test of McKay
     augmentation (checked against the automorphisms in
     ``test_canonical_roots_random``), here on 8 isolated edges (`2^8 8!`
     automorphisms, none listed).
@@ -3091,8 +3322,8 @@ def test_sibling_surface_dynamics_4():
 
 
 def test_num_automorphisms_examples():
-    assert map_from_fp(O7).num_automorphisms() == 6
-    assert map_from_fp(O7).num_automorphisms(key=lambda r: r[0] // 2) == 2
+    assert map_from_fp(TWO_TRIANGLES).num_automorphisms() == 6
+    assert map_from_fp(TWO_TRIANGLES).num_automorphisms(key=lambda r: r[0] // 2) == 2
     assert OrientedMap(fp=[]).num_automorphisms() == 1
     count = isolated_edges(8).num_automorphisms()
     assert count == 2**8 * math.factorial(8) == 10321920

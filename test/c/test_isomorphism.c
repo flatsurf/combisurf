@@ -1237,6 +1237,152 @@ static void test_search_tied(void)
     }
 }
 
+/*
+ * iso_invariants_differ: the multisets of the data values and the multisets
+ * of the sizes of the classes, on the active half-edges only.
+ */
+static void test_invariants(void)
+{
+    /* three isolated edges, then two edges in labels 0, 1 and 4, 5 */
+    static const int fp6[] = {0, 1, 2, 3, 4, 5};
+    static const int fp4[] = {1, 0, 3, 2};
+    static const int fp8[] = {1, 0, -1, -1, 3, 2, -1, -1};
+    static const int fp_junk[] = {1, 0, -1, -1};
+    int inv_work[ISO_INVARIANTS_WORK_SIZE(8)];
+    int d1[12], d2[12], c1[12], c2[12];
+    int i;
+
+    current_case = "invariants, equal multisets";
+    {
+        /* values renamed and moved: the same multisets */
+        static const int data1[] = {0, 1, 0, 1, 0, 1}, data2[] = {1, 0, 1, 1, 0, 0};
+        static const int classes1[] = {0, 0, 1, 1, 2, 2}, classes2[] = {5, 3, 3, 0, 0, 5};
+        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2, classes2, 1, 1, inv_work) == 0);
+        CHECK(iso_invariants_differ(6, fp6, data2, classes2, 6, fp6, data1, classes1, 1, 1, inv_work) == 0);
+        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data1, classes1, 1, 1, inv_work) == 0);
+    }
+
+    current_case = "invariants, data multisets differ";
+    {
+        static const int data1[] = {0, 1, 0, 1, 0, 1}, data2[] = {0, 0, 0, 0, 1, 1};
+        static const int classes[] = {0, 0, 1, 1, 2, 2};
+        CHECK(iso_invariants_differ(6, fp6, data1, classes, 6, fp6, data2, classes, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(6, fp6, data2, classes, 6, fp6, data1, classes, 1, 1, inv_work) == 1);
+        /* one value of the extremes of an int */
+        for (i = 0; i < 6; i++) {
+            d1[i] = data1[i];
+            d2[i] = data1[i];
+        }
+        d1[0] = INT_MIN;
+        d2[0] = INT_MAX;
+        CHECK(iso_invariants_differ(6, fp6, d1, classes, 6, fp6, d2, classes, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(6, fp6, d1, classes, 6, fp6, d1, classes, 1, 1, inv_work) == 0);
+    }
+
+    current_case = "invariants, class-size multisets differ";
+    {
+        /* the sizes 2, 2, 2 against 3, 2, 1 and against 6 */
+        static const int data[] = {0, 1, 0, 1, 0, 1};
+        static const int classes1[] = {0, 0, 1, 1, 2, 2}, classes2[] = {0, 0, 0, 1, 1, 2};
+        static const int classes3[] = {4, 4, 4, 4, 4, 4};
+        CHECK(iso_invariants_differ(6, fp6, data, classes1, 6, fp6, data, classes2, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(6, fp6, data, classes2, 6, fp6, data, classes1, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(6, fp6, data, classes1, 6, fp6, data, classes3, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(6, fp6, data, classes3, 6, fp6, data, classes1, 1, 1, inv_work) == 1);
+        /* the buffer is left zero after a failure on a previous call: the
+         * same inputs give the same verdict again */
+        CHECK(iso_invariants_differ(6, fp6, data, classes1, 6, fp6, data, classes2, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(6, fp6, data, classes1, 6, fp6, data, classes1, 1, 1, inv_work) == 0);
+    }
+
+    current_case = "invariants, class values renamed";
+    {
+        static const int classes1[] = {0, 0, 1, 1, 2, 3}, classes2[] = {5, 4, 2, 2, 4, 0};
+        static const int classes3[] = {0, 0, 1, 2, 2, 3};
+        CHECK(iso_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL, classes2, 0, 1, inv_work) == 0);
+        /* the sizes 2, 2, 1, 1 in both */
+        CHECK(iso_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL, classes3, 0, 1, inv_work) == 0);
+    }
+
+    current_case = "invariants, several arrays";
+    {
+        /* the second data array and the second class array decide */
+        static const int data1[] = {0, 1, 0, 1, 0, 1, 7, 7, 7, 8, 8, 8};
+        static const int data2[] = {1, 1, 0, 0, 0, 1, 8, 8, 7, 7, 7, 8};
+        static const int data3[] = {1, 1, 0, 0, 0, 1, 8, 8, 8, 7, 7, 8};
+        static const int classes1[] = {0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 2, 2};
+        static const int classes2[] = {2, 2, 2, 0, 0, 0, 4, 4, 3, 3, 3, 3};
+        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2, classes1, 2, 2, inv_work) == 0);
+        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data3, classes1, 2, 2, inv_work) == 1);
+        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2, classes2, 2, 2, inv_work) == 1);
+        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2, classes2, 2, 1, inv_work) == 0);
+    }
+
+    current_case = "invariants, different label lengths";
+    {
+        /* the four active half-edges 0, 1, 4, 5 of fp8 against the four of
+         * fp4; the values on the half-edges 2, 3, 6, 7 are junk */
+        static const int data4[] = {0, 0, 1, 1};
+        static const int data8[] = {0, 0, 9, 9, 1, 1, 9, 9};
+        static const int data8_bad[] = {0, 0, 9, 9, 1, 0, 9, 9};
+        static const int classes4[] = {0, 0, 1, 1};
+        static const int classes8[] = {3, 3, 0, 0, 6, 6, 0, 0};
+        static const int classes8_bad[] = {1, 1, 0, 0, 1, 2, 0, 0};
+        CHECK(iso_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8, classes8, 1, 1, inv_work) == 0);
+        CHECK(iso_invariants_differ(8, fp8, data8, classes8, 4, fp4, data4, classes4, 1, 1, inv_work) == 0);
+        CHECK(iso_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8_bad, classes8, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(8, fp8, data8_bad, classes8, 4, fp4, data4, classes4, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8, classes8_bad, 1, 1, inv_work) == 1);
+        CHECK(iso_invariants_differ(8, fp8, data8, classes8_bad, 4, fp4, data4, classes4, 1, 1, inv_work) == 1);
+    }
+
+    current_case = "invariants, inactive half-edges";
+    {
+        /* the inactive half-edges 2 and 3 carry values that differ between
+         * the maps, and class values out of range */
+        static const int data1[] = {5, 5, 100, 200}, data2[] = {5, 5, -3, INT_MAX};
+        static const int classes1[] = {0, 0, 3, 2}, classes2[] = {1, 1, 100000, -4};
+        static const int data3[] = {5, 6, 100, 200};
+        CHECK(iso_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk, data2, classes2, 1, 1, inv_work)
+              == 0);
+        CHECK(iso_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk, data3, classes2, 1, 1, inv_work)
+              == 1);
+    }
+
+    current_case = "invariants, no class array";
+    {
+        static const int data1[] = {0, 1, 0, 1, 0, 1}, data2[] = {1, 0, 1, 1, 0, 0}, data3[] = {1, 1, 1, 1, 0, 0};
+        /* nc == 0: work is not read */
+        CHECK(iso_invariants_differ(6, fp6, data1, NULL, 6, fp6, data2, NULL, 1, 0, NULL) == 0);
+        CHECK(iso_invariants_differ(6, fp6, data1, NULL, 6, fp6, data3, NULL, 1, 0, NULL) == 1);
+        CHECK(iso_invariants_differ(6, fp6, NULL, NULL, 6, fp6, NULL, NULL, 0, 0, NULL) == 0);
+    }
+
+    /* random: renamed and moved values of a relabelled copy never differ,
+     * and a value moved to another class does */
+    current_case = "invariants, random";
+    for (i = 0; i < 200; i++) {
+        int n = 2 * (1 + rng_below(4)), h, g, nvals = 1 + rng_below(3);
+        static const int fp_id[] = {0, 1, 2, 3, 4, 5, 6, 7};
+        int r[8], fp_copy[8];
+        for (h = 0; h < n; h++) {
+            d1[h] = rng_below(nvals);
+            c1[h] = rng_below(nvals);
+        }
+        random_relabelling(n, r);
+        relabel_fp(n, fp_id, r, fp_copy);
+        relabel_arrays(n, 1, d1, r, d2);
+        relabel_arrays(n, 1, c1, r, c2);
+        for (h = 0; h < n; h++)
+            c2[h] = nvals - 1 - c2[h];
+        CHECK(iso_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1, 1, inv_work) == 0);
+        /* one data value changed: the multiset changes */
+        g = rng_below(n);
+        d2[g] = nvals + 5;
+        CHECK(iso_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1, 1, inv_work) == 1);
+    }
+}
+
 int main(int argc, char **argv)
 {
     rng_state = argc > 1 ? strtoull(argv[1], NULL, 10) : 1;
@@ -1248,6 +1394,7 @@ int main(int argc, char **argv)
     test_search_fixed();
     test_search_random();
     test_search_tied();
+    test_invariants();
     printf("test_isomorphism: %ld checks passed\n", num_checks);
     return 0;
 }
