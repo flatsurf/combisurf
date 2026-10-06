@@ -167,6 +167,7 @@ counted by the reference, and gives its results::
 # ****************************************************************************
 
 from cpython cimport array
+from cpython.number cimport PyNumber_Index
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
 from math import factorial
@@ -262,8 +263,9 @@ ctypedef fused _sequence:
 cdef bint _ints_from(_sequence s, const int *f, int *out, int n, bint edges) except -1:
     r"""
     Write the values of ``s`` as C ``int`` into ``out``, of ``n`` entries,
-    and return whether every value converted is a Python ``int`` in the
-    range of a C ``int``; on ``False``, ``out`` is partly written.
+    and return whether every value converted is an integer (a Python ``int``
+    or an object with ``__index__``) in the range of a C ``int``; on
+    ``False``, ``out`` is partly written.
 
     Without ``edges``, ``s`` has ``n`` entries and ``out[h]`` is ``s[h]``.
     With ``edges``, ``s`` has ``n // 2`` entries, one per edge, and
@@ -272,11 +274,11 @@ cdef bint _ints_from(_sequence s, const int *f, int *out, int n, bint edges) exc
     whose two halves have it, with ``edges``) are neither read nor checked
     and ``out`` holds ``0`` there.
 
-    Only the exact type ``int`` is converted here: the conversion of other
-    types (``bool``, the integers of Sage, ``float``, the objects with
-    ``__index__``) differs between ``array.array`` and Cython, so they are
-    left to the generic path of the caller, which then raises the same
-    exception as before or none.
+    A value of exact type ``int`` is converted directly, any other one by
+    ``PyNumber_Index`` (``operator.index``), so that ``float`` is refused
+    and the integers of Sage are accepted. On a value that is not an
+    integer or is out of range, the generic path of the caller raises the
+    exception.
     """
     cdef int h, e
     cdef object v
@@ -288,7 +290,7 @@ cdef bint _ints_from(_sequence s, const int *f, int *out, int n, bint edges) exc
                     continue
                 v = s[e]
                 if type(v) is not int:
-                    return False
+                    v = PyNumber_Index(v)
                 out[2 * e] = out[2 * e + 1] = v
         else:
             for h in range(n):
@@ -297,9 +299,9 @@ cdef bint _ints_from(_sequence s, const int *f, int *out, int n, bint edges) exc
                     continue
                 v = s[h]
                 if type(v) is not int:
-                    return False
+                    v = PyNumber_Index(v)
                 out[h] = v
-    except OverflowError:
+    except (OverflowError, TypeError):
         return False
     return True
 
@@ -340,8 +342,8 @@ def _decoration_array(d, array.array fp, bint edges=False):
     returned as it is.
 
     The conversion applies to a list, a tuple or an array of typecode
-    ``'i'`` of the right length whose values read are Python ``int`` in the
-    range of a C ``int``. On any other input it returns ``None``, and
+    ``'i'`` of the right length whose values read are integers (with
+    ``__index__``) in the range of a C ``int``. On any other input it returns ``None``, and
     :meth:`~combisurf.oriented_map.OrientedMap._decoration_data` checks
     and passes ``d`` as before.
 
@@ -357,11 +359,14 @@ def _decoration_array(d, array.array fp, bint edges=False):
         sage: _decoration_array((0r, 1r, 'a', 3r, 4r), fp, edges=True)
         array('i', [0, 0, 1, 1, 0, 0, 3, 3, 4, 4])
 
-    The integers of Sage, and values outside the range of a C ``int``, are
-    left to the generic path::
+    The integers of Sage and the objects with ``__index__`` are converted
+    like Python ``int``; values outside the range of a C ``int`` are left
+    to the generic path::
 
-        sage: _decoration_array([0] * 10, fp) is None
-        True
+        sage: _decoration_array([0] * 10, fp)
+        array('i', [0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        sage: _decoration_array([1] * 10, fp)
+        array('i', [1, 1, 1, 1, 0, 0, 1, 1, 1, 0])
         sage: d = list(range(10))
         sage: d[8] = int(2**31)
         sage: _decoration_array(d, fp) is None
@@ -413,7 +418,7 @@ def _decoration_array(d, array.array fp, bint edges=False):
     return None
 
 
-def _constant_on_cycles(array.array d, array.array p):
+def _constant_on_cycles(array.array d not None, array.array p not None):
     r"""
     Return whether the array ``d`` of typecode ``'i'`` is constant on the
     cycles of the partial permutation ``p``, comparing ``d[h]`` and
@@ -439,6 +444,14 @@ def _constant_on_cycles(array.array d, array.array p):
         Traceback (most recent call last):
         ...
         ValueError: p must have values in range(4) or -1
+        sage: _constant_on_cycles(None, p)
+        Traceback (most recent call last):
+        ...
+        TypeError: Argument 'd' has incorrect type (expected array.array, got NoneType)
+        sage: _constant_on_cycles(array('i', [5, 5, 7, 6]), None)
+        Traceback (most recent call last):
+        ...
+        TypeError: Argument 'p' has incorrect type (expected array.array, got NoneType)
     """
     cdef int n = len(p)
     cdef int h, x
@@ -554,13 +567,15 @@ cdef _Map _convert(fp, tuple data, tuple classes):
                     dec[off + h] = 0
         elif not (type(d) is list and len(<list> d) == n and _ints_from(<list> d, f, dec + off, n, False)):
             # a list of Python int is converted by the typed loop above;
-            # anything else by the generic conversion of Cython, value by
-            # value, which raises on invalid values
+            # anything else value by value through PyNumber_Index, which
+            # raises TypeError on a value that is not an integer (the plain
+            # conversion of Cython goes through __int__ and truncates a
+            # float), and OverflowError on one out of the range of a C int
             for h in range(n):
                 if f[h] == -1:
                     dec[off + h] = 0
                 else:
-                    dec[off + h] = d[h]
+                    dec[off + h] = PyNumber_Index(d[h])
     for j in range(m.nc):
         c = classes[j]
         off = (m.nd + j) * n
@@ -584,7 +599,8 @@ cdef _Map _prepare(fp, data, classes):
     it.
     """
     _check_input(fp, data, classes)
-    return _convert(fp, data, classes)
+    # _check_input accepts any instance of tuple, _convert only the exact type
+    return _convert(fp, tuple(data), tuple(classes))
 
 
 cdef int _run(_Map m, int rule, array.array key, int *relabelling, int *roots, int *nroots) except? -2:
@@ -1864,8 +1880,8 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
         raise ValueError("data1 and data2 must have the same number of arrays")
     if len(classes1) != len(classes2):
         raise ValueError("classes1 and classes2 must have the same number of arrays")
-    cdef _Map m1 = _convert(fp1, data1, classes1)
-    cdef _Map m2 = _convert(fp2, data2, classes2)
+    cdef _Map m1 = _convert(fp1, tuple(data1), tuple(classes1))
+    cdef _Map m2 = _convert(fp2, tuple(data2), tuple(classes2))
     cdef int n1 = m1.n, n2 = m2.n
     cdef int len1, len2, h, e, i
     cdef array.array key1, key2, ra, rb, seq1, seq2

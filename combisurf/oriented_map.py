@@ -3867,13 +3867,16 @@ class OrientedMap:
         ``"data"`` or ``"classes"``, the suffix of the keyword names used in
         the error messages.
 
-        A list, a tuple or an array of Python ``int`` in the range of a C
-        ``int`` is converted to an array of typecode ``'i'``, with ``0`` on
-        the inactive half-edges, by
+        A list, a tuple or an array of integers (Python ``int``, Sage
+        ``Integer``, any object with an ``__index__`` method) in the range
+        of a C ``int`` is converted to an array of typecode ``'i'``, with
+        ``0`` on the inactive half-edges, by
         :func:`combisurf.isomorphism._decoration_array`, which the
-        isomorphism module copies as it is. Any other decoration (with the
-        integers of Sage, for example) is returned as it is, or spread to
-        the half-edges as a list for ``edge_data``.
+        isomorphism module copies as it is; the exception is an array of
+        typecode ``'i'`` indexed by half-edges, returned unchanged, with
+        its values on the inactive half-edges. Any other decoration (with a
+        value outside the range of a C ``int``, for example) is returned as
+        it is, or spread to the half-edges as a list for ``edge_data``.
 
         EXAMPLES::
 
@@ -3882,11 +3885,13 @@ class OrientedMap:
             sage: m._decoration_data(half_edge_data=[0r, 1r, 2r, 3r], edge_data=(8r, 9r))
             (array('i', [0, 1, 2, 3]), array('i', [8, 8, 9, 9]))
             sage: m._decoration_data(half_edge_data=([0, 1, 2, 3], (4, 5, 6, 7)), edge_data=[8, 9])
-            ([0, 1, 2, 3], (4, 5, 6, 7), [8, 8, 9, 9])
+            (array('i', [0, 1, 2, 3]), array('i', [4, 5, 6, 7]), array('i', [8, 8, 9, 9]))
             sage: m._decoration_data(half_edge_data=(0, 1, 2, 3))
-            ((0, 1, 2, 3),)
+            (array('i', [0, 1, 2, 3]),)
             sage: m._decoration_data(face_data=[0, 1, 0, 1], kind="classes")
-            ([0, 1, 0, 1],)
+            (array('i', [0, 1, 0, 1]),)
+            sage: m._decoration_data(half_edge_data=[0, 1, 2, 2**40])
+            ([0, 1, 2, 1099511627776],)
 
         TESTS::
 
@@ -3907,7 +3912,7 @@ class OrientedMap:
             ...
             ValueError: face_data must be constant on faces
             sage: m._decoration_data(face_data=[0, 0, 1, 1], check=False)
-            ([0, 0, 1, 1],)
+            (array('i', [0, 0, 1, 1]),)
 
         The values must be integers::
 
@@ -4209,7 +4214,11 @@ class OrientedMap:
         The values of a decoration are integers (Python ``int``, Sage
         ``Integer``, or anything with an ``__index__`` method); the values
         on inactive half-edges are ignored. With ``check=True`` any other
-        value raises a ``ValueError``.
+        value raises a ``ValueError``. The values of a ``*_data``
+        decoration are stored as C ``int``: a value outside the range of a C
+        ``int`` raises an ``OverflowError``, whatever ``check``. The values
+        of a ``*_classes`` decoration are renumbered first and may be any
+        integers.
 
         A decoration matched *exactly* must take the same value on a
         half-edge and on its image by an isomorphism. A decoration matched
@@ -4305,6 +4314,22 @@ class OrientedMap:
             array('i', [2, 3, 4, 5, 6, 7, 0, 1, 8, 9, 10, 11, 12, 13])
             sage: OrientedMap(fp="(0)(~0)(1)(~1)").canonical_labelling(face_classes=[0, 1, 1, 0])
             array('i', [0, 1, 3, 2])
+
+        A value of a ``*_data`` decoration outside the range of a C ``int``
+        raises an ``OverflowError``, whatever ``check``, whereas the values
+        of a ``*_classes`` decoration may be any integers::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: m.canonical_labelling(half_edge_data=[2**40] * 6)
+            Traceback (most recent call last):
+            ...
+            OverflowError: value too large to convert to int
+            sage: m.canonical_labelling(half_edge_data=[2**40] * 6, check=False)
+            Traceback (most recent call last):
+            ...
+            OverflowError: value too large to convert to int
+            sage: m.canonical_labelling(half_edge_classes=[2**40] * 6)
+            array('i', [0, 1, 2, 3, 4, 5])
 
         The checks of the ``*_classes`` keywords::
 

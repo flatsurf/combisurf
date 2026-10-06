@@ -1057,9 +1057,16 @@ def test_origami_mutations():
     lambda m: m.num_automorphisms(),
     lambda m: m.automorphism_vertex_action([0, 1, 2, 3, 4, 5]),
     lambda m: m.automorphism_face_action([0, 1, 2, 3, 4, 5]),
+    lambda m: m.automorphism_generators(),
+    lambda m: m.canonical_labelling(root_rule="all"),
+    lambda m: m.canonical_labelling(half_edge_classes=[0] * 6),
+    lambda m: m.canonical_roots(key=len),
+    lambda m: m.automorphism_generators(root_rule="all"),
 ], ids=["canonical_labelling", "canonical_form", "automorphisms",
         "is_isomorphic", "canonical_roots", "num_automorphisms",
-        "automorphism_vertex_action", "automorphism_face_action"])
+        "automorphism_vertex_action", "automorphism_face_action",
+        "automorphism_generators", "root_rule", "half_edge_classes",
+        "key", "generators_root_rule"])
 def test_coloured_map_methods(call):
     r"""
     Coloured maps raise NotImplementedError on the isomorphism methods.
@@ -2302,7 +2309,9 @@ def test_fast_sizes():
 def test_fast_malformed_input():
     for fp, data, classes in [([0, -1, 2], (), ()), ([0, -1], [[0, 0]], ()),
                               ([0, -1], ([0],), ()), ([0, -1], (), [[0, 0]]),
-                              ([0, -1], (), ([0],))]:
+                              ([0, -1], (), ([0],)),
+                              ([1, -1], (), ()), ([1, 1], (), ()), ([0, 0], (), ()),
+                              ([-2, 0], (), ()), ([0, 5], (), ()), ([2, 0], (), ())]:
         for name in ("canonical_labelling", "canonical_form", "automorphisms",
                      "automorphism_generators", "canonical_key"):
             with pytest.raises((ValueError, TypeError)) as fast_error:
@@ -2528,13 +2537,14 @@ def test_decoration_non_integer_active(value, kind):
 
 
 def test_decoration_non_integer_active_unchecked():
-    # without the check, a float is truncated by the conversion to C int
-    # and a string fails in it
+    # without the check, the conversion to C int refuses a float and a
+    # string as operator.index does
     m = OrientedMap(fp=DECORATED_FP)
     d = decoration_with([0.5], [0], HALF_EDGE_BASE)
-    assert m.canonical_labelling(half_edge_data=d, check=False) == decorated_labelling(half_edge_data=d)
+    with pytest.raises(TypeError, match="^'float' object cannot be interpreted as an integer$"):
+        m.canonical_labelling(half_edge_data=d, check=False)
     d = decoration_with(["a"], [0], HALF_EDGE_BASE)
-    with pytest.raises(TypeError, match="an integer is required"):
+    with pytest.raises(TypeError, match="^'str' object cannot be interpreted as an integer$"):
         m.canonical_labelling(half_edge_data=d, check=False)
 
 
@@ -2560,12 +2570,12 @@ def test_decoration_integer_types():
 
 @pytest.mark.parametrize("check", [True, False])
 def test_decoration_index_only(check):
-    # the check accepts objects with __index__, while the conversion to C
-    # int, which goes through __int__, rejects them
+    # objects with __index__ are accepted by the check and by the conversion
     m = OrientedMap(fp=DECORATED_FP)
     d = decoration_with([IndexOnly(1)], [0], HALF_EDGE_BASE)
-    with pytest.raises(TypeError, match="an integer is required"):
-        m.canonical_labelling(half_edge_data=d, check=check)
+    expected = m.canonical_labelling(half_edge_data=decoration_with([1], [0], HALF_EDGE_BASE), check=check)
+    assert m.canonical_labelling(half_edge_data=d, check=check) == expected
+    assert m.canonical_labelling(half_edge_data=tuple(d), check=check) == expected
 
 
 @pytest.mark.parametrize("check", [True, False])
@@ -2633,9 +2643,8 @@ def test_canonical_key_fp_list_invalid(value, error, message):
 
 
 @pytest.mark.parametrize("value, error, message", [
-    ("a", TypeError, "an integer is required"),
-    (None, TypeError, "an integer is required"),
-    (IndexOnly(1), TypeError, "an integer is required"),
+    ("a", TypeError, "'str' object cannot be interpreted as an integer"),
+    (None, TypeError, "'NoneType' object cannot be interpreted as an integer"),
     (2**31, OverflowError, "value too large to convert to int"),
     (-2**31 - 1, OverflowError, "value too large to convert to int"),
 ])
@@ -2646,11 +2655,33 @@ def test_canonical_key_data_invalid_active(value, error, message):
             isomorphism_fast.canonical_key(DECORATED_FP, (d,))
 
 
+def test_canonical_key_data_index_active():
+    d = decoration_with([IndexOnly(1)], [8], HALF_EDGE_BASE)
+    expected = isomorphism_fast.canonical_key(DECORATED_FP, (decoration_with([1], [8], HALF_EDGE_BASE),))
+    for container in (list, tuple):
+        assert isomorphism_fast.canonical_key(DECORATED_FP, (container(d),)) == expected
+
+
 def test_canonical_key_data_float_active():
-    # a float on an active half-edge is truncated by the conversion to C int
-    d = decoration_with([1.5], [8], HALF_EDGE_BASE)
-    assert isomorphism_fast.canonical_key(DECORATED_FP, (d,)) == \
-        isomorphism_fast.canonical_key(DECORATED_FP, (decoration_with([1], [8], HALF_EDGE_BASE),))
+    # a float on an active half-edge is refused, not truncated to C int
+    for container in (list, tuple):
+        d = container(decoration_with([1.5], [8], HALF_EDGE_BASE))
+        with pytest.raises(TypeError, match="^'float' object cannot be interpreted as an integer$"):
+            isomorphism_fast.canonical_key(DECORATED_FP, (d,))
+    with pytest.raises(TypeError, match="^'float' object cannot be interpreted as an integer$"):
+        isomorphism_fast.canonical_key([1, 0], ([0.5, 0.25],), ())
+
+
+def test_canonical_key_namedtuple_containers():
+    from collections import namedtuple
+    Data = namedtuple("Data", ["a"])
+    d = array('i', HALF_EDGE_BASE)
+    expected = isomorphism_fast.canonical_key(DECORATED_FP, (d,), (d,))
+    assert isomorphism_fast.canonical_key(DECORATED_FP, Data(d), Data(d)) == expected
+    assert isomorphism_fast.canonical_labelling(DECORATED_FP, Data(d), Data(d)) == \
+        isomorphism_fast.canonical_labelling(DECORATED_FP, (d,), (d,))
+    assert (isomorphism_fast.isomorphism(DECORATED_FP, Data(d), DECORATED_FP, Data(d), Data(d), Data(d))
+            == isomorphism_fast.isomorphism(DECORATED_FP, (d,), DECORATED_FP, (d,), (d,), (d,)))
 
 
 # The hook key (a function of the relabelling, here a linear subspace) and

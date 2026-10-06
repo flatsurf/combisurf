@@ -399,10 +399,11 @@ static void data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
             hi = a[h];
         na++;
     }
-    if ((long) hi - (long) lo < (long) n) {
+    /* hi - lo reaches 2^32 - 1, which a 32-bit long does not hold */
+    if ((long long) hi - (long long) lo < (long long) n) {
         for (h = 0; h < n; h++)
             if (fp[h] != -1)
-                rank[h] = (int) ((long) a[h] - (long) lo);
+                rank[h] = (int) ((long long) a[h] - (long long) lo);
         return;
     }
     na = 0;

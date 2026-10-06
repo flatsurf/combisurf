@@ -445,8 +445,9 @@ def _roots(fp, r, invariants, root_rule):
 def _check_input(fp, data, classes=()):
     r"""
     Return ``(n, ne)``, the length of ``fp`` and its number of active edges,
-    after checking that ``fp`` has even length and each array of ``data``
-    and of ``classes`` has length ``n``.
+    after checking that ``fp`` has even length, that each array of ``data``
+    and of ``classes`` has length ``n`` and that ``fp`` is a permutation of
+    its active half-edges.
 
     TESTS::
 
@@ -467,6 +468,17 @@ def _check_input(fp, data, classes=()):
         Traceback (most recent call last):
         ...
         ValueError: classes arrays must have length 2
+        sage: for fp in ([1, -1], [1, 1], [0, 0], [-2, 0], [0, 5], [2, 0]):
+        ....:     try:
+        ....:         _check_input(fp, ())
+        ....:     except ValueError as err:
+        ....:         print(err)
+        fp must be a permutation of its active half-edges
+        fp must be a permutation of its active half-edges
+        fp must be a permutation of its active half-edges
+        fp must be a permutation of its active half-edges
+        fp must be a permutation of its active half-edges
+        fp must be a permutation of its active half-edges
         sage: _check_input([-1, -1, 2, -1], ())
         (4, 1)
     """
@@ -483,6 +495,17 @@ def _check_input(fp, data, classes=()):
     for c in classes:
         if len(c) != n:
             raise ValueError("classes arrays must have length {}".format(n))
+    # a map from the active half-edges to themselves that is one-to-one is a
+    # permutation of them; any other fp sends the walks of the searches out
+    # of range or around a cycle that never closes
+    seen = [False] * n
+    for h in range(n):
+        x = fp[h]
+        if x == -1:
+            continue
+        if x < 0 or x >= n or fp[x] == -1 or seen[x]:
+            raise ValueError("fp must be a permutation of its active half-edges")
+        seen[x] = True
     ne = sum(1 for e in range(n // 2) if fp[2 * e] != -1 or fp[2 * e + 1] != -1)
     return n, ne
 
