@@ -6,6 +6,7 @@ authors = [
   {name = "Vincent Delecroix"},
 ]
 dependencies = [
+  "cysignals",
 ]
 description = "Cell decomposition of surfaces in Python"
 requires-python = ">= 3.9"
@@ -20,7 +21,7 @@ classifiers = [
 ]
 
 [build-system]
-requires = ["hatchling", "hatch-cython", "Cython", "setuptools"]
+requires = ["hatchling", "hatch-cython", "Cython", "setuptools", "cysignals"]
 build-backend = "hatchling.build"
 
 [tool.setuptools]
@@ -70,7 +71,7 @@ dev = ["dev", "lint", "doc", "sagemath-109"]
 # TASKS #
 #########
 [tool.pixi.tasks.build]
-cmd = "pip install --ignore-installed --no-build-isolation -ve ."
+cmd = "pip install --ignore-installed --no-deps --no-build-isolation -ve ."
 inputs = [
     "pyproject.toml",
     "combisurf/misc.pxd",
@@ -85,6 +86,10 @@ inputs = [
     "combisurf/conjugate_tree.pyx",
     "combisurf/src/conjugate_tree.c",
     "combisurf/src/conjugate_tree.h",
+    "combisurf/isomorphism.pxd",
+    "combisurf/isomorphism.pyx",
+    "combisurf/src/isomorphism.c",
+    "combisurf/src/isomorphism.h",
     "combisurf/partial_sums.pxd",
     "combisurf/crossing_arcs.pyx",
 ]
@@ -113,9 +118,10 @@ depends-on = ["build"]
 cmd = "pytest -n auto test/"
 depends-on = ["build"]
 
-# The tests of the C conjugate tree (combisurf/src/conjugate_tree.c) as a
-# standalone C program: optimized, with the debug checks, and under the
-# address and undefined behaviour sanitizers.
+# The tests of the C conjugate tree (combisurf/src/conjugate_tree.c) and of
+# the C isomorphism code (combisurf/src/isomorphism.c) as standalone C
+# programs: optimized, with the debug checks, and under the address and
+# undefined behaviour sanitizers.
 [tool.pixi.tasks.test-c]
 cmd = "make -C test/c check debug asan"
 

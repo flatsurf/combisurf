@@ -1,44 +1,6 @@
 import pytest
 
 
-def find_isomorphism(A, B):
-    r"""
-    Return a half-edge bijection from ``A`` to ``B``, or ``None``.
-
-    A map isomorphism is determined by the image of a single half-edge, so it
-    is enough to try each candidate and propagate. Only valid for connected
-    maps.
-    """
-    avp = A.vertex_permutation(copy=False)
-    afp = A.face_permutation(copy=False)
-    bvp = B.vertex_permutation(copy=False)
-    bfp = B.face_permutation(copy=False)
-    AH = list(A.half_edges())
-    BH = list(B.half_edges())
-    if len(AH) != len(BH):
-        return None
-    if not AH:
-        return {}
-    h0 = AH[0]
-    for k0 in BH:
-        f = {h0: k0}
-        todo = [h0]
-        ok = True
-        while todo and ok:
-            h = todo.pop()
-            for hh, kk in ((avp[h], bvp[f[h]]), (afp[h], bfp[f[h]]), (h ^ 1, f[h] ^ 1)):
-                if hh in f:
-                    if f[hh] != kk:
-                        ok = False
-                        break
-                else:
-                    f[hh] = kk
-                    todo.append(hh)
-        if ok and len(f) == len(AH) and len(set(f.values())) == len(AH):
-            return f
-    return None
-
-
 def sample_maps():
     from combisurf import OrientedMap
     return [
@@ -160,7 +122,7 @@ def test_fold_corner_twice_is_contract_edge():
                 r.fold_corner(x1)
             except ValueError:
                 continue          # degenerate quadrilateral
-            assert find_isomorphism(mm.radial_map(), r) is not None, (m, e)
+            assert mm.radial_map().is_isomorphic(r), (m, e)
             done[0] += 1
     assert done[0] > 20
 
@@ -187,7 +149,7 @@ def test_fold_corner_twice_is_delete_edge():
                 r.fold_corner(x1)
             except ValueError:
                 continue          # degenerate quadrilateral
-            assert find_isomorphism(mm.radial_map(), r) is not None, (m, e)
+            assert mm.radial_map().is_isomorphic(r), (m, e)
             done[0] += 1
     assert done[0] > 20
 

@@ -27,6 +27,8 @@ Module Reference
    crossing_arcs
    conjugate_tree
    conjugate_tree_naive
+   isomorphism
+   isomorphism_naive
 
 .. toctree::
    :maxdepth: 1
