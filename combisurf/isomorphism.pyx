@@ -72,6 +72,23 @@ too large for them (about `2^{31} / (14 + 2 nd + 3.5 nc)` half-edges with
 ``nd`` arrays of ``data`` and ``nc`` of ``classes``) raises an
 ``OverflowError``.
 
+The searches can be interrupted: Ctrl-C raises a ``KeyboardInterrupt``,
+and the ``alarm`` of ``cysignals`` an ``AlarmInterrupt``, in the C
+searches as in the search of the automorphism group of a disconnected
+map. On the `8 \times 8` grid given by its edges as isolated edges, whose
+automorphism count takes over 20 seconds::
+
+    sage: from cysignals.alarm import alarm
+    sage: from combisurf.isomorphism import canonical_key
+    sage: g = graphs.Grid2dGraph(8, 8).relabel(inplace=False)
+    sage: edges = list(g.edges(labels=False))
+    sage: fp = list(range(2 * len(edges)))
+    sage: classes = ([x for e in edges for x in e],)
+    sage: alarm(0.5); canonical_key(fp, (), classes, automorphism_count=True)
+    Traceback (most recent call last):
+    ...
+    AlarmInterrupt
+
 The decorations are stored in C ``int`` arrays: a value of ``data``
 outside the range of a C ``int`` raises an ``OverflowError`` (the values
 on inactive half-edges are ignored and never converted). The values of
@@ -191,6 +208,7 @@ from cpython cimport array
 from cpython.number cimport PyNumber_Index
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
+from cysignals.signals cimport sig_on, sig_off, sig_check, sig_block, sig_unblock
 from math import factorial
 from numbers import Integral
 
@@ -633,9 +651,15 @@ cdef int _run(_Map m, int rule, array.array key, int *relabelling, int *roots, i
     """
     cdef array.array work = _new(ISO_WORK_SIZE(m.n, m.nd, m.nc))
     cdef int *dec = m.dec.data.as_ints
-    return iso_canonical(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n,
-                         <iso_root_rule> rule, key.data.as_ints, relabelling, roots, nroots,
-                         work.data.as_ints)
+    cdef int length
+    # an interrupt leaves iso_canonical by a longjmp back to sig_on: every
+    # buffer it writes is owned here or by the caller, and it allocates none
+    sig_on()
+    length = iso_canonical(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n,
+                           <iso_root_rule> rule, key.data.as_ints, relabelling, roots, nroots,
+                           work.data.as_ints)
+    sig_off()
+    return length
 
 
 cdef array.array _complete(array.array r, int n, int ne):
@@ -665,9 +689,16 @@ cdef int _search(_Map m, int rule, bint all_leaves, array.array sequence, int *r
     cdef array.array work = _new(ISO_SEARCH_WORK_SIZE(m.n, m.nd, m.nc))
     cdef int *dec = m.dec.data.as_ints
     cdef int length
-    iso_search(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n, <iso_root_rule> rule,
-               all_leaves, sequence.data.as_ints, &length, relabelling, callback, arg,
-               work.data.as_ints)
+    # as in _run, an interrupt leaves iso_search by a longjmp back to sig_on,
+    # which also resets the count of sig_on; an exception of the callback
+    # returns from iso_search normally, hence the sig_off in the finally
+    sig_on()
+    try:
+        iso_search(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n, <iso_root_rule> rule,
+                   all_leaves, sequence.data.as_ints, &length, relabelling, callback, arg,
+                   work.data.as_ints)
+    finally:
+        sig_off()
     return length
 
 
@@ -707,10 +738,38 @@ cdef class _Automorphisms:
     cdef list result
 
 
+ctypedef int (*_unchecked_leaf_callback)(const int *leaf, int first, void *arg) noexcept
+
+
 cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
     r"""
     Leaf callback of ``iso_search`` for :func:`automorphisms`: append the
     automorphism of the leaf to the list, restarted at a smaller leaf.
+
+    The callback runs inside the ``sig_on`` of ``_search``, where an
+    interrupt jumps out at once, and a jump out of the Python code of
+    ``_collect_automorphism`` (an allocation, a list append) could leave the
+    interpreter in an inconsistent state. ``sig_block`` delays the interrupt
+    to the ``sig_unblock``, reached when ``_collect_automorphism`` has
+    returned and released its references, so that the jump skips no
+    reference count. A ``sig_check`` in the callback, with no ``sig_on`` on
+    this path, would instead leave the search uninterruptible between two
+    leaves reaching the best sequence, which can be the whole search. The
+    call goes through a pointer without exception check, so that the
+    ``sig_unblock`` also runs when ``_collect_automorphism`` raises; its
+    ``-1``, with the exception set, is then returned to ``iso_search``.
+    """
+    cdef int status
+    sig_block()
+    status = (<_unchecked_leaf_callback> _collect_automorphism)(leaf, first, arg)
+    sig_unblock()
+    return status
+
+
+cdef int _collect_automorphism(const int *leaf, int first, void *arg) except -1:
+    r"""
+    Append to the :class:`_Automorphisms` ``arg`` the automorphism of the
+    leaf ``leaf``, the list restarted when ``first``.
     """
     cdef _Automorphisms s = <_Automorphisms> arg
     cdef int n = s.n, h
@@ -1372,6 +1431,7 @@ cdef class _Stabiliser:
             choice[j] = 0
             dead[j] = 0
         while True:
+            sig_check()
             if j == self.ncomp:
                 return 1
             if j <= i:
@@ -1584,6 +1644,7 @@ cdef tuple _stabiliser(_Map m):
         dead = 0
         for b in range(max(start[t], i), start[t + 1]):
             for q in range(nl):
+                sig_check()
                 x = lab[off[b] + labels[loff[t] + q]]
                 if x == bi or _find(p, x) == _find(p, bi):
                     continue

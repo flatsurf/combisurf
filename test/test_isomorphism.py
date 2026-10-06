@@ -2661,6 +2661,58 @@ def test_fast_generators_rules_disconnected(seed, root_rule):
         assert count == len(automorphisms)
 
 
+def graph_as_isolated_edges(g):
+    r"""
+    Return ``fp, classes`` of the Sage graph ``g`` given by its edges as
+    isolated edges, the two values of ``classes`` on an edge its endpoints.
+    """
+    edges = list(g.edges(labels=False))
+    return list(range(2 * len(edges))), ([x for e in edges for x in e],)
+
+
+# The searches of these calls run over 20 seconds (the 8 x 8 grid has 112
+# edges, the Paley graph on 29 vertices 203), except the list of the
+# 10321920 automorphisms of 8 isolated edges, which takes about 4 seconds,
+# most of it in the leaf callback of the search.
+@pytest.mark.parametrize("graph, function", [
+    ("grid-8x8", "count"),
+    ("grid-8x8", "automorphism_generators"),
+    ("paley-29", "canonical_key"),
+    ("paley-29", "automorphisms"),
+    ("8-isolated-edges", "automorphisms"),
+])
+def test_fast_search_interrupted_by_alarm(graph, function):
+    # the alarm interrupts the search within a fraction of a second, and the
+    # module computes as before afterwards
+    from cysignals.alarm import AlarmInterrupt, alarm, cancel_alarm
+    from sage.all import graphs
+    if graph == "grid-8x8":
+        fp, classes = graph_as_isolated_edges(graphs.Grid2dGraph(8, 8).relabel(inplace=False))
+    elif graph == "paley-29":
+        fp, classes = graph_as_isolated_edges(graphs.PaleyGraph(29))
+    else:
+        fp, classes = list(range(16)), ()
+    if function == "count":
+        def call():
+            return isomorphism_fast.canonical_key(fp, (), classes, automorphism_count=True)
+    else:
+        def call():
+            return getattr(isomorphism_fast, function)(fp, (), classes)
+    small = [(list(range(8)), (), ([0, 1, 0, 1, 2, 3, 2, 3],)),
+             ([2, 5, 4, 1, 0, 3], (), ()),
+             (wreath_fp(3, [2, 5, 4, 1, 0, 3]), (), ([h % 2 for h in range(18)],))]
+    before = [isomorphism_fast.canonical_key(*case, automorphism_count=True) for case in small]
+    start = time.perf_counter()
+    try:
+        alarm(0.5)
+        with pytest.raises(AlarmInterrupt):
+            call()
+    finally:
+        cancel_alarm()
+    assert time.perf_counter() - start < 5.0
+    assert [isomorphism_fast.canonical_key(*case, automorphism_count=True) for case in small] == before
+
+
 def test_fast_sizes():
     isomorphism_fast._check_sizes(2**20, 2, 2)
     for n, nd, nc in [(2**31, 0, 0), (2**28, 0, 0), (2**26, 5, 5)]:

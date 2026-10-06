@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 [build-system]
-requires = ["hatchling", "hatch-cython", "Cython", "setuptools"]
+requires = ["hatchling", "hatch-cython", "Cython", "setuptools", "cysignals"]
 build-backend = "hatchling.build"
 
 [tool.setuptools]
