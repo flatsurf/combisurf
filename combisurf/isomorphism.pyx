@@ -343,7 +343,8 @@ def _decoration_array(d, array.array fp, bint edges=False):
 
     The conversion applies to a list, a tuple or an array of typecode
     ``'i'`` of the right length whose values read are integers (with
-    ``__index__``) in the range of a C ``int``. On any other input it returns ``None``, and
+    ``__index__``) in the range of a C ``int``. On any other input it
+    returns ``None``, and
     :meth:`~combisurf.oriented_map.OrientedMap._decoration_data` checks
     and passes ``d`` as before.
 
