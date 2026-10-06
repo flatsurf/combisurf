@@ -41,12 +41,21 @@ preserves the partitions of the half-edges by the values of ``classes``:
 its generators and its order come from a backtrack search of this
 subgroup (the subgroup search of Sims, one base point per component),
 exponential in the number of components in the worst case. The search
-of the canonical key itself follows every root tied in a component when
-there are ``classes``, and returns from a leaf equal to the best one to
-the first level where their roots differ, since the subtree left is then
-the image of one already searched by an automorphism: `k` tied copies of
-a component cost about `k^2` paths of `k` components. The buffers of the C
-code are counted in C ``int``: a map
+of the canonical key itself, when there are ``classes``, follows among
+the roots tied in a component the first one of each way of extending the
+numbering of the class values, since two tied roots extending it alike
+are exchanged by an automorphism fixing the components labelled before;
+it also returns from a leaf equal to the best one to the first level
+where their roots differ, since the subtree left is then the image of
+one already searched. `k` tied copies of a component then cost one path
+per distinct numbering at each level (one for isolated edges all with
+the same value, two for `b + 1` edges with the value 0 beside `b` with
+the value 1) instead of a number of leaves growing as the automorphisms.
+The search stays exponential in the worst case: tied roots with
+different numberings are all followed, and their subtrees may part only
+deep, as for a graph on the class values given by its edges as isolated
+edges, such as a random cubic graph. The buffers of the C code are
+counted in C ``int``: a map
 too large for them (about `2^{31} / (14 + 2 nd + 3.5 nc)` half-edges with
 ``nd`` arrays of ``data`` and ``nc`` of ``classes``) raises an
 ``OverflowError``.
@@ -1987,14 +1996,20 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     without listing the automorphisms; with ``classes`` it is the order
     of the subgroup that preserves the partitions of ``classes``, computed
     by the search of :func:`automorphism_generators`. With ``classes`` the
-    search of the key on a disconnected map follows every root tied in a
-    component; a leaf equal to the best one so far differs from it by an
-    automorphism fixing the components where their roots agree, so the
-    search returns at once to the first level where their roots differ
-    and tries its next tied root. On `k` tied copies of a component each
-    tied root then costs about one path of `k` components, about `k^2`
-    paths in all instead of a number of leaves growing as the
-    automorphisms (`2^k k!` for `k` isolated edges with one class value).
+    search of the key on a disconnected map follows, among the roots tied
+    in a component, the first one of each way of extending the numbering
+    of the class values: two tied roots extending it alike are exchanged
+    by an automorphism fixing the components labelled before, so their
+    subtrees reach the same sequences. A leaf equal to the best one so far
+    differs from it by an automorphism fixing the components where their
+    roots agree, so the search returns at once to the first level where
+    their roots differ and tries its next tied root. On `k` tied copies of
+    a component the search follows one path per distinct numbering at
+    each level: `k` isolated edges with one class value take one path
+    instead of `2^k k!` leaves. Tied roots with different numberings are
+    all followed, so the search remains exponential in the worst case.
+    The count goes through the search of :func:`automorphism_generators`,
+    which these cuts do not shorten.
 
     EXAMPLES::
 
@@ -2060,6 +2075,15 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         46080
         sage: canonical_key(list(range(12)), classes=([0, 1] * 6,), automorphism_count=True)[1]
         1440
+
+    The key alone of tied copies follows one path per numbering of the class
+    values: 21 isolated edges with the class value ``0`` beside 20 with
+    ``1``::
+
+        sage: fp = list(range(82))
+        sage: c = [0] * 42 + [1] * 40
+        sage: array('i', canonical_key(fp, classes=(c,))) == array('i', fp + c)
+        True
 
     A value of ``data`` outside the range of a C ``int``, and one on an
     inactive half-edge, which is ignored::

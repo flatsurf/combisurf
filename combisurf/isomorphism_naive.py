@@ -8,7 +8,8 @@ arrays and is written for readability: the roots of one class of
 half-edges are tried (all the active half-edges under :data:`ROOTS_ALL`,
 which costs `O(n^2)` for `n` half-edges on a connected map), and nothing is
 pruned beyond the choice of that class: no early abort and no pruning by
-automorphisms. It is the reference of
+automorphisms, except the tied roots of a disconnected map described below.
+It is the reference of
 :mod:`combisurf.isomorphism`, which computes the same results in C and
 which the methods of :class:`~combisurf.oriented_map.OrientedMap` (such as
 :meth:`~combisurf.oriented_map.OrientedMap.canonical_labelling`) call.
@@ -59,9 +60,15 @@ lexicographically minimal. It is found by a search: at each step, every
 active half-edge not labelled yet is tried as a root and the roots of
 minimal block are kept. When several roots tie:
 
-- with ``classes``, each of them is followed: the numbering of the class
-  values left by two tied components may differ, and so may the minimal
-  continuations;
+- with ``classes``, the first one of each numbering of the class values is
+  followed: the numberings left by two tied components may differ, and so
+  may the minimal continuations, but two tied roots that extend the
+  numbering in the same way put the same values at the same local labels.
+  Exchanging their two components (or relabelling the component from one
+  root to the other when they are the same) is then an automorphism fixing
+  the components labelled before, and the later root reaches nothing the
+  earlier one does not. On `k` copies of a component with one class value
+  a single path is followed;
 
 - without ``classes``, only the first one is followed: two tied blocks are
   isomorphic decorated components, and either choice leaves isomorphic
@@ -695,10 +702,13 @@ def _search(fp, data, classes=(), all_leaves=False, root_rule=ROOTS_HALF_EDGE_FE
     root of the next component and only the roots of minimal block are
     followed, in increasing order. A branch whose sequence of blocks
     exceeds the best one found is cut. With ``all_leaves=False`` the first
-    leaf reaching the minimum is returned and, when ``classes`` is empty,
-    only the first root of minimal block is followed at each step;
-    otherwise every such root is, and every leaf reaching the minimum is
-    returned.
+    leaf reaching the minimum is returned and, among the roots of minimal
+    block, only the first one is followed when ``classes`` is empty, and
+    only the first one of each numbering of the class values they extend
+    otherwise: two tied roots with the same numbering are exchanged by an
+    automorphism fixing the components labelled before, so their subtrees
+    reach the same blocks. With ``all_leaves=True`` every root of minimal
+    block is followed, and every leaf reaching the minimum is returned.
 
     EXAMPLES::
 
@@ -710,6 +720,21 @@ def _search(fp, data, classes=(), all_leaves=False, root_rule=ROOTS_HALF_EDGE_FE
         [array('i', [0, 1, 2, 3])]
         sage: len(_search([0, 1, 2, 3], (), all_leaves=True)[1])
         8
+
+    Three isolated edges whose six half-edges share one class value: every
+    root ties and extends the numbering in the same way, so one path is
+    followed, and its leaf is the first of the full search::
+
+        sage: fp = list(range(6))
+        sage: c = ([0] * 6,)
+        sage: key, leaves = _search(fp, (), c)
+        sage: key
+        ((2, (0, 1), (0, 0)), (2, (0, 1), (0, 0)), (2, (0, 1), (0, 0)))
+        sage: leaves
+        [array('i', [0, 1, 2, 3, 4, 5])]
+        sage: key2, leaves2 = _search(fp, (), c, all_leaves=True)
+        sage: key2 == key, leaves2[0] == leaves[0], len(leaves2)
+        (True, True, 48)
     """
     n, ne = _check_input(fp, data, classes)
     invariants = _root_invariants(fp, root_rule, data)
@@ -743,6 +768,19 @@ def _search(fp, data, classes=(), all_leaves=False, root_rule=ROOTS_HALF_EDGE_FE
             # two roots of equal block give isomorphic decorated components
             # and isomorphic remainders, hence the same minimal continuation
             del tied[1:]
+        elif not all_leaves:
+            # two tied roots with equal numberings put the same actual class
+            # values at the same local labels of their components; exchanging
+            # the two components (or relabelling the component from one root
+            # to the other when they are the same), the identity elsewhere,
+            # is an automorphism that fixes the components labelled before
+            # and sends the subtree of the later root onto the subtree of the
+            # earlier one, which comes first and reaches the same minimum
+            kept = []
+            for rc, new_names in tied:
+                if all(new_names != nm for _, nm in kept):
+                    kept.append((rc, new_names))
+            tied = kept
         children = []
         for rc, new_names in tied:
             r2 = array('i', r)

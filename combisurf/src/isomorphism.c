@@ -21,6 +21,11 @@
  * before it. A level is undone by walking the labels it gave, and its next
  * tied root is found again by scanning the roots after the current one for
  * a block equal to the one of the level, which is still in the sequence.
+ * With classes and without all_leaves, a tied root found so is skipped when
+ * an earlier tied root of the level extends the numbering of the class
+ * values alike (see iso_search in isomorphism.h); the earlier roots are found
+ * again by the same scan, from the start of the class, so that this needs
+ * no memory either.
  *
  * Under a rule other than ISO_ROOTS_ALL, iso_canonical needs the chosen
  * class only, in increasing order. packed_class packs the entries of the
@@ -1443,6 +1448,100 @@ static inline int root_block(int n, const int *fp, int nd, const int *data, int 
 }
 
 /*
+ * Return whether the block (len ints, written by component_block) numbers a
+ * class value from next[j] on in some class array j, that is, whether its
+ * component extends the numbering names.
+ */
+static int block_extends(const int *block, int len, int nd, int nc, const int *next)
+{
+    int k = block[0];
+    int na = (len - 1 - k) / (nd + nc);
+    const int *b = block + 1 + k + (long) nd * na;
+    int i, j;
+
+    for (j = 0; j < nc; j++, b += na)
+        for (i = 0; i < na; i++)
+            if (b[i] >= next[j])
+                return 1;
+    return 0;
+}
+
+/*
+ * Number into names, from next[j] on, the class values met first in the
+ * component of root (not labelled yet) with set, or set back to -1 those
+ * numbered from next[j] on without set; lr is -1 on entry and on return.
+ */
+static void number_component(int n, const int *fp, int nc, const int *classes, int root, int *lr,
+                             int *lrinv, int *queue, int *names, const int *next, int set)
+{
+    int k = local_walk(fp, root, lr, lrinv, queue);
+    int i, j, h, count;
+    const int *a;
+    int *nm;
+
+    for (j = 0; j < nc; j++) {
+        a = classes + (long) j * n;
+        nm = names + (long) j * n;
+        count = next[j];
+        for (i = 0; i < k; i++) {
+            h = lrinv[i];
+            if (h == -1)
+                continue;
+            if (set && nm[a[h]] == -1)
+                nm[a[h]] = count++;
+            else if (!set && nm[a[h]] >= next[j])
+                nm[a[h]] = -1;
+        }
+    }
+    reset_local(k, lrinv, lr);
+}
+
+/*
+ * Return whether the roots root1 and root2, not labelled yet, whose blocks
+ * are both equal to block (len ints), extend the numbering names (numbers
+ * from next[j] on) by the same values in the same order. The numbering of
+ * root1 is written into names, and the class values of the component of
+ * root2 must then get from it the numbers of block, which are the ones the
+ * numbering of root2 gives them: the two numberings agree on every value of
+ * the component of root2, hence on the values it numbers, which are all
+ * those numbered from next[j] on. names is left as on entry; lr is -1 on
+ * entry and on return. Costs three walks of the components.
+ */
+static int same_extension(int n, const int *fp, int nd, int nc, const int *classes, int root1,
+                          int root2, const int *block, int len, int *lr, int *lrinv, int *queue,
+                          int *names, const int *next)
+{
+    int k = block[0];
+    int na = (len - 1 - k) / (nd + nc);
+    const int *b = block + 1 + k + (long) nd * na;
+    int i, j, h, idx, same = 1;
+    const int *a;
+    const int *nm;
+
+    number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next, 1);
+    i = local_walk(fp, root2, lr, lrinv, queue);
+#ifdef ISO_DEBUG
+    ISO_CHECK(i == k);
+#endif
+    for (j = 0; j < nc && same; j++, b += na) {
+        a = classes + (long) j * n;
+        nm = names + (long) j * n;
+        for (i = 0, idx = 0; i < k; i++) {
+            h = lrinv[i];
+            if (h == -1)
+                continue;
+            if (nm[a[h]] != b[idx++]) {
+                same = 0;
+                break;
+            }
+        }
+    }
+    reset_local(k, lrinv, lr);
+    number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next, 0);
+    return same;
+}
+
+/*
  * The levels of the search store the position of their root in the scan of
  * the roots: the half-edge itself under ISO_ROOTS_ALL, its index in order
  * (see root_classes) under the other rules. The scans are written twice, once
@@ -1473,6 +1572,7 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
     int *start = cls + n;
     int *cnt = start + n + 1;
     int follow_ties = nc > 0 || all_leaves;
+    int cut_ties = nc > 0 && !all_leaves;
     int all = (rule & ~ISO_ROOTS_DATA) == ISO_ROOTS_ALL;
     int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, m = 0, target, t;
     int root, best_root, blen, len, k, cmp, ret, i, j, h, c, found;
@@ -1606,35 +1706,76 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
                 seqlen = lvl_pos[depth];
                 if (!follow_ties || depth > target)
                     continue;
+                /* Without all_leaves, a tied root is skipped when an earlier
+                 * tied root of the level extends the numbering of the class
+                 * values by the same values in the same order. Both
+                 * components then carry the same values at the same local
+                 * labels, so that exchanging them (or relabelling the
+                 * component from one root to the other when it is the same
+                 * one), the identity elsewhere, is an automorphism of fp,
+                 * data and classes fixing the components labelled before.
+                 * It sends the subtree of the later root onto the one of
+                 * the earlier root, searched first with the same minimum.
+                 * The extensions of tied roots have equal lengths: when
+                 * they are empty, every tied root after the first is
+                 * skipped. */
+                blen = lvl_len[depth];
+                if (cut_ties && !block_extends(seq + seqlen, blen, nd, nc, next))
+                    continue;
                 /* the tied roots after the current one: their block is
                  * the one of the level, already in seq; under a rule, they
                  * are in the class of the root of the level, the one chosen
                  * at the level since the state is back to it */
                 if (all) {
-                    for (root = lvl_root[depth] + 1; root < n; root++) {
+                    for (root = lvl_root[depth] + 1; root < n && !found; root++) {
                         if (fp[root] == -1 || r[root] != -1)
                             continue;
                         len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
                                          names, next, cand);
-                        if (len == lvl_len[depth] && compare_sequences(cand, len, seq + seqlen, len) == 0) {
-                            lvl_root[depth] = root;
-                            found = 1;
-                            break;
+                        if (len != blen || compare_sequences(cand, len, seq + seqlen, len) != 0)
+                            continue;
+                        found = 1;
+                        for (t = 0; cut_ties && t < root; t++) {
+                            if (fp[t] == -1 || r[t] != -1)
+                                continue;
+                            len = root_block(n, fp, nd, data, nc, classes, t, lr, lrinv, queue,
+                                             names, next, cand);
+                            if (len == blen && compare_sequences(cand, len, seq + seqlen, len) == 0
+                                && same_extension(n, fp, nd, nc, classes, t, root, seq + seqlen, blen,
+                                                  lr, lrinv, queue, names, next)) {
+                                found = 0;
+                                break;
+                            }
                         }
+                        if (found)
+                            lvl_root[depth] = root;
                     }
                 } else {
                     c = cls[order[lvl_root[depth]]];
-                    for (i = lvl_root[depth] + 1; i < start[c + 1]; i++) {
+                    for (i = lvl_root[depth] + 1; i < start[c + 1] && !found; i++) {
                         root = order[i];
                         if (r[root] != -1)
                             continue;
                         len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
                                          names, next, cand);
-                        if (len == lvl_len[depth] && compare_sequences(cand, len, seq + seqlen, len) == 0) {
-                            lvl_root[depth] = i;
-                            found = 1;
-                            break;
+                        if (len != blen || compare_sequences(cand, len, seq + seqlen, len) != 0)
+                            continue;
+                        found = 1;
+                        for (t = start[c]; cut_ties && t < i; t++) {
+                            if (r[order[t]] != -1)
+                                continue;
+                            len = root_block(n, fp, nd, data, nc, classes, order[t], lr, lrinv,
+                                             queue, names, next, cand);
+                            if (len == blen && compare_sequences(cand, len, seq + seqlen, len) == 0
+                                && same_extension(n, fp, nd, nc, classes, order[t], root,
+                                                  seq + seqlen, blen, lr, lrinv, queue, names,
+                                                  next)) {
+                                found = 0;
+                                break;
+                            }
                         }
+                        if (found)
+                            lvl_root[depth] = i;
                     }
                 }
             }

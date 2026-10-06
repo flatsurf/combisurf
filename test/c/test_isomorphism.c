@@ -1141,18 +1141,122 @@ static void test_search_random(void)
 }
 
 /*
- * Disjoint unions whose components tie, with classes: every root tied in a
- * component is followed, and the search without all leaves backjumps from
- * each leaf equal to the best one. The searches with every leaf, whose
- * number of leaves is the number of automorphisms, are kept small.
+ * Isolated edges whose halves carry the class values of pairs (2 k ints),
+ * into fp and dec; return the number of half-edges.
+ */
+static int isolated_edges(int k, const int *pairs, int *fp, int *dec)
+{
+    int h;
+    for (h = 0; h < 2 * k; h++) {
+        fp[h] = h;
+        dec[h] = pairs[h];
+    }
+    return 2 * k;
+}
+
+/*
+ * Disjoint unions whose components tie, with classes. With all leaves every
+ * root tied in a component is followed; without, only the first one of each
+ * extension of the numbering of the class values, and the search backjumps
+ * from each leaf equal to the best one: search() checks that the sequence
+ * and the relabelling are those of the first leaf of the search with all
+ * leaves. The searches with every leaf, whose number of leaves is the
+ * number of automorphisms, are kept small.
  */
 static void test_search_tied(void)
 {
     static const int edge_block[] = {2, 0, 1, 0, 0};
-    int fp[MAX_N], fp2[MAX_N], r[MAX_N], comp[MAX_N], rc[MAX_N];
+    static const int edge_block_second[] = {2, 0, 1, 1, 1};
+    int fp[MAX_N], fp2[MAX_N], r[MAX_N], comp[MAX_N], rc[MAX_N], pairs[MAX_N];
     int dec[2 * MAX_N], dec2[2 * MAX_N], cdec[2 * MAX_N], cdec2[2 * MAX_N];
-    int trial, k, n, size, nd, nvals, len, len2, i, j, h, c;
+    int trial, k, n, size, nd, nvals, len, len2, i, j, h, c, b, p, q;
     long leaves, leaves2, expected, all_leaves = 0;
+
+    /* b + 1 isolated edges with the class values 0, 0 and b with 1, 1:
+     * (b + 1)! 2^(b + 1) b! 2^b automorphisms; the edges 0, 0 come first */
+    current_case = "search, isolated edges 0, 0 beside edges 1, 1";
+    for (b = 1; b <= 3; b++) {
+        for (h = 0; h < 2 * (2 * b + 1); h++)
+            pairs[h] = h < 2 * (b + 1) ? 0 : 1;
+        n = isolated_edges(2 * b + 1, pairs, fp, dec);
+        expected = 1;
+        for (i = 1; i <= b + 1; i++)
+            expected *= 2 * i;
+        for (i = 1; i <= b; i++)
+            expected *= 2 * i;
+        for (j = 0; j < NUM_RULES; j++) {
+            CHECK(search(n, fp, 0, NULL, 1, dec, rules[j], &len, NULL) == expected);
+            CHECK(len == 5 * (2 * b + 1));
+            for (i = 0; i < len; i++)
+                CHECK(sequence[i] == (i < 5 * (b + 1) ? edge_block[i % 5] : edge_block_second[i % 5]));
+        }
+    }
+
+    /* the same with 41 edges (b = 20), without all leaves only */
+    current_case = "search, 21 isolated edges 0, 0 beside 20 edges 1, 1";
+    for (h = 0; h < 82; h++)
+        pairs[h] = h < 42 ? 0 : 1;
+    n = isolated_edges(41, pairs, fp, dec);
+    for (j = 0; j < NUM_RULES; j++) {
+        CHECK(iso_search(n, fp, 0, NULL, 1, dec, rules[j], 0, sequence, &len, relabelling, NULL, NULL,
+                         search_work) == 0);
+        CHECK(len == 5 * 41);
+        for (i = 0; i < len; i++)
+            CHECK(sequence[i] == (i < 5 * 21 ? edge_block[i % 5] : edge_block_second[i % 5]));
+        if (j == 0)
+            for (h = 0; h < n; h++)
+                CHECK(relabelling[h] == h);
+    }
+
+    /* p isolated edges 1, 0, q edges 0, 1 and k edges 1, 1, in an order
+     * that puts the edges 1, 1 first: (p + q)! k! 2^k automorphisms, since
+     * the edges 1, 1 forbid the exchange of the two values */
+    current_case = "search, mixed isolated edges";
+    for (p = 1; p <= 3; p++) {
+        for (q = 0; q <= 2; q++) {
+            for (k = 1; k <= 2; k++) {
+                for (h = 0; h < 2 * k; h++)
+                    pairs[h] = 1;
+                for (i = 0; i < p; i++) {
+                    pairs[2 * (k + i)] = 1;
+                    pairs[2 * (k + i) + 1] = 0;
+                }
+                for (i = 0; i < q; i++) {
+                    pairs[2 * (k + p + i)] = 0;
+                    pairs[2 * (k + p + i) + 1] = 1;
+                }
+                n = isolated_edges(k + p + q, pairs, fp, dec);
+                expected = 1;
+                for (i = 1; i <= p + q; i++)
+                    expected *= i;
+                for (i = 1; i <= k; i++)
+                    expected *= 2 * i;
+                for (j = 0; j < NUM_RULES; j++)
+                    CHECK(search(n, fp, 0, NULL, 1, dec, rules[j], &len, NULL) == expected);
+            }
+        }
+    }
+
+    /* isolated edges with random pairs of values among two to four: the
+     * graphs on the values given by the edges, whose tied roots extend the
+     * numbering in several ways */
+    current_case = "search, isolated edges with random pairs of values";
+    for (trial = 0; trial < 300; trial++) {
+        k = 1 + rng_below(7);
+        /* class values lie below the number of half-edges */
+        nvals = 2 + rng_below(3);
+        if (nvals > 2 * k)
+            nvals = 2 * k;
+        for (h = 0; h < 2 * k; h++)
+            pairs[h] = rng_below(nvals);
+        n = isolated_edges(k, pairs, fp, dec);
+        for (j = 0; j < NUM_RULES; j++) {
+            leaves = search(n, fp, 0, NULL, 1, dec, rules[j], &len, NULL);
+            if (j == 0)
+                all_leaves = leaves;
+            CHECK(leaves == all_leaves);
+        }
+    }
 
     /* k isolated edges with one class value: 2^k k! automorphisms, and k
      * blocks (2, 0, 1, 0, 0) */

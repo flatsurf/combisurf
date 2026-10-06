@@ -2133,6 +2133,100 @@ def test_fast_tied_edges_count(pattern):
     assert group.order() == count
 
 
+def check_search_against_uncut(fp, data, classes, root_rule):
+    r"""
+    Check that the reference search, which follows among tied roots only the
+    first one of each numbering of the class values, gives the key and the
+    first leaf of the search that follows every tied root.
+    """
+    key, leaves = isomorphism_naive._search(fp, data, classes, root_rule=root_rule)
+    key_all, leaves_all = isomorphism_naive._search(fp, data, classes, all_leaves=True, root_rule=root_rule)
+    assert key == key_all
+    assert len(leaves) == 1
+    assert leaves[0] == leaves_all[0]
+
+
+@pytest.mark.parametrize("pattern, root_rule", tied_edges_parameters())
+def test_search_against_uncut_tied_edges(pattern, root_rule):
+    fp, data, classes = isolated_edges_case(pattern[0])
+    check_search_against_uncut(fp, data, classes, root_rule)
+
+
+@WITH_ROOT_RULES
+@pytest.mark.parametrize("seed", range(3))
+def test_search_against_uncut_copies_and_unions(seed, root_rule):
+    rng = random.Random(seed)
+    for _ in range(6):
+        check_search_against_uncut(*copies_case(rng), root_rule)
+    for _ in range(10):
+        fp = random_disconnected_fp(rng, odd_folded=True)
+        classes = random_classes(rng, fp) or ([rng.randrange(3) for _ in fp],)
+        check_search_against_uncut(fp, random_data(rng, fp), classes, root_rule)
+
+
+def check_tied_edges_fast(pairs, root_rule, reference=True):
+    r"""
+    Check the key and the labelling of :mod:`combisurf.isomorphism` on the
+    isolated edges of the classes ``pairs`` within a time bound, and against
+    :mod:`combisurf.isomorphism_naive` when ``reference`` is true.
+    """
+    import time
+
+    fp, data, classes = isolated_edges_case(pairs)
+    start = time.perf_counter()
+    key, r = isomorphism_fast.canonical_key(fp, data, classes, relabelling=True, root_rule=root_rule)
+    form = isomorphism_fast.canonical_form(fp, data, classes, root_rule=root_rule)
+    elapsed = time.perf_counter() - start
+    assert elapsed < 1.0
+    assert key == flatten(form)
+    check_labelling_gives_form(fp, data, classes, r, form)
+    if reference:
+        start = time.perf_counter()
+        assert isomorphism_naive.canonical_labelling(fp, data, classes, root_rule=root_rule) == r
+        assert isomorphism_naive.canonical_form(fp, data, classes, root_rule=root_rule) == form
+        elapsed = time.perf_counter() - start
+        assert elapsed < 1.0
+    return form
+
+
+@WITH_ROOT_RULES
+def test_fast_tied_edges_41_edges(root_rule):
+    # 21 edges 0, 0 beside 20 edges 1, 1: the edges 0, 0 come first
+    pairs, _ = tied_edges_pattern(20)
+    form = check_tied_edges_fast(pairs, root_rule)
+    assert form == (tuple(range(82)), (0,) * 42 + (1,) * 40)
+
+
+@WITH_ROOT_RULES
+def test_fast_isolated_edges_one_class_value_40_edges(root_rule):
+    form = check_tied_edges_fast([(0, 0)] * 40, root_rule)
+    assert form == (tuple(range(80)), (0,) * 80)
+
+
+@WITH_ROOT_RULES
+@pytest.mark.parametrize("pairs", [[(0, 0)] * 10, tied_edges_pattern(5)[0]],
+                         ids=["10-edges-one-value", "tied-5"])
+def test_naive_isolated_edges_against_fast(pairs, root_rule):
+    check_tied_edges_fast(pairs, root_rule)
+
+
+@WITH_ROOT_RULES
+@pytest.mark.parametrize("pqr", [(4, 3, 3), (6, 5, 4)], ids=["mixed-4-3-3", "mixed-6-5-4"])
+def test_fast_against_naive_mixed_edges_large(pqr, root_rule):
+    # the lists of automorphisms (7! 3! 2^3 and 11! 4! 2^4) are out of reach:
+    # the keys, the labellings and the isomorphisms with a relabelled copy
+    rng = random.Random(0)
+    pairs, _ = mixed_edges_pattern(*pqr)
+    form = check_tied_edges_fast(pairs, root_rule)
+    fp, data, classes = isolated_edges_case(pairs)
+    s = random_edge_relabelling(rng, fp)
+    fp2, data2 = relabel_arrays(fp, data, s)
+    classes2 = rename_values(rng, relabel_arrays(fp, classes, s)[1])
+    assert isomorphism_naive.canonical_form(fp2, data2, classes2, root_rule=root_rule) == form
+    assert isomorphism_fast.canonical_form(fp2, data2, classes2, root_rule=root_rule) == form
+    check_same_verdict(fp, data, fp2, data2, classes, classes2)
+
+
 def test_default_root_rule():
     # omitting root_rule is the rule half-edge-fewest+data in each layer
     # (ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA, the integer 10); the decoration

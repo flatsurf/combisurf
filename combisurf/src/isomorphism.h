@@ -290,9 +290,21 @@ typedef int (*iso_leaf_callback)(const int *leaf, int first, void *arg);
  * order, and only the roots of minimal block are followed,
  * depth first in increasing root order; the component gets the labels
  * following those used. When several roots tie, every one of them is
- * followed if nc > 0 or all_leaves is nonzero, only the first one
- * otherwise. A state whose sequence exceeds the prefix of the best
- * sequence found is cut.
+ * followed if all_leaves is nonzero; otherwise only the first one if
+ * nc == 0, and the first one of each extension of the numbering of the
+ * class values if nc > 0. The extension of a tied root is, per class array,
+ * the values its component numbers first, in the order of their numbers.
+ * Two tied roots of equal extensions put the same values at the same local
+ * labels, so that exchanging their components (or relabelling the
+ * component from one root to the other when it is the same one), the
+ * identity elsewhere, is an automorphism fixing the components labelled
+ * before; the subtree of the later root is the image of the one of the
+ * earlier root, searched first. A later tied root is compared with the
+ * earlier ones of equal block by three walks of their components, and the
+ * first match stops the comparison; when the block of the level numbers no
+ * new value, every extension is empty and no further tied root is tried. A
+ * state whose sequence exceeds the prefix of the best sequence found is
+ * cut.
  *
  * When all_leaves is 0, a leaf equal to the best one gives a backjump: the
  * map from the best leaf to it is an automorphism (of the classes up to a
@@ -300,10 +312,16 @@ typedef int (*iso_leaf_callback)(const int *leaf, int first, void *arg);
  * the two leaves have the same roots, so the subtree of its root at the
  * first level where they differ is the image of the one of the best leaf,
  * already searched, and the search returns at once to that level and its
- * next tied root. Each tied root then costs one path down to an equal leaf
- * when its subtree is such an image: k tied copies of a component cost
- * about k^2 paths of k blocks instead of a number of leaves growing as the
- * automorphisms (2^k k! for k isolated edges with one class value).
+ * next tied root. With the cut of equal extensions, k tied copies of a
+ * component cost one path per distinct extension at each level: one path
+ * for k isolated edges with one class value, whose automorphisms are
+ * 2^k k!, and two for b + 1 edges with the value 0 beside b with the value
+ * 1. Tied roots of different extensions are all followed, and their
+ * subtrees may part only deep, so that the search stays exponential in the
+ * worst case, as for a graph on the class values given by its edges as
+ * isolated edges. With all_leaves nonzero neither of these cuts applies:
+ * every leaf reaching the minimum is reported, as many as the
+ * automorphisms.
  *
  * Any map is accepted, connected or not; a connected map gives a single
  * block, which is its key preceded by k. The empty map gives the empty
