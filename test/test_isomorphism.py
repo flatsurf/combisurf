@@ -37,7 +37,12 @@ disconnected, with decorations matched exactly and up to relabelling of
 their values (on a disconnected map, the classes shared by the components
 tie them together). The fast implementation :mod:`combisurf.isomorphism`
 is then compared with it by equality of the results, on random maps of up
-to 400 half-edges.
+to 400 half-edges, among them maps with a folded edge whose active half is
+odd. Since random decorations break every symmetry, the two are also
+compared on inputs that keep automorphisms: cyclic covers with lifted
+decorations, unions of relabelled copies of a component, and isolated
+edges whose classes tie them together, with automorphism counts given by
+closed formulas.
 
 The properties on random maps of up to 48 half-edges, the comparison of
 the two implementations on them, the automorphism counts and the
@@ -386,8 +391,8 @@ TRIANGULATION_12_EDGES_COLOURS = [2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1]  # "BRBBBR
 TRIANGLE_WITH_MONOGONS = "(0,1,2)(~0)(~1)(~2)"
 TWO_TRIANGLES = "(0,1,2)(~0,~1,~2)"
 TRIANGULATION_9_EDGES_SUBSPACE = [(2, 0, 0, 0, 1, 0, 1, 0, 2),
-               (0, 2, 0, 0, 0, 1, 0, 1, 2),
-               (0, 0, 1, 1, 0, 0, 0, 0, 2)]
+                                  (0, 2, 0, 0, 0, 1, 0, 1, 2),
+                                  (0, 0, 1, 1, 0, 0, 0, 0, 2)]
 
 UNICELLULAR = {
     '01012323': [0, 1, 0, 1, 2, 3, 2, 3],
@@ -408,7 +413,7 @@ DARTS = {
 # the triangulation with boundary of veerer/linear_family.py:745-747 as
 # veerer stores it (_fp, _half_edges_data, _edges_data, _subspace)
 BOUNDARY_TRIANGULATION_FP = [2, 3, 4, 6, 0, 13, 1, 12, 24, 14, 5, 7, 18, 16, 9, 20, 10, 26, 11,
-          27, 22, 23, 15, 25, 8, 21, 28, 29, 17, 19]
+                             27, 22, 23, 15, 25, 8, 21, 28, 29, 17, 19]
 BOUNDARY_TRIANGULATION_DATA = {
     'half_edge_data': [0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0,
                        1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
@@ -420,8 +425,8 @@ BOUNDARY_TRIANGULATION_DATA = {
 
 MIXED_FACES_9_EDGES = "(0,2,3,1,5,6)(~0,~5,7,~8,~2,~6)(~1,4,~3)(~4,~7,8)"
 MIXED_FACES_9_EDGES_SUBSPACE = [(2, 1, 0, 0, 2, 0, 0, 0, 1),
-                (0, 0, 1, 0, 2, 1, 0, 0, 0),
-                (0, 0, 0, 1, 2, 0, 2, 1, 0)]
+                                (0, 0, 1, 0, 2, 1, 0, 0, 0),
+                                (0, 0, 0, 1, 2, 0, 2, 1, 0)]
 
 CD_3111_A = '(0,2,1)-(3,4,5) (3)-(1) (4)-(2) (5)-(0)'
 CD_3111_B = '(0,2,1)-(3,5,4) (3)-(1) (4)-(2) (5)-(0)'
@@ -430,8 +435,8 @@ CD_3111_D = '(4,2,3)-(1,5,0) (1)-(3) (0)-(2) (5)-(4)'
 CD_2211_A = '(0,5)-(3,4) (1,4)-(2,5) (2)-(0) (3)-(1)'
 CD_2211_B = '(0,5)-(3,4) (1,4)-(2,5) (2)-(1) (3)-(0)'
 CD_THREE_CYLINDERS = ['(0,1)-(4,5) (2,4)-(0,3) (3,5)-(1,2)',
-         '(0,1)-(2,3) (2,4)-(1,4) (3,5)-(0,5)',
-         '(0,5)-(2,5) (1,4)-(0,4) (2,3)-(1,3)']
+                      '(0,1)-(2,3) (2,4)-(1,4) (3,5)-(0,5)',
+                      '(0,5)-(2,5) (1,4)-(0,4) (2,3)-(1,3)']
 CD_TWO_CYLINDERS = '(0,1)-(0,2) (2,3)-(1,3)'
 
 
@@ -445,7 +450,8 @@ CD_TWO_CYLINDERS = '(0,1)-(0,2) (2,3)-(1,3)'
     (TRIANGLE_WITH_MONOGONS, 6, 3, 0, True),
     (TWO_TRIANGLES, 6, 3, 0, True),
     (MIXED_FACES_9_EDGES, 18, 9, 0, True),
-], ids=["triangulation-12", "folded-triangulation", "disconnected-folded", "triangulation-9", "triangle-monogons", "two-triangles", "mixed-faces-subspace"])
+], ids=["triangulation-12", "folded-triangulation", "disconnected-folded", "triangulation-9",
+        "triangle-monogons", "two-triangles", "mixed-faces"])
 def test_map_from_fp(fp, half_edges, edges, folded, connected):
     m = map_from_fp(fp)
     assert m.num_half_edges() == half_edges
@@ -2086,8 +2092,7 @@ def test_fast_against_naive_tied_edges(pattern, root_rule):
     assert len(isomorphism_naive.automorphisms(fp, data, classes, root_rule=root_rule)) == count
 
 
-@pytest.mark.parametrize("pattern", SMALL_TIED_PATTERNS[:2] + SMALL_TIED_PATTERNS[3:5],
-                         ids=SMALL_TIED_IDS[:2] + SMALL_TIED_IDS[3:5])
+@pytest.mark.parametrize("pattern", SMALL_TIED_PATTERNS, ids=SMALL_TIED_IDS)
 def test_tied_edges_brute_force_count(pattern):
     pairs, count = pattern
     fp, data, classes = isolated_edges_case(pairs)
@@ -2542,10 +2547,12 @@ def test_fast_malformed_input():
             assert fast_error.type is naive_error.type
             assert str(fast_error.value) == str(naive_error.value)
         # isomorphism, the malformed map in either position, the other map
-        # a valid one of the same length
-        valid = list(range(len(fp)))
-        other_data = tuple([0] * len(fp) for _ in data)
-        other_classes = tuple([0] * len(fp) for _ in classes)
+        # a valid one of the same length, rounded up to an even length so
+        # that the error can only come from the malformed map
+        n = len(fp) + len(fp) % 2
+        valid = list(range(n))
+        other_data = tuple([0] * n for _ in data)
+        other_classes = tuple([0] * n for _ in classes)
         for arguments in [(fp, data, valid, other_data, classes, other_classes),
                           (valid, other_data, fp, data, other_classes, classes)]:
             with pytest.raises((ValueError, TypeError)) as fast_error:
