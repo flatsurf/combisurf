@@ -122,21 +122,30 @@ class GeometricIntersectionPairing:
 
     Works with multiple vertices::
 
-        sage: m = OrientedMap(vp="(0,1)(~0,~1)")
+        sage: m = OrientedMap(vp="(0,1,2)(~0,~1,~2)")
         sage: m.num_vertices(), m.has_folded_edge()
         (2, False)
         sage: GeometricIntersectionPairing(m, punctured_faces=True)
-        GeometricIntersectionPairing(OrientedMap("(0,1)(~0,~1)", "(0,~1)(~0,1)"), [0, 1])
+        GeometricIntersectionPairing(OrientedMap("(0,1,2)(~0,~1,~2)", "(0,~2,1,~0,2,~1)"), [0])
 
     But at least one face has to be punctured::
 
-        sage: m = OrientedMap(vp="(0,1)(~0,~1)")
-        sage: m.num_vertices(), m.has_folded_edge()
-        (2, False)
+        sage: m = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
         sage: GeometricIntersectionPairing(m, punctured_faces=False)
         Traceback (most recent call last):
         ...
         NotImplementedError: geometric intersection is not implemented on closed surfaces
+
+    and the surface, once its punctured faces are removed, must have negative
+    Euler characteristic::
+
+        sage: m = OrientedMap(vp="(0,1)(~0,~1)")
+        sage: m.euler_characteristic(), m.num_faces()
+        (2, 2)
+        sage: GeometricIntersectionPairing(m, punctured_faces=True)
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
 
     On a sphere with four faces, a figure eight around boundaries 0 and 1 is a
     boundary component if either 0 or 1 is not punctured and has
@@ -165,13 +174,11 @@ class GeometricIntersectionPairing:
 
     Repeated face indices count once::
 
-        sage: P = OrientedMap(fp="(0)(1)(~0,~1)")
-        sage: GeometricIntersectionPairing(P, punctured_faces=[0, 0, 1])
-        GeometricIntersectionPairing(OrientedMap("(0,~0,1,~1)", "(0)(~0,~1)(1)"), [0, 1])
-        sage: GeometricIntersectionPairing(P, punctured_faces=[0, 0, 1])([[0, 0, 2, 2]])
+        sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+        sage: GeometricIntersectionPairing(m, punctured_faces=[0, 0, 1, 2])
+        GeometricIntersectionPairing(OrientedMap("(0,~2,3)(~0,~4,1)(~1,5,2)(~3,~5,4)", "(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)"), [0, 1, 2])
+        sage: GeometricIntersectionPairing(m, punctured_faces=[0, 0, 1, 2])([eight01])
         1
-        sage: GeometricIntersectionPairing(P, punctured_faces=True)([[0, 0, 2, 2]])
-        2
 
     A map with a folded edge is rejected::
 
@@ -180,6 +187,26 @@ class GeometricIntersectionPairing:
         Traceback (most recent call last):
         ...
         NotImplementedError: geometric intersection is not implemented for maps with folded edges
+
+    The disk, the annulus, the sphere and the torus are rejected::
+
+        sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+        sage: GeometricIntersectionPairing(m, punctured_faces=[0])
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
+        sage: GeometricIntersectionPairing(m, punctured_faces=[0, 1])
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
+        sage: GeometricIntersectionPairing(m, punctured_faces=False)
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
+        sage: GeometricIntersectionPairing(OrientedMap(vp="(0,1,~0,~1)"), punctured_faces=False)
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
     """
     def __init__(self, m, punctured_faces=False):
         if not isinstance(m, OrientedMap):
@@ -201,6 +228,8 @@ class GeometricIntersectionPairing:
 
         self._punctured_faces = punctured_faces
 
+        if self._cm.euler_characteristic() - len(punctured_faces) >= 0:
+            raise NotImplementedError("geometric intersection is only implemented on surfaces of negative Euler characteristic")
         if not self._punctured_faces:
             raise NotImplementedError("geometric intersection is not implemented on closed surfaces")
 
@@ -582,6 +611,13 @@ class GeometricIntersectionMatrix:
         Traceback (most recent call last):
         ...
         NotImplementedError: geometric intersection is not implemented for maps with folded edges
+
+    So is the annulus::
+
+        sage: GeometricIntersectionMatrix(OrientedMap(vp="(0,~0)"), [[0]])
+        Traceback (most recent call last):
+        ...
+        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
     """
     def __init__(self, m, curves, check=True):
         if check and not isinstance(m, OrientedMap) or m.num_vertices() != 1:
@@ -592,6 +628,10 @@ class GeometricIntersectionMatrix:
 
         if m.num_vertices() != 1:
             raise ValueError("the map must have a single vertex")
+
+        # all faces are punctured, so that the Euler characteristic is 1 - #edges
+        if m.num_edges() < 2:
+            raise NotImplementedError("geometric intersection is only implemented on surfaces of negative Euler characteristic")
 
         self._cm = m.copy(mutable=False)
         angles = perm_dense_cycle_positions(self._cm._vp)
