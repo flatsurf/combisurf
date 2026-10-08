@@ -187,26 +187,6 @@ class GeometricIntersectionPairing:
         Traceback (most recent call last):
         ...
         NotImplementedError: geometric intersection is not implemented for maps with folded edges
-
-    The disk, the annulus, the sphere and the torus are rejected::
-
-        sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
-        sage: GeometricIntersectionPairing(m, punctured_faces=[0])
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
-        sage: GeometricIntersectionPairing(m, punctured_faces=[0, 1])
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
-        sage: GeometricIntersectionPairing(m, punctured_faces=False)
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
-        sage: GeometricIntersectionPairing(OrientedMap(vp="(0,1,~0,~1)"), punctured_faces=False)
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
     """
     def __init__(self, m, punctured_faces=False):
         if not isinstance(m, OrientedMap):

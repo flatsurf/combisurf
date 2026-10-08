@@ -456,6 +456,39 @@ class OrientedMap:
             raise ValueError(f"face number out of range f={f}")
         return f
 
+    def _check_face_list(self, faces):
+        r"""
+        Return ``faces`` as a sorted list of face indices without repetition.
+
+        ``True`` stands for every face and ``False`` for none.
+
+        TESTS::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+            sage: m._check_face_list(True), m._check_face_list(False)
+            ([0, 1, 2, 3], [])
+            sage: m._check_face_list([3, 1, 3])
+            [1, 3]
+            sage: m._check_face_list([4])
+            Traceback (most recent call last):
+            ...
+            ValueError: face number out of range f=4
+            sage: m._check_face_list(2)
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid list of faces 2
+            sage: m._check_face_list(None)
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid list of faces None
+        """
+        if isinstance(faces, bool):
+            return list(range(self.num_faces())) if faces else []
+        if not isinstance(faces, Sequence):
+            raise TypeError(f"invalid list of faces {faces}")
+        return sorted(set(self._check_face_index(f) for f in faces))
+
     def _check_walk(self, w, closed=False):
         r"""
         Check that ``w`` is a walk on this map and return it as an ``array('i')``.
@@ -2024,7 +2057,7 @@ class OrientedMap:
 
         return self.forest_coforest_decomposition((root_vertex,), (root_face,))
 
-    def radial_map(self, mapping=False, mutable=False, punctured_faces=None):
+    def radial_map(self, mapping=False, mutable=False, punctured_faces=False):
         r"""
         Return the radial map of this map.
 
@@ -2072,35 +2105,34 @@ class OrientedMap:
         - ``mutable`` -- boolean (default: ``False``); whether the result is
           mutable
 
-        - ``punctured_faces`` -- (default: ``None``) ``None``, a boolean, or a
-          list of face indices; the faces that get a bigon, ``True`` standing
-          for every face and ``False`` for none. Unless it is ``None``, the
-          output gets a last entry, the sorted list of the indices of the
-          bigons among the faces of the result, as expected by
-          :class:`~combisurf.geometric_intersection.GeometricIntersectionPairing`.
+        - ``punctured_faces`` -- (default: ``False``) a boolean or a list of
+          face indices; the faces that get a bigon, ``True`` standing for every
+          face and ``False`` for none
 
-        OUTPUT: the radial map, followed by the images of the half-edges if
-        ``mapping`` is set, and by the indices of the bigons if
-        ``punctured_faces`` is not ``None``. That is ``radial``, ``(radial,
-        mor)``, ``(radial, bigons)`` or ``(radial, mor, bigons)``.
+        OUTPUT: the pair ``(radial, bigons)``, or the triple ``(radial, mor,
+        bigons)`` if ``mapping`` is set, where ``mor`` is the list of the
+        images of the half-edges and ``bigons`` the sorted list of the indices
+        of the bigons among the faces of ``radial``, as expected by
+        :class:`~combisurf.geometric_intersection.GeometricIntersectionPairing`.
+        It is empty without punctured face.
 
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
             sage: m = OrientedMap(vp="(0,1,~0,2)(~1,~2)")
             sage: m.radial_map()
-            OrientedMap("(0,2,1,4)(~0,~2,~5,~1,~4,~3)(3,5)", "(0,~3,5,~2)(~0,4,~1,2)(1,~5,3,~4)")
+            (OrientedMap("(0,2,1,4)(~0,~2,~5,~1,~4,~3)(3,5)", "(0,~3,5,~2)(~0,4,~1,2)(1,~5,3,~4)"), [])
 
         An example with inactive half edges::
 
             sage: m = OrientedMap(vp="(0,3,6,~3)(~0,1,~6,~1)")
-            sage: m.radial_map()
+            sage: m.radial_map()[0]
             OrientedMap("(0,6,12,7)(~0,~3,~1,~7)(1,2,13,3)(~2,~13,~6,~12)", "(0,~7,12,~6)(~0,7,~1,3)(1,~3,13,~2)(2,~12,6,~13)")
 
         With ``mapping``, the images of the half-edges are returned as well::
 
             sage: m = OrientedMap(vp="(0,1,~0,2)(~1,~2)")
-            sage: radial, mor = m.radial_map(mapping=True)
+            sage: radial, mor, _ = m.radial_map(mapping=True)
             sage: mor
             [array('i', [0, 5]),
              array('i', [4, 1]),
@@ -2134,9 +2166,9 @@ class OrientedMap:
         The result is immutable unless ``mutable`` is set::
 
             sage: m = OrientedMap(vp="(0,1,~0,2)(~1,~2)")
-            sage: m.radial_map().is_mutable()
+            sage: m.radial_map()[0].is_mutable()
             False
-            sage: m.radial_map(mutable=True).is_mutable()
+            sage: m.radial_map(mutable=True)[0].is_mutable()
             True
 
         With punctured faces, a bigon per punctured face. On a torus made of
@@ -2166,19 +2198,13 @@ class OrientedMap:
             array('i', [0, 5])
 
         All faces punctured, the result has a bigon per face besides the
-        quadrilaterals, and without ``mapping`` it is a pair::
+        quadrilaterals::
 
             sage: r, bigons = m.radial_map(punctured_faces=True)
             sage: bigons
             [1, 2]
             sage: r.face_profile()
             [4, 2, 2, 4, 4]
-
-        Without punctured face the radial map is the usual one, followed by
-        the empty list of bigons::
-
-            sage: m.radial_map(punctured_faces=False) == (m.radial_map(), [])
-            True
 
         Raises a ``NotImplementedError`` on maps with folded edge::
 
@@ -2189,56 +2215,21 @@ class OrientedMap:
         """
         if self.has_folded_edge():
             raise NotImplementedError("radial_map is not implemented on a map with a folded edge")
-        punctured = self._punctured_face_list(punctured_faces)
+        punctured = self._check_face_list(punctured_faces)
         radial, mor, roots = self._radial_map(mapping, mutable, punctured)
 
-        if punctured is None:
-            return (radial, mor) if mapping else radial
-
         # the half-edge 2 h + 1 of the root h of a bigon lies on that bigon
-        h2f = radial.half_edge_to_face()
-        bigons = sorted(h2f[2 * h + 1] for h in roots)
+        bigons = []
+        if roots:
+            h2f = radial.half_edge_to_face()
+            bigons = sorted(h2f[2 * h + 1] for h in roots)
         return (radial, mor, bigons) if mapping else (radial, bigons)
-
-    def _punctured_face_list(self, punctured_faces):
-        r"""
-        Return ``punctured_faces`` as ``None`` or as a sorted list of face
-        indices without repetition.
-
-        ``True`` stands for every face and ``False`` for none.
-
-        TESTS::
-
-            sage: from combisurf import OrientedMap
-            sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
-            sage: m._punctured_face_list(None) is None
-            True
-            sage: m._punctured_face_list(True), m._punctured_face_list(False)
-            ([0, 1, 2, 3], [])
-            sage: m._punctured_face_list([3, 1, 3])
-            [1, 3]
-            sage: m._punctured_face_list([4])
-            Traceback (most recent call last):
-            ...
-            ValueError: face number out of range f=4
-            sage: m._punctured_face_list(2)
-            Traceback (most recent call last):
-            ...
-            TypeError: punctured_faces must be None, a boolean or a list of face indices (got 2)
-        """
-        if punctured_faces is None:
-            return None
-        if isinstance(punctured_faces, bool):
-            return list(range(self.num_faces())) if punctured_faces else []
-        if not isinstance(punctured_faces, Sequence):
-            raise TypeError(f"punctured_faces must be None, a boolean or a list of face indices (got {punctured_faces})")
-        return sorted(set(self._check_face_index(f) for f in punctured_faces))
 
     def _radial_map(self, mapping, mutable, punctured):
         r"""
         Return the triple ``(radial, mor, roots)`` of :meth:`radial_map`.
 
-        ``punctured`` is ``None`` or a sorted list of face indices; ``mor`` is
+        ``punctured`` is a sorted list of face indices; ``mor`` is
         ``None`` unless ``mapping`` is set, and ``roots`` lists, for each bigon
         in turn, the half-edge ``h`` of this map whose radial edge ``2 h + 1``
         is doubled. The map is assumed to have no folded edge.
@@ -2248,11 +2239,8 @@ class OrientedMap:
         vp = self._vp
         fp = self._fp
         n = len(vp)
-        if punctured is None:
-            roots = []
-        else:
-            faces = self.faces()
-            roots = [faces[f][0] for f in punctured]
+        faces = self.faces() if punctured else None
+        roots = [faces[f][0] for f in punctured]
         nr = 2 * n + 2 * len(roots)
         rvp = array('i', [-1] * nr)
         rfp = array('i', [-1] * nr)
@@ -2419,8 +2407,8 @@ class OrientedMap:
         ``h`` in the radial map of the reduced map, which gives the image of
         the half-edges of these walks::
 
-            sage: rad_map, rad = r.radial_map(mapping=True)
-            sage: q, qproj = m.quad_system(f, c, mapping=True)
+            sage: rad_map, rad, _ = r.radial_map(mapping=True)
+            sage: q, qproj, _ = m.quad_system(f, c, mapping=True)
             sage: p = {}
             sage: for e in comp:
             ....:     for h in (2 * e, 2 * e + 1):
@@ -2665,7 +2653,7 @@ class OrientedMap:
         return reduced, proj
 
     def quad_system(self, forest=None, coforest=None, relabel=False, mapping=False, mutable=False, check=True,
-                    punctured_faces=None):
+                    punctured_faces=False):
         r"""
         Return the quad system of this map for the given forest and coforest.
 
@@ -2713,15 +2701,14 @@ class OrientedMap:
           same edge twice is reported whatever its value, being caught by the
           bookkeeping rather than by a check.
 
-        - ``punctured_faces`` -- (default: ``None``) ``None``, a boolean, or a
-          list of face indices; the faces that get a bigon, as in
-          :meth:`radial_map`. Unless it is ``None``, the output gets a last
-          entry, the sorted list of the indices of the bigons among the faces
-          of the result (of the relabelled result if ``relabel`` is set).
+        - ``punctured_faces`` -- (default: ``False``) a boolean or a list of
+          face indices; the faces that get a bigon, as in :meth:`radial_map`
 
-        OUTPUT: the quad system, followed by the projection if ``mapping`` is
-        set, and by the indices of the bigons if ``punctured_faces`` is not
-        ``None``.
+        OUTPUT: the pair ``(quad, bigons)``, or the triple ``(quad, proj,
+        bigons)`` if ``mapping`` is set, where ``proj`` is the projection and
+        ``bigons`` the sorted list of the indices of the bigons among the
+        faces of ``quad`` (of the relabelled result if ``relabel`` is set). It
+        is empty without punctured face.
 
         EXAMPLES::
 
@@ -2729,7 +2716,7 @@ class OrientedMap:
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
             sage: m.genus()
             2
-            sage: q = m.quad_system()
+            sage: q, _ = m.quad_system()
             sage: q.num_vertices(), q.num_edges(), q.num_faces()
             (2, 8, 4)
             sage: q.vertex_profile()
@@ -2745,7 +2732,7 @@ class OrientedMap:
         and it happens for some half-edges of deleted edges as well. The walk
         of ``ep(h)`` is the reverse of the walk of ``h``::
 
-            sage: q, proj = m.quad_system(mapping=True)
+            sage: q, proj, _ = m.quad_system(mapping=True)
             sage: sorted(set(len(p) for p in proj if p is not None))
             [0, 2]
             sage: all(list(proj[h ^^ 1]) == [proj[h][1] ^^ 1, proj[h][0] ^^ 1]
@@ -2758,18 +2745,18 @@ class OrientedMap:
             sage: forest, coforest, _ = mm.forest_coforest_decomposition()
             sage: [h // 2 for h in coforest if h != -1]
             [1]
-            sage: q, proj = mm.quad_system(forest, coforest, mapping=True)
+            sage: q, proj, _ = mm.quad_system(forest, coforest, mapping=True)
             sage: proj[2], proj[3]
             (array('i'), array('i'))
 
         Folding never renumbers, so the labels of the radial map are kept and
         are sparse; ``relabel`` compacts them, the projection included::
 
-            sage: list(m.quad_system().half_edges())
+            sage: list(m.quad_system()[0].half_edges())
             [0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 20, 21, 22, 23, 26, 27]
-            sage: list(m.quad_system(relabel=True).half_edges())
+            sage: list(m.quad_system(relabel=True)[0].half_edges())
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-            sage: q, proj = m.quad_system(relabel=True, mapping=True)
+            sage: q, proj, _ = m.quad_system(relabel=True, mapping=True)
             sage: all(x in list(q.half_edges()) for p in proj for x in p)
             True
 
@@ -2803,7 +2790,7 @@ class OrientedMap:
 
             sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
             sage: m.quad_system()
-            OrientedMap("", "")
+            (OrientedMap("", ""), [])
             sage: m.quad_system(punctured_faces=True, relabel=True)
             (OrientedMap("(0,2,1,3)(~0,~3,~1,~2)", "(0,~2)(~0,3)(1,~3)(~1,2)"), [0, 1, 2, 3])
 
@@ -2849,7 +2836,7 @@ class OrientedMap:
         elif forest is None or coforest is None:
             raise ValueError("forest and coforest must be given together")
 
-        punctured = self._punctured_face_list(punctured_faces)
+        punctured = self._check_face_list(punctured_faces)
 
         vp = self._vp
         n = len(vp)
@@ -2977,8 +2964,8 @@ class OrientedMap:
         if not mutable:
             quad.set_immutable()
 
-        bigons = None
-        if punctured is not None:
+        bigons = []
+        if roots:
             h2f = quad.half_edge_to_face()
             bigon_half_edges = handle[n // 2:]
             if relabelling is not None:
@@ -2986,7 +2973,7 @@ class OrientedMap:
             bigons = sorted(h2f[y] for y in bigon_half_edges)
 
         if not mapping:
-            return quad if bigons is None else (quad, bigons)
+            return quad, bigons
 
         proj = []
         for h in range(n):
@@ -3005,7 +2992,7 @@ class OrientedMap:
                 proj.append(array('i', [a, b]))
             else:
                 proj.append(array('i', [relabelling[a], relabelling[b]]))
-        return (quad, proj) if bigons is None else (quad, proj, bigons)
+        return quad, proj, bigons
 
     def geometric_intersection(self, u, v=None, punctured_faces=False):
         r"""

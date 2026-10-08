@@ -70,7 +70,7 @@ def test_quad_system_shape():
         g = m.genus()
         if g < 1:
             continue
-        q = m.quad_system()
+        q, _ = m.quad_system()
         assert q.num_vertices() == 2, m
         assert q.num_edges() == 4 * g, m
         assert q.num_faces() == 2 * g, m
@@ -86,7 +86,7 @@ def test_quad_system_projection():
         fp = m.face_permutation(copy=False)
         forest, coforest, _ = m.forest_coforest_decomposition()
         contracted = {h // 2 for h in forest if h != -1}
-        q, proj = m.quad_system(forest, coforest, mapping=True)
+        q, proj, _ = m.quad_system(forest, coforest, mapping=True)
 
         for h in m.half_edges():
             p = proj[h]
@@ -122,7 +122,7 @@ def test_quad_system_matches_QuadSystem():
         code = tree_co_tree(m)
         forest = [2 * e for e in m.edge_indices() if code[e] == 0]
         coforest = [2 * e for e in m.edge_indices() if code[e] == 1]
-        q, proj = m.quad_system(forest, coforest, mapping=True)
+        q, proj, _ = m.quad_system(forest, coforest, mapping=True)
         Q = QuadSystem(m)
 
         # QuadSystem._proj is not orientation consistent: _proj[ep(h)] is not
@@ -152,7 +152,7 @@ def test_quad_system_genus_zero():
     for m in maps:
         forest, coforest, comp = m.forest_coforest_decomposition()
         assert not list(comp), m
-        q, proj = m.quad_system(forest, coforest, mapping=True)
+        q, proj, _ = m.quad_system(forest, coforest, mapping=True)
         assert q == OrientedMap("", ""), m
         assert q.num_edges() == 0, m
         assert all(p is None or len(p) == 0 for p in proj), m
@@ -161,8 +161,8 @@ def test_quad_system_genus_zero():
     # quadrangulation instead
     m = OrientedMap(vp="(0,~0)")
     forest, coforest, _ = m.forest_coforest_decomposition()
-    q = m.quad_system(forest, [])
-    assert q == m.radial_map(), m
+    q, _ = m.quad_system(forest, [])
+    assert q == m.radial_map()[0], m
     assert set(q.face_profile()) == {4}, m
     assert q.genus() == 0, m
 
@@ -177,8 +177,8 @@ def test_quad_system_arguments():
     with pytest.raises(ValueError, match="together"):
         m.quad_system(coforest=coforest)
 
-    assert not m.quad_system().is_mutable()
-    assert m.quad_system(mutable=True).is_mutable()
+    assert not m.quad_system()[0].is_mutable()
+    assert m.quad_system(mutable=True)[0].is_mutable()
 
     h = next(x for x in forest if x != -1)
     with pytest.raises(ValueError, match="listed twice"):
@@ -198,8 +198,8 @@ def test_quad_system_relabel():
         if not m.is_connected() or m.genus() < 1:
             continue
         forest, coforest, _ = m.forest_coforest_decomposition()
-        plain, proj = m.quad_system(forest, coforest, mapping=True)
-        compact, proj2 = m.quad_system(forest, coforest, relabel=True, mapping=True)
+        plain, proj, _ = m.quad_system(forest, coforest, mapping=True)
+        compact, proj2, _ = m.quad_system(forest, coforest, relabel=True, mapping=True)
 
         # no inactive half-edge left
         assert list(compact.half_edges()) == list(range(2 * compact.num_edges())), m
@@ -289,15 +289,14 @@ def test_quad_system_punctured_shape():
                     assert len({h2v[y] for y in q.half_edges() if y % 2 == 1}) == 1, (name, P)
 
 
-def test_quad_system_punctured_unchanged():
-    # without bigons the result is the one without the keyword
+def test_quad_system_no_puncture():
+    # no punctured face is the default, and gives no bigon
     for name, m, subsets in punctured_maps():
         forest, coforest, _ = m.forest_coforest_decomposition()
-        q0, proj0 = m.quad_system(forest, coforest, mapping=True)
-        q1, proj1, bigons = m.quad_system(forest, coforest, mapping=True, punctured_faces=False)
+        q0, proj0, bigons = m.quad_system(forest, coforest, mapping=True)
         assert bigons == [], name
-        assert q0 == q1 and proj0 == proj1, name
-        assert m.quad_system(punctured_faces=[]) == (m.quad_system(), []), name
+        assert m.quad_system(forest, coforest, mapping=True, punctured_faces=False) == (q0, proj0, []), name
+        assert m.quad_system(punctured_faces=[]) == m.quad_system(), name
 
 
 def test_quad_system_punctured_arguments():

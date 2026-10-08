@@ -108,7 +108,7 @@ def test_forest_coforest_roots():
 
     # the quad system, on the other hand, is the disjoint union of the quad
     # systems of the components
-    q = m.quad_system()
+    q, _ = m.quad_system()
     assert len(q.connected_components()) == 2
     assert set(q.face_profile()) == {4}
 
@@ -160,8 +160,8 @@ def test_forest_coforest_empty_map():
     assert z.tree_cotree_decomposition() == z.forest_coforest_decomposition()
 
     # and the quad system of the empty map is the empty map
-    assert z.quad_system() == z
-    q, proj = z.quad_system(mapping=True)
+    assert z.quad_system() == (z, [])
+    q, proj, _ = z.quad_system(mapping=True)
     assert q == z and proj == []
 
 

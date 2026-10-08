@@ -882,6 +882,17 @@ def test_punctured_faces():
         assert all(M[0].entry(i,j) >= M[k].entry(i,j) for i in range(3) for j in range(3))
 
 
+def test_non_negative_euler_characteristic():
+    # the disk, the annulus, the sphere and the torus are rejected
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+    m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+    torus = OrientedMap(vp="(0,1,~0,~1)")
+    for surface, punctured_faces in [(m, [0]), (m, [0, 1]), (m, False), (torus, False)]:
+        with pytest.raises(NotImplementedError, match="negative Euler characteristic"):
+            GeometricIntersectionPairing(surface, punctured_faces=punctured_faces)
+
+
 def test_face_boundaries():
     # on a one-vertex map, the boundaries of the faces are disjoint simple
     # closed curves

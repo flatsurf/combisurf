@@ -525,7 +525,9 @@ def test_radial_map_punctured_unchanged():
     from combisurf import OrientedMap
 
     for m in radial_maps():
-        r0, mor0 = m.radial_map(mapping=True)
+        # no punctured face is the default, and gives no bigon
+        r0, mor0, bigons = m.radial_map(mapping=True)
+        assert bigons == []
         assert m.radial_map(mapping=True, punctured_faces=False) == (r0, mor0, [])
         assert m.radial_map(punctured_faces=[]) == (r0, [])
         r1, mor1, _ = m.radial_map(mapping=True, punctured_faces=True)

@@ -143,7 +143,7 @@ def test_fold_corner_twice_is_contract_edge():
     # along the odd half-edge contracts that edge
     done = [0]
     for m in sample_maps():
-        R = m.radial_map()
+        R = m.radial_map()[0]
         rfp = R.face_permutation(copy=False)
         for e in m.edge_indices():
             h = 2 * e
@@ -160,7 +160,7 @@ def test_fold_corner_twice_is_contract_edge():
                 r.fold_corner(x1)
             except ValueError:
                 continue          # degenerate quadrilateral
-            assert find_isomorphism(mm.radial_map(), r) is not None, (m, e)
+            assert find_isomorphism(mm.radial_map()[0], r) is not None, (m, e)
             done[0] += 1
     assert done[0] > 20
 
@@ -169,7 +169,7 @@ def test_fold_corner_twice_is_delete_edge():
     # ... and along the even half-edge it deletes it
     done = [0]
     for m in sample_maps():
-        R = m.radial_map()
+        R = m.radial_map()[0]
         fp = m.face_permutation(copy=False)
         rfp = R.face_permutation(copy=False)
         for e in m.edge_indices():
@@ -187,7 +187,7 @@ def test_fold_corner_twice_is_delete_edge():
                 r.fold_corner(x1)
             except ValueError:
                 continue          # degenerate quadrilateral
-            assert find_isomorphism(mm.radial_map(), r) is not None, (m, e)
+            assert find_isomorphism(mm.radial_map()[0], r) is not None, (m, e)
             done[0] += 1
     assert done[0] > 20
 
@@ -221,7 +221,7 @@ def test_fold_corner_prunes_a_leaf():
     # the opposite half-edge follows h in its face: the corner is bounded by
     # the edge of h on both sides and folding prunes it
     for m in sample_maps():
-        R = m.radial_map()
+        R = m.radial_map()[0]
         rvp = R.vertex_permutation(copy=False)
         rfp = R.face_permutation(copy=False)
         leaves = [h for h in R.half_edges() if rfp[h] == h ^ 1]
