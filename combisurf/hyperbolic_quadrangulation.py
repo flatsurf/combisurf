@@ -81,11 +81,13 @@ corner), the punctured faces being handled by integer turns; see
 
 Two steps are specific to this module and are not published results. It
 assumes that the theorem holds for the degree at least `5` at the vertices
-with no punctured corner (the curvature bound of
-:ref:`erickson-whittlesey-2013`, Lemma 4.1, is `-1/4` or less, but the proof
-of :ref:`despre-lazarus-2019`, Theorem 10 was not checked for it). It also
-assumes that the weights `1` and `4` read spurs and brackets near punctured
-faces as the integer turns of the articles do.
+with no punctured corner. A vertex of degree `d` has curvature `1 - d/4`,
+and the proof of :ref:`erickson-whittlesey-2013`, Lemma 4.1 (Corollary 5.1
+of Gersten and Short, *Small cancellation theory and automatic groups*,
+1990), only needs a curvature at most `-1/4`, that is a degree at least
+`5`; the proof of :ref:`despre-lazarus-2019`, Theorem 10 was not checked
+for it. It also assumes that the weights `1` and `4` read spurs and
+brackets near punctured faces as the integer turns of the articles do.
 
 EXAMPLES:
 
@@ -529,8 +531,8 @@ class HyperbolicQuadrangulation:
         `-1, -2, \ldots, -2, -1`, with any number of `\pm 2`. If ``w`` is
         closed, the weighted turns are read cyclically and the run of `\pm 2`
         may go once around the whole walk (a *cyclic bracket*); otherwise
-        they are read linearly. The empty walk, and the walks of length one that
-        are not closed, are geodesics. The check takes time `O(|w|)`.
+        they are read linearly. The empty walk, and the walks of length one
+        that are not closed, are geodesics. The check takes time `O(|w|)`.
 
         INPUT:
 

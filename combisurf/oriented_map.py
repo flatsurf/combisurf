@@ -2669,8 +2669,8 @@ class OrientedMap:
         punctured face of :meth:`radial_map`. The bigons are never folded, so
         that with spanning ``forest`` and ``coforest`` and `b \geq 1` bigons
         the result is a punctured quadrangulation of the same punctured
-        surface: two vertices, `4g + b` edges, `2g` filled quadrilaterals and the `b`
-        bigons.
+        surface: two vertices, `4g + b` edges, `2g` filled quadrilaterals and
+        the `b` bigons.
 
         INPUT:
 
