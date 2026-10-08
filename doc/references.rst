@@ -137,6 +137,24 @@ Directly on the problem solved by
 :meth:`~combisurf.geometric_intersection.GeometricIntersection.geometric_intersection`,
 the geometric intersection numbers of curves on a surface given as words.
 
+Also the source of the turns, spurs and brackets of closed walks on systems
+of quads and of the equal length of homotopic geodesics (Corollary 11) used
+in :mod:`combisurf.hyperbolic_quadrangulation`.
+
+.. _erickson-whittlesey-2013:
+
+Erickson & Whittlesey (2013)
+----------------------------
+
+J. Erickson and K. Whittlesey. *Transforming curves on surfaces redux*.
+Proceedings of the Twenty-Fourth Annual ACM-SIAM Symposium on Discrete
+Algorithms (SODA 2013), pages 1646-1655, 2013.
+
+Source of the reduction of a closed walk on a system of quads to a geodesic
+in linear time (Lemma 4.3), on a run-length encoded sequence of turns,
+implemented by
+:meth:`~combisurf.hyperbolic_quadrangulation.HyperbolicQuadrangulation.geodesic`.
+
 .. _birman-series1984:
 
 Birman & Series (1984)
