@@ -28,6 +28,12 @@ def genus2_two_hexagons():
     return OrientedMap(vp=[[0, 9, 10, 7, 8, 11], [2, 1, 4, 3, 6, 5]])
 
 
+def genus2_pentagons():
+    # four vertices of degree 5 and four faces of degree 5; its radial map
+    # has eight vertices of degree 5
+    return OrientedMap(vp=[[1, 2, 13, 16, 6], [9, 10, 15, 3, 11], [17, 8, 12, 7, 4], [19, 0, 14, 18, 5]])
+
+
 def build(name):
     r"""
     Return ``(m, q, mor, bigons)`` for the instance ``name``: the walks of
@@ -38,6 +44,8 @@ def build(name):
         m = genus2()
     elif surface == "hexagons":
         m = genus2_two_hexagons()
+    elif surface == "pentagons":
+        m = genus2_pentagons()
     else:
         m = OrientedMap(vp=cylinder_data(surface)["vp"])
     if construction == "quad_system":
@@ -60,6 +68,8 @@ INSTANCES = {
     "hexagons_radial": ("hexagons", "radial_map", False, (4, 12, 6), [6, 6, 6, 6], 0),
     "hexagons_radial_0": ("hexagons", "radial_map", [0], (4, 13, 7), [6, 6, 7, 7], 1),
     "lshape_radial_punctured": ("lshape", "radial_map", True, (7, 24, 15), [4] * 6 + [24], 6),
+    "pentagons_radial": ("pentagons", "radial_map", False, (8, 20, 10), [5] * 8, 0),
+    "pentagons_radial_0": ("pentagons", "radial_map", [0], (8, 21, 11), [5] * 6 + [6, 6], 1),
 }
 NAMES = list(INSTANCES)
 CLOSED = [name for name in NAMES if INSTANCES[name][5] == 0]
@@ -300,6 +310,34 @@ def test_geodesic_random(name):
         check_geodesic(I, w, I.Q.geodesic(w))
 
 
+def detours(I, rng, w):
+    r"""
+    Return closed walks freely homotopic to ``w`` by construction: a
+    rotation of ``w``, and ``w`` with a spur, the boundary of a filled face
+    and the link of a vertex without punctured corner inserted at a random
+    position.
+    """
+    i = rng.randrange(len(w))
+    out = I.out[I.h2v[w[i]]]
+    variants = [w[i:] + w[:i]]
+    x = rng.choice(out)
+    variants.append(w[:i] + [x, x ^ 1] + w[i:])
+    filled = [x for x in out if I.h2f[x] not in I.bigons]
+    if filled:
+        x = rng.choice(filled)
+        face = [x]
+        while I.fp[face[-1]] != x:
+            face.append(I.fp[face[-1]])
+        variants.append(w[:i] + face + w[i:])
+    # the link of a neighbour without punctured corner, through the
+    # starting vertex of w[i]
+    neighbours = [x for x in out if not any(I.punctured_corner[y] for y in I.out[I.h2v[x ^ 1]])]
+    if neighbours:
+        x = rng.choice(neighbours)
+        variants.append(w[:i] + I.link(x ^ 1) + w[i:])
+    return variants
+
+
 @pytest.mark.parametrize("name", NAMES)
 def test_geodesic_detours(name):
     # homotopic geodesics have the same length: Despré-Lazarus, Corollary 11
@@ -308,25 +346,7 @@ def test_geodesic_detours(name):
     rng = random.Random(1)
     for w in I.random_walks(rng, 8, 30):
         g = Q.geodesic(w)
-        i = rng.randrange(len(w))
-        out = I.out[I.h2v[w[i]]]
-        variants = [w[i:] + w[:i]]
-        x = rng.choice(out)
-        variants.append(w[:i] + [x, x ^ 1] + w[i:])
-        filled = [x for x in out if I.h2f[x] not in I.bigons]
-        if filled:
-            x = rng.choice(filled)
-            face = [x]
-            while I.fp[face[-1]] != x:
-                face.append(I.fp[face[-1]])
-            variants.append(w[:i] + face + w[i:])
-        # the link of a neighbour without punctured corner, through the
-        # starting vertex of w[i]
-        neighbours = [x for x in out if not any(I.punctured_corner[y] for y in I.out[I.h2v[x ^ 1]])]
-        if neighbours:
-            x = rng.choice(neighbours)
-            variants.append(w[:i] + I.link(x ^ 1) + w[i:])
-        for u in variants:
+        for u in detours(I, rng, w):
             I.q._check_walk(u, closed=True)
             h = Q.geodesic(u)
             assert len(h) == len(g), (w, u, g, h)
@@ -615,3 +635,154 @@ def test_paths_corner_cases():
         assert not Q.is_geodesic([h, h ^ 1], closed=False)
     with pytest.raises(NotImplementedError):
         Q.geodesic(I.half_edges[:1], closed=False)
+
+
+# the weighted turn that a right-most (left-most) geodesic never has
+SIDES = {"right": 1, "left": -1}
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_canonical_uniqueness(name):
+    # one canonical form per free homotopy class: Erickson-Whittlesey, Lemma
+    # 5.2; Despré-Lazarus, Theorem 8
+    I = instance(name)
+    Q = I.Q
+    rng = random.Random(6)
+    for w in I.random_walks(rng, 8, 30):
+        variants = detours(I, rng, w)
+        for side in SIDES:
+            c = Q.geodesic(w, canonical=side)
+            for u in variants:
+                assert is_rotation(Q.geodesic(u, canonical=side), c), (side, w, u)
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_canonical_properties(name):
+    I = instance(name)
+    Q = I.Q
+    rng = random.Random(7)
+    for w in I.random_walks(rng, 20, 40):
+        n = len(Q.geodesic(w))
+        for side, s in SIDES.items():
+            c = Q.geodesic(w, canonical=side)
+            check_geodesic(I, w, c)
+            assert len(c) == n
+            t = Q.weighted_turns(c)
+            assert s not in t, (side, w, c, t)
+            assert not c or any(x != 2 * s for x in t), (side, w, c)
+            assert is_rotation(Q.geodesic(c, canonical=side), c)
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_canonical_powers(name):
+    # powers of a canonical closed geodesic are canonical: Despré-Lazarus,
+    # Remark 2
+    I = instance(name)
+    Q = I.Q
+    rng = random.Random(8)
+    for w in I.random_walks(rng, 5, 20):
+        for side in SIDES:
+            c = Q.geodesic(w, canonical=side)
+            for k in (2, 3):
+                assert is_rotation(Q.geodesic(w * k, canonical=side), c * k)
+
+
+def test_canonical_corner_cases():
+    I = instance("genus2_punctured")
+    Q = I.Q
+    for side in SIDES:
+        assert Q.geodesic([], canonical=side) == []
+        for i in I.bigons:
+            face = I.q.faces()[i]
+            assert is_rotation(Q.geodesic(face, canonical=side), face)
+            assert is_rotation(Q.geodesic(inverse(face), canonical=side), inverse(face))
+        with pytest.raises(NotImplementedError):
+            Q.geodesic(I.half_edges[:1], closed=False, canonical=side)
+    for h in I.half_edges:
+        assert Q.geodesic([h, h ^ 1], canonical="right") == []
+    with pytest.raises(ValueError, match="canonical must be"):
+        Q.geodesic([], canonical="up")
+
+
+def shift_row(R, a):
+    r"""
+    Return the row of the table of right shifts (see
+    ``WeightedTurnRuns._right_shift``) that applies to the run ``a`` of
+    value `1`: 1 to 3 for a bend that does not cover the walk, according to
+    ``(s > 0, t > 0)``, ``s = 0`` and ``t = 0``, 4 to 6 likewise for a bend
+    that covers it, and 7 when it covers it with ``x = 3``.
+    """
+    turns = []
+    u = a
+    for _ in range(R._size):
+        turns += [R._val[u]] * R._len[u]
+        u = R._next[u]
+    # the turns from the turn 1 of a
+    n = len(turns)
+    t = 0
+    while turns[1 + t] == 2:
+        t += 1
+    s = 0
+    while turns[-1 - s] == 2:
+        s += 1
+    cyclic = s + t + 2 == n
+    if cyclic:
+        # the vertex where the bend starts, at the weighted turn x
+        v = R._h2v[R._first[a if s == 0 else R._prev[a]]]
+        if (turns[1 + t] - 3) % R._wdeg[v] == 0:
+            return 7
+    row = 1 if s and t else 2 if not s else 3
+    return row + 3 if cyclic else row
+
+
+def test_right_shifts_exercised():
+    # every row of the table of right shifts happens
+    counts = {row: 0 for row in range(1, 9)}
+    saved = WeightedTurnRuns._right_shift, WeightedTurnRuns._right_shift_ring
+
+    def right_shift(self, a):
+        counts[shift_row(self, a)] += 1
+        return saved[0](self, a)
+
+    def right_shift_ring(self, u):
+        counts[8] += 1
+        return saved[1](self, u)
+
+    try:
+        WeightedTurnRuns._right_shift = right_shift
+        WeightedTurnRuns._right_shift_ring = right_shift_ring
+        for name in NAMES:
+            I = instance(name)
+            rng = random.Random(9)
+            for w in I.random_walks(rng, 20, 40):
+                for side, s in SIDES.items():
+                    assert s not in I.Q.weighted_turns(I.Q.geodesic(w, canonical=side))
+    finally:
+        WeightedTurnRuns._right_shift, WeightedTurnRuns._right_shift_ring = saved
+    assert all(counts.values()), counts
+
+
+def test_right_shift_sign():
+    # a standard right shift x, 2, 1, 2, y on the radial map of the genus 2
+    # surface with four pentagons, all of whose vertices have degree 5
+    I = instance("pentagons_radial")
+    Q = I.Q
+    g = [0, 25, 34, 23, 6, 39]
+    assert Q.weighted_turns(g) == [2, -2, -2, -1, 2, 1]
+    assert Q.is_geodesic(g)
+    c = Q.geodesic(g, canonical="right")
+    assert is_rotation(c, [23, 30, 5, 32, 15, 34])
+    # x = -1 from 23 to the bend 6, 39, 0, 25 and y = -2 after it; x - 1 =
+    # -2 merges with the turn -2 from 34 to 23, and -3 and y - 1 = -3 are 2
+    # at vertices of degree 5
+    assert Q.weighted_turns([23, 30, 5, 32, 15, 34]) == [-2, -1, 2, -1, 2, -2]
+    # the faces on the right of the bend: R_1 along 6, the corner face C
+    # along 39 and 0, R'_1 along 25
+    R1, C, R1p = I.h2f[6 ^ 1], I.h2f[39 ^ 1], I.h2f[25 ^ 1]
+    assert I.h2f[0 ^ 1] == C and len({R1, C, R1p}) == 3
+    # the new walk 30, 5, 32, 15 goes around R_1 and R'_1, on its left,
+    # through the corner of C opposite to the turn 1
+    assert [I.h2f[h] for h in [30, 5, 32, 15]] == [R1, R1, R1p, R1p]
+    assert I.h2v[5 ^ 1] == I.h2v[32] and C in [I.h2f[h] for h in I.out[I.h2v[32]]]
+    # the left-most geodesic shifts the other way
+    assert Q.weighted_turns(Q.geodesic(g, canonical="left")).count(-1) == 0

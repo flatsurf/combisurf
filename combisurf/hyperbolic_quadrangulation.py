@@ -79,7 +79,7 @@ systems of quads (degree at least `6` at the vertices with no punctured
 corner), the punctured faces being handled by integer turns; see
 :ref:`despre-lazarus-2019`, Theorem 9 and Theorem 10.
 
-Two steps are specific to this module and are not published results. It
+Three steps are specific to this module and are not published results. It
 assumes that the theorem holds for the degree at least `5` at the vertices
 with no punctured corner. A vertex of degree `d` has curvature `1 - d/4`,
 and the proof of :ref:`erickson-whittlesey-2013`, Lemma 4.1 (Corollary 5.1
@@ -88,6 +88,12 @@ of Gersten and Short, *Small cancellation theory and automatic groups*,
 `5`; the proof of :ref:`despre-lazarus-2019`, Theorem 10 was not checked
 for it. It also assumes that the weights `1` and `4` read spurs and
 brackets near punctured faces as the integer turns of the articles do.
+Last, it assumes that the right-most and the left-most geodesics of
+:meth:`HyperbolicQuadrangulation.geodesic` are unique in their free
+homotopy class under the same two conditions: the proof of
+:ref:`erickson-whittlesey-2013`, Lemma 5.2, bounds the curvature of the
+interior vertices of an annular diagram by `-1/2`, a degree at least `6`,
+which holds in systems of quads since their degrees are even.
 
 EXAMPLES:
 
@@ -609,7 +615,7 @@ class HyperbolicQuadrangulation:
                     straight = False
         return True
 
-    def geodesic(self, w, closed=True, check=True):
+    def geodesic(self, w, closed=True, check=True, canonical=None):
         r"""
         Return a geodesic freely homotopic to the closed walk ``w``.
 
@@ -622,6 +628,25 @@ class HyperbolicQuadrangulation:
         the geodesics freely homotopic to ``w`` all have the same length,
         :ref:`despre-lazarus-2019`, Corollary 11.
 
+        A free homotopy class usually contains several geodesics. Two of them
+        are canonical. The *right-most* geodesic has no weighted turn `1`,
+        and its weighted turns are not all `2`: it is the canonical cycle of
+        :ref:`erickson-whittlesey-2013`, §5, and the canonical form of
+        :ref:`despre-lazarus-2019`, Theorem 8, whose turns are the opposite of
+        the weighted turns here. It is obtained from a geodesic by the right
+        shifts of :ref:`erickson-whittlesey-2013`, Lemma 5.1, each of which
+        moves a part ``2, ..., 2, 1, 2, ..., 2`` of the walk across the
+        filled faces on its right. The *left-most* geodesic is its mirror
+        image: no weighted turn `-1`, and weighted turns not all `-2`; it is
+        the right-most geodesic of the reverse walk, reversed. Both are
+        computed in time linear in the length of ``w``, and each is unique up
+        to cyclic rotation in the free homotopy class of ``w``, so that two
+        closed walks are freely homotopic exactly when their right-most
+        geodesics are rotations of each other. This uniqueness is
+        :ref:`erickson-whittlesey-2013`, Lemma 5.2, for systems of quads; on
+        other hyperbolic punctured quadrangulations it is an assumption of
+        this module (see :mod:`~combisurf.hyperbolic_quadrangulation`).
+
         INPUT:
 
         - ``w`` -- a closed walk
@@ -631,6 +656,10 @@ class HyperbolicQuadrangulation:
 
         - ``check`` -- boolean (default: ``True``); whether to check that
           ``w`` is a closed walk
+
+        - ``canonical`` -- (default: ``None``) ``None`` for any geodesic,
+          ``"right"`` for the right-most geodesic or ``"left"`` for the
+          left-most geodesic
 
         OUTPUT: a list of half-edges, empty when ``w`` is contractible
 
@@ -697,6 +726,40 @@ class HyperbolicQuadrangulation:
             sage: Q.geodesic(walk)
             [8, 1]
 
+        The boundary of the bigon, with weighted turns `4`, is its own
+        right-most and left-most geodesic::
+
+            sage: Q.weighted_turns([1, 8])
+            [4, 4]
+            sage: Q.geodesic([1, 8], canonical="right")
+            [1, 8]
+            sage: Q.geodesic([1, 8], canonical="left")
+            [1, 8]
+
+        On the closed surface of genus two, the image of a generator is a
+        geodesic with a weighted turn `1` and a weighted turn `-1`: it is
+        neither right-most nor left-most. Its right-most geodesic is made of
+        the two other sides of the filled face on its right at the weighted
+        turn `1`, and its left-most geodesic of the two other sides of the
+        filled face on its left at the weighted turn `-1`::
+
+            sage: m = OrientedMap(vp=[[0, 2, 1, 3, 4, 6, 5, 7]])
+            sage: q, mor, bigons = m.quad_system(mapping=True, relabel=True)
+            sage: Q = HyperbolicQuadrangulation(q, bigons)
+            sage: list(mor[0]), Q.weighted_turns(mor[0])
+            ([0, 5], [1, -1])
+            sage: r = Q.geodesic(mor[0], canonical="right")
+            sage: r, Q.weighted_turns(r)
+            ([3, 14], [-3, -1])
+            sage: l = Q.geodesic(mor[0], canonical="left")
+            sage: l, Q.weighted_turns(l)
+            ([6, 3], [3, 1])
+            sage: f = q.half_edge_to_face()
+            sage: [f[h ^^ 1] for h in mor[0]], [f[h] for h in r]
+            ([1, 1], [1, 1])
+            sage: [f[h] for h in mor[0]], [f[h ^^ 1] for h in l]
+            ([0, 0], [0, 0])
+
         TESTS:
 
         Walks of length one and two, on the genus two surface with one vertex
@@ -719,14 +782,35 @@ class HyperbolicQuadrangulation:
             Traceback (most recent call last):
             ...
             NotImplementedError: geodesics are only implemented for closed walks
+            sage: Q.geodesic([0, 1], closed=False, canonical="left")
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: geodesics are only implemented for closed walks
+
+        Canonical forms of the empty walk, and an invalid value of
+        ``canonical``::
+
+            sage: Q.geodesic([], canonical="right"), Q.geodesic([], canonical="left")
+            ([], [])
+            sage: Q.geodesic(mor[0], canonical="middle")
+            Traceback (most recent call last):
+            ...
+            ValueError: canonical must be None, 'left' or 'right' (got 'middle')
         """
         if not closed:
             raise NotImplementedError("geodesics are only implemented for closed walks")
+        if canonical not in (None, "left", "right"):
+            raise ValueError(f"canonical must be None, 'left' or 'right' (got {canonical!r})")
         if check:
             w = self._m._check_walk(w, closed=True)
         if not len(w):
             return []
-        return WeightedTurnRuns(self, w).geodesic()
+        if canonical is None:
+            return WeightedTurnRuns(self, w).geodesic()
+        if canonical == "right":
+            return WeightedTurnRuns(self, w).right_canonical()
+        g = WeightedTurnRuns(self, [h ^ 1 for h in reversed(w)]).right_canonical()
+        return [h ^ 1 for h in reversed(g)]
 
 
 class WeightedTurnRuns:
@@ -861,17 +945,20 @@ class WeightedTurnRuns:
         runs keep their first half-edges, the half-edges before their first
         weighted turns being unchanged.
         """
+        length = self._len
+        removed = 2
         for u in middle:
+            removed += length[u]
             self._remove(u)
         new = self._insert_after(P, runs)
-        self._len[P] -= 1
-        self._len[N] -= 1
+        length[P] -= 1
+        length[N] -= 1
         self._first[N] = first_N
-        if self._len[P] == 0:
+        if length[P] == 0:
             self._remove(P)
-        if N != P and self._len[N] == 0:
+        if N != P and length[N] == 0:
             self._remove(N)
-        self._num_turns -= 2
+        self._num_turns += sum(r[1] for r in runs) - removed
         return self._merge(self._prev[new], len(runs) + 1)
 
     def _replace_all(self, nodes, runs, num_turns):
@@ -1035,9 +1122,10 @@ class WeightedTurnRuns:
             x = self._next[x]
         return u
 
-    def geodesic(self):
+    def _reduce(self):
         r"""
-        Reduce the walk and return it.
+        Remove the spurs and the brackets and return a node of the reduced
+        walk, or ``None`` when the walk vanishes.
 
         This is the scan of :ref:`erickson-whittlesey-2013`, Lemma 4.3. All
         the runs are dirty at first. At a dirty run where no spur nor bracket
@@ -1059,7 +1147,7 @@ class WeightedTurnRuns:
             if t == 0:
                 start = self._spur(cur)
                 if start is None:
-                    return []
+                    return None
             elif t == 1 or t == -1:
                 start = self._bracket(cur, t)
             else:
@@ -1070,7 +1158,231 @@ class WeightedTurnRuns:
                 cur = nxt[cur]
             else:
                 cur = self._mark_dirty(start)
-        return self._walk(cur)
+        return cur
+
+    def geodesic(self):
+        r"""
+        Reduce the walk and return it.
+
+        See :meth:`_reduce`; the time is linear in the length of the walk.
+        """
+        u = self._reduce()
+        return [] if u is None else self._walk(u)
+
+    def right_canonical(self):
+        r"""
+        Reduce the walk, shift it to the right as far as possible and return
+        it.
+
+        This is the scan of :ref:`erickson-whittlesey-2013`, Lemma 5.1, on the
+        reduced walk of :meth:`_reduce`. Each weighted turn `1` is the middle
+        of a right bend, removed by :meth:`_right_shift`. A right shift keeps
+        the walk reduced, removes its weighted turn `1` and creates none: the
+        new weighted turns are `-1`, `-2`, `-3` at vertices of weighted
+        degree at least `5`, and ``x - 1``, ``y - 1`` or ``x - 2``, which
+        are `1` only when ``x`` or ``y`` is `2` or, for ``x - 2``, `3`, cases
+        excluded or handled apart. It touches no other run of value `1`
+        either, its neighbours ``x`` and ``y`` being neither `0`, `1` nor
+        `2`. So the runs of value `1` of the reduced walk, listed once, are
+        all removed in turn, each in constant time. Last, a walk whose
+        weighted turns are all `2` is replaced by :meth:`_right_shift_ring`.
+        The total time is linear in the length of the walk.
+        """
+        u = self._reduce()
+        if u is None:
+            return []
+        val = self._val
+        nxt = self._next
+        bends = []
+        x = u
+        for _ in range(self._size):
+            if val[x] == 1:
+                bends.append(x)
+            x = nxt[x]
+        for a in bends:
+            if not self._alive[a] or val[a] != 1:
+                raise RuntimeError("a right shift changed another weighted turn 1")
+            u = self._right_shift(a)
+        x = u
+        for _ in range(self._size):
+            if val[x] != 2:
+                return self._walk(u)
+            x = nxt[x]
+        return self._walk(self._right_shift_ring(u))
+
+    def _right_shift(self, a):
+        r"""
+        Shift to the right the right bend around the run ``a``, of value `1`,
+        and return a node of the new walk.
+
+        The right bend has the weighted turns ``2, ..., 2, 1, 2, ..., 2``,
+        with `s` turns `2` before the turn `1` and `t` after, read from
+        ``x``, the weighted turn before it, to ``y``, the weighted turn after
+        it; ``x`` and ``y`` are neither `0`, `1` nor `2` in a reduced walk
+        with maximal runs, and they are the same weighted turn when the bend
+        covers the whole walk. The bend goes along ``h_1, ..., h_m``, `m = s
+        + t + 2`, with ``h_1`` the first half-edge of its first run and the
+        turn ``x`` from ``h_0`` to ``h_1``. On its right lies a strip of `m -
+        1` filled faces, the faces of the reverses of ``h_1, ..., h_m``: the
+        faces ``R_1, ..., R_s`` along ``h_1, ..., h_s``, the corner face
+        ``C`` along ``h_{s+1}`` and ``h_{s+2}``, and ``R'_1, ..., R'_t``
+        along ``h_{s+3}, ..., h_m``. The shift replaces the bend by the walk
+        ``g_1, ..., g_m`` along the other side of the strip, from the start
+        of ``h_1`` to the end of ``h_m``, with the strip on its left: ``g_1``
+        is the side of ``R_1`` (of ``C`` if `s = 0`) at weighted position
+        `-1` from ``h_1``, then come the sides opposite to ``h_1, ..., h_s``
+        in ``R_1, ..., R_s``, which end at the corner ``o`` of ``C``
+        opposite to the turn `1`, the sides opposite to ``h_{s+3}, ...,
+        h_m`` in ``R'_1, ..., R'_t``, which start at ``o``, and ``g_m``, the
+        side of ``R'_t`` (of ``C`` if `t = 0`) whose reverse is at weighted
+        position `1` from ``h_m ^ 1``. The new
+        weighted turns, where `(+)` means `s, t > 0` (the table of
+        :ref:`erickson-whittlesey-2013`, p. 1652, with the opposite sign):
+
+        - `(+)`: ``x, 2^s, 1, 2^t, y`` becomes ``x - 1, -1, (-2)^(s-1), -3,
+          (-2)^(t-1), -1, y - 1``, where `-3` is the turn at ``o``, on the
+          corners of ``R_s``, ``C`` and ``R'_1``;
+        - `s = 0`: ``x, 1, 2^t, y`` becomes ``x - 1, (-2)^t, -1, y - 1``;
+        - `s > 0, t = 0`: ``x, 2^s, 1, y`` becomes ``x - 1, -1, (-2)^s, y -
+          1``.
+
+        The half-edges that start the new runs: ``h_0`` for ``x - 1``, read
+        at weighted position ``-x`` from ``h_1``; ``g_1`` for the run after
+        it; ``g_2``, at weighted position `-1` from ``g_1 ^ 1``, for the run
+        after the first `-1`. Around ``o``, with ``E`` the reverse of the
+        side of ``C`` at weighted position `-1` from ``h_{s+1}``, the side
+        that comes to ``o`` is the reverse of the half-edge at weighted
+        position `1` from ``E`` and starts the run of `-3`, and the side that
+        leaves ``o`` is at weighted position `-2` from ``E`` and starts the
+        run of `-2` after it. ``g_{m-1}``, at weighted position `1` from
+        ``g_m``, reversed, starts the last `-1`, ``g_m`` starts ``y - 1``,
+        and the run after loses its first weighted turn and gets the
+        half-edge at weighted position ``y`` from ``h_m ^ 1``.
+
+        When the bend covers the whole walk, ``x = y`` and ``h_m = h_0``, so
+        that ``g_m`` ends where ``g_1`` starts, with the weighted turn ``x -
+        2`` (the article prints ``z + 2``, for ``x + 2`` in its sign). When
+        ``x - 2`` is not `1` modulo the weighted degree of the vertex, that
+        is `(*)`, the walk ``g_1, ..., g_m`` replaces the whole walk:
+
+        - `(+)(*)`: ``(x, 2^s, 1, 2^t)`` becomes ``(x - 2, -1, (-2)^(s-1),
+          -3, (-2)^(t-1), -1)``;
+        - `(*)`, `s = 0`: ``(x, 1, 2^t)`` becomes ``(x - 2, (-2)^t, -1)``;
+        - `(*)`, `s > 0, t = 0`: ``(x, 2^s, 1)`` becomes ``(x - 2, -1,
+          (-2)^s)``;
+
+        the run of ``x - 2`` starting at ``g_m``. Otherwise ``x`` is `3`
+        modulo the weighted degree, three filled corners on the right: a
+        face ``D`` fills the corner between ``R'_t`` and ``R_1`` at the start
+        of ``h_1``, whose sides there are ``g_1`` and the reverse of
+        ``g_m``, at weighted positions `-1` and `-2` from ``h_1``. The walk
+        goes around ``D`` instead, along its two other sides ``k_1 = fp[g_m
+        ^ 1]``, at weighted position `-1` from ``g_m``, and ``k_2``, whose
+        reverse is at weighted position `1` from ``g_1 ^ 1``:
+
+        - ``(3, 2^s, 1, 2^t)`` becomes ``(-1, (-2)^s, -3, (-2)^t)``, the run
+          of `-1` at the corner of ``D`` opposite to ``h_1`` starting at
+          ``k_1`` and the run after it at ``k_2``.
+
+        Every new value is taken modulo the weighted degree of its vertex,
+        and the runs of `\pm 2` are merged with their neighbours.
+        """
+        val = self._val
+        length = self._len
+        first = self._first
+        at = self._half_edge_at
+        wdeg = self._wdeg
+        h2v = self._h2v
+        b = self._prev[a]
+        c = self._next[a]
+        if val[b] == 2:
+            s = length[b]
+            P = self._prev[b]
+            start = b
+        else:
+            s = 0
+            P = b
+            start = a
+        if val[c] == 2:
+            t = length[c]
+            N = self._next[c]
+        else:
+            t = 0
+            N = c
+        x = val[P]
+        y = val[N]
+        if x in (0, 1, 2) or y in (0, 1, 2):
+            raise RuntimeError("right shift of a walk that is not reduced")
+        nodes = [a]
+        if s:
+            nodes.append(b)
+        if t:
+            nodes.append(c)
+        h1 = first[start]
+        wd0 = wdeg[h2v[h1]]
+        hm = first[N]
+        g1 = at(h1, -1)
+        E = at(first[a], -1) ^ 1
+        wdo = wdeg[h2v[E]]
+        cyclic = P == N and length[P] == 1
+
+        if cyclic and _mod_normalize(x - 2, wd0) == 1:
+            k1 = at(at(h1, -2) ^ 1, -1)
+            k2 = at(g1 ^ 1, 1) ^ 1
+            runs = [(_mod_normalize(-1, wdeg[h2v[k2]]), 1, k1)]
+            if s:
+                runs.append((-2, s, k2))
+                runs.append((_mod_normalize(-3, wdo), 1, at(E, 1) ^ 1))
+            else:
+                runs.append((_mod_normalize(-3, wdo), 1, k2))
+            if t:
+                runs.append((-2, t, at(E, -2)))
+            return self._replace_all(nodes + [P], runs, self._num_turns)
+
+        gm = at(hm ^ 1, 1) ^ 1
+        if s and t:
+            middle = [(-1, 1, g1)]
+            if s > 1:
+                middle.append((-2, s - 1, at(g1 ^ 1, -1)))
+            middle.append((_mod_normalize(-3, wdo), 1, at(E, 1) ^ 1))
+            if t > 1:
+                middle.append((-2, t - 1, at(E, -2)))
+            middle.append((-1, 1, at(gm, 1) ^ 1))
+        elif s:
+            middle = [(-1, 1, g1), (-2, s, at(g1 ^ 1, -1))]
+        else:
+            middle = [(-2, t, g1)] if t else []
+            middle.append((-1, 1, at(gm, 1) ^ 1))
+
+        if cyclic:
+            runs = [(_mod_normalize(x - 2, wd0), 1, gm)] + middle
+            return self._replace_all(nodes + [P], runs, self._num_turns)
+        runs = [(_mod_normalize(x - 1, wd0), 1, at(h1, -x) ^ 1)] + middle
+        runs.append((_mod_normalize(y - 1, wdeg[h2v[hm ^ 1]]), 1, gm))
+        return self._splice(P, nodes, N, at(hm ^ 1, y), runs)
+
+    def _right_shift_ring(self, u):
+        r"""
+        Replace the walk, whose weighted turns are all `2`, by the walk on
+        the other side of the ring of filled faces on its right, and return
+        its node.
+
+        The ring is made of the faces on the right of the half-edges of the
+        walk; its other side has the weighted turns `-2`. From ``h``, the
+        first half-edge of the run ``u``, the side of the face on the right
+        of ``h`` at weighted position `-1` from ``h`` goes to the other side
+        of the ring, and the side at weighted position `-1` from its reverse
+        is the side opposite to ``h``: it starts the new run.
+        """
+        nodes = []
+        x = u
+        for _ in range(self._size):
+            nodes.append(x)
+            x = self._next[x]
+        h = self._first[u]
+        f = self._half_edge_at(self._half_edge_at(h, -1) ^ 1, -1)
+        n = self._num_turns
+        return self._replace_all(nodes, [(-2, n, f)], n)
 
     def _walk(self, u):
         r"""
