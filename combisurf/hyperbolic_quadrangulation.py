@@ -1,8 +1,8 @@
 r"""
-Hyperbolic quadrangulations with boundary and their geodesics
+Hyperbolic punctured quadrangulations and their geodesics
 
-A *quadrangulation with boundary* is an oriented map (see
-:mod:`~combisurf.oriented_map`) whose faces are either *interior faces*, all
+A *punctured quadrangulation* is an oriented map (see
+:mod:`~combisurf.oriented_map`) whose faces are either *filled faces*, all
 of degree `4`, or *punctured faces*, of any degree. The punctured faces are
 removed from the surface, each of them being a puncture (or a boundary
 component). The quadrangulation is *hyperbolic* when every vertex touches a
@@ -32,44 +32,65 @@ not depend on the punctures. A turn `0` is a *spur*: the walk goes back along
 the edge it came from.
 
 The reduction of walks works on the *weighted turn* instead. Each corner of
-an interior face weighs `1` and each corner of a punctured face weighs `4`;
-the *weighted degree* of a vertex is the sum of the weights of its corners,
-that is its degree plus `3` per punctured corner. The weighted turn from `h_1`
-to `h_2` is the sum of the weights of the corners swept counterclockwise from
-``h1 ^ 1`` to `h_2`, taken modulo the weighted degree `wd` and represented in
-`(-wd/2, wd/2]`. At a vertex without punctured corner it is the turn, taken
-in `(-d/2, d/2]`.
+a filled face (a *filled corner*) weighs `1` and each corner of a punctured
+face weighs `4`; the *weighted degree* of a vertex is the sum of the weights
+of its corners, that is its degree plus `3` per punctured corner. The
+weighted turn from `h_1` to `h_2` is the sum of the weights of the corners
+swept counterclockwise from ``h1 ^ 1`` to `h_2`, taken modulo the weighted
+degree `wd` and represented in `(-wd/2, wd/2]`. At a vertex without punctured
+corner it is the turn, taken in `(-d/2, d/2]`.
 
 A positive weighted turn turns right and a negative one turns left: walking
-along the boundary of an interior face, which lies on the left, gives the
+along the boundary of a filled face, which lies on the left, gives the
 weighted turn `-1` at each corner, a *sharp left turn*. The articles below
 count corners clockwise and call this turn `1`; their turns are the opposite
 of the weighted turns here.
 
-When one side of a turn sweeps no punctured corner and at most `3` interior
+When one side of a turn sweeps no punctured corner and at most `3` filled
 corners, the weighted turn is the signed number of these corners, positive
 counterclockwise, as in the integer turns of :ref:`despre-lazarus-2019`,
 §4.2, since the other side weighs at least `4`. When both sides sweep a
 punctured corner, its absolute value is at least `4`. So the weighted turns
-`0, \pm 1, \pm 2, \pm 3` count interior corners on a side without punctured
+`0, \pm 1, \pm 2, \pm 3` count filled corners on a side without punctured
 corner, and the reductions below never go through a punctured corner.
 
 A *bracket* is a part of a closed walk whose weighted turns are
 `1, 2, \ldots, 2, 1` or `-1, -2, \ldots, -2, -1`, with any number of `\pm 2`,
-possibly none: the walk goes along one side of a strip of interior faces,
-and the other side of the strip is shorter by two. A closed walk is a
-*geodesic* when it has no spur and no bracket, the indices of the weighted
-turns being taken cyclically. On a hyperbolic quadrangulation with boundary,
-every closed walk is freely homotopic to a geodesic, obtained by removing
-spurs and brackets, and the homotopic geodesics all have the same length:
-the minimal length in the free homotopy class, `0` for a contractible closed
-walk. See :ref:`erickson-whittlesey-2013`, Lemma 4.3, and
-:ref:`despre-lazarus-2019`, Theorem 9 and Corollary 11.
+possibly none: the walk goes along one side of a strip of filled faces,
+and the other side of the strip is shorter by two.
+
+A closed walk is a *geodesic* when it is a shortest closed walk in its free
+homotopy class; a walk between two vertices is a *geodesic* when it is a
+shortest walk in its homotopy class relative to its endpoints. The
+homotopies are taken in the surface without its punctured faces.
+
+On a hyperbolic punctured quadrangulation, a closed walk is a geodesic
+exactly when it has no spur and no bracket, the weighted turns being read
+cyclically. Removing a spur or a bracket shortens a walk by two, so that a
+shortest walk has neither; conversely, homotopic walks with no spur and no
+bracket have the same length (:ref:`despre-lazarus-2019`, Corollary 11).
+Hence every closed walk is freely homotopic to a geodesic, obtained by
+removing spurs and brackets (:ref:`erickson-whittlesey-2013`, Lemma 4.3), and
+the geodesics of a free homotopy class all have the length of the class,
+`0` for a contractible closed walk. The same holds for walks between two
+vertices, the weighted turns being read without wrapping around
+(:ref:`despre-lazarus-2019`, §4.3, "Paths"). The articles prove this for
+systems of quads (degree at least `6` at the vertices with no punctured
+corner), the punctured faces being handled by integer turns; see
+:ref:`despre-lazarus-2019`, Theorem 9 and Theorem 10.
+
+Two steps are specific to this module and are not published results. It
+assumes that the theorem holds for the degree at least `5` at the vertices
+with no punctured corner (the curvature bound of
+:ref:`erickson-whittlesey-2013`, Lemma 4.1, is `-1/4` or less, but the proof
+of :ref:`despre-lazarus-2019`, Theorem 10 was not checked for it). It also
+assumes that the weights `1` and `4` read spurs and brackets near punctured
+faces as the integer turns of the articles do.
 
 EXAMPLES:
 
-The quad system of the punctured torus has two vertices of degree `5`, five
-edges, two interior faces and the bigon of the puncture::
+The following quad system of the punctured torus has two vertices of degree
+`5`, five edges, two filled faces and the bigon of the puncture::
 
     sage: from combisurf import OrientedMap
     sage: from combisurf.hyperbolic_quadrangulation import HyperbolicQuadrangulation
@@ -100,16 +121,16 @@ from array import array
 from combisurf.oriented_map import OrientedMap
 
 
-def _normalize(t, d):
+def _mod_normalize(t, d):
     r"""
     Return the representative of ``t`` modulo ``d`` in `(-d/2, d/2]`.
 
     TESTS::
 
-        sage: from combisurf.hyperbolic_quadrangulation import _normalize
-        sage: [_normalize(t, 6) for t in range(-6, 7)]
+        sage: from combisurf.hyperbolic_quadrangulation import _mod_normalize
+        sage: [_mod_normalize(t, 6) for t in range(-6, 7)]
         [0, 1, 2, 3, -2, -1, 0, 1, 2, 3, -2, -1, 0]
-        sage: [_normalize(t, 5) for t in range(-5, 6)]
+        sage: [_mod_normalize(t, 5) for t in range(-5, 6)]
         [0, 1, 2, -2, -1, 0, 1, 2, -2, -1, 0]
     """
     t %= d
@@ -118,9 +139,24 @@ def _normalize(t, d):
 
 class HyperbolicQuadrangulation:
     r"""
-    Hyperbolic quadrangulation with boundary.
+    Hyperbolic punctured quadrangulation.
 
     See :mod:`~combisurf.hyperbolic_quadrangulation` for the definitions.
+
+    .. NOTE::
+
+        The attributes are tables that turn half-edges into weighted turns and
+        back in constant time. ``_m`` is the (immutable) oriented map and
+        ``_punctured_faces`` the sorted list of the punctured faces.
+        ``_h2v`` maps a half-edge to the index of its vertex in
+        ``m.vertices()`` (``-1`` on inactive half-edges). Around each vertex,
+        counterclockwise from its first half-edge, ``_upos[h]`` counts the
+        half-edges before ``h`` and ``_wpos[h]`` the weights of the corners
+        before ``h``; ``_deg[v]`` and ``_wdeg[v]`` are the degree and the
+        weighted degree of the vertex ``v``. The weighted position `p` of the
+        vertex ``v`` is the entry ``_offset[v] + p`` of ``_at``, which holds
+        the half-edge at that position, or ``-1`` for the three positions
+        inside a punctured corner.
 
     INPUT:
 
@@ -132,7 +168,7 @@ class HyperbolicQuadrangulation:
       ``False`` for none
 
     - ``check`` -- boolean (default: ``True``); whether to check that ``m`` is
-      a connected hyperbolic quadrangulation with boundary and that the
+      a connected hyperbolic punctured quadrangulation and that the
       surface, once the punctured faces are removed, has negative Euler
       characteristic
 
@@ -223,48 +259,32 @@ class HyperbolicQuadrangulation:
                 if len(v) < 5 and not any(is_punctured[h2f[h]] for h in v):
                     raise ValueError(f"the vertex {i} touches no punctured face and has degree {len(v)} instead of at least 5")
 
-        # Positions around each vertex, counterclockwise from its first
-        # half-edge: _upos counts the half-edges and _wpos the weights of the
-        # corners. The weighted position p of the vertex v is the entry
-        # _offset[v] + p of _at, which holds the half-edge at that position,
-        # or -1 for the three positions inside a punctured corner. This turns
-        # half-edges into weighted turns and back in constant time.
-        vp = m.vertex_permutation(copy=False)
-        n = len(vp)
-        hv = array('i', [-1] * n)
+        h2v = m.half_edge_to_vertex()
+        n = len(h2v)
         upos = array('i', [-1] * n)
         wpos = array('i', [-1] * n)
         deg = array('i')
         wdeg = array('i')
         offset = array('i')
         at = array('i')
-        for h0 in range(n):
-            if vp[h0] == -1 or hv[h0] != -1:
-                continue
-            v = len(deg)
+        for vertex in m.vertices():
             offset.append(len(at))
-            d = p = 0
-            h = h0
-            while True:
-                hv[h] = v
+            p = 0
+            for d, h in enumerate(vertex):
                 upos[h] = d
                 wpos[h] = p
                 at.append(h)
-                d += 1
                 if is_punctured[h2f[h]]:
                     at.extend((-1, -1, -1))
                     p += 4
                 else:
                     p += 1
-                h = vp[h]
-                if h == h0:
-                    break
-            deg.append(d)
+            deg.append(len(vertex))
             wdeg.append(p)
 
         self._m = m
         self._punctured_faces = punctured
-        self._hv = hv
+        self._h2v = h2v
         self._upos = upos
         self._wpos = wpos
         self._deg = deg
@@ -304,8 +324,21 @@ class HyperbolicQuadrangulation:
             sage: q, bigons = m.quad_system(punctured_faces=True)
             sage: HyperbolicQuadrangulation(q, bigons).punctured_faces()
             [1, 5]
-            sage: HyperbolicQuadrangulation(q, [5, 1, 5]).punctured_faces()
-            [1, 5]
+
+        A map with every face punctured, of degree other than `4`::
+
+            sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+            sage: m.face_profile()
+            [11, 3]
+            sage: HyperbolicQuadrangulation(m, punctured_faces=True).punctured_faces()
+            [0, 1]
+
+        A map with no punctured face::
+
+            sage: m = OrientedMap(vp=[[0, 2, 1, 3, 4, 6, 5, 7]])
+            sage: q, bigons = m.quad_system()
+            sage: HyperbolicQuadrangulation(q, bigons).punctured_faces()
+            []
         """
         return list(self._punctured_faces)
 
@@ -317,7 +350,7 @@ class HyperbolicQuadrangulation:
         m = self._m
         h1 = m._check_half_edge(h1)
         h2 = m._check_half_edge(h2)
-        if self._hv[h1 ^ 1] != self._hv[h2]:
+        if self._h2v[h1 ^ 1] != self._h2v[h2]:
             raise ValueError(f"the half-edge {h1} does not end where the half-edge {h2} starts")
         return h1, h2
 
@@ -353,24 +386,19 @@ class HyperbolicQuadrangulation:
         """
         h1, h2 = self._check_turn(h1, h2)
         g = h1 ^ 1
-        return (self._upos[h2] - self._upos[g]) % self._deg[self._hv[g]]
+        return (self._upos[h2] - self._upos[g]) % self._deg[self._h2v[g]]
 
-    def _weighted_turn(self, h1, h2):
-        g = h1 ^ 1
-        wpos = self._wpos
-        return _normalize(wpos[h2] - wpos[g], self._wdeg[self._hv[g]])
-
-    def weighted_turn(self, h1, h2):
+    def weighted_turn(self, h1, h2, check=True):
         r"""
         Return the weighted turn from ``h1`` to ``h2``.
 
         This is the sum of the weights of the corners swept counterclockwise
-        from ``h1 ^ 1`` to ``h2``, an interior corner weighing `1` and a
+        from ``h1 ^ 1`` to ``h2``, a filled corner weighing `1` and a
         punctured corner `4`, taken modulo the weighted degree `wd` of the
         vertex in `(-wd/2, wd/2]`. A positive weighted turn turns right and a
         negative one left.
 
-        When one side sweeps no punctured corner and at most three interior
+        When one side sweeps no punctured corner and at most three filled
         corners, the weighted turn is their signed number, positive
         counterclockwise. When both sides sweep a punctured corner, its
         absolute value is at least `4`.
@@ -379,6 +407,11 @@ class HyperbolicQuadrangulation:
 
         - ``h1``, ``h2`` -- half-edges, ``h1`` ending where ``h2`` starts
 
+        - ``check`` -- boolean (default: ``True``); whether to check that
+          ``h1`` and ``h2`` are half-edges and that ``h1`` ends where ``h2``
+          starts; with ``False``, the arguments must be valid Python integers
+          and the call takes constant time without any validation
+
         OUTPUT: an integer in `(-wd/2, wd/2]`
 
         EXAMPLES:
@@ -386,7 +419,7 @@ class HyperbolicQuadrangulation:
         On the quad system of the punctured torus, the second vertex is
         ``vp``-cycle ``(1, 9, 5, 3, 7)``. The corner between ``1`` and
         ``vp[1] = 9`` belongs to the bigon, the face of ``1``, and weighs `4`;
-        the other corners of the vertex are interior, so that its weighted
+        the other corners of the vertex are filled, so that its weighted
         degree is `8`::
 
             sage: from combisurf import OrientedMap
@@ -400,7 +433,7 @@ class HyperbolicQuadrangulation:
 
         From ``0``, which ends at that vertex, the weighted turns to its
         half-edges are positive to the right, negative to the left; ``7``
-        follows ``0`` in the interior face on the left of ``0``, so that
+        follows ``0`` in the filled face on the left of ``0``, so that
         going from ``0`` to ``7`` is a sharp left turn::
 
             sage: [Q.weighted_turn(0, h) for h in [1, 9, 5, 3, 7]]
@@ -408,7 +441,7 @@ class HyperbolicQuadrangulation:
             sage: [Q.turn(0, h) for h in [1, 9, 5, 3, 7]]
             [0, 1, 2, 3, 4]
 
-        The boundary of an interior face, which lies on its left, turns
+        The boundary of a filled face, which lies on its left, turns
         sharp left at each corner, and the reverse walk sharp right::
 
             sage: w = q.faces()[0]
@@ -428,21 +461,31 @@ class HyperbolicQuadrangulation:
             sage: [Q.weighted_turn(1, h) for h in [0, 4, 8, 2, 6, 10]]
             [0, 1, 2, 6, -5, -4]
         """
-        h1, h2 = self._check_turn(h1, h2)
-        return self._weighted_turn(h1, h2)
+        if check:
+            h1, h2 = self._check_turn(h1, h2)
+        g = h1 ^ 1
+        wpos = self._wpos
+        return _mod_normalize(wpos[h2] - wpos[g], self._wdeg[self._h2v[g]])
 
-    def weighted_turns(self, w):
+    def weighted_turns(self, w, closed=True):
         r"""
-        Return the list of the weighted turns of the closed walk ``w``.
+        Return the list of the weighted turns of the walk ``w``.
 
         The entry ``i`` is the weighted turn from ``w[i]`` to ``w[i + 1]``,
-        the indices being taken modulo the length of ``w``.
+        the indices being taken modulo the length of ``w`` when ``w`` is
+        closed.
 
         INPUT:
 
-        - ``w`` -- a closed walk
+        - ``w`` -- a walk
 
-        OUTPUT: a list of integers, of the length of ``w``
+        - ``closed`` -- boolean (default: ``True``); whether ``w`` is a closed
+          walk, which is then checked; if ``False``, ``w`` is a walk between
+          two vertices and there is no weighted turn from the last half-edge
+          to the first
+
+        OUTPUT: a list of integers, of the length of ``w`` if ``closed`` and
+        one less (zero for the empty walk) otherwise
 
         EXAMPLES::
 
@@ -458,24 +501,43 @@ class HyperbolicQuadrangulation:
             Traceback (most recent call last):
             ...
             ValueError: invalid walk [0, 2]: 0 at position 0 ends at vertex 1 but 2 at position 1 starts at vertex 0
+
+        A walk between two vertices has one weighted turn less::
+
+            sage: Q.weighted_turns([0, 1, 8], closed=False)
+            [0, 4]
+            sage: Q.weighted_turns([0], closed=False)
+            []
+            sage: Q.weighted_turns([0, 1, 8])
+            Traceback (most recent call last):
+            ...
+            ValueError: non-closed walk [0, 1, 8]: 8 at position 2 ends at vertex 1 but 0 at position 0 starts at vertex 0
         """
-        w = self._m._check_walk(w, closed=True)
+        w = self._m._check_walk(w, closed=closed)
         n = len(w)
-        return [self._weighted_turn(w[i], w[i + 1 if i + 1 < n else 0]) for i in range(n)]
+        count = n if closed else max(n - 1, 0)
+        return [self.weighted_turn(w[i], w[i + 1 if i + 1 < n else 0], check=False) for i in range(count)]
 
-    def is_geodesic(self, w):
+    def is_geodesic(self, w, closed=True):
         r"""
-        Return whether the closed walk ``w`` has no spur and no bracket.
+        Return whether the walk ``w`` is a geodesic.
 
-        The weighted turns are read cyclically: ``w`` is a geodesic when none
-        of them is `0` and no consecutive weighted turns read
-        `1, 2, \ldots, 2, 1` or `-1, -2, \ldots, -2, -1`, with any number of
-        `\pm 2`, the run of `\pm 2` possibly going once around the whole walk
-        (a *cyclic bracket*). The empty walk is a geodesic.
+        See :mod:`~combisurf.hyperbolic_quadrangulation` for the definition of
+        a geodesic. By the theorem of the module, this holds exactly when
+        ``w`` has no spur and no bracket: none of the weighted turns is `0`
+        and no consecutive weighted turns read `1, 2, \ldots, 2, 1` or
+        `-1, -2, \ldots, -2, -1`, with any number of `\pm 2`. If ``w`` is
+        closed, the weighted turns are read cyclically and the run of `\pm 2`
+        may go once around the whole walk (a *cyclic bracket*); otherwise
+        they are read linearly. The empty walk, and the walks of length one that
+        are not closed, are geodesics. The check takes time `O(|w|)`.
 
         INPUT:
 
-        - ``w`` -- a closed walk
+        - ``w`` -- a walk
+
+        - ``closed`` -- boolean (default: ``True``); whether ``w`` is a closed
+          walk, which is then checked, or a walk between two vertices
 
         OUTPUT: a boolean
 
@@ -486,7 +548,7 @@ class HyperbolicQuadrangulation:
             sage: q, bigons = OrientedMap(vp=[[0, 2, 1, 3]]).quad_system(punctured_faces=True, relabel=True)
             sage: Q = HyperbolicQuadrangulation(q, bigons)
 
-        The boundary of the bigon, the boundary of an interior face and a
+        The boundary of the bigon, the boundary of a filled face and a
         backtrack::
 
             sage: Q.is_geodesic([1, 8])
@@ -497,11 +559,34 @@ class HyperbolicQuadrangulation:
             False
             sage: Q.is_geodesic([])
             True
+
+        Walks between two vertices: a path with a spur, a path with a bracket
+        (two consecutive weighted turns `-1`) and geodesic paths::
+
+            sage: Q.is_geodesic([0, 1], closed=False)
+            False
+            sage: Q.is_geodesic([0, 7, 2], closed=False)
+            False
+            sage: Q.is_geodesic([0, 7], closed=False)
+            True
+            sage: Q.is_geodesic([0], closed=False)
+            True
         """
-        t = self.weighted_turns(w)
+        t = self.weighted_turns(w, closed=closed)
         n = len(t)
         if 0 in t:
             return False
+        if not closed:
+            for s in (1, -1):
+                straight = False
+                for x in t:
+                    if x == s:
+                        if straight:
+                            return False
+                        straight = True
+                    elif x != 2 * s:
+                        straight = False
+            return True
         for s in (1, -1):
             # last index of a turn s; a bracket is two turns s, possibly the
             # same one when it is the only turn s, with only turns 2 s between
@@ -522,19 +607,25 @@ class HyperbolicQuadrangulation:
                     straight = False
         return True
 
-    def geodesic(self, w, check=True):
+    def geodesic(self, w, closed=True, check=True):
         r"""
         Return a geodesic freely homotopic to the closed walk ``w``.
 
-        The geodesic has no spur and no bracket (see :meth:`is_geodesic`). It
-        is obtained by the reduction of :ref:`erickson-whittlesey-2013`, Lemma
-        4.3, in time linear in the length of ``w``. Any cyclic rotation of the
-        result is a valid answer; the geodesics freely homotopic to ``w`` all
-        have the same length, :ref:`despre-lazarus-2019`, Corollary 11.
+        See :mod:`~combisurf.hyperbolic_quadrangulation` for the definition: a
+        geodesic is a shortest closed walk in the free homotopy class of
+        ``w``. By the theorem of the module, the result has no spur and no
+        bracket (see :meth:`is_geodesic`). It is obtained by the reduction of
+        :ref:`erickson-whittlesey-2013`, Lemma 4.3, in time linear in the
+        length of ``w``. Any cyclic rotation of the result is a valid answer;
+        the geodesics freely homotopic to ``w`` all have the same length,
+        :ref:`despre-lazarus-2019`, Corollary 11.
 
         INPUT:
 
         - ``w`` -- a closed walk
+
+        - ``closed`` -- boolean (default: ``True``); only closed walks are
+          implemented, ``False`` raises a ``NotImplementedError``
 
         - ``check`` -- boolean (default: ``True``); whether to check that
           ``w`` is a closed walk
@@ -574,7 +665,7 @@ class HyperbolicQuadrangulation:
             sage: Q.is_geodesic(g)
             True
 
-        The boundary of an interior face is contractible and the boundary of
+        The boundary of a filled face is contractible and the boundary of
         a bigon is not::
 
             sage: q, bigons = OrientedMap(vp=[[0, 2, 1, 3]]).quad_system(punctured_faces=True, relabel=True)
@@ -619,17 +710,27 @@ class HyperbolicQuadrangulation:
             Traceback (most recent call last):
             ...
             ValueError: non-closed walk [0]: 0 at position 0 ends at vertex 1 but 0 at position 0 starts at vertex 0
+
+        Geodesics of walks between two vertices are not implemented::
+
+            sage: Q.geodesic([0, 1], closed=False)
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: geodesics are only implemented for closed walks
         """
+        if not closed:
+            raise NotImplementedError("geodesics are only implemented for closed walks")
         if check:
             w = self._m._check_walk(w, closed=True)
         if not len(w):
             return []
-        return _WeightedTurnRuns(self, w).geodesic()
+        return WeightedTurnRuns(self, w).geodesic()
 
 
-class _WeightedTurnRuns:
+class WeightedTurnRuns:
     r"""
-    The weighted turns of a closed walk, run-length encoded in a circular
+    The weighted turns of a closed walk of a
+    :class:`HyperbolicQuadrangulation`, run-length encoded in a circular
     doubly linked list, and their reduction to a geodesic.
 
     A run is a node with a value, the weighted turn, a length, the number of
@@ -645,7 +746,7 @@ class _WeightedTurnRuns:
     another value.
     """
     def __init__(self, Q, w):
-        self._hv = Q._hv
+        self._h2v = Q._h2v
         self._wpos = Q._wpos
         self._wdeg = Q._wdeg
         self._offset = Q._offset
@@ -657,7 +758,7 @@ class _WeightedTurnRuns:
         first = []
         for i in range(n):
             h = w[i]
-            t = Q._weighted_turn(h, w[i + 1 if i + 1 < n else 0])
+            t = Q.weighted_turn(h, w[i + 1 if i + 1 < n else 0], check=False)
             if val and val[-1] == t and (t == 2 or t == -2):
                 length[-1] += 1
             else:
@@ -686,7 +787,7 @@ class _WeightedTurnRuns:
         Return the half-edge at weighted position ``t`` counterclockwise from
         ``h`` around its vertex.
         """
-        v = self._hv[h]
+        v = self._h2v[h]
         return self._at[self._offset[v] + (self._wpos[h] + t) % self._wdeg[v]]
 
     def _new(self, value, length, first):
@@ -806,7 +907,7 @@ class _WeightedTurnRuns:
         h = self._first[z]
         h_before = self._half_edge_at(h, -x) ^ 1
         h_after = self._half_edge_at(h, y)
-        t = _normalize(x + y, self._wdeg[self._hv[h]])
+        t = _mod_normalize(x + y, self._wdeg[self._h2v[h]])
         return self._splice(P, [z], N, h_after, [(t, 1, h_before)])
 
     def _bracket(self, a, s):
@@ -818,7 +919,7 @@ class _WeightedTurnRuns:
         The weighted turns ``s, 2s, ..., 2s, s``, with `r` turns `2s`, go
         from ``h_i = first[a]`` along ``h_{i+1}, ..., h_{i+r+1}`` to ``L =
         h_{i+r+2}``, the first half-edge of the run after the bracket, all
-        along one side of a strip of `r + 1` interior faces. The other side of
+        along one side of a strip of `r + 1` filled faces. The other side of
         the strip, ``f_0, ..., f_r``, starts with ``f_0``, at weighted
         position `-s` from ``h_i``, and ends with ``f_r``, whose reverse is at
         weighted position `s` from ``L ^ 1``. In ``x, s, 2s, ..., 2s, s, y``,
@@ -861,7 +962,7 @@ class _WeightedTurnRuns:
             X = self._prev[a]
             L = self._first[X]
             fr = self._half_edge_at(L ^ 1, s) ^ 1
-            t = _normalize(val[X] - 2 * s, self._wdeg[self._hv[h]])
+            t = _mod_normalize(val[X] - 2 * s, self._wdeg[self._h2v[h]])
             runs = [(t, 1, fr)]
             if r:
                 runs.append((-2 * s, r, f0))
@@ -875,10 +976,10 @@ class _WeightedTurnRuns:
         fr = self._half_edge_at(L ^ 1, s) ^ 1
         h_before = self._half_edge_at(h, -x) ^ 1
         h_after = self._half_edge_at(L ^ 1, y)
-        runs = [(_normalize(x - s, self._wdeg[self._hv[h]]), 1, h_before)]
+        runs = [(_mod_normalize(x - s, self._wdeg[self._h2v[h]]), 1, h_before)]
         if r:
             runs.append((-2 * s, r, f0))
-        runs.append((_normalize(y - s, self._wdeg[self._hv[L ^ 1]]), 1, fr))
+        runs.append((_mod_normalize(y - s, self._wdeg[self._h2v[L ^ 1]]), 1, fr))
         return self._splice(P, middle, N, h_after, runs)
 
     def _cyclic_bracket(self, a, b, s, r):
@@ -887,7 +988,7 @@ class _WeightedTurnRuns:
         turns `2s`.
 
         The walk ``h_0 = first[a], h_1, ..., h_r`` goes around a ring of `r`
-        interior faces ``Q_0, ..., Q_{r-1}``, with ``Q_0`` along ``h_0`` and
+        filled faces ``Q_0, ..., Q_{r-1}``, with ``Q_0`` along ``h_0`` and
         ``h_1``, through the weighted turn ``s``, and ``Q_k`` along ``h_{k+1}``
         for `k \geq 1`. The other side of the ring is made of one side
         ``f_k`` of each ``Q_k`` for `k \geq 1` and gives the weighted turns
@@ -906,7 +1007,7 @@ class _WeightedTurnRuns:
         e = self._half_edge_at(h, -s) ^ 1
         f1 = self._half_edge_at(e, -2 * s)
         f_last = self._half_edge_at(e, s) ^ 1
-        runs = [(_normalize(-3 * s, self._wdeg[self._hv[e]]), 1, f_last)]
+        runs = [(_mod_normalize(-3 * s, self._wdeg[self._h2v[e]]), 1, f_last)]
         if r > 2:
             runs.append((-2 * s, r - 2, f1))
         return self._replace_all([a, b], runs, r - 1)

@@ -2092,7 +2092,7 @@ class OrientedMap:
         corner where the bigon now sits, takes the new edge in place of
         `2h + 1`, so that the bigon lies on the left of the walk as the face
         `f` lies on the left of `h`. Any other walk is unchanged. The result
-        is a quadrangulation with boundary: the quadrilaterals, one per edge
+        is a punctured quadrangulation: the filled quadrilaterals, one per edge
         of this map, and the bigons, one per punctured face.
 
         INPUT:
@@ -2668,8 +2668,8 @@ class OrientedMap:
         With ``punctured_faces``, the radial map is the one with a bigon per
         punctured face of :meth:`radial_map`. The bigons are never folded, so
         that with spanning ``forest`` and ``coforest`` and `b \geq 1` bigons
-        the result is a quadrangulation with boundary of the same punctured
-        surface: two vertices, `4g + b` edges, `2g` quadrilaterals and the `b`
+        the result is a punctured quadrangulation of the same punctured
+        surface: two vertices, `4g + b` edges, `2g` filled quadrilaterals and the `b`
         bigons.
 
         INPUT:

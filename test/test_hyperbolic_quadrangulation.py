@@ -1,5 +1,5 @@
 r"""
-Weighted turns and geodesics on hyperbolic quadrangulations with boundary.
+Weighted turns and geodesics on hyperbolic punctured quadrangulations.
 
 The instances are quad systems and radial maps, closed or punctured at their
 bigons. On a punctured surface the fundamental group is free, and two closed
@@ -12,7 +12,7 @@ import random
 import pytest
 
 from combisurf import OrientedMap
-from combisurf.hyperbolic_quadrangulation import HyperbolicQuadrangulation, _WeightedTurnRuns
+from combisurf.hyperbolic_quadrangulation import HyperbolicQuadrangulation, WeightedTurnRuns
 from combisurf.word import word_init, word_cyclically_reduce
 
 from test_geometric_intersection_oracles import (B1_V, B1_W, cylinder_data, genus2, inverse, is_cyclic_conjugate,
@@ -313,9 +313,9 @@ def test_geodesic_detours(name):
         variants = [w[i:] + w[:i]]
         x = rng.choice(out)
         variants.append(w[:i] + [x, x ^ 1] + w[i:])
-        interior = [x for x in out if I.h2f[x] not in I.bigons]
-        if interior:
-            x = rng.choice(interior)
+        filled = [x for x in out if I.h2f[x] not in I.bigons]
+        if filled:
+            x = rng.choice(filled)
             face = [x]
             while I.fp[face[-1]] != x:
                 face.append(I.fp[face[-1]])
@@ -539,7 +539,7 @@ def test_near_cyclic_brackets_exist():
 def test_reductions_exercised():
     # every kind of elementary reduction happens on the random walks
     counts = {"_spur": 0, "_bracket": 0, "_cyclic_bracket": 0, "_replace_all": 0, "_splice": 0}
-    saved = {f: getattr(_WeightedTurnRuns, f) for f in counts}
+    saved = {f: getattr(WeightedTurnRuns, f) for f in counts}
 
     def counting(f):
         def wrapper(self, *args):
@@ -549,7 +549,7 @@ def test_reductions_exercised():
 
     try:
         for f in counts:
-            setattr(_WeightedTurnRuns, f, counting(f))
+            setattr(WeightedTurnRuns, f, counting(f))
         for name in NAMES:
             I = instance(name)
             rng = random.Random(4)
@@ -561,5 +561,57 @@ def test_reductions_exercised():
                 I.Q.geodesic(w)
     finally:
         for f in counts:
-            setattr(_WeightedTurnRuns, f, saved[f])
+            setattr(WeightedTurnRuns, f, saved[f])
     assert all(counts.values()), counts
+
+
+def linear_is_geodesic(t):
+    r"""
+    Whether the weighted turns ``t`` of a path have no ``0`` and no window
+    ``s, 2s, ..., 2s, s`` for ``s = ±1``, by a scan of the windows.
+    """
+    if 0 in t:
+        return False
+    n = len(t)
+    for s in (1, -1):
+        for i in range(n):
+            if t[i] != s:
+                continue
+            j = i + 1
+            while j < n and t[j] == 2 * s:
+                j += 1
+            if j < n and t[j] == s:
+                return False
+    return True
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_paths(name):
+    I = instance(name)
+    Q = I.Q
+    rng = random.Random(5)
+    for w in I.random_walks(rng, 10, 30):
+        t = Q.weighted_turns(w)
+        for k in range(len(w) + 1):
+            p = w[:k]
+            tp = Q.weighted_turns(p, closed=False)
+            assert tp == t[:max(k - 1, 0)], (w, k)
+            assert Q.is_geodesic(p, closed=False) == linear_is_geodesic(tp), (w, k)
+        # a path is checked as a walk, not as a closed walk
+        if w[:-1] and I.h2v[w[0]] != I.h2v[w[-2] ^ 1]:
+            assert Q.weighted_turns(w[:-1], closed=False) == t[:len(w) - 2]
+            with pytest.raises(ValueError):
+                Q.weighted_turns(w[:-1])
+
+
+def test_paths_corner_cases():
+    I = instance("genus2")
+    Q = I.Q
+    assert Q.weighted_turns([], closed=False) == []
+    assert Q.is_geodesic([], closed=False)
+    for h in I.half_edges:
+        assert Q.weighted_turns([h], closed=False) == []
+        assert Q.is_geodesic([h], closed=False)
+        assert not Q.is_geodesic([h, h ^ 1], closed=False)
+    with pytest.raises(NotImplementedError):
+        Q.geodesic(I.half_edges[:1], closed=False)
