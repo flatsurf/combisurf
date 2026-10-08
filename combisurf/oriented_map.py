@@ -46,6 +46,7 @@ import collections
 import itertools
 import numbers
 from array import array
+from collections.abc import Sequence
 
 from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
 
@@ -2023,7 +2024,7 @@ class OrientedMap:
 
         return self.forest_coforest_decomposition((root_vertex,), (root_face,))
 
-    def radial_map(self, mapping=False, mutable=False):
+    def radial_map(self, mapping=False, mutable=False, punctured_faces=None):
         r"""
         Return the radial map of this map.
 
@@ -2040,6 +2041,27 @@ class OrientedMap:
         edges or cycles of negatively oriented edges. In particular, the
         bipartition of vertices is visible on the labelling.
 
+        The image of an even half-edge `h` is the walk ``[2h, 2fp(h) + 1]``
+        from the tail of `h` to the centre of the face on its left and then to
+        the head of `h`; the quadrilateral of the edge of `h` lies on its right.
+        The image of `h + 1` is the reverse walk.
+
+        With ``punctured_faces``, each punctured face `f` gets a bigon that
+        carries its puncture. Let `h` be the first half-edge of `f` in
+        :meth:`faces` and `n` the length of the vertex permutation. The radial
+        edge of `2h + 1`, from the centre of `f` to the tail of `h`, is doubled
+        by a new edge `2n + 2k`, `2n + 2k + 1` for the `k`-th punctured face,
+        in increasing order of face index. The new edge lies on the side of
+        the quadrilateral of `h` and replaces `2h + 1` on it, the two parallel
+        edges bounding the bigon. The labels keep the bipartition: `2n + 2k + 1`
+        starts at the centre of `f` and `2n + 2k` at the tail of `h`. If `h`
+        is even, its walk, which turns around the centre of `f` through the
+        corner where the bigon now sits, takes the new edge in place of
+        `2h + 1`, so that the bigon lies on the left of the walk as the face
+        `f` lies on the left of `h`. Any other walk is unchanged. The result
+        is a quadrangulation with boundary: the quadrilaterals, one per edge
+        of this map, and the bigons, one per punctured face.
+
         INPUT:
 
         - ``mapping`` -- boolean (default: ``False``); whether to also return
@@ -2049,6 +2071,18 @@ class OrientedMap:
 
         - ``mutable`` -- boolean (default: ``False``); whether the result is
           mutable
+
+        - ``punctured_faces`` -- (default: ``None``) ``None``, a boolean, or a
+          list of face indices; the faces that get a bigon, ``True`` standing
+          for every face and ``False`` for none. Unless it is ``None``, the
+          output gets a last entry, the sorted list of the indices of the
+          bigons among the faces of the result, as expected by
+          :class:`~combisurf.geometric_intersection.GeometricIntersectionPairing`.
+
+        OUTPUT: the radial map, followed by the images of the half-edges if
+        ``mapping`` is set, and by the indices of the bigons if
+        ``punctured_faces`` is not ``None``. That is ``radial``, ``(radial,
+        mor)``, ``(radial, bigons)`` or ``(radial, mor, bigons)``.
 
         EXAMPLES::
 
@@ -2105,6 +2139,47 @@ class OrientedMap:
             sage: m.radial_map(mutable=True).is_mutable()
             True
 
+        With punctured faces, a bigon per punctured face. On a torus made of
+        two triangles, the face ``0`` starts with the half-edge ``0``, whose
+        radial edge ``1`` gets doubled by the new edge ``(6, ~6)``. The walk of
+        ``0`` turns around the centre of the face ``0``, so it takes ``12``
+        in place of ``0``::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: m.faces()
+            [[0, 2, 4], [1, 3, 5]]
+            sage: r, mor, bigons = m.radial_map(mapping=True, punctured_faces=[0])
+            sage: r
+            OrientedMap("(0,5,2,1,4,3,6)(~0,~6,~2,~4)(~1,~3,~5)", "(0,~4,1,~5)(~0,6)(~1,2,~6,3)(~2,5,~3,4)")
+            sage: bigons
+            [1]
+            sage: [r.faces()[i] for i in bigons]
+            [[1, 12]]
+            sage: mor
+            [array('i', [12, 5]),
+             array('i', [4, 13]),
+             array('i', [4, 9]),
+             array('i', [8, 5]),
+             array('i', [8, 1]),
+             array('i', [0, 9])]
+            sage: m.radial_map(mapping=True)[1][0]
+            array('i', [0, 5])
+
+        All faces punctured, the result has a bigon per face besides the
+        quadrilaterals, and without ``mapping`` it is a pair::
+
+            sage: r, bigons = m.radial_map(punctured_faces=True)
+            sage: bigons
+            [1, 2]
+            sage: r.face_profile()
+            [4, 2, 2, 4, 4]
+
+        Without punctured face the radial map is the usual one, followed by
+        the empty list of bigons::
+
+            sage: m.radial_map(punctured_faces=False) == (m.radial_map(), [])
+            True
+
         Raises a ``NotImplementedError`` on maps with folded edge::
 
             sage: OrientedMap("(0)").radial_map()
@@ -2114,29 +2189,121 @@ class OrientedMap:
         """
         if self.has_folded_edge():
             raise NotImplementedError("radial_map is not implemented on a map with a folded edge")
-        n = len(self._vp)
-        rvp = array('i', [-1] * (2 * n))
-        rfp = array('i', [-1] * (2 * n))
+        punctured = self._punctured_face_list(punctured_faces)
+        radial, mor, roots = self._radial_map(mapping, mutable, punctured)
+
+        if punctured is None:
+            return (radial, mor) if mapping else radial
+
+        # the half-edge 2 h + 1 of the root h of a bigon lies on that bigon
+        h2f = radial.half_edge_to_face()
+        bigons = sorted(h2f[2 * h + 1] for h in roots)
+        return (radial, mor, bigons) if mapping else (radial, bigons)
+
+    def _punctured_face_list(self, punctured_faces):
+        r"""
+        Return ``punctured_faces`` as ``None`` or as a sorted list of face
+        indices without repetition.
+
+        ``True`` stands for every face and ``False`` for none.
+
+        TESTS::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+            sage: m._punctured_face_list(None) is None
+            True
+            sage: m._punctured_face_list(True), m._punctured_face_list(False)
+            ([0, 1, 2, 3], [])
+            sage: m._punctured_face_list([3, 1, 3])
+            [1, 3]
+            sage: m._punctured_face_list([4])
+            Traceback (most recent call last):
+            ...
+            ValueError: face number out of range f=4
+            sage: m._punctured_face_list(2)
+            Traceback (most recent call last):
+            ...
+            TypeError: punctured_faces must be None, a boolean or a list of face indices (got 2)
+        """
+        if punctured_faces is None:
+            return None
+        if isinstance(punctured_faces, bool):
+            return list(range(self.num_faces())) if punctured_faces else []
+        if not isinstance(punctured_faces, Sequence):
+            raise TypeError(f"punctured_faces must be None, a boolean or a list of face indices (got {punctured_faces})")
+        return sorted(set(self._check_face_index(f) for f in punctured_faces))
+
+    def _radial_map(self, mapping, mutable, punctured):
+        r"""
+        Return the triple ``(radial, mor, roots)`` of :meth:`radial_map`.
+
+        ``punctured`` is ``None`` or a sorted list of face indices; ``mor`` is
+        ``None`` unless ``mapping`` is set, and ``roots`` lists, for each bigon
+        in turn, the half-edge ``h`` of this map whose radial edge ``2 h + 1``
+        is doubled. The map is assumed to have no folded edge.
+
+        This is exercised through :meth:`radial_map` and :meth:`quad_system`.
+        """
+        vp = self._vp
+        fp = self._fp
+        n = len(vp)
+        roots = [] if punctured is None else [c[0] for c in (self.faces()[f] for f in punctured)]
+        nr = 2 * n + 2 * len(roots)
+        rvp = array('i', [-1] * nr)
+        rfp = array('i', [-1] * nr)
         for h in range(n):
-            if self._vp[h] == -1:
+            if vp[h] == -1:
                 continue
-            rvp[2 * h] = 2 * self._vp[h]
-            rvp[2 * h + 1] = 2 * self._fp[h] + 1
-            rfp[2 * self._fp[h]] = 2 * h + 1
-            rfp[2 * (h ^ 1) + 1] = 2 * self._fp[h]
+            rvp[2 * h] = 2 * vp[h]
+            rvp[2 * h + 1] = 2 * fp[h] + 1
+            rfp[2 * fp[h]] = 2 * h + 1
+            rfp[2 * (h ^ 1) + 1] = 2 * fp[h]
+
+        # The radial edge r = 2 h + 1 of the root h goes from the centre of
+        # its face to the tail of h, with the quadrilateral of h on its left,
+        # between 2 fp[h] and 2 fp[h ^ 1]. The new edge d, d + 1 is inserted
+        # on that side of r: d + 1 replaces r on the quadrilateral, and r and
+        # d bound the bigon. The relation rvp[rfp[x]] == x ^ 1 then gives the
+        # four entries of rvp that change.
+        for k, h in enumerate(roots):
+            d = 2 * n + 2 * k
+            r = 2 * h + 1
+            x = 2 * fp[h]
+            y = 2 * fp[h ^ 1]
+            rfp[x] = d + 1
+            rfp[d + 1] = y
+            rfp[r] = d
+            rfp[d] = r
+            rvp[d + 1] = x + 1
+            rvp[y] = d
+            rvp[d] = r - 1
+            rvp[r] = d + 1
         radial = OrientedMap(vp=rvp, fp=rfp, mutable=mutable)
 
         if not mapping:
-            return radial
+            return radial, None, roots
 
         mor = [None] * n
         for e in range(n // 2):
             h = 2 * e
-            if self._vp[h] == -1:
+            if vp[h] == -1:
                 continue
-            mor[h] = array('i', [2 * h, 2 * self._fp[h] + 1])
-            mor[h + 1] = array('i', [2 * self._fp[h], 2 * h + 1])
-        return radial, mor
+            mor[h] = array('i', [2 * h, 2 * fp[h] + 1])
+            mor[h + 1] = array('i', [2 * fp[h], 2 * h + 1])
+        # The walk of an even half-edge h goes through the centre of the face
+        # of h, with that face on its left and its quadrilateral on its right.
+        # When h is a root, its bigon, hence the puncture, lies in the corner
+        # of its quadrilateral at that centre, and the walk takes the side
+        # d of the quadrilateral instead of r so as to leave the bigon on its
+        # left. The walk of an odd root goes through the centre of the face
+        # on the other side and stays away from the bigon.
+        for k, h in enumerate(roots):
+            if h % 2 == 0:
+                d = 2 * n + 2 * k
+                mor[h][0] = d
+                mor[h + 1][1] = d + 1
+        return radial, mor, roots
 
     def reduced_map(self, forest=None, coforest=None, relabel=False, mapping=False, mutable=False, check=True):
         r"""
@@ -2493,7 +2660,8 @@ class OrientedMap:
 
         return reduced, proj
 
-    def quad_system(self, forest=None, coforest=None, relabel=False, mapping=False, mutable=False, check=True):
+    def quad_system(self, forest=None, coforest=None, relabel=False, mapping=False, mutable=False, check=True,
+                    punctured_faces=None):
         r"""
         Return the quad system of this map for the given forest and coforest.
 
@@ -2504,6 +2672,13 @@ class OrientedMap:
         ``coforest`` are spanning, the result is a quadrangulation of the same
         surface with two vertices of degree `4g`, `4g` edges and `2g`
         quadrilateral faces.
+
+        With ``punctured_faces``, the radial map is the one with a bigon per
+        punctured face of :meth:`radial_map`. The bigons are never folded, so
+        that with spanning ``forest`` and ``coforest`` and `b \geq 1` bigons
+        the result is a quadrangulation with boundary of the same punctured
+        surface: two vertices, `4g + b` edges, `2g` quadrilaterals and the `b`
+        bigons.
 
         INPUT:
 
@@ -2533,6 +2708,16 @@ class OrientedMap:
           whether to check the map built when ``relabel`` is set. Listing the
           same edge twice is reported whatever its value, being caught by the
           bookkeeping rather than by a check.
+
+        - ``punctured_faces`` -- (default: ``None``) ``None``, a boolean, or a
+          list of face indices; the faces that get a bigon, as in
+          :meth:`radial_map`. Unless it is ``None``, the output gets a last
+          entry, the sorted list of the indices of the bigons among the faces
+          of the result (of the relabelled result if ``relabel`` is set).
+
+        OUTPUT: the quad system, followed by the projection if ``mapping`` is
+        set, and by the indices of the bigons if ``punctured_faces`` is not
+        ``None``
 
         EXAMPLES::
 
@@ -2584,6 +2769,40 @@ class OrientedMap:
             sage: all(x in list(q.half_edges()) for p in proj for x in p)
             True
 
+        With punctured faces the bigons stay. The two faces of the genus two
+        map above give two bigons, besides the four quadrilaterals::
+
+            sage: q, bigons = m.quad_system(punctured_faces=True)
+            sage: q.num_vertices(), q.num_edges(), q.num_faces()
+            (2, 10, 6)
+            sage: bigons
+            [1, 5]
+            sage: [len(q.faces()[i]) for i in bigons]
+            [2, 2]
+            sage: q.face_profile()
+            [4, 2, 4, 4, 4, 2]
+
+        The projection is still made of walks of length zero or two, and the
+        indices of the bigons refer to the relabelled map when ``relabel`` is
+        set::
+
+            sage: q, proj, bigons = m.quad_system(relabel=True, mapping=True, punctured_faces=[0])
+            sage: q
+            OrientedMap("(0,4,5,3,1,2,6,7,8)(~0,~8,~3,~6,~4,~1,~7,~5,~2)", "(0,~2,1,~4)(~0,8)(~1,3,~8,7)(2,~5,4,~6)(~3,5,~7,6)")
+            sage: bigons
+            [1]
+            sage: sorted(set(len(p) for p in proj))
+            [0, 2]
+
+        On a sphere, every quadrilateral collapses and only the bigons are
+        left::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+            sage: m.quad_system()
+            OrientedMap("", "")
+            sage: m.quad_system(punctured_faces=True, relabel=True)
+            (OrientedMap("(0,2,1,3)(~0,~3,~1,~2)", "(0,~2)(~0,3)(1,~3)(~1,2)"), [0, 1, 2, 3])
+
         .. SEEALSO::
 
             :meth:`radial_map`, :meth:`fold_corner`,
@@ -2609,7 +2828,9 @@ class OrientedMap:
         parity are never opposite to each other. A handle dies only as the
         ``a`` or the ``a ^ 1`` of a fold: in the first case its quadrilateral
         is the one being collapsed, that is the edge currently processed, and
-        in the second case ``b`` is its replacement.
+        in the second case ``b`` is its replacement. Each bigon gets a handle
+        as well, which only ever dies in the second way; its live half-edge at
+        the end gives the index of the bigon in the result.
 
         The projection, on the other hand, is only read once every fold has
         been performed. The dying half-edges are linked to the ones they are
@@ -2624,27 +2845,38 @@ class OrientedMap:
         elif forest is None or coforest is None:
             raise ValueError("forest and coforest must be given together")
 
+        punctured = self._punctured_face_list(punctured_faces)
+
         vp = self._vp
         n = len(vp)
 
-        quad = self.radial_map(mapping=mapping, mutable=True)
-        if mapping:
-            quad, mor = quad
+        quad, mor, roots = self._radial_map(mapping, True, punctured)
         qfp = quad.face_permutation(copy=False)
+        nr = len(qfp)
 
         # handle[e] is a live half-edge of quad lying on the quadrilateral of
         # the edge e of this map and owner is its inverse; this is what keeps
-        # track of where each quadrilateral went as folding relabels half-edges
-        handle = array('i', [-1] * (n // 2))
-        owner = array('i', [-1] * (2 * n))
+        # track of where each quadrilateral went as folding relabels half-edges.
+        # The entry n // 2 + k does the same for the k-th bigon, which is never
+        # folded but whose sides get relabelled by the folds of its neighbours.
+        handle = array('i', [-1] * (n // 2 + len(roots)))
+        owner = array('i', [-1] * nr)
         for e in range(n // 2):
             if vp[2 * e] != -1:
                 handle[e] = 4 * e + 1
                 owner[4 * e + 1] = e
+        for k, h in enumerate(roots):
+            # the bigon took the place of 2 h + 1 on the quadrilateral of h,
+            # which is the handle when h is even
+            if h % 2 == 0:
+                handle[h // 2] = 2 * n + 2 * k + 1
+                owner[2 * n + 2 * k + 1] = h // 2
+            handle[n // 2 + k] = 2 * h + 1
+            owner[2 * h + 1] = n // 2 + k
 
         # the half-edges of the radial map that die get linked to the ones they
         # are identified with; only the projection needs them
-        link = array('i', [-1] * (2 * n)) if mapping else None
+        link = array('i', [-1] * nr) if mapping else None
 
         for parity, edges in ((0, forest), (1, coforest)):
             for h in edges:
@@ -2676,18 +2908,23 @@ class OrientedMap:
 
                 # the checks of fold_corner cannot fire here, so skip them:
                 # quad is mutable, a is live, and no neighbour ever lies on a
-                # folded edge. Every face of the radial map has degree four and
-                # a fold takes two from a face, so no face ever reaches degree
-                # one and the monogon branch, the only one that folds an edge
-                # onto itself, is never taken.
+                # folded edge. A fold only happens on a quadrilateral, of
+                # degree four, and takes two from it while the degree of every
+                # other face, a bigon included, stays the same. So no face ever
+                # reaches degree one and the monogon branch, the only one that
+                # folds an edge onto itself, is never taken.
                 for a in (a0, a1):
                     b = qfp[a]
                     quad.fold_corner(a, check=0)
                     if b == a ^ 1:
-                        # the edge of a bounded its face on both sides and got
-                        # pruned, so nothing survives it and there is nothing
-                        # to link. This ends the last quadrilateral of a map of
-                        # genus zero.
+                        # the head of a had degree one: the edge of a bounded
+                        # its face on both sides and got pruned, so nothing
+                        # survives it and there is nothing to link. This
+                        # happens at a leaf of the radial map, and on the last
+                        # quadrilateral of a map of genus zero without bigon,
+                        # which ends as a single edge. As a ^ 1 lies on the
+                        # face being folded, it is the handle of no other
+                        # quadrilateral and of no bigon.
                         owner[a] = owner[a ^ 1] = -1
                         continue
                     # b takes over the position of a ^ 1, hence lies on the
@@ -2705,7 +2942,7 @@ class OrientedMap:
             # every link is final here, so a single pass with path compression
             # resolves them all, each slot being compressed at most once
             stack = []
-            for x in range(2 * n):
+            for x in range(nr):
                 if link[x] == -1:
                     continue
                 y = x
@@ -2736,8 +2973,16 @@ class OrientedMap:
         if not mutable:
             quad.set_immutable()
 
+        bigons = None
+        if punctured is not None:
+            h2f = quad.half_edge_to_face()
+            bigon_half_edges = handle[n // 2:]
+            if relabelling is not None:
+                bigon_half_edges = [relabelling[y] for y in bigon_half_edges]
+            bigons = sorted(h2f[y] for y in bigon_half_edges)
+
         if not mapping:
-            return quad
+            return quad if bigons is None else (quad, bigons)
 
         proj = []
         for h in range(n):
@@ -2756,7 +3001,7 @@ class OrientedMap:
                 proj.append(array('i', [a, b]))
             else:
                 proj.append(array('i', [relabelling[a], relabelling[b]]))
-        return quad, proj
+        return (quad, proj) if bigons is None else (quad, proj, bigons)
 
     def geometric_intersection(self, u, v=None, punctured_faces=False):
         r"""

@@ -481,6 +481,70 @@ def test_half_edge_to_cell_with_inactive_edge_zero():
     assert list(m.half_edge_to_face()) == [-1, -1, 0, 1, 1, 2, -1, -1, -1, -1, 2, 0]
 
 
+def radial_maps():
+    from test_fold import sample_maps
+    from test_quad_system import degenerate_maps
+    return list(small_maps(folded=False)) + sample_maps() + degenerate_maps()
+
+
+def test_radial_map_punctured_shape():
+    # one bigon per punctured face, on the edge 2 n + 2 k, 2 n + 2 k + 1; the
+    # quadrilaterals and the walks of length two stay
+    import itertools
+
+    for m in radial_maps():
+        n = len(m.vertex_permutation(copy=False))
+        faces = range(m.num_faces())
+        subsets = [list(P) for k in range(len(faces) + 1) for P in itertools.combinations(faces, k)][:16]
+        for P in subsets:
+            b = len(P)
+            r, mor, bigons = m.radial_map(mapping=True, punctured_faces=P)
+            assert len(bigons) == b, (m, P)
+            assert r.num_vertices() == m.num_vertices() + m.num_faces(), (m, P)
+            assert r.num_edges() == 2 * m.num_edges() + b, (m, P)
+            assert r.num_faces() == m.num_edges() + b, (m, P)
+            assert r.genus(connected=False) == m.genus(connected=False), (m, P)
+            assert list(r.half_edges()) == [y for y in range(2 * n + 2 * b) if y >= 2 * n or y // 2 in m.half_edges()]
+            for i, face in enumerate(r.faces()):
+                assert len(face) == (2 if i in bigons else 4), (m, P, i)
+            # each bigon has a side among the new edges
+            h2f = r.half_edge_to_face()
+            assert sorted(h2f[2 * n + 2 * k] for k in range(b)) == bigons, (m, P)
+            # odd half-edges have their tail at a face of m, even ones at a
+            # vertex of m
+            h2v = r.half_edge_to_vertex()
+            white = {h2v[y] for y in r.half_edges() if y % 2}
+            black = {h2v[y] for y in r.half_edges() if y % 2 == 0}
+            assert not white & black and len(white) == m.num_faces(), (m, P)
+            for h in m.half_edges():
+                assert len(mor[h]) == 2, (m, P, h)
+                r._check_walk(mor[h])
+                assert list(mor[h ^ 1]) == [x ^ 1 for x in reversed(mor[h])], (m, P, h)
+
+
+def test_radial_map_punctured_unchanged():
+    from combisurf import OrientedMap
+
+    for m in radial_maps():
+        r0, mor0 = m.radial_map(mapping=True)
+        assert m.radial_map(mapping=True, punctured_faces=False) == (r0, mor0, [])
+        assert m.radial_map(punctured_faces=[]) == (r0, [])
+        r1, mor1, _ = m.radial_map(mapping=True, punctured_faces=True)
+        assert not r1.is_mutable()
+        assert m.radial_map(punctured_faces=True, mutable=True)[0].is_mutable()
+        # the walks are unchanged, but for those that take a new edge
+        n = len(m.vertex_permutation(copy=False))
+        assert all(mor1[h] == mor0[h] or max(mor1[h]) >= 2 * n for h in m.half_edges())
+
+    m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+    with pytest.raises(ValueError, match="out of range"):
+        m.radial_map(punctured_faces=[-1])
+    with pytest.raises(TypeError):
+        m.radial_map(punctured_faces=0)
+    with pytest.raises(NotImplementedError):
+        OrientedMap("(0)").radial_map(punctured_faces=True)
+
+
 def test_half_edge_to_cell_with_a_folded_edge():
     # only the even half-edge of a folded edge is active, so the odd one is
     # labelled -1 while the even one belongs to a genuine cell

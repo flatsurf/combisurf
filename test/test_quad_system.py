@@ -226,3 +226,186 @@ def test_quad_system_relabel():
         for h in m.half_edges():
             if proj2[h]:
                 assert list(proj2[h ^ 1]) == [proj2[h][1] ^ 1, proj2[h][0] ^ 1], (m, h)
+
+
+def punctured_maps():
+    r"""
+    Return the list of triples ``(name, map, sets of punctured faces)``.
+
+    Each set ``P`` satisfies ``χ - |P| < 0``, so that the pairing applies on
+    the punctured surface; the first one is the set of all faces.
+    """
+    import json
+    import os
+    from combisurf import OrientedMap
+
+    data = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+    out = [
+        ("sphere4", OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)"), [[0, 1, 2, 3], [1, 2, 3], [0, 1, 3]]),
+        ("torus", OrientedMap(vp=[[0, 2, 1, 3]]), [[0]]),
+        ("genus1_two_faces", OrientedMap(vp=[[0, 2, 4, 1, 3, 5]]), [[0, 1], [0], [1]]),
+        ("genus2", OrientedMap(vp=[[0, 2, 1, 3, 4, 6, 5, 7]]), [[0]]),
+        ("pants", OrientedMap(fp="(0)(1)(~0,~1)"), [[0, 1, 2]]),
+    ]
+    for name, subsets in (("lshape", [[1], [0, 4], [2, 3, 5]]),
+                          ("emmw_1117", [[0], [3, 7, 11, 19]])):
+        with open(os.path.join(data, f"cylinders_{name}.json")) as f:
+            m = OrientedMap(vp=json.load(f)["vp"])
+        out.append((name, m, [list(range(m.num_faces()))] + subsets))
+    return out
+
+
+def test_punctured_maps():
+    # guards punctured_maps() against an instance the pairing would reject
+    for name, m, subsets in punctured_maps():
+        assert subsets[0] == list(range(m.num_faces())), name
+        for P in subsets:
+            assert m.euler_characteristic() - len(P) < 0, (name, P)
+
+
+def test_quad_system_punctured_shape():
+    # spanning forest and coforest: 2 vertices, 2g quadrilaterals and one
+    # bigon per punctured face, hence 4g + b edges
+    for name, m, subsets in punctured_maps():
+        g = m.genus()
+        for P in subsets:
+            b = len(P)
+            for relabel in (False, True):
+                q, proj, bigons = m.quad_system(relabel=relabel, mapping=True, punctured_faces=P)
+                assert (q.num_vertices(), q.num_edges(), q.num_faces()) == (2, 4 * g + b, 2 * g + b), (name, P)
+                assert q.genus() == g, (name, P)
+                assert len(bigons) == b, (name, P)
+                faces = q.faces()
+                for i, face in enumerate(faces):
+                    assert len(face) == (2 if i in bigons else 4), (name, P, i)
+                for h in m.half_edges():
+                    assert len(proj[h]) in (0, 2), (name, P, h)
+                    q._check_walk(proj[h])
+                    assert list(proj[h ^ 1]) == [x ^ 1 for x in reversed(proj[h])], (name, P, h)
+                if relabel:
+                    # the parity of the labels gives the bipartition
+                    h2v = q.half_edge_to_vertex()
+                    assert len({h2v[y] for y in q.half_edges() if y % 2 == 0}) == 1, (name, P)
+                    assert len({h2v[y] for y in q.half_edges() if y % 2 == 1}) == 1, (name, P)
+
+
+def test_quad_system_punctured_unchanged():
+    # without bigons the result is the one without the keyword
+    for name, m, subsets in punctured_maps():
+        forest, coforest, _ = m.forest_coforest_decomposition()
+        q0, proj0 = m.quad_system(forest, coforest, mapping=True)
+        q1, proj1, bigons = m.quad_system(forest, coforest, mapping=True, punctured_faces=False)
+        assert bigons == [], name
+        assert q0 == q1 and proj0 == proj1, name
+        assert m.quad_system(punctured_faces=[]) == (m.quad_system(), []), name
+
+
+def test_quad_system_punctured_arguments():
+    from combisurf import OrientedMap
+
+    m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+    assert m.quad_system(punctured_faces=[2, 0, 2])[1] == m.quad_system(punctured_faces=[0, 2])[1]
+    with pytest.raises(ValueError, match="out of range"):
+        m.quad_system(punctured_faces=[4])
+    with pytest.raises(TypeError):
+        m.quad_system(punctured_faces=1)
+    with pytest.raises(NotImplementedError):
+        OrientedMap("(0,2,~2)").quad_system(punctured_faces=True)
+
+
+def image(mor, w):
+    return [x for h in w for x in mor[h]]
+
+
+def free_word(r, bigons, w):
+    r"""
+    Return the cyclically reduced word of the closed walk ``w`` of ``r`` in the
+    free fundamental group of ``r`` punctured at the faces ``bigons``.
+    """
+    from combisurf.word import word_init, word_cyclically_reduce
+    forest, coforest, _ = r.forest_coforest_decomposition(root_faces=bigons)
+    _, proj = r.reduced_map(forest, coforest, mapping=True)
+    return list(word_cyclically_reduce(word_init(image(proj, w))))
+
+
+def assert_peripheral(m, P, r, mor, bigons):
+    # the boundary of each punctured face goes to a curve freely homotopic
+    # to the boundary of its bigon, up to orientation
+    from test_geometric_intersection_oracles import inverse, is_cyclic_conjugate
+
+    peripheral = [free_word(r, bigons, r.faces()[i]) for i in bigons]
+    faces = m.faces()
+    for f in P:
+        u = free_word(r, bigons, image(mor, faces[f]))
+        assert u, (m, P, f)
+        assert any(is_cyclic_conjugate(u, v) or is_cyclic_conjugate(u, inverse(v)) for v in peripheral), (m, P, f)
+
+
+def test_punctured_peripheral():
+    for name, m, subsets in punctured_maps():
+        for P in subsets:
+            r, mor, bigons = m.radial_map(mapping=True, punctured_faces=P)
+            assert_peripheral(m, P, r, mor, bigons)
+            q, proj, bigons = m.quad_system(mapping=True, punctured_faces=P)
+            assert_peripheral(m, P, q, proj, bigons)
+
+
+def decisive_instances():
+    r"""
+    Return the list of triples ``(map, sets of punctured faces, curves)`` on
+    which the pairing is compared before and after the reduction.
+    """
+    import random
+    from combisurf import OrientedMap
+    from test_geometric_intersection_oracles import (COHEN_LUSTIG_ROWS, cylinder_data, genus1_two_faces, genus2,
+                                                     pants, random_closed_walk, random_word, sphere4, torus)
+
+    def rows(surface):
+        # the words V and W of the rows of Cohen–Lustig on that surface
+        return [w for row in COHEN_LUSTIG_ROWS if row[1] is surface for w in row[2:4] if w is not None]
+
+    rng = random.Random(0)
+    out = [(torus(), [[0]], rows(torus)),
+           (genus2(), [[0]], rows(genus2)),
+           (genus1_two_faces(), [[0, 1], [0], [1]], rows(genus1_two_faces))]
+    out.append((pants(), [[0, 1, 2]], [random_word(rng, 2, 8) for _ in range(6)]))
+    m = sphere4()
+    eight01 = [0, 2, 4, 0, 9, 7]
+    out.append((m, [[0, 1, 2, 3], [0, 1, 3]],
+                [eight01] + [random_closed_walk(m, rng, length) for length in (6, 9, 12, 15)]))
+    m = OrientedMap(vp=cylinder_data("lshape")["vp"])
+    out.append((m, [[0, 1, 2, 3, 4, 5], [1], [0, 4], [2, 3, 5]],
+                [random_closed_walk(m, rng, length) for length in (3, 5, 7, 9, 12)]))
+    return out
+
+
+def test_decisive_instances():
+    # guards decisive_instances() against an instance that tests nothing
+    instances = decisive_instances()
+    assert [m.genus() for m, _, _ in instances] == [1, 2, 1, 0, 0, 2]
+    for m, subsets, curves in instances:
+        assert len(curves) >= 3
+        for w in curves:
+            m._check_walk(w, closed=True)
+
+
+@pytest.mark.parametrize("reduction", ["radial_map", "quad_system"])
+def test_punctured_geometric_intersection(reduction):
+    # the reduction to a map with bigons preserves the geometric intersection
+    # numbers of the punctured surface
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    # GeometricIntersectionPairing rejects a map with inactive half-edges,
+    # which the quad system has unless relabelled
+    kwds = {"relabel": True} if reduction == "quad_system" else {}
+    for m, subsets, curves in decisive_instances():
+        for P in subsets:
+            r, mor, bigons = getattr(m, reduction)(mapping=True, punctured_faces=P, **kwds)
+            gi = GeometricIntersectionPairing(m, P)
+            gr = GeometricIntersectionPairing(r, bigons)
+            images = [image(mor, w) for w in curves]
+            for u, v in zip(curves, images):
+                assert gi([u]) == gr([v]), (m, P, u)
+            for i in range(len(curves)):
+                for j in range(i, len(curves)):
+                    assert gi([curves[i]], [curves[j]]) == gr([images[i]], [images[j]]), (m, P, i, j)
