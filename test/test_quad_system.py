@@ -329,16 +329,17 @@ def free_word(r, bigons, w):
 
 
 def assert_peripheral(m, P, r, mor, bigons):
-    # the boundary of each punctured face goes to a curve freely homotopic
-    # to the boundary of its bigon, up to orientation
-    from test_geometric_intersection_oracles import inverse, is_cyclic_conjugate
+    # the boundary of each punctured face, which has the face on its left,
+    # goes to a curve freely homotopic to the boundary of a bigon, which has
+    # the bigon on its left: the puncture stays on the same side
+    from test_geometric_intersection_oracles import is_cyclic_conjugate
 
     peripheral = [free_word(r, bigons, r.faces()[i]) for i in bigons]
     faces = m.faces()
     for f in P:
         u = free_word(r, bigons, image(mor, faces[f]))
         assert u, (m, P, f)
-        assert any(is_cyclic_conjugate(u, v) or is_cyclic_conjugate(u, inverse(v)) for v in peripheral), (m, P, f)
+        assert any(is_cyclic_conjugate(u, v) for v in peripheral), (m, P, f)
 
 
 def test_punctured_peripheral():
@@ -350,7 +351,7 @@ def test_punctured_peripheral():
             assert_peripheral(m, P, q, proj, bigons)
 
 
-def decisive_instances():
+def pairing_instances():
     r"""
     Return the list of triples ``(map, sets of punctured faces, curves)`` on
     which the pairing is compared before and after the reduction.
@@ -379,9 +380,9 @@ def decisive_instances():
     return out
 
 
-def test_decisive_instances():
-    # guards decisive_instances() against an instance that tests nothing
-    instances = decisive_instances()
+def test_pairing_instances():
+    # guards pairing_instances() against an instance that tests nothing
+    instances = pairing_instances()
     assert [m.genus() for m, _, _ in instances] == [1, 2, 1, 0, 0, 2]
     for m, subsets, curves in instances:
         assert len(curves) >= 3
@@ -398,7 +399,7 @@ def test_punctured_geometric_intersection(reduction):
     # GeometricIntersectionPairing rejects a map with inactive half-edges,
     # which the quad system has unless relabelled
     kwds = {"relabel": True} if reduction == "quad_system" else {}
-    for m, subsets, curves in decisive_instances():
+    for m, subsets, curves in pairing_instances():
         for P in subsets:
             r, mor, bigons = getattr(m, reduction)(mapping=True, punctured_faces=P, **kwds)
             gi = GeometricIntersectionPairing(m, P)

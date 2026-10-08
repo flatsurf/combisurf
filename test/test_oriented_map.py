@@ -495,8 +495,7 @@ def test_radial_map_punctured_shape():
     for m in radial_maps():
         n = len(m.vertex_permutation(copy=False))
         faces = range(m.num_faces())
-        subsets = [list(P) for k in range(len(faces) + 1) for P in itertools.combinations(faces, k)][:16]
-        for P in subsets:
+        for P in (list(P) for k in range(len(faces) + 1) for P in itertools.combinations(faces, k)):
             b = len(P)
             r, mor, bigons = m.radial_map(mapping=True, punctured_faces=P)
             assert len(bigons) == b, (m, P)
@@ -532,9 +531,19 @@ def test_radial_map_punctured_unchanged():
         r1, mor1, _ = m.radial_map(mapping=True, punctured_faces=True)
         assert not r1.is_mutable()
         assert m.radial_map(punctured_faces=True, mutable=True)[0].is_mutable()
-        # the walks are unchanged, but for those that take a new edge
+        # only the walk of an even first half-edge h of a face, and its
+        # reverse, change: they take the new edge of the bigon of that face at
+        # its centre
         n = len(m.vertex_permutation(copy=False))
-        assert all(mor1[h] == mor0[h] or max(mor1[h]) >= 2 * n for h in m.half_edges())
+        changed = {}
+        for k, face in enumerate(m.faces()):
+            h = face[0]
+            if h % 2 == 0:
+                d = 2 * n + 2 * k
+                changed[h] = [d, mor0[h][1]]
+                changed[h + 1] = [mor0[h + 1][0], d + 1]
+        for h in m.half_edges():
+            assert list(mor1[h]) == changed.get(h, list(mor0[h])), (m, h)
 
     m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
     with pytest.raises(ValueError, match="out of range"):

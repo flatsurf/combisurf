@@ -2248,7 +2248,11 @@ class OrientedMap:
         vp = self._vp
         fp = self._fp
         n = len(vp)
-        roots = [] if punctured is None else [c[0] for c in (self.faces()[f] for f in punctured)]
+        if punctured is None:
+            roots = []
+        else:
+            faces = self.faces()
+            roots = [faces[f][0] for f in punctured]
         nr = 2 * n + 2 * len(roots)
         rvp = array('i', [-1] * nr)
         rfp = array('i', [-1] * nr)
@@ -2717,7 +2721,7 @@ class OrientedMap:
 
         OUTPUT: the quad system, followed by the projection if ``mapping`` is
         set, and by the indices of the bigons if ``punctured_faces`` is not
-        ``None``
+        ``None``.
 
         EXAMPLES::
 
