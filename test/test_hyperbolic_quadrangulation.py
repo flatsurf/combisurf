@@ -493,6 +493,49 @@ def test_cyclic_brackets_exist():
     assert any(cyclic_brackets(instance(name)) for name in NAMES)
 
 
+def near_cyclic_brackets(I, max_r):
+    r"""
+    Return the closed walks of ``I`` with weighted turns ``s, 2s, ..., 2s,
+    s, x`` for ``s = ±1``, at most ``max_r`` turns `2s` and ``x`` neither
+    `0` nor ``s``, one per starting half-edge and number of turns `2s`.
+
+    A bracket then covers all the turns but ``x``: this is the near-cyclic
+    case of the reduction. Excluding ``x = 0`` and ``x = s`` keeps a spur
+    or a shorter bracket from being found first.
+    """
+    walks = []
+    for s in (1, -1):
+        for h in I.half_edges:
+            w = [h]
+            x = step(I, h, s)
+            for r in range(max_r + 1):
+                if x is None:
+                    break
+                y = step(I, x, s)
+                if y is not None and I.h2v[y ^ 1] == I.h2v[h] and I.Q.weighted_turn(y, h) not in (0, s):
+                    walks.append((s, r, w + [x, y]))
+                w.append(x)
+                x = step(I, x, 2 * s)
+    return walks
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_near_cyclic_brackets(name):
+    I = instance(name)
+    Q = I.Q
+    for s, r, w in near_cyclic_brackets(I, 6):
+        t = Q.weighted_turns(w)
+        assert t[:-1] == [s] + [2 * s] * r + [s]
+        assert not Q.is_geodesic(w)
+        g = Q.geodesic(w)
+        assert len(g) <= len(w) - 2
+        check_geodesic(I, w, g)
+
+
+def test_near_cyclic_brackets_exist():
+    assert any(near_cyclic_brackets(instance(name), 6) for name in NAMES)
+
+
 def test_reductions_exercised():
     # every kind of elementary reduction happens on the random walks
     counts = {"_spur": 0, "_bracket": 0, "_cyclic_bracket": 0, "_replace_all": 0, "_splice": 0}

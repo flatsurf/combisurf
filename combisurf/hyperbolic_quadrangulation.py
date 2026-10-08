@@ -330,6 +330,12 @@ class HyperbolicQuadrangulation:
         vertex where ``h1`` ends and ``h2`` starts. It does not depend on the
         punctured faces.
 
+        INPUT:
+
+        - ``h1``, ``h2`` -- half-edges, ``h1`` ending where ``h2`` starts
+
+        OUTPUT: an integer in `\{0, 1, \ldots, d - 1\}`
+
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
@@ -368,6 +374,12 @@ class HyperbolicQuadrangulation:
         corners, the weighted turn is their signed number, positive
         counterclockwise. When both sides sweep a punctured corner, its
         absolute value is at least `4`.
+
+        INPUT:
+
+        - ``h1``, ``h2`` -- half-edges, ``h1`` ending where ``h2`` starts
+
+        OUTPUT: an integer in `(-wd/2, wd/2]`
 
         EXAMPLES:
 
@@ -426,6 +438,12 @@ class HyperbolicQuadrangulation:
         The entry ``i`` is the weighted turn from ``w[i]`` to ``w[i + 1]``,
         the indices being taken modulo the length of ``w``.
 
+        INPUT:
+
+        - ``w`` -- a closed walk
+
+        OUTPUT: a list of integers, of the length of ``w``
+
         EXAMPLES::
 
             sage: from combisurf import OrientedMap
@@ -454,6 +472,12 @@ class HyperbolicQuadrangulation:
         `1, 2, \ldots, 2, 1` or `-1, -2, \ldots, -2, -1`, with any number of
         `\pm 2`, the run of `\pm 2` possibly going once around the whole walk
         (a *cyclic bracket*). The empty walk is a geodesic.
+
+        INPUT:
+
+        - ``w`` -- a closed walk
+
+        OUTPUT: a boolean
 
         EXAMPLES::
 
