@@ -628,8 +628,11 @@ class HyperbolicQuadrangulation:
         the geodesics freely homotopic to ``w`` all have the same length,
         :ref:`despre-lazarus-2019`, Corollary 11.
 
-        A free homotopy class usually contains several geodesics. Two of them
-        are canonical. The *right-most* geodesic has no weighted turn `1`,
+        A free homotopy class usually contains several geodesics. A
+        *canonical* geodesic is a choice of one geodesic per free homotopy
+        class, so that two freely homotopic closed walks get the same result up
+        to cyclic rotation. This method offers two such choices, the
+        right-most and the left-most geodesic. The *right-most* geodesic has no weighted turn `1`,
         and its weighted turns are not all `2`: it is the canonical cycle of
         :ref:`erickson-whittlesey-2013`, §5, and the canonical form of
         :ref:`despre-lazarus-2019`, Theorem 8, whose turns are the opposite of
@@ -645,7 +648,9 @@ class HyperbolicQuadrangulation:
         geodesics are rotations of each other. This uniqueness is
         :ref:`erickson-whittlesey-2013`, Lemma 5.2, for systems of quads; on
         other hyperbolic punctured quadrangulations it is an assumption of
-        this module (see :mod:`~combisurf.hyperbolic_quadrangulation`).
+        this module (see :mod:`~combisurf.hyperbolic_quadrangulation`). A
+        canonical geodesic is returned unchanged, with the same starting
+        half-edge.
 
         INPUT:
 
@@ -1076,10 +1081,10 @@ class WeightedTurnRuns:
         Reduce the walk whose weighted turns are ``s, 2s, ..., 2s`` with `r`
         turns `2s`.
 
-        The walk ``h_0 = first[a], h_1, ..., h_r`` goes around a ring of `r`
+        The walk ``h_0 = first[a], h_1, ..., h_r`` goes around a cylinder of `r`
         filled faces ``Q_0, ..., Q_{r-1}``, with ``Q_0`` along ``h_0`` and
         ``h_1``, through the weighted turn ``s``, and ``Q_k`` along ``h_{k+1}``
-        for `k \geq 1`. The other side of the ring is made of one side
+        for `k \geq 1`. The other side of the cylinder is made of one side
         ``f_k`` of each ``Q_k`` for `k \geq 1` and gives the weighted turns
         ``-2s, ..., -2s, -3s``, the last one at the corner ``w`` of ``Q_0``
         opposite to the walk. The side of ``Q_0`` at weighted position `-s`
@@ -1185,7 +1190,7 @@ class WeightedTurnRuns:
         either, its neighbours ``x`` and ``y`` being neither `0`, `1` nor
         `2`. So the runs of value `1` of the reduced walk, listed once, are
         all removed in turn, each in constant time. Last, a walk whose
-        weighted turns are all `2` is replaced by :meth:`_right_shift_ring`.
+        weighted turns are all `2` is replaced by :meth:`_right_shift_cylinder`.
         The total time is linear in the length of the walk.
         """
         u = self._reduce()
@@ -1208,7 +1213,7 @@ class WeightedTurnRuns:
             if val[x] != 2:
                 return self._walk(u)
             x = nxt[x]
-        return self._walk(self._right_shift_ring(u))
+        return self._walk(self._right_shift_cylinder(u))
 
     def _right_shift(self, a):
         r"""
@@ -1361,17 +1366,17 @@ class WeightedTurnRuns:
         runs.append((_mod_normalize(y - 1, wdeg[h2v[hm ^ 1]]), 1, gm))
         return self._splice(P, nodes, N, at(hm ^ 1, y), runs)
 
-    def _right_shift_ring(self, u):
+    def _right_shift_cylinder(self, u):
         r"""
         Replace the walk, whose weighted turns are all `2`, by the walk on
-        the other side of the ring of filled faces on its right, and return
-        its node.
+        the other side of the cylinder of filled faces on its right, and
+        return its node.
 
-        The ring is made of the faces on the right of the half-edges of the
+        The cylinder is made of the faces on the right of the half-edges of the
         walk; its other side has the weighted turns `-2`. From ``h``, the
         first half-edge of the run ``u``, the side of the face on the right
         of ``h`` at weighted position `-1` from ``h`` goes to the other side
-        of the ring, and the side at weighted position `-1` from its reverse
+        of the cylinder, and the side at weighted position `-1` from its reverse
         is the side opposite to ``h``: it starts the new run.
         """
         nodes = []

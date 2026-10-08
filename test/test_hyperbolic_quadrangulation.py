@@ -338,6 +338,17 @@ def detours(I, rng, w):
     return variants
 
 
+def random_homotopic(I, rng, w, moves):
+    r"""
+    Return a random closed walk freely homotopic to ``w``, obtained by
+    ``moves`` successive elementary moves of :func:`detours`.
+    """
+    u = w
+    for _ in range(moves):
+        u = rng.choice(detours(I, rng, u))
+    return u
+
+
 @pytest.mark.parametrize("name", NAMES)
 def test_geodesic_detours(name):
     # homotopic geodesics have the same length: Despré-Lazarus, Corollary 11
@@ -649,7 +660,7 @@ def test_canonical_uniqueness(name):
     Q = I.Q
     rng = random.Random(6)
     for w in I.random_walks(rng, 8, 30):
-        variants = detours(I, rng, w)
+        variants = detours(I, rng, w) + [random_homotopic(I, rng, w, 10)]
         for side in SIDES:
             c = Q.geodesic(w, canonical=side)
             for u in variants:
@@ -670,7 +681,7 @@ def test_canonical_properties(name):
             t = Q.weighted_turns(c)
             assert s not in t, (side, w, c, t)
             assert not c or any(x != 2 * s for x in t), (side, w, c)
-            assert is_rotation(Q.geodesic(c, canonical=side), c)
+            assert Q.geodesic(c, canonical=side) == c
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -738,19 +749,19 @@ def shift_row(R, a):
 def test_right_shifts_exercised():
     # every row of the table of right shifts happens
     counts = {row: 0 for row in range(1, 9)}
-    saved = WeightedTurnRuns._right_shift, WeightedTurnRuns._right_shift_ring
+    saved = WeightedTurnRuns._right_shift, WeightedTurnRuns._right_shift_cylinder
 
     def right_shift(self, a):
         counts[shift_row(self, a)] += 1
         return saved[0](self, a)
 
-    def right_shift_ring(self, u):
+    def right_shift_cylinder(self, u):
         counts[8] += 1
         return saved[1](self, u)
 
     try:
         WeightedTurnRuns._right_shift = right_shift
-        WeightedTurnRuns._right_shift_ring = right_shift_ring
+        WeightedTurnRuns._right_shift_cylinder = right_shift_cylinder
         for name in NAMES:
             I = instance(name)
             rng = random.Random(9)
@@ -758,7 +769,7 @@ def test_right_shifts_exercised():
                 for side, s in SIDES.items():
                     assert s not in I.Q.weighted_turns(I.Q.geodesic(w, canonical=side))
     finally:
-        WeightedTurnRuns._right_shift, WeightedTurnRuns._right_shift_ring = saved
+        WeightedTurnRuns._right_shift, WeightedTurnRuns._right_shift_cylinder = saved
     assert all(counts.values()), counts
 
 
