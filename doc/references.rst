@@ -207,3 +207,21 @@ Dubois (2024)
 
 L. Dubois. *Making Multicurves Cross Minimally on Surfaces*
 ESA 2024: 50:1-50:15
+
+Proposition 1.5, on the intersection of reduced closed walks of a reducing
+triangulation, is recalled in
+:mod:`combisurf.bipartite_hyperbolic_triangulation`.
+
+.. _colin-de-verdiere-despre-dubois-2024:
+
+Colin de Verdière, Despré & Dubois (2024)
+-----------------------------------------
+
+É. Colin de Verdière, V. Despré and L. Dubois. *Untangling graphs on
+surfaces*. Proceedings of the 2024 Annual ACM-SIAM Symposium on Discrete
+Algorithms (SODA 2024). arXiv:2311.00437.
+
+Source of the definition of the bipartite hyperbolic triangulations of
+:mod:`combisurf.bipartite_hyperbolic_triangulation` without punctured face,
+the reducing triangulations of §3.1: the triangles are 2-coloured and every
+vertex has degree at least `8`.

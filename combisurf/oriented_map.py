@@ -2212,6 +2212,13 @@ class OrientedMap:
             Traceback (most recent call last):
             ...
             NotImplementedError: radial_map is not implemented on a map with a folded edge
+
+        .. SEEALSO::
+
+            :meth:`barycentric_subdivision`, whose triangles, glued in fours
+            around each edge vertex, are the quadrilaterals of the radial map
+            without punctured face: the radial map is the barycentric
+            subdivision without its edge vertices.
         """
         if self.has_folded_edge():
             raise NotImplementedError("radial_map is not implemented on a map with a folded edge")
@@ -2296,6 +2303,268 @@ class OrientedMap:
                 mor[h][0] = d
                 mor[h + 1][1] = d + 1
         return radial, mor, roots
+
+    def barycentric_subdivision(self, mapping=False, mutable=False, punctured_faces=False):
+        r"""
+        Return the barycentric subdivision of this map.
+
+        The *barycentric subdivision* of an oriented map adds a vertex in the
+        middle of each edge, its *edge vertex*, and a vertex in the centre of
+        each face that is not punctured, its *face vertex*. It joins each face
+        vertex to the vertices and to the edge vertices of its face, so that
+        every face that is not punctured is cut into triangles. These
+        triangles are in bijection with the flags (vertex, edge, face) of this
+        map, their corners being the vertex, the edge vertex of the edge and
+        the face vertex of the face. A punctured face gets no face vertex: it
+        stays a face of the result, of twice its degree, whose boundary
+        alternates vertices and edge vertices.
+
+        Let `n` be the length of the vertex permutation (inactive half-edges
+        included) and `h` a half-edge. The labels are the following:
+
+        - the edge `h` (half-edges `2h` and `2h + 1`) is the half of the edge
+          of `h` at the tail of `h`: the half-edge `2h` goes from the tail of
+          `h` to the edge vertex of `h`;
+
+        - the edge `n + h` (half-edges `2n + 2h` and `2n + 2h + 1`) joins the
+          edge vertex of `h` to the face vertex of the face of `h`, the face
+          on the left of `h`: the half-edge `2n + 2h` goes from the former to
+          the latter;
+
+        - the edge `2n + h` (half-edges `4n + 2h` and `4n + 2h + 1`) joins the
+          face vertex of the face of `h` to the tail of `h`, through the
+          corner of that face at the tail of `h`: the half-edge `4n + 2h` goes
+          from the face vertex to the tail of `h`.
+
+        The edges `n + h` and `2n + h` of a half-edge `h` in a punctured face
+        are inactive, as are the six half-edges of an inactive half-edge; the
+        trailing inactive edges are dropped.
+
+        The triangles are coloured by the labels. The triangle on the left of
+        `2h` has the face cycle ``(2h, 2n + 2h, 4n + 2h)``: its corners, the
+        tail of `h`, the edge vertex and the face vertex, read (vertex, edge,
+        face) counterclockwise, and its three half-edges are even. Every other
+        triangle is bounded by three odd half-edges: with `g = h ^ 1` and `k`
+        the half-edge after `h` in its face, the triangle at the tail of `g` in
+        the face of `h` has the face cycle ``(2g + 1, 4n + 2k + 1, 2n + 2h +
+        1)``, its corners reading (vertex, edge, face) clockwise. Every edge
+        between two triangles has an even side and an odd side. A punctured
+        face has the face cycle made of ``2h, 2g + 1`` for each half-edge `h`
+        of the face in turn, its half-edges alternating even and odd.
+
+        The image of a half-edge `h` is the walk ``[2h, 2(h ^ 1) + 1]`` of
+        length two through the edge vertex of `h`, and the image of ``h ^ 1``
+        is its reverse.
+
+        INPUT:
+
+        - ``mapping`` -- boolean (default: ``False``); whether to also return
+          the list of the images of the half-edges, ``None`` for an inactive
+          half-edge
+
+        - ``mutable`` -- boolean (default: ``False``); whether the result is
+          mutable
+
+        - ``punctured_faces`` -- (default: ``False``) a boolean or a list of
+          face indices; the faces that get no face vertex, ``True`` standing
+          for every face and ``False`` for none
+
+        OUTPUT: the pair ``(t, punctured)``, or the triple ``(t, mor,
+        punctured)`` if ``mapping`` is set, where ``t`` is the barycentric
+        subdivision, ``mor`` the list of the images of the half-edges and
+        ``punctured`` the sorted list of the indices of the punctured faces
+        among the faces of ``t``. It is empty without punctured face.
+
+        EXAMPLES:
+
+        The torus made of two triangles has one vertex, three edges and two
+        faces. Its barycentric subdivision has `1 + 3 + 2 = 6` vertices and
+        twelve triangles, the white ones bounded by even half-edges and the
+        black ones by odd half-edges::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: t, punctured = m.barycentric_subdivision()
+            sage: t
+            OrientedMap("(0,~12,5,~17,2,~14,1,~13,4,~16,3,~15)(~0,7,~1,6)(~2,9,~3,8)(~4,11,~5,10)(~6,14,~8,16,~10,12)(~7,15,~9,17,~11,13)", "(0,6,12)(~0,~15,~7)(1,7,13)(~1,~14,~6)(2,8,14)(~2,~17,~9)(3,9,15)(~3,~16,~8)(4,10,16)(~4,~13,~11)(5,11,17)(~5,~12,~10)")
+            sage: punctured
+            []
+            sage: t.num_vertices(), t.num_edges(), t.face_profile(), t.genus()
+            (6, 18, [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3], 1)
+            sage: [{h % 2 for h in f} for f in t.faces()]
+            [{0}, {1}, {0}, {1}, {0}, {1}, {0}, {1}, {0}, {1}, {0}, {1}]
+
+        With the face ``0`` punctured, it stays a face of degree six, and the
+        other face is cut into six triangles::
+
+            sage: m.faces()
+            [[0, 2, 4], [1, 3, 5]]
+            sage: t, punctured = m.barycentric_subdivision(punctured_faces=[0])
+            sage: t
+            OrientedMap("(0,5,~17,2,1,~13,4,3,~15)(~0,7,~1)(~2,9,~3)(~4,11,~5)(~7,15,~9,17,~11,13)", "(0,~1,2,~3,4,~5)(~0,~15,~7)(1,7,13)(~2,~17,~9)(3,9,15)(~4,~13,~11)(5,11,17)")
+            sage: punctured
+            [0]
+            sage: [t.faces()[i] for i in punctured]
+            [[0, 3, 4, 7, 8, 11]]
+            sage: t.num_vertices(), t.num_edges(), t.face_profile(), t.genus()
+            (5, 12, [6, 3, 3, 3, 3, 3, 3], 1)
+
+        With ``mapping``, the images of the half-edges are returned as well;
+        the image of ``h ^^ 1`` is the reverse of the image of ``h``::
+
+            sage: t, mor, punctured = m.barycentric_subdivision(mapping=True)
+            sage: mor
+            [array('i', [0, 3]),
+             array('i', [2, 1]),
+             array('i', [4, 7]),
+             array('i', [6, 5]),
+             array('i', [8, 11]),
+             array('i', [10, 9])]
+            sage: all(list(mor[h ^^ 1]) == [mor[h][1] ^^ 1, mor[h][0] ^^ 1]
+            ....:     for h in m.half_edges())
+            True
+
+        The result is immutable unless ``mutable`` is set::
+
+            sage: m.barycentric_subdivision()[0].is_mutable()
+            False
+            sage: m.barycentric_subdivision(mutable=True)[0].is_mutable()
+            True
+
+        TESTS:
+
+        Inactive half-edges have inactive labels and no image::
+
+            sage: m = OrientedMap(vp="(0,3,6,~3)(~0,1,~6,~1)")
+            sage: t, mor, _ = m.barycentric_subdivision(mapping=True)
+            sage: t
+            OrientedMap("(0,~28,6,~34,12,~40,7,~35)(~0,15,~1,14)(1,~29,2,~30,13,~41,3,~31)(~2,17,~3,16)(~6,21,~7,20)(~12,27,~13,26)(~14,31,~17,29,~15,35,~21,28)(~16,41,~27,34,~20,40,~26,30)", "(0,14,28)(~0,~35,~15)(1,15,29)(~1,~31,~14)(2,16,30)(~2,~29,~17)(3,17,31)(~3,~41,~16)(6,20,34)(~6,~28,~21)(7,21,35)(~7,~40,~20)(12,26,40)(~12,~34,~27)(13,27,41)(~13,~30,~26)")
+            sage: mor
+            [array('i', [0, 3]),
+             array('i', [2, 1]),
+             array('i', [4, 7]),
+             array('i', [6, 5]),
+             None,
+             None,
+             array('i', [12, 15]),
+             array('i', [14, 13]),
+             None,
+             None,
+             None,
+             None,
+             array('i', [24, 27]),
+             array('i', [26, 25])]
+
+        With every face punctured, the result is this map with each edge
+        subdivided once, and the edges `n + h` and `2n + h` are all dropped::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: t, punctured = m.barycentric_subdivision(punctured_faces=True)
+            sage: t
+            OrientedMap("(0,5,2,1,4,3)(~0,~1)(~2,~3)(~4,~5)", "(0,~1,2,~3,4,~5)(~0,3,~2,5,~4,1)")
+            sage: punctured
+            [0, 1]
+
+        The radial map shares the vertices and the face vertices. Around the
+        edge vertex of an edge, the four triangles of the edge come in two
+        pairs sharing an edge `n + h`, each pair making the triangle on one
+        side of the edge; together they make the quadrilateral of the edge in
+        the radial map, split along the edge, its diagonal through the edge
+        vertex. The side ``4n + 2h + 1`` of the triangles is the radial
+        half-edge `2h`::
+
+            sage: m = OrientedMap(vp="(0,1,~0,2)(~1,~2)")
+            sage: t, _ = m.barycentric_subdivision()
+            sage: r, _ = m.radial_map()
+            sage: n = len(m.vertex_permutation())
+            sage: h2f = t.half_edge_to_face()
+            sage: r_h2f = r.half_edge_to_face()
+            sage: def triangles(h):
+            ....:     return {h2f[x] for x in [2 * h, 2 * h + 1, 2 * (h ^^ 1), 2 * (h ^^ 1) + 1]}
+            sage: def quadrilateral(h):
+            ....:     return sorted((x - 4 * n) ^^ 1 for f in triangles(h)
+            ....:                   for x in t.faces()[f] if x >= 4 * n)
+            sage: all(quadrilateral(h) == sorted(r.faces()[r_h2f[2 * h + 1]])
+            ....:     for h in m.half_edges())
+            True
+            sage: all(h2f[2 * n + 2 * h] in triangles(h) and h2f[2 * n + 2 * h + 1] in triangles(h)
+            ....:     for h in m.half_edges())
+            True
+            sage: t.num_vertices() == r.num_vertices() + m.num_edges()
+            True
+
+        Raises a ``NotImplementedError`` on maps with folded edge::
+
+            sage: OrientedMap("(0)").barycentric_subdivision()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: barycentric_subdivision is not implemented on a map with a folded edge
+
+        .. SEEALSO::
+
+            :meth:`radial_map`, the barycentric subdivision without its edge
+            vertices
+        """
+        if self.has_folded_edge():
+            raise NotImplementedError("barycentric_subdivision is not implemented on a map with a folded edge")
+        punctured = self._check_face_list(punctured_faces)
+        vp = self._vp
+        fp = self._fp
+        n = len(vp)
+        h2f = self.half_edge_to_face()
+        is_punctured = [False] * self.num_faces()
+        for f in punctured:
+            is_punctured[f] = True
+
+        tfp = array('i', [-1] * (6 * n))
+        for h in range(n):
+            if vp[h] == -1:
+                continue
+            g = h ^ 1
+            if is_punctured[h2f[h]]:
+                # the side of h on the punctured face: tail of h, edge vertex,
+                # head of h
+                tfp[2 * h] = 2 * g + 1
+                tfp[2 * g + 1] = 2 * fp[h]
+            else:
+                # the white triangle on the left of h at its tail, and the
+                # black one on the left of h at its head, which is the tail of
+                # g and of the half-edge k after h in its face
+                k = fp[h]
+                tfp[2 * h] = 2 * n + 2 * h
+                tfp[2 * n + 2 * h] = 4 * n + 2 * h
+                tfp[4 * n + 2 * h] = 2 * h
+                tfp[2 * g + 1] = 4 * n + 2 * k + 1
+                tfp[4 * n + 2 * k + 1] = 2 * n + 2 * h + 1
+                tfp[2 * n + 2 * h + 1] = 2 * g + 1
+
+        # the face on the left of x ends at the head of x, where it leaves
+        # along fp[x]; turning counterclockwise from fp[x] leads to x ^ 1
+        tvp = array('i', [-1] * (6 * n))
+        for x in range(6 * n):
+            if tfp[x] != -1:
+                tvp[tfp[x]] = x ^ 1
+        # an oriented map has no trailing inactive edge
+        size = 6 * n
+        while size and tfp[size - 1] == -1:
+            size -= 2
+        del tvp[size:]
+        del tfp[size:]
+        t = OrientedMap(vp=tvp, fp=tfp, mutable=mutable)
+
+        t_punctured = []
+        if punctured:
+            faces = self.faces()
+            t_h2f = t.half_edge_to_face()
+            t_punctured = sorted(t_h2f[2 * faces[f][0]] for f in punctured)
+
+        if not mapping:
+            return t, t_punctured
+        mor = [None] * n
+        for h in range(n):
+            if vp[h] != -1:
+                mor[h] = array('i', [2 * h, 2 * (h ^ 1) + 1])
+        return t, mor, t_punctured
 
     def reduced_map(self, forest=None, coforest=None, relabel=False, mapping=False, mutable=False, check=True):
         r"""

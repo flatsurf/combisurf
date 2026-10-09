@@ -25,6 +25,7 @@ Module Reference
    colored_map_builder
    geometric_intersection
    hyperbolic_quadrangulation
+   bipartite_hyperbolic_triangulation
    crossing_arcs
    conjugate_tree
    conjugate_tree_naive
