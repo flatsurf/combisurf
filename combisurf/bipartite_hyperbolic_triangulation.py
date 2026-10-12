@@ -60,9 +60,9 @@ here. Its turn `k_r` (resp. `k_b`) is the weighted turn `-k` with colour white
 when none of its weighted turns, read cyclically, is bad, and *strongly
 reduced* when moreover its weighted turns are not all white `-3` (the
 article's `3_r`) and not all black `3` (the article's `-3_b`). The empty walk
-is strongly reduced. Reversing a walk negates its weighted turns and changes
-the colour of the turns `\pm 2` (the parities of `h_1` and of ``h2 ^ 1`` differ
-when two corners separate them) while keeping the colour of the turns `\pm 3`,
+is strongly reduced. Reversing a walk negates its weighted turns, keeps the
+colour of the turns `\pm 2` (the parities of `h_1` and of ``h2 ^ 1`` are equal
+when two corners separate them) and changes the colour of the turns `\pm 3`,
 so that it keeps (strong) reduction.
 
 The weight `4` of a punctured corner is the least for which the moves of the
@@ -781,6 +781,12 @@ class TurnRuns:
     parity of the half-edges, so that all the turns of a run have the colour
     of its first half-edge.
 
+    INPUT:
+
+    - ``T`` -- a :class:`BipartiteHyperbolicTriangulation`
+
+    - ``w`` -- a list of half-edges of ``T``, a closed walk of positive length
+
     EXAMPLES::
 
         sage: from combisurf import OrientedMap
@@ -910,9 +916,11 @@ class TurnRuns:
 
         A move is looked for from its *key* run: the run `0` of a spur, `\pm
         1` of a spike, the first `\pm 2` of a bracket, the `\pm 2` of a flip.
-        Every run of a move lies at most two runs away from its key run, so
-        that the moves created by a change have their key runs at most two
-        runs before or after the changed ones.
+        Whether a move applies depends only on the runs at most two runs away
+        from its key run (the run after a bracket, three runs after its key,
+        is rewritten but its value is not read), so that the moves created by
+        a change have their key runs at most two runs before or after the
+        changed ones.
         """
         u = self._prev[self._prev[start]]
         x = u
