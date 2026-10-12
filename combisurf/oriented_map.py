@@ -3932,6 +3932,22 @@ class OrientedMap:
             sage: P.geometric_intersection(w1, w1, punctured_faces=True)
             4
 
+        By default no face is punctured. On the closed surface of genus `2`
+        made of one octagon, the curve ``u`` is simple, and so is the
+        homotopic curve ``v`` obtained by inserting the boundary of the face
+        into it; once the face is punctured, ``v`` is no longer homotopic to
+        ``u`` and has a self-intersection::
+
+            sage: m = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: u = [0, 0, 4]
+            sage: v = u[:1] + m.faces()[0] + u[1:]
+            sage: m.geometric_intersection(u), m.geometric_intersection(v)
+            (0, 0)
+            sage: m.geometric_intersection(v, punctured_faces=True)
+            1
+            sage: m.geometric_intersection(v, [0, 2, 4, 6])
+            5
+
         .. SEEALSO::
 
             Each call builds a new
@@ -3972,6 +3988,15 @@ class OrientedMap:
             [1 2 3 1 4 0 5 3]
             [2 1 1 3 3 5 0 4]
             [2 1 3 1 5 3 4 0]
+
+        On a closed surface, with no punctured face, here of genus `2`::
+
+            sage: m = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: m.geometric_intersection_matrix([[0], [4], [0, 0, 2, 2], [0, 2, 4, 6]]).matrix()
+            [0 1 2 3]
+            [1 0 4 1]
+            [2 4 2 8]
+            [3 1 8 6]
         """
         from combisurf.geometric_intersection import GeometricIntersectionPairing
         return GeometricIntersectionPairing(self, punctured_faces).matrix(wlist)

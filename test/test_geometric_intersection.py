@@ -1,4 +1,13 @@
+import random
+
 import pytest
+
+from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
+
+import test_strongly_reduced_walks
+import test_triangle_system
+from test_strongly_reduced_walks import is_rotation, reverse
+from test_triangle_system import random_closed_walk
 
 
 def test_geometric_intersection():
@@ -937,3 +946,178 @@ def test_face_boundaries():
                 w = random_cyclically_reduced_word(rng, 2 * e, rng.randint(1, 8))
                 iuw = gi([u], [w])
                 assert iuw >= 0 and iuw == gi([w], [u]), (vp, u, w)
+
+
+# Closed surfaces: the maps of genus 2 to 4 of the triangle system tests.
+CLOSED_MAPS = test_triangle_system.MAPS
+CLOSED_IDS = [name for name, _ in CLOSED_MAPS]
+
+MAX_TRIES = 100
+
+
+def is_proper_power(w):
+    r"""
+    Return whether the non-empty list ``w`` is a proper power, that is a
+    rotation of itself by a proper divisor of its length.
+    """
+    n = len(w)
+    return any(n % k == 0 and w[k:] + w[:k] == w for k in range(1, n))
+
+
+class CanonicalForm:
+    r"""
+    The strongly reduced closed walk on the triangle system of the closed map
+    ``m`` freely homotopic to a closed walk of ``m``, unique up to rotation.
+    """
+    def __init__(self, m):
+        t, self.mor = m.triangle_system(relabel=True, mapping=True)
+        self.T = BipartiteHyperbolicTriangulation(t)
+
+    def __call__(self, w):
+        return self.T.strongly_reduced([x for h in w for x in self.mor[h]])
+
+    def homotopic_up_to_reversal(self, u, v):
+        ru = self(u)
+        rv = self(v)
+        return is_rotation(ru, rv) or is_rotation(ru, reverse(rv))
+
+
+def primitive_walks(m, canonical, rng, lengths):
+    r"""
+    Return one closed walk of ``m`` per length of ``lengths``, each of them
+    neither contractible nor a proper power.
+    """
+    walks = []
+    for length in lengths:
+        for _ in range(MAX_TRIES):
+            w = random_closed_walk(m, rng, length)
+            r = canonical(w)
+            if r and not is_proper_power(r):
+                walks.append(w)
+                break
+        else:
+            raise RuntimeError(f"no primitive walk of length {length} in {MAX_TRIES} tries")
+    return walks
+
+
+@pytest.mark.parametrize("name, m", CLOSED_MAPS, ids=CLOSED_IDS)
+def test_closed_powers(name, m):
+    # Dubois 2024, Lemma 3.1 (de Graaf–Schrijver): for c, d primitive,
+    # i(c^n) = n^2 i(c) + n - 1, i(c^n, d^m) = nm i(c, d) when d is not freely
+    # homotopic to c or to its reverse, and 2nm i(c) otherwise.
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    gi = GeometricIntersectionPairing(m)
+    canonical = CanonicalForm(m)
+    rng = random.Random(len(m.vertex_permutation()))
+    walks = primitive_walks(m, canonical, rng, (4, 8, 15))
+    powers = (1, 2, 3)
+    for c in walks:
+        ic = gi([c])
+        for n in powers:
+            assert gi([c * n]) == n * n * ic + n - 1, (c, n)
+        for d in (c, reverse(c)):
+            for n in powers:
+                for k in powers:
+                    assert gi([c * n], [d * k]) == 2 * n * k * ic, (c, d, n, k)
+    for i, c in enumerate(walks):
+        for d in walks[i + 1:]:
+            if canonical.homotopic_up_to_reversal(c, d):
+                expected = 2 * gi([c])
+            else:
+                expected = gi([c], [d])
+            for n in powers:
+                for k in powers:
+                    assert gi([c * n], [d * k]) == n * k * expected, (c, d, n, k)
+
+
+def homotopic_variants(m, w, rng):
+    r"""
+    Return closed walks of ``m`` freely homotopic to ``w``: a rotation, the
+    boundary of a face inserted, a backtrack inserted, and both with a
+    rotation.
+    """
+    h2v = m.half_edge_to_vertex()
+    i = rng.randrange(len(w))
+    v = h2v[w[i]]
+    at_v = [h for h in m.half_edges() if h2v[h] == v]
+    face = test_strongly_reduced_walks.face_from(m, rng.choice(at_v))
+    h = rng.choice(at_v)
+    detour = w[:i] + face + w[i:]
+    backtrack = detour[:i] + [h, h ^ 1] + detour[i:]
+    j = rng.randrange(len(backtrack))
+    return [w[i:] + w[:i], detour, w[:i] + [h, h ^ 1] + w[i:], backtrack[j:] + backtrack[:j]]
+
+
+@pytest.mark.parametrize("name, m", CLOSED_MAPS, ids=CLOSED_IDS)
+def test_closed_homotopy_invariance(name, m):
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    gi = GeometricIntersectionPairing(m)
+    rng = random.Random(len(m.vertex_permutation()) + 1)
+    walks = [random_closed_walk(m, rng, length) for length in (3, 8, 20)]
+    others = [random_closed_walk(m, rng, length) for length in (4, 10)]
+    for w in walks:
+        iw = gi([w])
+        row = [gi([w], [x]) for x in others]
+        for u in homotopic_variants(m, w, rng) + [reverse(w)]:
+            assert gi([u]) == iw, (w, u)
+            assert [gi([u], [x]) for x in others] == row, (w, u)
+            assert [gi([x], [u]) for x in others] == row, (w, u)
+
+
+@pytest.mark.parametrize("name, m", CLOSED_MAPS, ids=CLOSED_IDS)
+def test_closed_face_boundaries(name, m):
+    # the boundary of a face is contractible on the closed surface
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    gi = GeometricIntersectionPairing(m)
+    rng = random.Random(len(m.vertex_permutation()) + 2)
+    walks = [random_closed_walk(m, rng, length) for length in (3, 8, 20)]
+    faces = m.faces()
+    for f in faces:
+        assert gi([f]) == 0, f
+        assert gi([reverse(f)]) == 0, f
+        for w in walks + faces:
+            assert gi([f], [w]) == 0, (f, w)
+            assert gi([w], [f]) == 0, (f, w)
+
+
+AGREEMENT_LENGTHS = (3, 8, 20, 40)
+
+
+def test_punctured_agreement():
+    # On a bipartite hyperbolic triangulation t with punctured faces P, the
+    # intersection with the faces of P punctured of closed walks equals the
+    # intersection with every face punctured of their strongly reduced
+    # representatives. This is observed on every instance, not a theorem of
+    # the references, which cover closed surfaces; without the strong
+    # reduction, the two numbers differ on some pairs.
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    instances = [(name, t, punctured) for name, t, punctured in test_strongly_reduced_walks.INSTANCES if punctured]
+    assert len(instances) == 119
+    num_pairs = 0
+    num_different = 0
+    for name, t, punctured in instances:
+        T = BipartiteHyperbolicTriangulation(t, punctured)
+        gi = GeometricIntersectionPairing(t, punctured_faces=punctured)
+        gi_all = GeometricIntersectionPairing(t, punctured_faces=True)
+        rng = random.Random(len(t.vertex_permutation()) + len(punctured))
+        walks = [random_closed_walk(t, rng, length) for length in AGREEMENT_LENGTHS for _ in range(3)]
+        reduced = [T.strongly_reduced(w) for w in walks]
+        for i in range(len(walks)):
+            for j in range(i, len(walks)):
+                if i == j:
+                    expected = gi([walks[i]])
+                    got = gi_all([reduced[i]])
+                    unreduced = gi_all([walks[i]])
+                else:
+                    expected = gi([walks[i]], [walks[j]])
+                    got = gi_all([reduced[i]], [reduced[j]])
+                    unreduced = gi_all([walks[i]], [walks[j]])
+                assert got == expected, (name, walks[i], walks[j])
+                num_pairs += 1
+                num_different += unreduced != expected
+    assert num_pairs == 119 * 78
+    assert num_different > 0

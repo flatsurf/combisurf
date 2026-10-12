@@ -5,9 +5,9 @@ Letters are the half-edges of a one-vertex map: ``a = 0``, ``a⁻¹ = 1``,
 ``b = 2``, ``b⁻¹ = 3``, ``c = 4``, ``c⁻¹ = 5``, ``d = 6``, ``d⁻¹ = 7``; the
 inverse of ``h`` is ``h ^ 1``.
 
-The tests on closed surfaces go through :func:`pairing`, which skips them as
-long as :class:`GeometricIntersectionPairing` raises ``NotImplementedError``
-there.
+The tests on closed surfaces go through :func:`pairing`, which skips a test
+on a surface where :class:`GeometricIntersectionPairing` raises
+``NotImplementedError``, such as the closed sphere and the closed torus.
 """
 import itertools
 import json

@@ -10,7 +10,7 @@ import random
 
 import pytest
 
-from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
+from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation, TurnRuns
 from combisurf.hyperbolic_quadrangulation import HyperbolicQuadrangulation
 
 import test_barycentric_subdivision
@@ -231,6 +231,186 @@ def test_weight_three_fails():
     assert T.weighted_turns(reverse(w)) == [4, 4, 4]
     assert weighted_turns_with_weight(t, punctured, reverse(w), 3) == [3, 3, 3]
     assert is_rotation(T.strongly_reduced(reverse(w)), reverse(w))
+
+
+MAX_STEPS = 10000
+MAX_TRIES = 200
+
+
+class MoveCounter:
+    r"""
+    Record the cylinder moves and the flips ``(s, k, l)`` of the reductions,
+    by wrapping the methods of :class:`TurnRuns` through ``monkeypatch``.
+    """
+    def __init__(self, monkeypatch):
+        self.cylinders = 0
+        self.flips = []
+        flip = TurnRuns._flip
+        cylinder = TurnRuns._cylinder
+        counter = self
+
+        def counted_flip(runs, u, s):
+            val, length = runs._val, runs._len
+            p, q = runs._prev[u], runs._next[u]
+            k = length[p] if val[p] == 3 * s else 0
+            l = length[q] if val[q] == 3 * s else 0
+            r = flip(runs, u, s)
+            if r != -1:
+                counter.flips.append((s, k, l))
+            return r
+
+        def counted_cylinder(runs, u):
+            counter.cylinders += 1
+            return cylinder(runs, u)
+
+        monkeypatch.setattr(TurnRuns, "_flip", counted_flip)
+        monkeypatch.setattr(TurnRuns, "_cylinder", counted_cylinder)
+
+
+def half_edges_at(t):
+    r"""
+    Return a dictionary from the vertices of ``t`` to the half-edges that
+    start there.
+    """
+    h2v = t.half_edge_to_vertex()
+    out = {}
+    for h in t.half_edges():
+        out.setdefault(h2v[h], []).append(h)
+    return out
+
+
+def next_at_turn(T, out, h, turn):
+    r"""
+    Return the half-edge ``h2`` such that the weighted turn from ``h`` to
+    ``h2`` is ``turn``, or ``None`` if there is none.
+    """
+    h2v = T.map().half_edge_to_vertex()
+    for x in out[h2v[h ^ 1]]:
+        if T.weighted_turn(h, x) == turn:
+            return x
+    return None
+
+
+def cylinder_walk(T, out, h, s):
+    r"""
+    Return the closed walk from ``h`` whose weighted turns are all ``3 s``,
+    or ``None`` if the walk meets a punctured corner.
+
+    The map from a half-edge to the next one is injective, so that the walk
+    comes back to ``h``; a weighted turn `\pm 3` keeps the parity of the
+    half-edges, hence the colour of the turns.
+    """
+    w = [h]
+    for _ in range(MAX_STEPS):
+        x = next_at_turn(T, out, w[-1], 3 * s)
+        if x is None:
+            return None
+        if x == h:
+            return w
+        w.append(x)
+    raise RuntimeError(f"no closed walk from {h} in {MAX_STEPS} steps")
+
+
+@pytest.mark.parametrize("name, t, punctured", INSTANCES[::6], ids=IDS[::6])
+def test_cylinder_move(name, t, punctured, monkeypatch):
+    # Fig. 3.7 of the article: a closed walk whose weighted turns are all
+    # white -3 or all black 3 goes around a cylinder of triangles and is
+    # replaced by the other side of the cylinder. It is reached directly and
+    # from homotopic walks with a detour or a backtrack.
+    T = BipartiteHyperbolicTriangulation(t, punctured)
+    oracle = Oracle(t, punctured)
+    counter = MoveCounter(monkeypatch)
+    out = half_edges_at(t)
+    rng = random.Random(len(t.vertex_permutation()))
+    num_walks = 0
+    for s, parity in ((-1, 0), (1, 1)):
+        starts = [h for h in t.half_edges() if h % 2 == parity]
+        for h in rng.sample(starts, min(3, len(starts))):
+            w = cylinder_walk(T, out, h, s)
+            if w is None:
+                continue
+            num_walks += 1
+            assert all(x % 2 == parity for x in w)
+            assert T.weighted_turns(w) == [3 * s] * len(w)
+            assert not T.is_strongly_reduced(w)
+            before = counter.cylinders
+            r = T.strongly_reduced(w)
+            assert counter.cylinders == before + 1
+            assert r and T.is_strongly_reduced(r)
+            assert T.weighted_turns(r) == [-3 * s] * len(r)
+            assert oracle.homotopic(r, w)
+            assert is_rotation(T.strongly_reduced(reverse(w)), reverse(r))
+            for u in variants(t, punctured, w, rng):
+                assert is_rotation(T.strongly_reduced(u), r)
+    if not punctured:
+        # a closed surface has no punctured corner to stop a cylinder walk
+        assert num_walks == 6
+    assert counter.cylinders >= num_walks
+
+
+def flip_walk(T, out, h, s, k, l, rng):
+    r"""
+    Return a closed walk whose weighted turns read cyclically ``x, (3s)^k, 2s,
+    (3s)^l, y`` with a white ``2s`` and ``s x``, ``s y`` not in `\{-1, 0, 1,
+    2, 3\}`, from the even half-edge ``h``, or ``None`` if none is found.
+
+    The pattern is followed from ``h``, then a random walk goes back to the
+    start of ``h``.
+    """
+    path = [h]
+    for turn in [3 * s] * k + [2 * s] + [3 * s] * l:
+        x = next_at_turn(T, out, path[-1], turn)
+        if x is None:
+            return None
+        path.append(x)
+    t = T.map()
+    h2v = t.half_edge_to_vertex()
+    start = h2v[h]
+    for _ in range(MAX_TRIES):
+        w = list(path)
+        for _ in range(rng.randint(1, 6)):
+            w.append(rng.choice([x for x in out[h2v[w[-1] ^ 1]] if x != w[-1] ^ 1]))
+        closing = [x for x in out[h2v[w[-1] ^ 1]] if h2v[x ^ 1] == start and x != w[-1] ^ 1]
+        if not closing:
+            continue
+        w.append(rng.choice(closing))
+        turns = T.weighted_turns(w)
+        x = turns[-1]
+        y = turns[k + l + 1]
+        if s * x not in (-1, 0, 1, 2, 3) and s * y not in (-1, 0, 1, 2, 3):
+            assert turns[:k + l + 1] == [3 * s] * k + [2 * s] + [3 * s] * l
+            return w
+    return None
+
+
+def test_long_flips(monkeypatch):
+    # flips x, (3s)^k, 2s, (3s)^l, y with k, l >= 2, on both sides s, from
+    # walks whose weighted turns contain the pattern
+    counter = MoveCounter(monkeypatch)
+    rng = random.Random(3)
+    num_walks = 0
+    for name, t, punctured in INSTANCES[::4]:
+        T = BipartiteHyperbolicTriangulation(t, punctured)
+        oracle = Oracle(t, punctured)
+        out = half_edges_at(t)
+        evens = [h for h in t.half_edges() if h % 2 == 0]
+        for s in (-1, 1):
+            for k, l in ((2, 2), (2, 3), (3, 2)):
+                w = flip_walk(T, out, rng.choice(evens), s, k, l, rng)
+                if w is None:
+                    continue
+                num_walks += 1
+                r = T.strongly_reduced(w)
+                assert T.is_strongly_reduced(r)
+                assert oracle.homotopic(r, w)
+                assert is_rotation(T.strongly_reduced(reverse(w)), reverse(r))
+                for u in variants(t, punctured, w, rng):
+                    assert is_rotation(T.strongly_reduced(u), r)
+    assert num_walks >= 100
+    long_flips = [(s, k, l) for s, k, l in counter.flips if k >= 2 and l >= 2]
+    assert len(long_flips) >= num_walks
+    assert any(s == -1 for s, _, _ in long_flips)
+    assert any(s == 1 for s, _, _ in long_flips)
 
 
 def test_errors():

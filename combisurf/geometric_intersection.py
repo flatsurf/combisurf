@@ -1,18 +1,28 @@
 r"""
-Geometric intersection numbers of closed curves on punctured surfaces
+Geometric intersection numbers of closed curves on surfaces
 
 The surface is given by an :class:`~combisurf.oriented_map.OrientedMap` ``m``
-without folded edges, together with a non-empty list of its faces that are
-punctures (or boundary components); the other faces are filled in. A closed
+without folded edges, together with a list of its faces that are *punctured
+faces* (punctures or boundary components); the other faces, the *filled
+faces*, are filled in. With no punctured face, the surface is closed. A closed
 curve is a closed walk on ``m`` (see :mod:`~combisurf.oriented_map`).
 
-The computation happens on a reduced map (see
-:meth:`~combisurf.oriented_map.OrientedMap.reduced_map`) that has a single
-vertex and whose faces are exactly the punctures. It is obtained from ``m`` by
-contracting a spanning forest and deleting the edges of a coforest in which
-the unpunctured faces get merged into the punctured ones. The fundamental group of
-the surface is then free on the edges of the reduced map, and a closed curve
-becomes a cyclically reduced word in its half-edges.
+With at least one punctured face, the computation happens on a reduced map
+(see :meth:`~combisurf.oriented_map.OrientedMap.reduced_map`) that has a single
+vertex and whose faces are exactly the punctured faces. It is obtained from
+``m`` by contracting a spanning forest and deleting the edges of a coforest in
+which the filled faces get merged into the punctured ones. The fundamental
+group of the surface is then free on the edges of the reduced map, and a
+closed curve becomes a cyclically reduced word in its half-edges.
+
+On a closed surface, of genus at least `2`, a closed curve is first replaced
+by a canonical representative of its free homotopy class: a closed walk on a
+triangulation of the surface, unique up to rotation and whose reverse is the
+canonical representative of the reverse curve
+(:ref:`colin-de-verdiere-despre-dubois-2024`, Proposition 3.5). By
+:ref:`dubois-2024`, Proposition 1.5, the geometric intersection of canonical
+representatives on the closed surface is their geometric intersection on the
+same triangulation with every face punctured, which is computed as above.
 
 The algorithm uses the description from :ref:`cohen-lustig-1987` that
 reduces the problem of geometric intersection to word combinatorics. To
@@ -42,10 +52,28 @@ from collections.abc import Sequence
 from combisurf.word import word_init, word_cyclically_reduce, word_cancel_ends, word_apply_morphism
 from combisurf.permutation import perm_dense_cycle_positions
 from combisurf.oriented_map import OrientedMap
+from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
 from combisurf.conjugate_tree import ConjugateTree
 from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, _cyclically_sorted_leaf_arcs, _leaf_weights,
                                      startpoint_sweep_sorted, startpoint_sweep_weighted, _tree_add_with_inverse,
                                      _word_arcs)
+
+
+def _morphism_arrays(mor):
+    r"""
+    Return the list ``mor`` of images of half-edges with an empty
+    ``array('i')`` in place of each ``None``, the image of an inactive
+    half-edge, as :func:`~combisurf.word.word_apply_morphism` wants an
+    ``array('i')`` for every entry.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.geometric_intersection import _morphism_arrays
+        sage: _morphism_arrays([array('i', [0]), None, None, array('i', [1])])
+        [array('i', [0]), array('i'), array('i'), array('i', [1])]
+    """
+    return [array('i') if x is None else x for x in mor]
 
 
 class GeometricIntersectionPairing:
@@ -65,7 +93,9 @@ class GeometricIntersectionPairing:
     - ``punctured_faces`` -- either a boolean (default ``False``) or a list of
       face indices. If set to ``False`` or ``True`` then respectively no face or
       all faces are considered as punctured. If a list of integers is provided,
-      then the faces corresponding to them are considered as punctured.
+      then the faces corresponding to them are considered as punctured. With
+      no punctured face, the surface is closed. In every case the surface
+      without its punctured faces must have negative Euler characteristic.
 
     EXAMPLES:
 
@@ -128,16 +158,57 @@ class GeometricIntersectionPairing:
         sage: GeometricIntersectionPairing(m, punctured_faces=True)
         GeometricIntersectionPairing(OrientedMap("(0,1,2)(~0,~1,~2)", "(0,~2,1,~0,2,~1)"), [0])
 
-    But at least one face has to be punctured::
+    By default no face is punctured and the surface is closed. The map with
+    one vertex and one octagonal face below is the closed surface of genus
+    `2`::
 
         sage: m = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
-        sage: GeometricIntersectionPairing(m, punctured_faces=False)
+        sage: m.genus(), m.num_faces()
+        (2, 1)
+        sage: gi = GeometricIntersectionPairing(m)
+        sage: gi
+        GeometricIntersectionPairing(OrientedMap("(0,1,2,3,~0,~1,~2,~3)", "(0,3,~2,1,~0,~3,2,~1)"), [])
+        sage: gi([[0]]), gi([[0, 0, 2, 2]]), gi([[0, 2, 4, 6]]), gi([[0, 2, 2, 5, 2, 2, 5]])
+        (0, 1, 3, 4)
+        sage: gi([[0]], [[4]]), gi([[0]], [[0, 2, 4, 6]]), gi([[0, 0, 2, 2]], [[0, 2, 4, 6]])
+        (1, 3, 8)
+
+    The boundary of the face is contractible. Inserting it into a curve gives
+    a homotopic curve, with the same intersection numbers on the closed
+    surface, but not with the face punctured::
+
+        sage: f = m.faces()[0]
+        sage: f
+        [0, 6, 5, 2, 1, 7, 4, 3]
+        sage: gi([f])
+        0
+        sage: u = [0, 0, 4]
+        sage: v = u[:1] + f + u[1:]
+        sage: gi([u]), gi([v])
+        (0, 0)
+        sage: curves = [[0], [4], [0, 0, 2, 2], [0, 2, 4, 6]]
+        sage: [gi([u], [c]) for c in curves] == [gi([v], [c]) for c in curves]
+        True
+        sage: gp = GeometricIntersectionPairing(m, punctured_faces=True)
+        sage: gp([u]), gp([v])
+        (0, 1)
+        sage: gi.matrix(curves + [u]).matrix()
+        [0 1 2 3 1]
+        [1 0 4 1 2]
+        [2 4 2 8 2]
+        [3 1 8 6 5]
+        [1 2 2 5 0]
+
+    The surface, once its punctured faces are removed, must have negative
+    Euler characteristic, which excludes the closed torus::
+
+        sage: torus = OrientedMap(vp="(0,1,~0,~1)")
+        sage: GeometricIntersectionPairing(torus, punctured_faces=False)
         Traceback (most recent call last):
         ...
-        NotImplementedError: geometric intersection is not implemented on closed surfaces
+        NotImplementedError: geometric intersection is only implemented on surfaces of negative Euler characteristic
 
-    and the surface, once its punctured faces are removed, must have negative
-    Euler characteristic::
+    and the sphere with two punctured faces, an annulus::
 
         sage: m = OrientedMap(vp="(0,1)(~0,~1)")
         sage: m.euler_characteristic(), m.num_faces()
@@ -187,6 +258,43 @@ class GeometricIntersectionPairing:
         Traceback (most recent call last):
         ...
         NotImplementedError: geometric intersection is not implemented for maps with folded edges
+
+    A map with inactive half-edges, here ``4``, ``5`` and ``8`` to ``11``,
+    whose images under the reduction are ``None``, with every face punctured
+    and closed::
+
+        sage: m = OrientedMap(vp="(0,3,6,~3)(~0,1,~6,~1)")
+        sage: m.vertex_permutation()
+        array('i', [6, 2, 13, 1, -1, -1, 12, 0, -1, -1, -1, -1, 7, 3])
+        sage: gi = GeometricIntersectionPairing(m, punctured_faces=True)
+        sage: gi([[6]]), gi([[0, 13]]), gi([[0, 13]], [[6]])
+        (0, 0, 1)
+        sage: m = OrientedMap(vp="(0,1,4,5,~0,~1,~4,~5)")
+        sage: m.vertex_permutation()
+        array('i', [2, 3, 8, 9, -1, -1, -1, -1, 10, 11, 1, 0])
+        sage: gi = GeometricIntersectionPairing(m)
+        sage: gi([[0]]), gi([[0, 2, 8, 10]]), gi([[0]], [[2]])
+        (0, 3, 1)
+
+    ALGORITHM:
+
+    On a closed surface, ``m`` is first replaced by its triangle system `t`
+    (see :meth:`~combisurf.oriented_map.OrientedMap.triangle_system`), a
+    triangulation with three vertices of degree `4g + 2 \geq 10` and white and
+    black triangles, a reducing triangulation in the sense of
+    :ref:`colin-de-verdiere-despre-dubois-2024`. A closed walk of ``m`` is
+    sent to `t`, and then to its strongly reduced representative, see
+    :meth:`~combisurf.bipartite_hyperbolic_triangulation.BipartiteHyperbolicTriangulation.strongly_reduced`,
+    in time linear in its length. The strongly reduced representative is
+    unique up to rotation (:ref:`colin-de-verdiere-despre-dubois-2024`,
+    Proposition 3.5), the one of the reverse is the reverse, and it is empty
+    exactly for contractible walks. By :ref:`dubois-2024`, Proposition 1.5,
+    the geometric intersection of strongly reduced closed walks on the closed
+    surface equals their geometric intersection on `t` with every face
+    punctured. A strongly reduced closed walk has no backtrack, so that its
+    image on the one-vertex map of `t`, obtained by contracting a spanning
+    tree, is a cyclically reduced word, on which the free group computation of
+    the punctured case applies.
     """
     def __init__(self, m, punctured_faces=False):
         if not isinstance(m, OrientedMap):
@@ -210,15 +318,31 @@ class GeometricIntersectionPairing:
 
         if self._cm.euler_characteristic() - len(punctured_faces) >= 0:
             raise NotImplementedError("geometric intersection is only implemented on surfaces of negative Euler characteristic")
-        if not self._punctured_faces:
-            raise NotImplementedError("geometric intersection is not implemented on closed surfaces")
 
-        if self._cm.num_vertices() != 1 or len(self._punctured_faces) != self._cm.num_faces():
+        if not self._punctured_faces:
+            # Closed surface of genus at least 2. A closed walk of self._cm
+            # goes to its triangle system t, a bipartite hyperbolic
+            # triangulation on which its strongly reduced representative is
+            # unique and stable under reversal. The geometric intersection
+            # of such representatives on the closed surface is their
+            # intersection on t with every face punctured (Dubois 2024,
+            # Proposition 1.5), computed on the one-vertex map of t.
+            t, mor_t = self._cm.triangle_system(relabel=True, mapping=True)
+            self._mor_t = _morphism_arrays(mor_t)
+            self._T = BipartiteHyperbolicTriangulation(t)
+            all_faces = list(range(t.num_faces()))
+            f, c, _ = t.forest_coforest_decomposition(root_faces=all_faces)
+            r, mor = t.reduced_map(forest=f, coforest=c, relabel=True, mapping=True, mutable=False)
+            self._r = r
+            self._mor = _morphism_arrays(mor)
+        elif self._cm.num_vertices() != 1 or len(self._punctured_faces) != self._cm.num_faces():
+            self._T = None
             f, c, _ = self._cm.forest_coforest_decomposition(root_faces=self._punctured_faces)
             r, mor = self._cm.reduced_map(forest=f, coforest=c, relabel=True, mapping=True, mutable=False)
             self._r = r
-            self._mor = mor
+            self._mor = _morphism_arrays(mor)
         else:
+            self._T = None
             self._r = self._cm
             self._mor = None
 
@@ -232,6 +356,15 @@ class GeometricIntersectionPairing:
 
         if self._mor is None:
             return word_cyclically_reduce(w)
+
+        if self._T is not None:
+            # NOTE: the images of mor_t may contain backtracks, which the
+            # strong reduction removes; a strongly reduced closed walk has no
+            # backtrack, read cyclically, so that its image below is
+            # cyclically reduced once its ends cancel. A contractible walk
+            # gives the empty walk.
+            w = word_apply_morphism(w, self._mor_t, reduce=False)
+            w = array('i', self._T.strongly_reduced(w, check=False))
 
         # NOTE: the images of the letters under self._mor are freely reduced so
         # that the output of word_apply_morphism is freely reduced as well

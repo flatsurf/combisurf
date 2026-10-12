@@ -175,7 +175,11 @@ def test_images(name, m, punctured):
 
 
 def is_rotation(u, v):
-    return len(u) == len(v) and any(u[i:] + u[:i] == v for i in range(len(u)))
+    r"""
+    Return whether the lists ``u`` and ``v`` are cyclic rotations of each
+    other, two empty lists included.
+    """
+    return len(u) == len(v) and (not u or any(u[i:] + u[:i] == v for i in range(len(u))))
 
 
 @pytest.mark.parametrize("name, m, punctured", CASES, ids=IDS)
