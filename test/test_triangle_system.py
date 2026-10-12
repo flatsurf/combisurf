@@ -258,3 +258,14 @@ def test_errors():
     other = next(h for h, hh in strands if not {h // 2, hh // 2} <= edges)
     with pytest.raises(ValueError, match="cycle"):
         m.triangle_system([], [], cycle + [other])
+    with pytest.raises(ValueError, match="cocotree must have 3 strands"):
+        m.triangle_system([], [], cycle[:1])
+    with pytest.raises(ValueError, match="cocotree must have 3 strands"):
+        m.triangle_system([], [], [h for h, _ in strands][:4])
+    m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+    tree, cotree, _ = m.tree_cotree_decomposition()
+    edge = next(h for h in tree if h != -1)
+    with pytest.raises(ValueError, match="listed twice"):
+        m.triangle_system(tree, list(cotree) + [edge])
+    with pytest.raises(ValueError, match="listed twice"):
+        m.triangle_system(tree, list(cotree) + [edge ^ 1])

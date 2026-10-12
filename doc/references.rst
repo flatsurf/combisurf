@@ -224,4 +224,9 @@ Algorithms (SODA 2024). arXiv:2311.00437.
 Source of the definition of the bipartite hyperbolic triangulations of
 :mod:`combisurf.bipartite_hyperbolic_triangulation` without punctured face,
 the reducing triangulations of §3.1: the triangles are 2-coloured and every
-vertex has degree at least `8`.
+vertex has degree at least `8`. Also the source of the turns, the bad turns
+and the strongly reduced closed walks of §3.1, of their uniqueness in a free
+homotopy class (Proposition 3.5) and of their computation in linear time by
+spur, spike, bracket and flip moves (Proposition 3.8), implemented by
+:meth:`~combisurf.bipartite_hyperbolic_triangulation.BipartiteHyperbolicTriangulation.strongly_reduced`
+with a weight `4` on the corners of the punctured faces.

@@ -1,0 +1,244 @@
+r"""
+Strongly reduced closed walks of bipartite hyperbolic triangulations, on the
+triangle systems of the maps of genus 2 to 4 of the triangle system tests,
+closed or with one to three punctured triangles, and on the barycentric
+subdivisions of the barycentric subdivision tests that are hyperbolic. Free
+homotopy is decided by the right-most geodesics of the hyperbolic
+quadrangulation of the quad system of each triangulation.
+"""
+import random
+
+import pytest
+
+from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
+from combisurf.hyperbolic_quadrangulation import HyperbolicQuadrangulation
+
+import test_barycentric_subdivision
+import test_triangle_system
+from test_triangle_system import random_closed_walk
+
+LENGTHS = (1, 3, 8, 20, 60)
+
+
+def instances():
+    r"""
+    Return the list of the triples ``(name, t, punctured)``.
+    """
+    result = []
+    for i, (name, m, choice) in enumerate(test_triangle_system.CASES):
+        t = m.triangle_system(*choice, relabel=True)
+        result.append((f"closed-{name}-{i % 3}", t, []))
+        rng = random.Random(i)
+        punctured = sorted(rng.sample(range(t.num_faces()), rng.randint(1, 3)))
+        result.append((f"punctured-{name}-{i % 3}", t, punctured))
+    for i, (name, m, punctured) in enumerate(test_barycentric_subdivision.CASES):
+        t, t_punctured = m.barycentric_subdivision(punctured_faces=punctured)
+        try:
+            BipartiteHyperbolicTriangulation(t, t_punctured)
+        except ValueError:
+            continue
+        result.append((f"barycentric-{test_barycentric_subdivision.IDS[i]}", t, t_punctured))
+    return result
+
+
+INSTANCES = instances()
+IDS = [name for name, _, _ in INSTANCES]
+
+
+def test_number_of_instances():
+    assert sum(name.startswith("closed") for name in IDS) == 63
+    assert sum(name.startswith("punctured") for name in IDS) == 63
+    assert sum(name.startswith("barycentric") for name in IDS) == 56
+
+
+def is_rotation(u, v):
+    r"""
+    Return whether the lists ``u`` and ``v`` are cyclic rotations of each
+    other, two empty lists included.
+    """
+    return len(u) == len(v) and (not u or any(u[i:] + u[:i] == v for i in range(len(u))))
+
+
+def reverse(w):
+    return [h ^ 1 for h in reversed(w)]
+
+
+class Oracle:
+    r"""
+    Free homotopy of closed walks of ``t`` through the right-most geodesics
+    of the hyperbolic quadrangulation of its quad system.
+    """
+    def __init__(self, t, punctured):
+        q, self.proj, bigons = t.quad_system(relabel=True, mapping=True, punctured_faces=punctured)
+        self.Q = HyperbolicQuadrangulation(q, bigons)
+
+    def __call__(self, w):
+        w = [x for h in w for x in self.proj[h]]
+        return self.Q.geodesic(w, canonical="right") if w else []
+
+    def homotopic(self, u, v):
+        return is_rotation(self(u), self(v))
+
+
+def filled_half_edges_at(t, punctured):
+    r"""
+    Return a dictionary from the vertices of ``t`` to the half-edges that
+    start there and whose face is filled.
+    """
+    h2v = t.half_edge_to_vertex()
+    h2f = t.half_edge_to_face()
+    out = {}
+    for h in t.half_edges():
+        if h2f[h] not in punctured:
+            out.setdefault(h2v[h], []).append(h)
+    return out
+
+
+def face_from(t, h):
+    r"""
+    Return the boundary of the face of ``h``, starting with ``h``.
+    """
+    f = [h]
+    x = t.next_in_face(h)
+    while x != h:
+        f.append(x)
+        x = t.next_in_face(x)
+    return f
+
+
+def variants(t, punctured, w, rng):
+    r"""
+    Return closed walks freely homotopic to ``w``: a rotation, a detour around
+    a filled triangle, a backtrack and both.
+    """
+    h2v = t.half_edge_to_vertex()
+    filled = filled_half_edges_at(t, punctured)
+    n = len(w)
+    out = []
+    i = rng.randrange(n)
+    out.append(w[i:] + w[:i])
+    v = h2v[w[i]]
+    if v in filled:
+        detour = face_from(t, rng.choice(filled[v]))
+        out.append(w[:i] + detour + w[i:])
+    h = rng.choice([x for x in t.half_edges() if h2v[x] == v])
+    backtrack = w[:i] + [h, h ^ 1] + w[i:]
+    out.append(backtrack)
+    j = rng.randrange(len(backtrack))
+    out.append(backtrack[j:] + backtrack[:j])
+    return out
+
+
+@pytest.mark.parametrize("name, t, punctured", INSTANCES, ids=IDS)
+def test_strongly_reduced(name, t, punctured):
+    T = BipartiteHyperbolicTriangulation(t, punctured)
+    oracle = Oracle(t, punctured)
+    rng = random.Random(len(t.vertex_permutation()) + len(punctured))
+    walks = [random_closed_walk(t, rng, length) for length in LENGTHS]
+    walks.append(walks[-2] + walks[-2])
+    for w in walks:
+        r = T.strongly_reduced(w)
+        assert T.is_strongly_reduced(r)
+        assert len(r) <= len(w)
+        assert oracle.homotopic(r, w)
+        assert (r == []) == (oracle(w) == [])
+        assert is_rotation(T.strongly_reduced(r), r)
+        assert is_rotation(T.strongly_reduced(reverse(w)), reverse(r))
+        for u in variants(t, punctured, w, rng):
+            assert is_rotation(T.strongly_reduced(u), r)
+
+
+@pytest.mark.parametrize("name, t, punctured", INSTANCES, ids=IDS)
+def test_contractible(name, t, punctured):
+    T = BipartiteHyperbolicTriangulation(t, punctured)
+    h2v = t.half_edge_to_vertex()
+    filled = filled_half_edges_at(t, punctured)
+    for i, f in enumerate(t.faces()):
+        if i not in punctured:
+            assert T.strongly_reduced(f) == []
+            assert T.strongly_reduced(reverse(f)) == []
+    rng = random.Random(t.num_faces())
+    for length in LENGTHS:
+        c = random_closed_walk(t, rng, length)
+        v = h2v[c[0]]
+        if v not in filled:
+            continue
+        f = face_from(t, rng.choice(filled[v]))
+        g = face_from(t, rng.choice(filled[v]))
+        w = c + f + reverse(c)
+        assert T.strongly_reduced(w) == []
+        # a product of two conjugates of boundaries of triangles, all based
+        # at the start of c
+        u = w + reverse(c) + reverse(g) + c
+        assert T.strongly_reduced(u) == []
+
+
+def weighted_turns_with_weight(t, punctured, w, weight):
+    r"""
+    Return the weighted turns of the closed walk ``w`` when a punctured corner
+    weighs ``weight``.
+    """
+    h2f = t.half_edge_to_face()
+    pos = {}
+    wdeg = {}
+    for i, vertex in enumerate(t.vertices()):
+        p = 0
+        for h in vertex:
+            pos[h] = p
+            p += weight if h2f[h] in punctured else 1
+        for h in vertex:
+            wdeg[h] = p
+    out = []
+    for i, h in enumerate(w):
+        g = h ^ 1
+        x = (pos[w[(i + 1) % len(w)]] - pos[g]) % wdeg[g]
+        out.append(x - wdeg[g] if 2 * x > wdeg[g] else x)
+    return out
+
+
+def test_weight_three_fails():
+    r"""
+    The boundary of a white punctured triangle, with the triangle on its left.
+
+    At each corner the walk turns around the punctured corner alone, on its
+    left, the vertex having all its other corners, filled, on its right. With
+    the weight `4` of a punctured corner the weighted turns are `-4`: the
+    walk is strongly reduced, and it is not contractible since it goes
+    around the puncture. With the weight `3`, they would read as white
+    weighted turns `-3`, the turns `3_r` of the article, so that the walk
+    would not be strongly reduced: the last move of the reduction would
+    replace it by the other side of a cylinder of triangles on its left,
+    which is the punctured triangle itself, pushing the walk across the
+    puncture (the positions inside the punctured corner hold no half-edge).
+    """
+    name, m, choice = test_triangle_system.CASES[0]
+    t = m.triangle_system(*choice, relabel=True)
+    punctured = [0]
+    w = t.faces()[0]
+    assert all(h % 2 == 0 for h in w)
+    T = BipartiteHyperbolicTriangulation(t, punctured)
+    assert T.weighted_turns(w) == [-4, -4, -4]
+    assert weighted_turns_with_weight(t, punctured, w, 4) == [-4, -4, -4]
+    assert weighted_turns_with_weight(t, punctured, w, 3) == [-3, -3, -3]
+    assert T.is_strongly_reduced(w)
+    assert is_rotation(T.strongly_reduced(w), w)
+    oracle = Oracle(t, punctured)
+    assert oracle(w)
+    assert oracle.homotopic(T.strongly_reduced(w), w)
+    # the reverse walk, with the triangle on its right, has the black
+    # weighted turns 4, which the weight 3 would read as the black weighted
+    # turns 3, the turns -3_b of the article
+    assert T.weighted_turns(reverse(w)) == [4, 4, 4]
+    assert weighted_turns_with_weight(t, punctured, reverse(w), 3) == [3, 3, 3]
+    assert is_rotation(T.strongly_reduced(reverse(w)), reverse(w))
+
+
+def test_errors():
+    name, m, choice = test_triangle_system.CASES[0]
+    T = BipartiteHyperbolicTriangulation(m.triangle_system(*choice, relabel=True))
+    with pytest.raises(NotImplementedError):
+        T.strongly_reduced([0, 1], closed=False)
+    with pytest.raises(ValueError):
+        T.strongly_reduced([0])
+    assert T.strongly_reduced([]) == []
+    assert T.is_strongly_reduced([])

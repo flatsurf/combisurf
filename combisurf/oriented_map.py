@@ -3446,7 +3446,8 @@ class OrientedMap:
           half-edges of ``tree`` and ``cotree`` are ones of this map, that
           they are spanning trees, that ``cocotree`` is a spanning tree of the
           graph of strands, and to check the map built when ``relabel`` is
-          set
+          set. With ``False``, a ``cocotree`` whose half-edges start no strand
+          gives a wrong result.
 
         OUTPUT: the triangle system ``t``, or the pair ``(t, mor)`` if
         ``mapping`` is set. ``mor[h]`` is the image of the half-edge ``h``, a
@@ -3543,10 +3544,12 @@ class OrientedMap:
             sage: all(list(mor[h ^^ 1]) == [x ^^ 1 for x in reversed(mor[h])] for h in m.half_edges())
             True
 
-        The image of the boundary of a face is a closed walk::
+        The image of the boundary of a face is a closed walk: each half-edge
+        of it starts where the previous one ends::
 
-            sage: all(t._check_walk([x for h in f for x in mor[h]], closed=True) is not None
-            ....:     for f in m.faces())
+            sage: v = t.half_edge_to_vertex()
+            sage: images = [[x for h in f for x in mor[h]] for f in m.faces()]
+            sage: all(v[w[i - 1] ^^ 1] == v[w[i]] for w in images for i in range(len(w)))
             True
 
         Folding never renumbers, so the labels of the barycentric subdivision
@@ -3585,6 +3588,10 @@ class OrientedMap:
             Traceback (most recent call last):
             ...
             ValueError: the edge of the half-edge 1 is listed twice
+            sage: m.triangle_system([-1, -1, -1], cotree)
+            Traceback (most recent call last):
+            ...
+            ValueError: tree must have 2 edges, one less than the number of vertices (got 0)
             sage: m.triangle_system(tree, [-1, -1])
             Traceback (most recent call last):
             ...
@@ -3786,10 +3793,11 @@ class OrientedMap:
                     while stack:
                         link[stack.pop()] = y
 
-        # the edge n + h of the subdivision joins the edge vertex of h to the
-        # face vertex of the face of h, and the edge h joins the tail of h to
-        # its edge vertex. Only folds at that edge vertex touch them, so their
-        # labels are still the initial ones.
+        # the edge of the subdivision with half-edges 2n + 2h, 2n + 2h + 1
+        # joins the edge vertex of h to the face vertex of the face of h, and
+        # the edge with half-edges 2h, 2h + 1 joins the tail of h to its edge
+        # vertex. Only folds at that edge vertex touch them, so their labels
+        # are still the initial ones.
         for h in contracted:
             fold(2 * n + 2 * h)
             fold(2 * n + 2 * (h ^ 1))
@@ -3797,12 +3805,12 @@ class OrientedMap:
             fold(2 * h)
             fold(2 * (h ^ 1))
 
-        # the edge 2n + h joins the face vertex to the tail of h through the
-        # corner of this map that follows h counterclockwise, the first corner
-        # of the strand starting at h. The corners of a strand got merged, and
-        # their edges zipped onto one another, by the folds above. These are
-        # all final, as the folds below delete edges between the vertex and the
-        # face vertex but zip none.
+        # the edge with half-edges 4n + 2h, 4n + 2h + 1 joins the face vertex
+        # to the tail of h through the corner of this map that follows h
+        # counterclockwise, the first corner of the strand starting at h. The
+        # corners of a strand got merged, and their edges zipped onto one
+        # another, by the folds above. These are all final, as the folds below
+        # delete edges between the vertex and the face vertex but zip none.
         compress()
         diagonals = {}
         for h in cocotree:
