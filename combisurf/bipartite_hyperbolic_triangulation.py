@@ -25,10 +25,12 @@ this convention, their white triangles being those whose corners read
 
 With no punctured face, these are the reducing triangulations of
 :ref:`colin-de-verdiere-despre-dubois-2024`, §3.1, on which every
-non-contractible closed walk is freely homotopic to a unique strongly reduced
-closed walk. By :ref:`dubois-2024`, Proposition 1.5, the geometric
-intersection of reduced closed walks of such a triangulation of a closed
-surface is their intersection on the same map with every face punctured.
+non-contractible closed walk is freely homotopic to a strongly reduced closed
+walk (Proposition 3.8 there), which is unique (Proposition 3.5 there). By
+:ref:`dubois-2024`, Proposition 1.5, the geometric intersection of strongly
+reduced closed walks of such a triangulation of a closed surface is their
+intersection on the same map with every face punctured (Dubois calls
+"reduced" the closed walks called strongly reduced here).
 
 EXAMPLES:
 

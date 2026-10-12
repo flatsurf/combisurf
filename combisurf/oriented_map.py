@@ -2410,7 +2410,7 @@ class OrientedMap:
             (5, 12, [6, 3, 3, 3, 3, 3, 3], 1)
 
         With ``mapping``, the images of the half-edges are returned as well;
-        the image of ``h ^^ 1`` is the reverse of the image of ``h``::
+        the image of ``h ^ 1`` is the reverse of the image of ``h``::
 
             sage: t, mor, punctured = m.barycentric_subdivision(mapping=True)
             sage: mor
@@ -2565,6 +2565,61 @@ class OrientedMap:
             if vp[h] != -1:
                 mor[h] = array('i', [2 * h, 2 * (h ^ 1) + 1])
         return t, mor, t_punctured
+
+    def _forest_coforest_kinds(self, forest, coforest, check, names=("forest", "coforest")):
+        r"""
+        Return the triple ``(kind, contracted, deleted)`` describing the edges
+        of ``forest`` and ``coforest``.
+
+        ``kind[e]`` is ``0`` for an edge in neither, ``1`` for an edge of
+        ``forest`` and ``2`` for an edge of ``coforest``; ``contracted`` and
+        ``deleted`` list the half-edges of ``forest`` and ``coforest``, the
+        ``-1`` entries left out. A ``ValueError`` is raised for an edge listed
+        twice or a folded one and, if ``check`` is set, for a half-edge that is
+        not one of this map and for a cycle in ``forest`` or a cycle of the
+        dual in ``coforest``. The two words of ``names`` name ``forest`` and
+        ``coforest`` in the error messages.
+
+        This is exercised through :meth:`reduced_map`, :meth:`strands` and
+        :meth:`triangle_system`.
+        """
+        vp = self._vp
+        n = len(vp)
+
+        kind = array('i', [0] * (n // 2))
+        contracted = []
+        deleted = []
+        for k, edges, listed in ((1, forest, contracted), (2, coforest, deleted)):
+            for h in edges:
+                if h == -1:
+                    continue
+                if check:
+                    h = self._check_half_edge(h)
+                if kind[h // 2]:
+                    raise ValueError(f"the edge of the half-edge {h} is listed twice")
+                if vp[h ^ 1] == -1:
+                    raise ValueError(f"the half-edge {h} is folded")
+                kind[h // 2] = k
+                listed.append(h)
+
+        if check:
+            # a contracted cycle or a deleted cocycle would not give a map of
+            # the same surface; union-find on the vertices, then on the faces
+            for h2c, listed, name in ((self.half_edge_to_vertex(), contracted, names[0]),
+                                      (self.half_edge_to_face(), deleted, names[1])):
+                root = list(range(max(h2c, default=-1) + 1))
+                for h in listed:
+                    u = h2c[h]
+                    while root[u] != u:
+                        root[u] = u = root[root[u]]
+                    v = h2c[h ^ 1]
+                    while root[v] != v:
+                        root[v] = v = root[root[v]]
+                    if u == v:
+                        raise ValueError(f"{name} contains a cycle")
+                    root[u] = v
+
+        return kind, contracted, deleted
 
     def reduced_map(self, forest=None, coforest=None, relabel=False, mapping=False, mutable=False, check=True):
         r"""
@@ -2795,40 +2850,7 @@ class OrientedMap:
         fp = self._fp
         n = len(vp)
 
-        # kind[e] is 0 for an edge that stays, 1 for a contracted edge and 2
-        # for a deleted one
-        kind = array('i', [0] * (n // 2))
-        contracted = []
-        deleted = []
-        for k, edges, listed in ((1, forest, contracted), (2, coforest, deleted)):
-            for h in edges:
-                if h == -1:
-                    continue
-                if check:
-                    h = self._check_half_edge(h)
-                if kind[h // 2]:
-                    raise ValueError(f"the edge of the half-edge {h} is listed twice")
-                if vp[h ^ 1] == -1:
-                    raise ValueError(f"the half-edge {h} is folded")
-                kind[h // 2] = k
-                listed.append(h)
-
-        if check:
-            # a contracted cycle or a deleted cocycle would not give a map of
-            # the same surface; union-find on the vertices, then on the faces
-            for h2c, listed, name in ((self.half_edge_to_vertex(), contracted, "forest"),
-                                      (self.half_edge_to_face(), deleted, "coforest")):
-                root = list(range(max(h2c, default=-1) + 1))
-                for h in listed:
-                    u = h2c[h]
-                    while root[u] != u:
-                        root[u] = u = root[root[u]]
-                    v = h2c[h ^ 1]
-                    while root[v] != v:
-                        root[v] = v = root[root[v]]
-                    if u == v:
-                        raise ValueError(f"{name} contains a cycle")
-                    root[u] = v
+        kind, contracted, deleted = self._forest_coforest_kinds(forest, coforest, check)
 
         # contracting an edge removes its two half-edges from their faces and
         # deleting it glues the face of each half-edge to that of the other.
@@ -3262,6 +3284,591 @@ class OrientedMap:
             else:
                 proj.append(array('i', [relabelling[a], relabelling[b]]))
         return quad, proj, bigons
+
+    def strands(self, tree, cotree, check=True):
+        r"""
+        Return the strands of this map for the given tree and cotree.
+
+        Contracting the edges of ``tree`` and deleting those of ``cotree``
+        gives the map of :meth:`reduced_map`, whose edges are the *remaining*
+        edges, in neither. Its corners are the *strands*: the pairs ``(h,
+        h')`` of half-edges of remaining edges, ``h'`` following ``h``
+        counterclockwise around its vertex in that map. When ``tree`` and
+        ``cotree`` are spanning, that map has one vertex and one face, and a
+        surface of genus `g` has `2g` remaining edges and `4g` strands. The
+        *graph of strands* has the remaining edges as vertices and an edge
+        between the edges of ``h`` and ``h'`` for each strand ``(h, h')``.
+
+        In the medial graph of this map, whose vertices are the edges and
+        whose edges are the corners, a strand is a path between two remaining
+        edges through the corners of this map merged by the contractions and
+        the deletions.
+
+        INPUT:
+
+        - ``tree``, ``cotree`` -- the half-edges of the edges to contract and
+          to delete, in the format returned by
+          :meth:`forest_coforest_decomposition` and
+          :meth:`tree_cotree_decomposition`; entries equal to ``-1`` are
+          ignored. Listing the same edge twice raises a ``ValueError``.
+
+        - ``check`` -- boolean (default: ``True``); whether to check that the
+          half-edges of ``tree`` and ``cotree`` are ones of this map and that
+          neither contains a cycle
+
+        OUTPUT: the list of the strands ``(h, h')``, one for each half-edge
+        ``h`` of a remaining edge, in increasing order of ``h``
+
+        EXAMPLES:
+
+        A map of genus two with three vertices, seven edges and two faces has
+        four remaining edges, hence eight strands::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+            sage: m.genus(), m.num_vertices(), m.num_edges(), m.num_faces()
+            (2, 3, 7, 2)
+            sage: tree, cotree, remaining = m.tree_cotree_decomposition()
+            sage: remaining
+            array('i', [1, 3, 5, 6])
+            sage: m.strands(tree, cotree)
+            [(2, 10), (3, 11), (6, 3), (7, 2), (10, 12), (11, 13), (12, 6), (13, 7)]
+
+        These are the pairs of consecutive half-edges around the vertex of the
+        reduced map, which keeps the labels of the remaining edges::
+
+            sage: r = m.reduced_map(tree, cotree)
+            sage: rvp = r.vertex_permutation()
+            sage: all(rvp[h] == hh for h, hh in m.strands(tree, cotree))
+            True
+
+        A map with one vertex and one face has an empty tree and an empty
+        cotree, and its strands are its corners::
+
+            sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
+            sage: m.strands([], [])
+            [(0, 6), (1, 3), (2, 1), (3, 0), (4, 2), (5, 7), (6, 5), (7, 4)]
+            sage: m.vertex_permutation()
+            array('i', [6, 3, 1, 0, 2, 7, 5, 4])
+
+        TESTS::
+
+            sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+            sage: tree, cotree, _ = m.tree_cotree_decomposition()
+            sage: m.strands(tree, list(cotree) + [tree[1]])
+            Traceback (most recent call last):
+            ...
+            ValueError: the edge of the half-edge 1 is listed twice
+            sage: OrientedMap(vp="(0,1,~1)").strands([], [])
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: strands is not implemented on a map with a folded edge
+
+        .. SEEALSO::
+
+            :meth:`triangle_system`, :meth:`reduced_map`,
+            :meth:`tree_cotree_decomposition`
+        """
+        if self.has_folded_edge():
+            raise NotImplementedError("strands is not implemented on a map with a folded edge")
+        kind, _, _ = self._forest_coforest_kinds(tree, cotree, check, ("tree", "cotree"))
+        vp = self._vp
+        result = []
+        for h in range(len(vp)):
+            if vp[h] == -1 or kind[h // 2]:
+                continue
+            # contracting the edge of y puts the rotation at the head of y
+            # after y, deleting it removes y from the rotation
+            y = vp[h]
+            while kind[y // 2]:
+                y = vp[y ^ 1] if kind[y // 2] == 1 else vp[y]
+            result.append((h, y))
+        return result
+
+    def triangle_system(self, tree=None, cotree=None, cocotree=None, relabel=False, mapping=False, mutable=False,
+                        check=True):
+        r"""
+        Return the triangle system of this map for the given tree, cotree and cocotree.
+
+        The triangle system is obtained from the barycentric subdivision of
+        :meth:`barycentric_subdivision` by a sequence of folds, each of which
+        removes an edge between two triangles and zips the two triangles
+        together, merging the two vertices opposite to that edge. They merge,
+        in order:
+
+        - the vertices of this map, two at a time along each edge of ``tree``,
+          a spanning tree;
+
+        - the face vertices, two at a time along each edge of ``cotree``, a
+          spanning tree of the dual avoiding ``tree``;
+
+        - the edge vertices of the `2g` remaining edges, two at a time along
+          each strand of ``cocotree``, a spanning tree of the graph of strands
+          of :meth:`strands`.
+
+        On a closed surface of genus `g \geq 2`, the result is a bipartite
+        hyperbolic triangulation with three vertices, the vertex, the face
+        vertex and the edge vertex, each of degree `4g + 2`, `6g + 3` edges
+        and `4g + 2` triangles, see
+        :class:`~combisurf.bipartite_hyperbolic_triangulation.BipartiteHyperbolicTriangulation`.
+        The colour of the triangles is kept from the barycentric subdivision:
+        the white triangles have even half-edges and the black ones odd
+        half-edges.
+
+        INPUT:
+
+        - ``tree``, ``cotree`` -- (default: ``None``) a spanning tree and a
+          spanning tree of the dual without common edge, in the format
+          returned by :meth:`tree_cotree_decomposition`; entries equal to
+          ``-1`` are ignored. When both are ``None`` they are computed.
+          Listing the same edge twice raises a ``ValueError``.
+
+        - ``cocotree`` -- (default: ``None``) a list of `2g - 1` half-edges
+          ``h``, each standing for the strand ``(h, h')`` of :meth:`strands`
+          that starts at ``h``, forming a spanning tree of the graph of
+          strands. When ``None`` it is computed. Listing the same strand twice
+          raises a ``ValueError``.
+
+        - ``relabel`` -- boolean (default: ``False``); whether to relabel the
+          result on ``0, 1, ..., 2 * (6g + 3) - 1``. Folding never renumbers,
+          so without this the labels of the barycentric subdivision are kept
+          and are sparse. The relabelling goes edge by edge and preserves the
+          parity of each half-edge inside its edge, hence the colours of the
+          triangles.
+
+        - ``mapping`` -- boolean (default: ``False``); whether to also return
+          the images of the half-edges, see below
+
+        - ``mutable`` -- boolean (default: ``False``); whether the result is
+          mutable
+
+        - ``check`` -- boolean (default: ``True``); whether to check that the
+          half-edges of ``tree`` and ``cotree`` are ones of this map, that
+          they are spanning trees, that ``cocotree`` is a spanning tree of the
+          graph of strands, and to check the map built when ``relabel`` is
+          set
+
+        OUTPUT: the triangle system ``t``, or the pair ``(t, mor)`` if
+        ``mapping`` is set. ``mor[h]`` is the image of the half-edge ``h``, a
+        walk of ``t`` homotopic to it once the vertices of this map are
+        identified along ``tree``, ``None`` for an inactive half-edge, and
+        ``mor[h ^ 1]`` is the reverse of ``mor[h]``:
+
+        - a half-edge of ``tree`` has an empty image;
+
+        - a half-edge of a remaining edge has an image of length two, through
+          the edge vertex;
+
+        - a half-edge of ``cotree`` has an image through the face vertex, of
+          length two unless it goes through a strand of ``cocotree``, each of
+          which is replaced by two edges through the edge vertex; once its
+          backtracks are removed its length is at most four, and it is empty
+          when the half-edge followed by the path of ``tree`` back to its tail
+          is a contractible closed walk.
+
+        EXAMPLES:
+
+        A map of genus two with three vertices, seven edges and two faces,
+        its tree and cotree leaving four edges and eight strands, of which a
+        cocotree takes three::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
+            sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+            sage: m.genus(), m.num_vertices(), m.num_edges(), m.num_faces()
+            (2, 3, 7, 2)
+            sage: tree, cotree, remaining = m.tree_cotree_decomposition()
+            sage: remaining
+            array('i', [1, 3, 5, 6])
+            sage: len(m.strands(tree, cotree))
+            8
+            sage: t = m.triangle_system(tree, cotree, [2, 6, 10])
+            sage: t.num_vertices(), t.num_edges(), t.num_faces()
+            (3, 15, 10)
+            sage: t.vertex_profile()
+            [10, 10, 10]
+            sage: t.face_profile()
+            [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            sage: t.genus()
+            2
+            sage: BipartiteHyperbolicTriangulation(t)
+            BipartiteHyperbolicTriangulation(...)
+
+        The colours of the barycentric subdivision survive the folds: the
+        three half-edges of every triangle have the same parity::
+
+            sage: [{x % 2 for x in f} for f in t.faces()]
+            [{0}, {1}, {0}, {1}, {0}, {1}, {0}, {1}, {0}, {1}]
+
+        Without arguments, the tree, the cotree and the cocotree are
+        computed. A map with one vertex and one face has an empty tree and an
+        empty cotree, and gives the same sizes::
+
+            sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
+            sage: t = m.triangle_system()
+            sage: t.num_vertices(), t.num_edges(), t.num_faces()
+            (3, 15, 10)
+            sage: t.vertex_profile()
+            [10, 10, 10]
+            sage: BipartiteHyperbolicTriangulation(t)
+            BipartiteHyperbolicTriangulation(...)
+
+        With ``mapping``, the images of the half-edges are returned as well.
+        Here every edge remains, each of them going to a walk of length two,
+        and the image of ``h ^^ 1`` is the reverse of that of ``h``::
+
+            sage: t, mor = m.triangle_system(mapping=True)
+            sage: mor
+            [array('i', [0, 3]),
+             array('i', [2, 1]),
+             array('i', [8, 3]),
+             array('i', [2, 9]),
+             array('i', [8, 11]),
+             array('i', [10, 9]),
+             array('i', [0, 15]),
+             array('i', [14, 1])]
+            sage: all(list(mor[h ^^ 1]) == [x ^^ 1 for x in reversed(mor[h])] for h in m.half_edges())
+            True
+
+        On the first map, the edges ``0`` and ``2`` of the tree go to empty
+        walks, and the edge ``4`` of the cotree to a walk through the face
+        vertex::
+
+            sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+            sage: t, mor = m.triangle_system(tree, cotree, [2, 6, 10], mapping=True)
+            sage: [h // 2 for h in tree if h != -1], [h // 2 for h in cotree if h != -1]
+            ([0, 2], [4])
+            sage: [len(w) for w in mor]
+            [0, 0, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2]
+            sage: all(list(mor[h ^^ 1]) == [x ^^ 1 for x in reversed(mor[h])] for h in m.half_edges())
+            True
+
+        The image of the boundary of a face is a closed walk::
+
+            sage: all(t._check_walk([x for h in f for x in mor[h]], closed=True) is not None
+            ....:     for f in m.faces())
+            True
+
+        Folding never renumbers, so the labels of the barycentric subdivision
+        are kept and are sparse; ``relabel`` compacts them, keeping the
+        colours::
+
+            sage: t = m.triangle_system(tree, cotree, [2, 6, 10])
+            sage: list(t.half_edges())[:8]
+            [4, 5, 12, 13, 14, 15, 22, 23]
+            sage: t, mor = m.triangle_system(tree, cotree, [2, 6, 10], relabel=True, mapping=True)
+            sage: t
+            OrientedMap("(0,~12,1,~11,3,~13,4,~14,2,~10)(~0,5,~1,6,~2,7,~3,9,~4,8)(~5,10,~6,12,~8,13,~7,14,~9,11)", "(0,8,12)(~0,~10,~5)(1,5,11)(~1,~12,~6)(2,6,10)(~2,~14,~7)(3,7,13)(~3,~11,~9)(4,9,14)(~4,~13,~8)")
+            sage: list(t.half_edges()) == list(range(30))
+            True
+            sage: BipartiteHyperbolicTriangulation(t)
+            BipartiteHyperbolicTriangulation(...)
+            sage: all(x in list(t.half_edges()) for w in mor for x in w)
+            True
+
+        The result is immutable unless ``mutable`` is set::
+
+            sage: m.triangle_system().is_mutable()
+            False
+            sage: m.triangle_system(mutable=True).is_mutable()
+            True
+
+        TESTS:
+
+        The errors on the tree, the cotree and the cocotree::
+
+            sage: m.triangle_system(tree, None)
+            Traceback (most recent call last):
+            ...
+            ValueError: tree and cotree must be given together
+            sage: m.triangle_system(tree, list(cotree) + [tree[1]])
+            Traceback (most recent call last):
+            ...
+            ValueError: the edge of the half-edge 1 is listed twice
+            sage: m.triangle_system(tree, [-1, -1])
+            Traceback (most recent call last):
+            ...
+            ValueError: cotree must have 1 edges, one less than the number of faces (got 0)
+            sage: m.triangle_system(tree, cotree, [2, 6])
+            Traceback (most recent call last):
+            ...
+            ValueError: cocotree must have 3 strands, one less than the number of remaining edges (got 2)
+            sage: m.triangle_system(tree, cotree, [2, 3, 6])
+            Traceback (most recent call last):
+            ...
+            ValueError: cocotree contains a cycle
+            sage: m.triangle_system(tree, cotree, [2, 2, 6])
+            Traceback (most recent call last):
+            ...
+            ValueError: the strand of the half-edge 2 is listed twice
+            sage: m.triangle_system(tree, cotree, [0, 2, 6])
+            Traceback (most recent call last):
+            ...
+            ValueError: the half-edge 0 starts no strand
+
+        A folded edge, a map that is not connected, and a sphere::
+
+            sage: OrientedMap(vp="(0,1,~1)").triangle_system()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: triangle_system is not implemented on a map with a folded edge
+            sage: OrientedMap(fp="(0,1,~0,~1)(2,3,~2,~3)").triangle_system()
+            Traceback (most recent call last):
+            ...
+            ValueError: a triangle system requires a connected map
+            sage: OrientedMap(fp="(0,1,2)(~0,~2,~1)").triangle_system()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: triangle_system is not implemented in genus zero
+
+        On a sphere every vertex of the barycentric subdivision would be
+        merged into the vertex or the face vertex, leaving no edge. On a
+        torus the result is a triangulation with three vertices of degree
+        six, not hyperbolic::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: t, mor = m.triangle_system(mapping=True)
+            sage: t
+            OrientedMap("(2,~16,3,~15,5,~17)(~2,9,~3,11,~5,10)(~9,17,~11,16,~10,15)", "(2,10,16)(~2,~17,~9)(3,9,15)(~3,~16,~11)(5,11,17)(~5,~15,~10)")
+            sage: t.num_vertices(), t.num_edges(), t.num_faces(), t.vertex_profile()
+            (3, 9, 6, [6, 6, 6])
+            sage: mor
+            [array('i', [31, 23, 5]),
+             array('i', [4, 22, 30]),
+             array('i', [4, 7]),
+             array('i', [6, 5]),
+             array('i', [4, 11]),
+             array('i', [10, 5])]
+            sage: [{x % 2 for x in f} for f in t.faces()]
+            [{0}, {1}, {0}, {1}, {0}, {1}]
+            sage: BipartiteHyperbolicTriangulation(t)
+            Traceback (most recent call last):
+            ...
+            ValueError: the surface must have negative Euler characteristic once its punctured faces are removed (got 0)
+
+        .. SEEALSO::
+
+            :meth:`quad_system`, :meth:`barycentric_subdivision`,
+            :meth:`strands`,
+            :class:`~combisurf.bipartite_hyperbolic_triangulation.BipartiteHyperbolicTriangulation`
+
+        ALGORITHM:
+
+        Every fold takes an edge ``d`` between two triangles, which together
+        make a quadrilateral with diagonal ``d``. It deletes ``d`` with
+        :meth:`delete_edge` and folds the two corners of the quadrilateral at
+        the ends of ``d`` with :meth:`fold_corner`, which zips the sides of
+        the quadrilateral in pairs. The two triangles have opposite colours,
+        so the sides of the quadrilateral alternate parity and each fold
+        identifies two half-edges of the same parity: the triangles left keep
+        a single parity. A fold removes one vertex, three edges and two
+        triangles.
+
+        An edge `e` of ``tree`` takes two folds at its edge vertex `x`: one
+        across the edge from `x` to the face vertex on one side, which merges
+        the two ends of `e` and leaves `x` of degree two, then one across the
+        edge from `x` to the other face vertex, which removes `x`. An edge of
+        ``cotree`` takes the same two folds across the two edges from `x` to
+        the vertices. Last, a strand of ``cocotree`` is folded across the edge
+        from the vertex to the face vertex in its corner, merging the edge
+        vertices of its two remaining edges.
+
+        A fold at the edge vertex `x` of an edge of ``tree`` or ``cotree``
+        only deletes or zips edges at `x` and one edge from a vertex to a face
+        vertex, so the diagonals of the folds of ``tree``
+        and ``cotree`` still have their labels of the barycentric
+        subdivision when they are folded. The edges between a vertex and a
+        face vertex are relabelled as folding goes: :meth:`fold_corner` at
+        ``a`` makes ``b = next_in_face(a)`` take over the position of ``a ^
+        1``. Each dying half-edge is linked to the one it is identified with,
+        and a single pass with path compression over the links, all final
+        once ``tree`` and ``cotree`` are folded, gives the diagonals of the
+        folds of ``cocotree``, as the corners of the strands start with the
+        corners of this map. A second pass at the end gives the images. Each
+        fold takes constant time and the whole is linear in the size of this
+        map.
+        """
+        if self.has_folded_edge():
+            raise NotImplementedError("triangle_system is not implemented on a map with a folded edge")
+        if not self.is_connected():
+            raise ValueError("a triangle system requires a connected map")
+        if tree is None and cotree is None:
+            tree, cotree, _ = self.tree_cotree_decomposition()
+        elif tree is None or cotree is None:
+            raise ValueError("tree and cotree must be given together")
+
+        kind, contracted, deleted = self._forest_coforest_kinds(tree, cotree, check, ("tree", "cotree"))
+        nv = self.num_vertices()
+        nf = self.num_faces()
+        if check:
+            if len(contracted) != nv - 1:
+                raise ValueError(f"tree must have {nv - 1} edges, one less than the number of vertices (got {len(contracted)})")
+            if len(deleted) != nf - 1:
+                raise ValueError(f"cotree must have {nf - 1} edges, one less than the number of faces (got {len(deleted)})")
+        genus = (2 - nv + self.num_edges() - nf) // 2
+        if genus == 0:
+            raise NotImplementedError("triangle_system is not implemented in genus zero")
+
+        vp = self._vp
+        fp = self._fp
+        n = len(vp)
+        strands = self.strands(tree, cotree, check=False)
+        next_in_strand = {h: hh for h, hh in strands}
+
+        # the graph of strands has the remaining edges as vertices; a union-find
+        # on them checks the cocotree, or builds one
+        root = {h // 2: h // 2 for h, _ in strands}
+
+        def find(e):
+            while root[e] != e:
+                root[e] = e = root[root[e]]
+            return e
+
+        if cocotree is None:
+            cocotree = []
+            for h, hh in strands:
+                u = find(h // 2)
+                v = find(hh // 2)
+                if u != v:
+                    root[u] = v
+                    cocotree.append(h)
+        else:
+            cocotree = list(cocotree)
+            listed = set()
+            for h in cocotree:
+                if check and h not in next_in_strand:
+                    raise ValueError(f"the half-edge {h} starts no strand")
+                if h in listed:
+                    raise ValueError(f"the strand of the half-edge {h} is listed twice")
+                listed.add(h)
+            if check:
+                if len(cocotree) != 2 * genus - 1:
+                    raise ValueError(f"cocotree must have {2 * genus - 1} strands, one less than the number of remaining edges (got {len(cocotree)})")
+                for h in cocotree:
+                    u = find(h // 2)
+                    v = find(next_in_strand[h] // 2)
+                    if u == v:
+                        raise ValueError("cocotree contains a cycle")
+                    root[u] = v
+
+        t, _ = self.barycentric_subdivision(mutable=True)
+        tfp = t._fp
+
+        # a half-edge of t that dies identified with another one is linked to
+        # it; the links resolve the names of the corner edges, then the images
+        link = array('i', [-1] * (6 * n))
+
+        def fold(d):
+            # the triangles on both sides of d make a quadrilateral, of which
+            # d is a diagonal; d is deleted and the two other vertices are
+            # merged by zipping the sides of the quadrilateral in pairs
+            s1 = tfp[d]
+            s2 = tfp[s1]
+            t1 = tfp[d ^ 1]
+            t2 = tfp[t1]
+            t.delete_edge(d // 2, check=0)
+            for a, b in ((s2, t1), (t2, s1)):
+                t.fold_corner(a, check=0)
+                if b != a ^ 1:
+                    link[a] = b ^ 1
+                    link[a ^ 1] = b
+            return s1, s2
+
+        def compress():
+            stack = []
+            for x in range(6 * n):
+                y = x
+                while link[y] != -1:
+                    stack.append(y)
+                    y = link[y]
+                if stack:
+                    stack.pop()
+                    while stack:
+                        link[stack.pop()] = y
+
+        # the edge n + h of the subdivision joins the edge vertex of h to the
+        # face vertex of the face of h, and the edge h joins the tail of h to
+        # its edge vertex. Only folds at that edge vertex touch them, so their
+        # labels are still the initial ones.
+        for h in contracted:
+            fold(2 * n + 2 * h)
+            fold(2 * n + 2 * (h ^ 1))
+        for h in deleted:
+            fold(2 * h)
+            fold(2 * (h ^ 1))
+
+        # the edge 2n + h joins the face vertex to the tail of h through the
+        # corner of this map that follows h counterclockwise, the first corner
+        # of the strand starting at h. The corners of a strand got merged, and
+        # their edges zipped onto one another, by the folds above. These are
+        # all final, as the folds below delete edges between the vertex and the
+        # face vertex but zip none.
+        compress()
+        diagonals = {}
+        for h in cocotree:
+            d = 4 * n + 2 * h
+            if link[d] != -1:
+                d = link[d]
+            s1, s2 = fold(d)
+            diagonals[d] = (s2 ^ 1, s1 ^ 1)
+            diagonals[d ^ 1] = (s1, s2)
+
+        relabelling = None
+        if relabel:
+            tvp = t._vp
+            nt = len(tvp)
+            relabelling = array('i', [-1] * nt)
+            ne = 0
+            for y in range(0, nt, 2):
+                if tvp[y] != -1:
+                    relabelling[y] = 2 * ne
+                    relabelling[y + 1] = 2 * ne + 1
+                    ne += 1
+            fp_new = array('i', [-1] * (2 * ne))
+            for y in range(nt):
+                if tfp[y] != -1:
+                    fp_new[relabelling[y]] = relabelling[tfp[y]]
+            t = OrientedMap(fp=fp_new, mutable=True, check=check)
+
+        if not mutable:
+            t.set_immutable()
+
+        if not mapping:
+            return t
+
+        compress()
+
+        def resolve(x):
+            return x if link[x] == -1 else link[x]
+
+        mor = [None] * n
+        for e in range(n // 2):
+            h = 2 * e
+            if vp[h] == -1:
+                continue
+            k = kind[e]
+            if k == 1:
+                w = []
+            elif k == 0:
+                w = [resolve(2 * h), resolve(2 * h + 3)]
+            else:
+                # the path through the face vertex of the face of h, with every
+                # deleted diagonal replaced by the two other sides of one of
+                # its triangles, the backtracks this creates being removed
+                w = []
+                for x in (4 * n + 2 * h + 1, 4 * n + 2 * fp[h]):
+                    x = resolve(x)
+                    for y in (diagonals[x] if x in diagonals else (x,)):
+                        y = resolve(y)
+                        if w and w[-1] == y ^ 1:
+                            w.pop()
+                        else:
+                            w.append(y)
+            if relabelling is not None:
+                w = [relabelling[x] for x in w]
+            mor[h] = array('i', w)
+            mor[h + 1] = array('i', [x ^ 1 for x in reversed(w)])
+        return t, mor
 
     def geometric_intersection(self, u, v=None, punctured_faces=False):
         r"""

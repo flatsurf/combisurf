@@ -208,8 +208,8 @@ Dubois (2024)
 L. Dubois. *Making Multicurves Cross Minimally on Surfaces*
 ESA 2024: 50:1-50:15
 
-Proposition 1.5, on the intersection of reduced closed walks of a reducing
-triangulation, is recalled in
+Proposition 1.5, on the intersection of strongly reduced closed walks of a
+reducing triangulation, is recalled in
 :mod:`combisurf.bipartite_hyperbolic_triangulation`.
 
 .. _colin-de-verdiere-despre-dubois-2024:
