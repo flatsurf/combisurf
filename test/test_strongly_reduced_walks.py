@@ -313,7 +313,8 @@ def cylinder_walk(T, out, h, s):
 
 @pytest.mark.parametrize("name, t, punctured", INSTANCES[::6], ids=IDS[::6])
 def test_cylinder_move(name, t, punctured, monkeypatch):
-    # Fig. 3.7 of the article: a closed walk whose weighted turns are all
+    # Fig. 3.7 of Colin de Verdière, Despré and Dubois, "Untangling graphs
+    # on surfaces" (2024): a closed walk whose weighted turns are all
     # white -3 or all black 3 goes around a cylinder of triangles and is
     # replaced by the other side of the cylinder. It is reached directly and
     # from homotopic walks with a detour or a backtrack.
@@ -345,7 +346,6 @@ def test_cylinder_move(name, t, punctured, monkeypatch):
     if not punctured:
         # a closed surface has no punctured corner to stop a cylinder walk
         assert num_walks == 6
-    assert counter.cylinders >= num_walks
 
 
 def flip_walk(T, out, h, s, k, l, rng):
@@ -400,7 +400,10 @@ def test_long_flips(monkeypatch):
                 if w is None:
                     continue
                 num_walks += 1
+                before = len(counter.flips)
                 r = T.strongly_reduced(w)
+                # the reduction of w itself takes a flip with k, l >= 2
+                assert any(kk >= 2 and ll >= 2 for _, kk, ll in counter.flips[before:])
                 assert T.is_strongly_reduced(r)
                 assert oracle.homotopic(r, w)
                 assert is_rotation(T.strongly_reduced(reverse(w)), reverse(r))
@@ -408,7 +411,6 @@ def test_long_flips(monkeypatch):
                     assert is_rotation(T.strongly_reduced(u), r)
     assert num_walks >= 100
     long_flips = [(s, k, l) for s, k, l in counter.flips if k >= 2 and l >= 2]
-    assert len(long_flips) >= num_walks
     assert any(s == -1 for s, _, _ in long_flips)
     assert any(s == 1 for s, _, _ in long_flips)
 

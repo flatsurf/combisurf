@@ -16,13 +16,13 @@ group of the surface is then free on the edges of the reduced map, and a
 closed curve becomes a cyclically reduced word in its half-edges.
 
 On a closed surface, of genus at least `2`, a closed curve is first replaced
-by a canonical representative of its free homotopy class: a closed walk on a
-triangulation of the surface, unique up to rotation and whose reverse is the
-canonical representative of the reverse curve
-(:ref:`colin-de-verdiere-despre-dubois-2024`, Proposition 3.5). By
+by a canonical representative of its free homotopy class, unique up to
+rotation and whose reverse is the canonical representative of the reverse
+curve (:ref:`colin-de-verdiere-despre-dubois-2024`, Proposition 3.5). By
 :ref:`dubois-2024`, Proposition 1.5, the geometric intersection of canonical
-representatives on the closed surface is their geometric intersection on the
-same triangulation with every face punctured, which is computed as above.
+representatives on the closed surface equals their geometric intersection
+with every face punctured, which is computed as above (see the
+``ALGORITHM:`` section of :class:`GeometricIntersectionPairing`).
 
 The algorithm uses the description from :ref:`cohen-lustig-1987` that
 reduces the problem of geometric intersection to word combinatorics. To
