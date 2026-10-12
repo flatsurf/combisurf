@@ -1148,6 +1148,98 @@ def test_closed_two_derivations_invariance(name, m):
     assert intersection_table(gi, images) == reference, (name, walks)
 
 
+def smoothings():
+    r"""
+    Return hand-made smoothings of a self-crossing of a closed walk, as tuples
+    ``(name, m, punctured_faces, u, x, y)``.
+
+    The walk ``u`` passes the crossing at its positions ``p < q``, and the
+    smoothing that respects orientations is the multicurve made of
+    ``x = u[p:q]`` and ``y = u[q:] + u[:p]``. The passage of ``u`` at position
+    ``p`` enters the vertex at the corner of ``u[p - 1] ^ 1`` and leaves it at
+    the corner of ``u[p]``; two passages through the same vertex cross when
+    their four corners are distinct and alternate in the cyclic order of the
+    vertex. Two passages sharing a corner are not compared directly, since
+    whether they cross depends on the rest of the walk; when they share the
+    edge they leave by, as in the pair of pants, the edge is contracted first.
+    """
+    from combisurf import OrientedMap
+    from combisurf.word import word_init
+
+    one_vertex_3 = dict(CLOSED_MAPS)["one_vertex_3"]
+    # one vertex, cyclic order (0, 2, 1, 3); a = 0, b = 2, B = 3
+    torus = OrientedMap(vp="(0,1,~0,~1)")
+    # vertices (0, 5, 6), (1, 9, 2), (3, 10, 4), (7, 11, 8); the faces
+    # x = (0, 2, 4), y = (1, 6, 8) and (3, 9, 11) are punctured, the face
+    # (5, 10, 7) is filled
+    pants = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+    # one vertex, cyclic order (0, 2, 4, 6, 1, 3, 5, 7)
+    octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
+    assert polygon_4g(2) == octagon
+    # a b b C b b C
+    w = list(word_init("0,1,1,~2,1,1,~2"))
+    assert w == [0, 2, 2, 5, 2, 2, 5]
+
+    return [
+        # a a b b, passages 1 (corners 1, 0) and 3 (corners 3, 2): 0, 2, 1, 3
+        # alternate; the pieces are two parallel copies of a b
+        ("torus-aabb", torus, True, [0, 0, 2, 2], [0, 2], [2, 0]),
+        # a a b b b, same passages 1 and 3; pieces a b and b b a
+        ("torus-aabbb", torus, True, [0, 0, 2, 2, 2], [0, 2], [2, 2, 0]),
+        # a a B B a B, passages 1 (corners 1, 0) and 3 (corners 2, 3): 0, 2,
+        # 1, 3 alternate; pieces a B and the square (B a)^2
+        ("torus-aaBBaB", torus, True, [0, 0, 3, 3, 0, 3], [0, 3], [3, 0, 3, 0]),
+        # the figure eight x y^-1, both loops based at the vertex (0, 5, 6):
+        # the passages 0 (corner 6, then edge 0, then corner 2 at (1, 9, 2))
+        # and 3 (corner 5, then edge 0, then corner 9) share edge 0;
+        # contracting it merges the two vertices into (9, 2, 5, 6), where 6,
+        # 2 and 5, 9 alternate; the pieces are the boundaries x and y^-1
+        ("pants-figure-eight", pants, [0, 1, 2], [0, 2, 4, 0, 9, 7], [0, 2, 4], [0, 9, 7]),
+        # x x y^-1, passages 0 (corners 6, 2 after contracting edge 0) and 6
+        # (corners 5, 9) as above; pieces x^2 and y^-1
+        ("pants-xxy", pants, [0, 1, 2], [0, 2, 4, 0, 2, 4, 0, 9, 7], [0, 2, 4, 0, 2, 4], [0, 9, 7]),
+        # a a c c c, passages 1 (corners 1, 0) and 3 (corners 5, 4): 0, 4, 1,
+        # 5 alternate; pieces a c and c c a
+        ("genus-2-punctured-aaccc", octagon, True, [0, 0, 4, 4, 4], [0, 4], [4, 4, 0]),
+        # passages 0 (corners 4, 0) and 2 (corners 3, 2): 0, 2, 4, 3
+        # alternate; pieces a b and b C b b C
+        ("genus-2-punctured-w", octagon, True, w, [0, 2], [2, 5, 2, 2, 5]),
+        ("genus-2-closed-w", octagon, False, w, [0, 2], [2, 5, 2, 2, 5]),
+        # cyclic order (0, 2, 4, 6, 8, 10, 1, 3, 5, 7, 9, 11); a a d d d,
+        # passages 1 (corners 1, 0) and 3 (corners 7, 6): 0, 6, 1, 7
+        # alternate; pieces a d and d d a
+        ("genus-3-closed-aaddd", polygon_4g(3), False, [0, 0, 6, 6, 6], [0, 6], [6, 6, 0]),
+        # cyclic order (0, 2, 1, 3, 4, 6, 5, 7, 8, 10, 9, 11); a a b b b c,
+        # passages 1 (corners 1, 0) and 3 (corners 3, 2): 0, 2, 1, 3
+        # alternate; pieces a b and b b c a
+        ("genus-3-closed-aabbbc", one_vertex_3, False, [0, 0, 2, 2, 2, 4], [0, 2], [2, 2, 4, 0]),
+    ]
+
+
+SMOOTHINGS = smoothings()
+
+
+@pytest.mark.parametrize("name, m, punctured_faces, u, x, y", SMOOTHINGS, ids=[s[0] for s in SMOOTHINGS])
+def test_smoothing(name, m, punctured_faces, u, x, y):
+    # Smoothing a self-crossing of a closed curve u in minimal position,
+    # respecting orientations, gives a multicurve u' drawn in a neighbourhood
+    # of u with the other crossings of u only, and meeting a curve v in
+    # minimal position with u only where u does: i(u') <= i(u) - 1 and
+    # i(u', v) <= i(u, v) for every v.
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    assert 6 <= len(SMOOTHINGS) <= 12
+    assert is_rotation(u, x + y), (name, u, x, y)
+    gi = GeometricIntersectionPairing(m, punctured_faces=punctured_faces)
+    iu = gi([u])
+    assert iu >= 1, (name, u)
+    assert gi([x, y]) <= iu - 1, (name, u, x, y)
+    rng = random.Random(len(m.vertex_permutation()) + len(u))
+    others = [random_closed_walk(m, rng, length) for length in (3, 8, 20)]
+    for v in m.faces() + [u, x, y] + others:
+        assert gi([x, y], [v]) <= gi([u], [v]), (name, u, x, y, v)
+
+
 AGREEMENT_LENGTHS = (3, 8, 20, 40)
 
 
