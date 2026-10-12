@@ -1083,6 +1083,71 @@ def test_closed_face_boundaries(name, m):
             assert gi([w], [f]) == 0, (f, w)
 
 
+def invariance_walks(m):
+    rng = random.Random(len(m.vertex_permutation()) + 3)
+    return [random_closed_walk(m, rng, length) for length in (3, 8, 20) for _ in range(2)]
+
+
+def intersection_table(gi, walks):
+    r"""
+    Return the table of intersection numbers of ``walks`` (diagonal:
+    self-intersection); an empty walk is contractible and counts 0.
+    """
+    return [[0 if not (u and v) else (gi([u]) if i == j else gi([u], [v]))
+             for j, v in enumerate(walks)] for i, u in enumerate(walks)]
+
+
+def compose_images(mor, walks):
+    return [[x for h in w for x in mor[h]] for w in walks]
+
+
+@pytest.mark.parametrize("name, m", CLOSED_MAPS, ids=CLOSED_IDS)
+def test_closed_choices_invariance(name, m):
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    walks = invariance_walks(m)
+    reference = intersection_table(GeometricIntersectionPairing(m), walks)
+    index = [i for i, (n, _) in enumerate(CLOSED_MAPS) if n == name][0]
+    for tree, cotree, cocotree in test_triangle_system.choices(m, index):
+        t, mor = m.triangle_system(tree, cotree, cocotree, relabel=True, mapping=True)
+        T = BipartiteHyperbolicTriangulation(t)
+        reduced = [T.strongly_reduced(w) for w in compose_images(mor, walks)]
+        gi = GeometricIntersectionPairing(t, punctured_faces=True)
+        assert intersection_table(gi, reduced) == reference, (name, tree, cotree, cocotree, walks)
+
+
+@pytest.mark.parametrize("name, m", CLOSED_MAPS, ids=CLOSED_IDS)
+def test_closed_derived_maps_invariance(name, m):
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    walks = invariance_walks(m)
+    reference = intersection_table(GeometricIntersectionPairing(m), walks)
+    derived = [m.barycentric_subdivision(mapping=True)[:2],
+               m.radial_map(mapping=True)[:2],
+               m.quad_system(relabel=True, mapping=True)[:2],
+               m.triangle_system(relabel=True, mapping=True)]
+    for d, mor in derived:
+        gi = GeometricIntersectionPairing(d)
+        assert intersection_table(gi, compose_images(mor, walks)) == reference, (name, walks)
+
+
+ONE_VERTEX_MAPS = [(name, m) for name, m in CLOSED_MAPS if name.startswith("one_vertex_")]
+
+
+@pytest.mark.parametrize("name, m", ONE_VERTEX_MAPS, ids=[n for n, _ in ONE_VERTEX_MAPS])
+def test_closed_two_derivations_invariance(name, m):
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    assert len(ONE_VERTEX_MAPS) == 3
+    walks = invariance_walks(m)
+    reference = intersection_table(GeometricIntersectionPairing(m), walks)
+    t, mor = m.triangle_system(relabel=True, mapping=True)
+    b, mor2, _ = t.barycentric_subdivision(mapping=True)
+    images = compose_images(mor2, compose_images(mor, walks))
+    gi = GeometricIntersectionPairing(b)
+    assert intersection_table(gi, images) == reference, (name, walks)
+
+
 AGREEMENT_LENGTHS = (3, 8, 20, 40)
 
 
