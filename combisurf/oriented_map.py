@@ -3586,9 +3586,9 @@ class OrientedMap:
           they are spanning trees, that ``cocotree`` is a spanning tree of the
           graph of strands, and to check the map built when ``relabel`` is
           set. With ``False``, a ``cocotree`` holding a half-edge that starts
-          no strand either raises an error, an ``IndexError`` or a
-          ``ValueError`` on an inactive half-edge, or returns a wrong result,
-          depending on that half-edge.
+          no strand is not detected: depending on that half-edge, the call
+          raises an ``IndexError``, raises a ``ValueError`` on an inactive
+          half-edge, or returns a wrong result.
 
         - ``punctured_faces`` -- (default: ``False``) a boolean or a list of
           face indices; the faces that are punctured, ``True`` standing for

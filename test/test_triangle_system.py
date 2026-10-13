@@ -373,6 +373,9 @@ def test_punctured_sizes(name, m, punctured, choice):
 def test_punctured_images(name, m, punctured, choice):
     tree = {h // 2 for h in choice[0] if h != -1}
     t, mor, _ = m.triangle_system(*choice, mapping=True, punctured_faces=punctured)
+    # The docstring bounds the images by four. The bound three in genus 0 is
+    # observed, not proved: no image of length four occurs on any genus 0
+    # case of PUNCTURED_CASES.
     longest = 3 if m.genus() == 0 else 4
     vp = m.vertex_permutation()
     assert len(mor) == len(vp)
@@ -394,7 +397,6 @@ def test_punctured_images(name, m, punctured, choice):
             t._check_walk(w, closed=True)
 
 
-@pytest.mark.parametrize("name, m, punctured, choice", PUNCTURED_CASES, ids=PUNCTURED_IDS)
 def check_punctured_homotopy(m, punctured, t, mor, t_punctured):
     r"""
     Check that the images under ``mor`` of the boundaries of the filled faces
