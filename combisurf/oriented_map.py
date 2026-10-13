@@ -3585,10 +3585,8 @@ class OrientedMap:
           half-edges of ``tree`` and ``cotree`` are ones of this map, that
           they are spanning trees, that ``cocotree`` is a spanning tree of the
           graph of strands, and to check the map built when ``relabel`` is
-          set. With ``False``, a ``cocotree`` holding a half-edge that starts
-          no strand is not detected: depending on that half-edge, the call
-          raises an ``IndexError``, raises a ``ValueError`` on an inactive
-          half-edge, or returns a wrong result.
+          set. A ``cocotree`` holding a half-edge that starts no strand, or
+          the same strand twice, raises a ``ValueError`` in every case.
 
         - ``punctured_faces`` -- (default: ``False``) a boolean or a list of
           face indices; the faces that are punctured, ``True`` standing for
@@ -3883,6 +3881,10 @@ class OrientedMap:
             Traceback (most recent call last):
             ...
             ValueError: the half-edge 0 starts no strand
+            sage: m.triangle_system(tree, cotree, [0, 2, 6], check=False)
+            Traceback (most recent call last):
+            ...
+            ValueError: the half-edge 0 starts no strand
 
         With punctured faces, the first loop starts no strand, and the corner
         of a monogon is no strand either::
@@ -4054,7 +4056,10 @@ class OrientedMap:
             cocotree = list(cocotree)
             listed = set()
             for h in cocotree:
-                if check and h not in next_in_strand:
+                # tested even without check: from a half-edge that starts no
+                # strand, the folds below may build a wrong map without any
+                # error, and the test costs one lookup per strand
+                if h not in next_in_strand:
                     raise ValueError(f"the half-edge {h} starts no strand")
                 if h in listed:
                     raise ValueError(f"the strand of the half-edge {h} is listed twice")

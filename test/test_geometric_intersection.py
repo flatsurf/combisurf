@@ -1249,7 +1249,10 @@ def test_punctured_agreement():
     # intersection with every face punctured of their strongly reduced
     # representatives. This is observed on every instance, not a theorem of
     # the references, which cover closed surfaces; without the strong
-    # reduction, the two numbers differ on some pairs.
+    # reduction, the two numbers differ on some pairs. Counting with every
+    # face of t punctured, not only those of P, is valid because strongly
+    # reduced walks are in minimal position. The reference goes through the
+    # one-vertex reduction, independent of the triangle system.
     from combisurf.geometric_intersection import GeometricIntersectionPairing
 
     instances = [(name, t, punctured) for name, t, punctured in test_strongly_reduced_walks.INSTANCES if punctured]
@@ -1258,7 +1261,7 @@ def test_punctured_agreement():
     num_different = 0
     for name, t, punctured in instances:
         T = BipartiteHyperbolicTriangulation(t, punctured)
-        gi = GeometricIntersectionPairing(t, punctured_faces=punctured)
+        gi = GeometricIntersectionPairing(t, punctured_faces=punctured, algorithm="reduced_map")
         gi_all = GeometricIntersectionPairing(t, punctured_faces=True)
         rng = random.Random(len(t.vertex_permutation()) + len(punctured))
         walks = [random_closed_walk(t, rng, length) for length in AGREEMENT_LENGTHS for _ in range(3)]
@@ -1298,7 +1301,10 @@ def test_punctured_triangle_system_agreement():
     # The images under the triangle system of the face boundaries and of
     # random closed walks of m, strongly reduced, have on the triangle system
     # with every face punctured the intersection numbers of the walks on m
-    # with the faces of P punctured.
+    # with the faces of P punctured. Counting with every face of the triangle
+    # system punctured, not only its punctured faces, is valid because
+    # strongly reduced walks are in minimal position. The reference goes
+    # through the one-vertex reduction, independent of the triangle system.
     from combisurf.geometric_intersection import GeometricIntersectionPairing
 
     instances = punctured_triangle_system_instances()
@@ -1311,8 +1317,54 @@ def test_punctured_triangle_system_agreement():
         rng = random.Random(len(m.vertex_permutation()) + len(punctured))
         walks = m.faces() + [random_closed_walk(m, rng, length) for length in (3, 8, 20) for _ in range(2)]
         reduced = [T.strongly_reduced(w) if w else [] for w in compose_images(mor, walks)]
-        reference = intersection_table(GeometricIntersectionPairing(m, punctured_faces=punctured), walks)
+        reference = intersection_table(GeometricIntersectionPairing(m, punctured_faces=punctured,
+                                                                    algorithm="reduced_map"), walks)
         got = intersection_table(GeometricIntersectionPairing(t, punctured_faces=True), reduced)
         assert got == reference, (name, choice)
         num_pairs += len(walks) * (len(walks) + 1) // 2
     assert num_pairs == 7605
+
+
+def test_algorithms_agreement():
+    # The triangle system and the one-vertex reduction give the same
+    # intersection numbers, on the maps and punctured faces of the triangle
+    # system tests, and on each of these maps with every face punctured.
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    instances = [(name, m, punctured) for name, m, punctured, _ in punctured_triangle_system_instances()]
+    assert len(instances) == 46
+    maps = []
+    for _, m, _ in instances:
+        if not any(m == x for x in maps):
+            maps.append(m)
+    assert len(maps) == 20
+    instances += [(f"map-{i}-all", m, True) for i, m in enumerate(maps)]
+    num_pairs = 0
+    for name, m, punctured in instances:
+        rng = random.Random(len(m.vertex_permutation()) + 7)
+        walks = m.faces() + [random_closed_walk(m, rng, length) for length in (3, 8, 20) for _ in range(2)]
+        tables = [intersection_table(GeometricIntersectionPairing(m, punctured_faces=punctured, algorithm=algorithm),
+                                     walks)
+                  for algorithm in ("triangle_system", "reduced_map")]
+        assert tables[0] == tables[1], (name, punctured, walks)
+        num_pairs += len(walks) * (len(walks) + 1) // 2
+    assert num_pairs == 10544
+
+
+def test_algorithm_errors():
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    octagon = polygon_4g(2)
+    for punctured_faces in (False, []):
+        with pytest.raises(ValueError, match="requires at least one punctured face"):
+            GeometricIntersectionPairing(octagon, punctured_faces=punctured_faces, algorithm="reduced_map")
+    for m, punctured_faces in [(octagon, False), (octagon, True), (OrientedMap(vp="(0,1,~0,~1)"), True)]:
+        with pytest.raises(ValueError, match="algorithm must be"):
+            GeometricIntersectionPairing(m, punctured_faces=punctured_faces, algorithm="quad_system")
+    # the Euler characteristic is checked before the algorithm
+    torus = OrientedMap(vp="(0,1,~0,~1)")
+    with pytest.raises(NotImplementedError, match="negative Euler characteristic"):
+        GeometricIntersectionPairing(torus, algorithm="reduced_map")
+    with pytest.raises(NotImplementedError, match="negative Euler characteristic"):
+        GeometricIntersectionPairing(torus, algorithm="unknown")

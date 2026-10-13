@@ -7,22 +7,25 @@ faces* (punctures or boundary components); the other faces, the *filled
 faces*, are filled in. With no punctured face, the surface is closed. A closed
 curve is a closed walk on ``m`` (see :mod:`~combisurf.oriented_map`).
 
-With at least one punctured face, the computation happens on a reduced map
-(see :meth:`~combisurf.oriented_map.OrientedMap.reduced_map`) that has a single
-vertex and whose faces are exactly the punctured faces. It is obtained from
-``m`` by contracting a spanning forest and deleting the edges of a coforest in
-which the filled faces get merged into the punctured ones. The fundamental
-group of the surface is then free on the edges of the reduced map, and a
-closed curve becomes a cyclically reduced word in its half-edges.
+When every face is punctured, the computation happens on a reduced map (see
+:meth:`~combisurf.oriented_map.OrientedMap.reduced_map`) that has a single
+vertex and the same faces, obtained from ``m`` by contracting a spanning tree.
+The fundamental group of the surface is then free on the edges of the reduced
+map, and a closed curve becomes a cyclically reduced word in its half-edges.
 
-On a closed surface, of genus at least `2`, a closed curve is first replaced
-by a canonical representative of its free homotopy class, unique up to
-rotation and whose reverse is the canonical representative of the reverse
-curve (:ref:`colin-de-verdiere-despre-dubois-2024`, Proposition 3.5). By
-:ref:`dubois-2024`, Proposition 1.5, the geometric intersection of canonical
-representatives on the closed surface equals their geometric intersection
-with every face punctured, which is computed as above (see the
-``ALGORITHM:`` section of :class:`GeometricIntersectionPairing`).
+When some face is filled, the closed surface included, ``m`` is first
+replaced by its triangle system (see
+:meth:`~combisurf.oriented_map.OrientedMap.triangle_system`), on which a
+closed curve has a canonical representative of its free homotopy class,
+unique up to rotation and whose reverse is the canonical representative of
+the reverse curve (:ref:`colin-de-verdiere-despre-dubois-2024`, Proposition
+3.5). By :ref:`dubois-2024`, Proposition 1.5, on a closed surface, the
+geometric intersection of canonical representatives equals their geometric
+intersection on the triangle system with every face punctured, which is
+computed as above; with punctured faces the same equality is observed, not
+proved by these references. The keyword ``algorithm`` of
+:class:`GeometricIntersectionPairing` selects either computation, see its
+``ALGORITHM:`` section.
 
 The algorithm uses the description from :ref:`cohen-lustig-1987` that
 reduces the problem of geometric intersection to word combinatorics. To
@@ -96,6 +99,21 @@ class GeometricIntersectionPairing:
       then the faces corresponding to them are considered as punctured. With
       no punctured face, the surface is closed. In every case the surface
       without its punctured faces must have negative Euler characteristic.
+
+    - ``algorithm`` -- (default: ``None``) one of
+
+      - ``"triangle_system"`` -- curves are sent to the triangle system of
+        ``m``, where every letter has an image of length at most `4`, and
+        strongly reduced there; valid for every choice of punctured faces
+
+      - ``"reduced_map"`` -- curves are sent to a map with one vertex whose
+        faces are the punctured faces; requires at least one punctured face.
+        The images of letters have unbounded length when some face is filled,
+        as the boundary of a filled face gets merged into a punctured one.
+
+      - ``None`` -- ``"reduced_map"`` if every face is punctured, the images
+        of letters having then length at most `1`, and ``"triangle_system"``
+        otherwise
 
     EXAMPLES:
 
@@ -241,6 +259,32 @@ class GeometricIntersectionPairing:
         sage: gi3([eight01])
         1
 
+    With some filled face, the default goes through the triangle system, and
+    with every face punctured through the reduced map. Both algorithms agree::
+
+        sage: gi0._algorithm, gi._algorithm
+        ('triangle_system', 'reduced_map')
+        sage: curves = m.faces() + [eight01, word_init("0,1,2,0,~4,~3,0,1,2")]
+        sage: for P in [[1, 2, 3], [0, 1, 2]]:
+        ....:     gt = GeometricIntersectionPairing(m, punctured_faces=P, algorithm="triangle_system")
+        ....:     gr = GeometricIntersectionPairing(m, punctured_faces=P, algorithm="reduced_map")
+        ....:     print(all(gt([u], [v]) == gr([u], [v]) for u in curves for v in curves))
+        True
+        True
+
+    The algorithm ``"reduced_map"`` needs a punctured face, and an unknown
+    algorithm is rejected::
+
+        sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
+        sage: GeometricIntersectionPairing(octagon, algorithm="reduced_map")
+        Traceback (most recent call last):
+        ...
+        ValueError: algorithm="reduced_map" requires at least one punctured face
+        sage: GeometricIntersectionPairing(octagon, algorithm="quad_system")
+        Traceback (most recent call last):
+        ...
+        ValueError: algorithm must be "triangle_system", "reduced_map" or None (got 'quad_system')
+
     TESTS:
 
     Repeated face indices count once::
@@ -278,25 +322,43 @@ class GeometricIntersectionPairing:
 
     ALGORITHM:
 
-    On a closed surface, ``m`` is first replaced by its triangle system `t`
-    (see :meth:`~combisurf.oriented_map.OrientedMap.triangle_system`), a
-    triangulation with three vertices of degree `4g + 2 \geq 10` and white and
-    black triangles, a reducing triangulation in the sense of
+    With ``algorithm="reduced_map"``, ``m`` is replaced by a map with one
+    vertex whose faces are exactly the punctured faces, obtained by
+    contracting a spanning forest and deleting the edges of a coforest in
+    which the filled faces get merged into the punctured ones (see
+    :meth:`~combisurf.oriented_map.OrientedMap.reduced_map`). The fundamental
+    group of the surface is free on its edges, and the image of a closed walk,
+    cyclically reduced, is the input of the free group computation of
+    :ref:`cohen-lustig-1987`. A deleted edge is sent to the rest of the
+    boundary of a filled face, so the images of letters have unbounded length
+    unless every face is punctured.
+
+    With ``algorithm="triangle_system"``, ``m`` is replaced by its triangle
+    system `t` (see
+    :meth:`~combisurf.oriented_map.OrientedMap.triangle_system`), a
+    triangulation with three vertices and white and black triangles, besides
+    one punctured triangle and punctured bigons when some face is punctured.
+    On a closed surface of genus `g`, its vertices have degree `4g + 2 \geq
+    10` and it is a reducing triangulation in the sense of
     :ref:`colin-de-verdiere-despre-dubois-2024`. A closed walk of ``m`` is
-    sent to `t`, and then to its strongly reduced representative, see
+    sent to `t`, every letter going to a walk of length at most `4`, and then
+    to its strongly reduced representative, see
     :meth:`~combisurf.bipartite_hyperbolic_triangulation.BipartiteHyperbolicTriangulation.strongly_reduced`,
     in time linear in its length. The strongly reduced representative is
     unique up to rotation (:ref:`colin-de-verdiere-despre-dubois-2024`,
     Proposition 3.5), the one of the reverse is the reverse, and it is empty
     exactly for contractible walks. By :ref:`dubois-2024`, Proposition 1.5,
-    the geometric intersection of strongly reduced closed walks on the closed
-    surface equals their geometric intersection on `t` with every face
-    punctured. A strongly reduced closed walk has no backtrack, so that its
-    image on the one-vertex map of `t`, obtained by contracting a spanning
-    tree, is a cyclically reduced word, on which the free group computation of
-    the punctured case applies.
+    on a closed surface, the geometric intersection of strongly reduced
+    closed walks equals their geometric intersection on `t` with every face
+    punctured. With punctured faces, the same equality, for the surface
+    without the punctured faces of `t`, is observed on every tested instance
+    but not proved by these references, which cover closed surfaces. A
+    strongly reduced closed walk has no backtrack, so that its image on the
+    one-vertex map of `t`, obtained by contracting a spanning tree, is a
+    cyclically reduced word, on which the free group computation above
+    applies.
     """
-    def __init__(self, m, punctured_faces=False):
+    def __init__(self, m, punctured_faces=False, algorithm=None):
         if not isinstance(m, OrientedMap):
             raise TypeError("m must be an oriented map")
         if not isinstance(punctured_faces, bool) and not isinstance(punctured_faces, Sequence):
@@ -319,17 +381,29 @@ class GeometricIntersectionPairing:
         if self._cm.euler_characteristic() - len(punctured_faces) >= 0:
             raise NotImplementedError("geometric intersection is only implemented on surfaces of negative Euler characteristic")
 
-        if not self._punctured_faces:
-            # Closed surface of genus at least 2. A closed walk of self._cm
-            # goes to its triangle system t, a bipartite hyperbolic
-            # triangulation on which its strongly reduced representative is
-            # unique and stable under reversal. The geometric intersection
-            # of such representatives on the closed surface is their
-            # intersection on t with every face punctured (Dubois 2024,
-            # Proposition 1.5), computed on the one-vertex map of t.
-            t, mor_t, _ = self._cm.triangle_system(relabel=True, mapping=True)
+        if algorithm is None:
+            # with every face punctured the coforest of the reduction is
+            # empty, so that every letter has an image of length at most 1
+            algorithm = "reduced_map" if len(punctured_faces) == self._cm.num_faces() else "triangle_system"
+        if algorithm == "reduced_map":
+            if not punctured_faces:
+                raise ValueError('algorithm="reduced_map" requires at least one punctured face')
+        elif algorithm != "triangle_system":
+            raise ValueError(f'algorithm must be "triangle_system", "reduced_map" or None (got {algorithm!r})')
+        self._algorithm = algorithm
+
+        if algorithm == "triangle_system":
+            # A closed walk of self._cm goes to the triangle system t, a
+            # bipartite hyperbolic triangulation on which its strongly reduced
+            # representative is unique and stable under reversal. The
+            # geometric intersection of such representatives in the surface
+            # is their intersection on t with every face punctured (Dubois
+            # 2024, Proposition 1.5, for closed surfaces), computed on the
+            # one-vertex map of t.
+            t, mor_t, t_punctured = self._cm.triangle_system(relabel=True, mapping=True,
+                                                             punctured_faces=punctured_faces)
             self._mor_t = _morphism_arrays(mor_t)
-            self._T = BipartiteHyperbolicTriangulation(t)
+            self._T = BipartiteHyperbolicTriangulation(t, t_punctured)
             all_faces = list(range(t.num_faces()))
             f, c, _ = t.forest_coforest_decomposition(root_faces=all_faces)
             r, mor = t.reduced_map(forest=f, coforest=c, relabel=True, mapping=True, mutable=False)

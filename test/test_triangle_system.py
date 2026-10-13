@@ -520,6 +520,25 @@ def test_punctured_errors():
         m.triangle_system(punctured_faces=[2])
 
 
+def test_no_strand_without_check():
+    # a cocotree half-edge that starts no strand is refused with check=False
+    # as well: a half-edge of the tree, the first loop n and the corner of a
+    # monogon n + 1, the last two with punctured faces
+    m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+    n = len(m.vertex_permutation())
+    tree, cotree, _ = m.tree_cotree_decomposition()
+    h = next(h for h in tree if h != -1)
+    for punctured in (False, True):
+        strands = m.strands(tree, cotree, punctured_faces=punctured)
+        cocotree = list(random_strand_tree(strands, random.Random(0)))
+        m.triangle_system(tree, cotree, cocotree, check=False, punctured_faces=punctured)
+        bad = [h, h ^ 1] + ([n, n + 1] if punctured else [])
+        for x in bad:
+            for check in (True, False):
+                with pytest.raises(ValueError, match=f"the half-edge {x} starts no strand"):
+                    m.triangle_system(tree, cotree, cocotree[:-1] + [x], check=check, punctured_faces=punctured)
+
+
 @pytest.mark.parametrize("name, m, punctured, choice", PUNCTURED_CASES[::CHOICES], ids=PUNCTURED_IDS[::CHOICES])
 def test_punctured_first_loop_in_cocotree(name, m, punctured, choice):
     # a cocotree holding the strand of the first loop n is refused; it is a
