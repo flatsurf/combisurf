@@ -7,13 +7,16 @@ faces* (punctures or boundary components); the other faces, the *filled
 faces*, are filled in. With no punctured face, the surface is closed. A closed
 curve is a closed walk on ``m`` (see :mod:`~combisurf.oriented_map`).
 
-When every face is punctured, the computation happens on a reduced map (see
-:meth:`~combisurf.oriented_map.OrientedMap.reduced_map`) that has a single
-vertex and the same faces, obtained from ``m`` by contracting a spanning tree.
-The fundamental group of the surface is then free on the edges of the reduced
-map, and a closed curve becomes a cyclically reduced word in its half-edges.
+With at least one punctured face, the computation happens by default on a
+reduced map (see :meth:`~combisurf.oriented_map.OrientedMap.reduced_map`)
+that has a single vertex and whose faces are exactly the punctured faces. It
+is obtained from ``m`` by contracting a spanning forest and deleting the
+edges of a coforest in which the filled faces get merged into the punctured
+ones. The fundamental group of the surface is then free on the edges of the
+reduced map, and a closed curve becomes a cyclically reduced word in its
+half-edges.
 
-When some face is filled, the closed surface included, ``m`` is first
+On a closed surface, and on request with punctured faces, ``m`` is first
 replaced by its triangle system (see
 :meth:`~combisurf.oriented_map.OrientedMap.triangle_system`), on which a
 closed curve has a canonical representative of its free homotopy class,
@@ -111,9 +114,8 @@ class GeometricIntersectionPairing:
         The images of letters have unbounded length when some face is filled,
         as the boundary of a filled face gets merged into a punctured one.
 
-      - ``None`` -- ``"reduced_map"`` if every face is punctured, the images
-        of letters having then length at most `1`, and ``"triangle_system"``
-        otherwise
+      - ``None`` -- ``"reduced_map"`` if some face is punctured, and
+        ``"triangle_system"`` on a closed surface
 
     EXAMPLES:
 
@@ -259,11 +261,9 @@ class GeometricIntersectionPairing:
         sage: gi3([eight01])
         1
 
-    With some filled face, the default goes through the triangle system, and
-    with every face punctured through the reduced map. Both algorithms agree::
+    With punctured faces, the default algorithm is ``"reduced_map"``, and the
+    algorithm ``"triangle_system"`` agrees with it::
 
-        sage: gi0._algorithm, gi._algorithm
-        ('triangle_system', 'reduced_map')
         sage: curves = m.faces() + [eight01, word_init("0,1,2,0,~4,~3,0,1,2")]
         sage: for P in [[1, 2, 3], [0, 1, 2]]:
         ....:     gt = GeometricIntersectionPairing(m, punctured_faces=P, algorithm="triangle_system")
@@ -382,9 +382,11 @@ class GeometricIntersectionPairing:
             raise NotImplementedError("geometric intersection is only implemented on surfaces of negative Euler characteristic")
 
         if algorithm is None:
-            # with every face punctured the coforest of the reduction is
-            # empty, so that every letter has an image of length at most 1
-            algorithm = "reduced_map" if len(punctured_faces) == self._cm.num_faces() else "triangle_system"
+            # the reduced map is faster even with filled faces: on a map with
+            # 60 half-edges, genus 4, 14 faces of which one punctured, a pair
+            # of walks of length 1000 takes 1.63 ms against 7.05 ms through
+            # the triangle system, whose one-vertex map has 25 edges against 8
+            algorithm = "reduced_map" if punctured_faces else "triangle_system"
         if algorithm == "reduced_map":
             if not punctured_faces:
                 raise ValueError('algorithm="reduced_map" requires at least one punctured face')
