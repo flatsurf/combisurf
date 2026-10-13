@@ -3285,7 +3285,52 @@ class OrientedMap:
                 proj.append(array('i', [relabelling[a], relabelling[b]]))
         return quad, proj, bigons
 
-    def strands(self, tree, cotree, check=True):
+    def _monogon_map(self, punctured):
+        r"""
+        Return this map with a loop bounding a monogon in each face of
+        ``punctured``.
+
+        ``punctured`` is a sorted list of face indices. Let `n` be the length
+        of the vertex permutation and `r` the first half-edge of the `k`-th
+        face of ``punctured`` in :meth:`faces`. The loop of that face has the
+        half-edges ``n + 2k`` and ``n + 2k + 1``, both at the tail of `r`, in
+        the corner of the face before `r`: the half-edge ``n + 2k`` comes
+        right before `r` in the face, which gets one more side, and ``n + 2k
+        + 1`` alone bounds the monogon. The other half-edges keep their
+        labels and the faces their sides. The time is linear in the size of
+        this map.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
+            sage: m._monogon_map([1])
+            OrientedMap("(0,~2,1,~0,~3,3,2,~1)", "(0,1,2)(~0,~1,~2,3)(~3)")
+        """
+        vp = self._vp
+        fp = self._fp
+        n = len(vp)
+        b = len(punctured)
+        vp2 = array('i', vp)
+        fp2 = array('i', fp)
+        vp2.extend([-1] * (2 * b))
+        fp2.extend([-1] * (2 * b))
+        faces = self.faces()
+        for k, f in enumerate(punctured):
+            r = faces[f][0]
+            # the half-edge before r in its face is p, and p ^ 1 follows r
+            # around their common vertex
+            p = vp[r] ^ 1
+            loop = n + 2 * k
+            fp2[p] = loop
+            fp2[loop] = r
+            fp2[loop + 1] = loop + 1
+            vp2[loop] = p ^ 1
+            vp2[r] = loop + 1
+            vp2[loop + 1] = loop
+        return OrientedMap(vp=vp2, fp=fp2, mutable=False, check=False)
+
+    def strands(self, tree, cotree, check=True, punctured_faces=False):
         r"""
         Return the strands of this map for the given tree and cotree.
 
@@ -3304,6 +3349,21 @@ class OrientedMap:
         edges through the corners of this map merged by the contractions and
         the deletions.
 
+        With ``punctured_faces``, each punctured face gets a loop at one of
+        its corners, which bounds a monogon containing the puncture, the rest
+        of the face staying filled. Let `n` be the length of the vertex
+        permutation and `r` the first half-edge of the `k`-th punctured face,
+        in increasing order of the face indices, as listed by :meth:`faces`.
+        The loop of that face has the half-edges ``n + 2k`` and ``n + 2k +
+        1``, at the tail of `r`: ``n + 2k`` comes right before `r` in the
+        filled part of the face and ``n + 2k + 1`` alone bounds the monogon.
+        The loops are remaining edges, never in ``tree`` nor ``cotree``, and
+        the strands are the corners of the reduced map that lie in a filled
+        face, that is all of them but the `b` corners ``(n + 2k + 1, n +
+        2k)`` of the monogons. With `b` punctured faces and spanning ``tree``
+        and ``cotree``, there are `2g + b` remaining edges and `4g + b`
+        strands.
+
         INPUT:
 
         - ``tree``, ``cotree`` -- the half-edges of the edges to contract and
@@ -3316,8 +3376,13 @@ class OrientedMap:
           half-edges of ``tree`` and ``cotree`` are ones of this map and that
           neither contains a cycle
 
+        - ``punctured_faces`` -- (default: ``False``) a boolean or a list of
+          face indices; the faces that get a loop, ``True`` standing for every
+          face and ``False`` for none
+
         OUTPUT: the list of the strands ``(h, h')``, one for each half-edge
-        ``h`` of a remaining edge, in increasing order of ``h``
+        ``h`` of a remaining edge whose corner is filled, in increasing order
+        of ``h``
 
         EXAMPLES:
 
@@ -3351,6 +3416,15 @@ class OrientedMap:
             sage: m.vertex_permutation()
             array('i', [6, 3, 1, 0, 2, 7, 5, 4])
 
+        With its face punctured, it gets a loop with the half-edges ``8`` and
+        ``9``, at the tail of the first half-edge ``0`` of the face, and one
+        more strand, the strand ``(9, 8)`` around the monogon being left out::
+
+            sage: m.faces()
+            [[0, 2, 1, 3, 4, 6, 5, 7]]
+            sage: m.strands([], [], punctured_faces=True)
+            [(0, 9), (1, 3), (2, 1), (3, 0), (4, 2), (5, 7), (6, 5), (7, 4), (8, 6)]
+
         TESTS::
 
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
@@ -3371,11 +3445,20 @@ class OrientedMap:
         """
         if self.has_folded_edge():
             raise NotImplementedError("strands is not implemented on a map with a folded edge")
+        punctured = self._check_face_list(punctured_faces)
+        n = len(self._vp)
         kind, _, _ = self._forest_coforest_kinds(tree, cotree, check, ("tree", "cotree"))
         vp = self._vp
+        if punctured:
+            # the loops are remaining edges
+            vp = self._monogon_map(punctured)._vp
+            kind.extend([0] * len(punctured))
         result = []
         for h in range(len(vp)):
             if vp[h] == -1 or kind[h // 2]:
+                continue
+            if h >= n and h % 2:
+                # the corner of the monogon
                 continue
             # contracting the edge of y puts the rotation at the head of y
             # after y, deleting it removes y from the rotation
@@ -3386,7 +3469,7 @@ class OrientedMap:
         return result
 
     def triangle_system(self, tree=None, cotree=None, cocotree=None, relabel=False, mapping=False, mutable=False,
-                        check=True):
+                        check=True, punctured_faces=False):
         r"""
         Return the triangle system of this map for the given tree, cotree and cocotree.
 
@@ -3415,6 +3498,24 @@ class OrientedMap:
         the white triangles have even half-edges and the black ones odd
         half-edges.
 
+        With ``punctured_faces``, each punctured face gets a loop at one of its
+        corners, bounding a monogon that contains the puncture, the rest of
+        the face being a filled face with one more side; the labels of the
+        loops are those of :meth:`strands`: with `n` the length of the vertex
+        permutation, the loop of the `k`-th punctured face has the half-edges
+        ``n + 2k``, on the filled side, and ``n + 2k + 1``, around the
+        monogon. The construction above runs on that map, the loops being
+        remaining edges and the monogons getting no face vertex. With `b`
+        punctured faces on a surface of genus `g \geq 2`, there are `2g + b`
+        remaining edges and `4g + b` strands, the corners of the monogons
+        being left out, and the result is a bipartite hyperbolic
+        triangulation of the punctured surface: three vertices, `6g + 3 + b`
+        edges, `4g + 2` triangles and `b` punctured bigons, each made of two
+        edges between the vertex and the edge vertex. The face vertex has
+        degree `4g + 2` and the other two have punctured corners. On a sphere
+        or a torus with punctured faces, the face vertex would have degree at
+        most `6`, and the construction is not implemented.
+
         INPUT:
 
         - ``tree``, ``cotree`` -- (default: ``None``) a spanning tree and a
@@ -3423,14 +3524,16 @@ class OrientedMap:
           ``-1`` are ignored. When both are ``None`` they are computed.
           Listing the same edge twice raises a ``ValueError``.
 
-        - ``cocotree`` -- (default: ``None``) a list of `2g - 1` half-edges
-          ``h``, each standing for the strand ``(h, h')`` of :meth:`strands`
-          that starts at ``h``, forming a spanning tree of the graph of
-          strands. When ``None`` it is computed. Listing the same strand twice
-          raises a ``ValueError``.
+        - ``cocotree`` -- (default: ``None``) a list of `2g + b - 1`
+          half-edges ``h``, each standing for the strand ``(h, h')`` of
+          :meth:`strands` that starts at ``h`` (with the same
+          ``punctured_faces``, a half-edge ``n + 2k`` standing for the strand
+          that starts at the loop of the `k`-th punctured face), forming a
+          spanning tree of the graph of strands. When ``None`` it is
+          computed. Listing the same strand twice raises a ``ValueError``.
 
         - ``relabel`` -- boolean (default: ``False``); whether to relabel the
-          result on ``0, 1, ..., 2 * (6g + 3) - 1``. Folding never renumbers,
+          result on ``0, 1, ..., 2 * (6g + 3 + b) - 1``. Folding never renumbers,
           so without this the labels of the barycentric subdivision are kept
           and are sparse. The relabelling goes edge by edge and preserves the
           parity of each half-edge inside its edge, hence the colours of the
@@ -3449,11 +3552,18 @@ class OrientedMap:
           set. With ``False``, a ``cocotree`` whose half-edges start no strand
           gives a wrong result.
 
-        OUTPUT: the triangle system ``t``, or the pair ``(t, mor)`` if
-        ``mapping`` is set. ``mor[h]`` is the image of the half-edge ``h``, a
-        walk of ``t`` homotopic to it once the vertices of this map are
-        identified along ``tree``, ``None`` for an inactive half-edge, and
-        ``mor[h ^ 1]`` is the reverse of ``mor[h]``:
+        - ``punctured_faces`` -- (default: ``False``) a boolean or a list of
+          face indices; the faces that are punctured, ``True`` standing for
+          every face and ``False`` for none
+
+        OUTPUT: the pair ``(t, punctured)``, or the triple ``(t, mor,
+        punctured)`` if ``mapping`` is set, where ``t`` is the triangle
+        system and ``punctured`` the sorted list of the indices of its
+        punctured bigons among the faces of ``t`` (of the relabelled result if
+        ``relabel`` is set), empty without punctured face. ``mor[h]`` is the
+        image of the half-edge ``h``, a walk of ``t`` homotopic to it once the
+        vertices of this map are identified along ``tree``, ``None`` for an
+        inactive half-edge, and ``mor[h ^ 1]`` is the reverse of ``mor[h]``:
 
         - a half-edge of ``tree`` has an empty image;
 
@@ -3466,6 +3576,11 @@ class OrientedMap:
           backtracks are removed its length is at most four, and it is empty
           when the half-edge followed by the path of ``tree`` back to its tail
           is a contractible closed walk.
+
+        With punctured faces, the homotopies take place in the surface without
+        its punctures, and a loop has no image: the image of the boundary of a
+        filled face is contractible, and the image of the boundary of a
+        punctured face is freely homotopic to the boundary of its bigon.
 
         EXAMPLES:
 
@@ -3483,7 +3598,9 @@ class OrientedMap:
             array('i', [1, 3, 5, 6])
             sage: len(m.strands(tree, cotree))
             8
-            sage: t = m.triangle_system(tree, cotree, [2, 6, 10])
+            sage: t, punctured = m.triangle_system(tree, cotree, [2, 6, 10])
+            sage: punctured
+            []
             sage: t.num_vertices(), t.num_edges(), t.num_faces()
             (3, 15, 10)
             sage: t.vertex_profile()
@@ -3506,7 +3623,7 @@ class OrientedMap:
         empty cotree, and gives the same sizes::
 
             sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
-            sage: t = m.triangle_system()
+            sage: t, _ = m.triangle_system()
             sage: t.num_vertices(), t.num_edges(), t.num_faces()
             (3, 15, 10)
             sage: t.vertex_profile()
@@ -3518,7 +3635,7 @@ class OrientedMap:
         Here every edge remains, each of them going to a walk of length two,
         and the image of ``h ^^ 1`` is the reverse of that of ``h``::
 
-            sage: t, mor = m.triangle_system(mapping=True)
+            sage: t, mor, _ = m.triangle_system(mapping=True)
             sage: mor
             [array('i', [0, 3]),
              array('i', [2, 1]),
@@ -3536,7 +3653,7 @@ class OrientedMap:
         vertex::
 
             sage: m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
-            sage: t, mor = m.triangle_system(tree, cotree, [2, 6, 10], mapping=True)
+            sage: t, mor, _ = m.triangle_system(tree, cotree, [2, 6, 10], mapping=True)
             sage: [h // 2 for h in tree if h != -1], [h // 2 for h in cotree if h != -1]
             ([0, 2], [4])
             sage: [len(w) for w in mor]
@@ -3556,10 +3673,10 @@ class OrientedMap:
         are kept and are sparse; ``relabel`` compacts them, keeping the
         colours::
 
-            sage: t = m.triangle_system(tree, cotree, [2, 6, 10])
+            sage: t, _ = m.triangle_system(tree, cotree, [2, 6, 10])
             sage: list(t.half_edges())[:8]
             [4, 5, 12, 13, 14, 15, 22, 23]
-            sage: t, mor = m.triangle_system(tree, cotree, [2, 6, 10], relabel=True, mapping=True)
+            sage: t, mor, _ = m.triangle_system(tree, cotree, [2, 6, 10], relabel=True, mapping=True)
             sage: t
             OrientedMap("(0,~12,1,~11,3,~13,4,~14,2,~10)(~0,5,~1,6,~2,7,~3,9,~4,8)(~5,10,~6,12,~8,13,~7,14,~9,11)", "(0,8,12)(~0,~10,~5)(1,5,11)(~1,~12,~6)(2,6,10)(~2,~14,~7)(3,7,13)(~3,~11,~9)(4,9,14)(~4,~13,~8)")
             sage: list(t.half_edges()) == list(range(30))
@@ -3571,10 +3688,89 @@ class OrientedMap:
 
         The result is immutable unless ``mutable`` is set::
 
-            sage: m.triangle_system().is_mutable()
+            sage: m.triangle_system()[0].is_mutable()
             False
-            sage: m.triangle_system(mutable=True).is_mutable()
+            sage: m.triangle_system(mutable=True)[0].is_mutable()
             True
+
+        With ``punctured_faces``, each punctured face gets a punctured bigon.
+        On the first map, with its face ``0`` punctured, there are five
+        remaining edges, the loop of the face ``0`` with the half-edges ``14``
+        and ``15`` included, and nine strands; with both faces punctured,
+        six remaining edges and ten strands. The result has three vertices,
+        `6g + 3 + b` edges and `4g + 2` triangles besides the bigons::
+
+            sage: m.faces()
+            [[0, 7, 4, 12, 11, 8, 1, 6, 13, 10, 3], [2, 9, 5]]
+            sage: len(m.strands(tree, cotree, punctured_faces=[0]))
+            9
+            sage: t, punctured = m.triangle_system(punctured_faces=[0])
+            sage: t.num_vertices(), t.num_edges(), t.num_faces()
+            (3, 16, 11)
+            sage: punctured, [len(t.faces()[i]) for i in punctured]
+            ([4], [2])
+            sage: t.vertex_profile()
+            [11, 11, 10]
+            sage: BipartiteHyperbolicTriangulation(t, punctured)
+            BipartiteHyperbolicTriangulation(...)
+            sage: t, punctured = m.triangle_system(punctured_faces=True)
+            sage: t.num_vertices(), t.num_edges(), t.num_faces()
+            (3, 17, 12)
+            sage: punctured
+            [0, 4]
+            sage: BipartiteHyperbolicTriangulation(t, punctured)
+            BipartiteHyperbolicTriangulation(...)
+
+        The triangles keep a single parity, and the image of the boundary of
+        a punctured face is freely homotopic to the boundary of its bigon, in
+        the surface without its punctures::
+
+            sage: t, mor, punctured = m.triangle_system(relabel=True, mapping=True, punctured_faces=[0])
+            sage: punctured
+            [4]
+            sage: [{x % 2 for x in f} for i, f in enumerate(t.faces()) if i not in punctured]
+            [{0}, {1}, {0}, {1}, {1}, {0}, {1}, {0}, {1}, {0}]
+            sage: T = BipartiteHyperbolicTriangulation(t, punctured)
+            sage: w = [x for h in m.faces()[0] for x in mor[h]]
+            sage: T.strongly_reduced(w)
+            [11, 4]
+            sage: T.strongly_reduced(t.faces()[punctured[0]])
+            [4, 11]
+            sage: w = [x for h in m.faces()[1] for x in mor[h]]
+            sage: T.strongly_reduced(w)
+            []
+
+        The map of genus two with one vertex and one face, punctured. Every
+        edge remains and goes to a walk of length two through the edge
+        vertex::
+
+            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: t, mor, punctured = octagon.triangle_system(relabel=True, mapping=True, punctured_faces=True)
+            sage: t
+            OrientedMap("(0,5,~15,2,~13,1,~11,3,~12,4,~14)(~0,7,~3,9,~4,8,~2,6,~1,10,~5)(~6,15,~10,13,~8,12,~7,14,~9,11)", "(0,~5)(~0,~14,~7)(1,6,11)(~1,~13,~10)(2,8,13)(~2,~15,~6)(3,7,12)(~3,~11,~9)(4,9,14)(~4,~12,~8)(5,10,15)")
+            sage: t.num_vertices(), t.num_edges(), t.face_profile()
+            (3, 16, [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3])
+            sage: punctured
+            [0]
+            sage: mor
+            [array('i', [0, 3]),
+             array('i', [2, 1]),
+             array('i', [4, 3]),
+             array('i', [2, 5]),
+             array('i', [4, 7]),
+             array('i', [6, 5]),
+             array('i', [4, 9]),
+             array('i', [8, 5])]
+            sage: BipartiteHyperbolicTriangulation(t, punctured)
+            BipartiteHyperbolicTriangulation(...)
+
+        On a torus with punctured faces the face vertex would have degree
+        six, and the construction is not implemented::
+
+            sage: OrientedMap(vp="(0,1,~0,~1)").triangle_system(punctured_faces=True)
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: triangle_system is not implemented in genus one with punctured faces
 
         TESTS:
 
@@ -3634,7 +3830,7 @@ class OrientedMap:
         six, not hyperbolic::
 
             sage: m = OrientedMap(fp="(0,1,2)(~0,~1,~2)")
-            sage: t, mor = m.triangle_system(mapping=True)
+            sage: t, mor, _ = m.triangle_system(mapping=True)
             sage: t
             OrientedMap("(2,~16,3,~15,5,~17)(~2,9,~3,11,~5,10)(~9,17,~11,16,~10,15)", "(2,10,16)(~2,~17,~9)(3,9,15)(~3,~16,~11)(5,11,17)(~5,~15,~10)")
             sage: t.num_vertices(), t.num_edges(), t.num_faces(), t.vertex_profile()
@@ -3694,6 +3890,15 @@ class OrientedMap:
         corners of this map. A second pass at the end gives the images. Each
         fold takes constant time and the whole is linear in the size of this
         map.
+
+        With punctured faces, the folds run on the barycentric subdivision of
+        the map with the loops, whose monogons are punctured faces of
+        :meth:`barycentric_subdivision`, the bigons. Every edge of this map
+        has filled faces on both sides there, so the folds of ``tree`` and
+        ``cotree`` are those of the closed case, and the folds of
+        ``cocotree`` never delete a side of a bigon, which only lie between
+        the vertex and an edge vertex. They may zip it, and the same links
+        give the half-edge that bounds each bigon at the end.
         """
         if self.has_folded_edge():
             raise NotImplementedError("triangle_system is not implemented on a map with a folded edge")
@@ -3715,11 +3920,18 @@ class OrientedMap:
         genus = (2 - nv + self.num_edges() - nf) // 2
         if genus == 0:
             raise NotImplementedError("triangle_system is not implemented in genus zero")
+        punctured = self._check_face_list(punctured_faces)
+        if punctured and genus == 1:
+            raise NotImplementedError("triangle_system is not implemented in genus one with punctured faces")
 
-        vp = self._vp
-        fp = self._fp
+        # the map with a loop around each puncture, on which the closed
+        # construction runs; its half-edges from n0 on are the loops
+        n0 = len(self._vp)
+        m = self._monogon_map(punctured) if punctured else self
+        vp = m._vp
+        fp = m._fp
         n = len(vp)
-        strands = self.strands(tree, cotree, check=False)
+        strands = [(h, hh) for h, hh in m.strands(tree, cotree, check=False) if h < n0 or h % 2 == 0]
         next_in_strand = {h: hh for h, hh in strands}
 
         # the graph of strands has the remaining edges as vertices; a union-find
@@ -3749,8 +3961,9 @@ class OrientedMap:
                     raise ValueError(f"the strand of the half-edge {h} is listed twice")
                 listed.add(h)
             if check:
-                if len(cocotree) != 2 * genus - 1:
-                    raise ValueError(f"cocotree must have {2 * genus - 1} strands, one less than the number of remaining edges (got {len(cocotree)})")
+                size = 2 * genus + len(punctured) - 1
+                if len(cocotree) != size:
+                    raise ValueError(f"cocotree must have {size} strands, one less than the number of remaining edges (got {len(cocotree)})")
                 for h in cocotree:
                     u = find(h // 2)
                     v = find(next_in_strand[h] // 2)
@@ -3758,7 +3971,11 @@ class OrientedMap:
                         raise ValueError("cocotree contains a cycle")
                     root[u] = v
 
-        t, _ = self.barycentric_subdivision(mutable=True)
+        monogons = []
+        if punctured:
+            h2f = m.half_edge_to_face()
+            monogons = [h2f[h] for h in range(n0 + 1, n, 2)]
+        t, _ = m.barycentric_subdivision(mutable=True, punctured_faces=monogons)
         tfp = t._fp
 
         # a half-edge of t that dies identified with another one is linked to
@@ -3821,6 +4038,17 @@ class OrientedMap:
             diagonals[d] = (s2 ^ 1, s1 ^ 1)
             diagonals[d ^ 1] = (s1, s2)
 
+        if mapping or punctured:
+            compress()
+
+        def resolve(x):
+            return x if link[x] == -1 else link[x]
+
+        # the bigon of the loop h, h + 1 is bounded by the side 2h + 2 of the
+        # subdivision from the vertex to the edge vertex of the loop, which
+        # the folds of cocotree may have zipped onto another edge
+        bigon_sides = [resolve(2 * h + 2) for h in range(n0, n, 2)]
+
         relabelling = None
         if relabel:
             tvp = t._vp
@@ -3841,16 +4069,18 @@ class OrientedMap:
         if not mutable:
             t.set_immutable()
 
+        t_punctured = []
+        if punctured:
+            if relabelling is not None:
+                bigon_sides = [relabelling[y] for y in bigon_sides]
+            t_h2f = t.half_edge_to_face()
+            t_punctured = sorted(t_h2f[y] for y in bigon_sides)
+
         if not mapping:
-            return t
+            return t, t_punctured
 
-        compress()
-
-        def resolve(x):
-            return x if link[x] == -1 else link[x]
-
-        mor = [None] * n
-        for e in range(n // 2):
+        mor = [None] * n0
+        for e in range(n0 // 2):
             h = 2 * e
             if vp[h] == -1:
                 continue
@@ -3876,7 +4106,7 @@ class OrientedMap:
                 w = [relabelling[x] for x in w]
             mor[h] = array('i', w)
             mor[h + 1] = array('i', [x ^ 1 for x in reversed(w)])
-        return t, mor
+        return t, mor, t_punctured
 
     def geometric_intersection(self, u, v=None, punctured_faces=False):
         r"""

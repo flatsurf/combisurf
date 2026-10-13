@@ -970,7 +970,7 @@ class CanonicalForm:
     ``m`` freely homotopic to a closed walk of ``m``, unique up to rotation.
     """
     def __init__(self, m):
-        t, self.mor = m.triangle_system(relabel=True, mapping=True)
+        t, self.mor, _ = m.triangle_system(relabel=True, mapping=True)
         self.T = BipartiteHyperbolicTriangulation(t)
 
     def __call__(self, w):
@@ -1109,7 +1109,7 @@ def test_closed_choices_invariance(name, m):
     reference = intersection_table(GeometricIntersectionPairing(m), walks)
     index = [i for i, (n, _) in enumerate(CLOSED_MAPS) if n == name][0]
     for tree, cotree, cocotree in test_triangle_system.choices(m, index):
-        t, mor = m.triangle_system(tree, cotree, cocotree, relabel=True, mapping=True)
+        t, mor, _ = m.triangle_system(tree, cotree, cocotree, relabel=True, mapping=True)
         T = BipartiteHyperbolicTriangulation(t)
         reduced = [T.strongly_reduced(w) for w in compose_images(mor, walks)]
         gi = GeometricIntersectionPairing(t, punctured_faces=True)
@@ -1125,7 +1125,7 @@ def test_closed_derived_maps_invariance(name, m):
     derived = [m.barycentric_subdivision(mapping=True)[:2],
                m.radial_map(mapping=True)[:2],
                m.quad_system(relabel=True, mapping=True)[:2],
-               m.triangle_system(relabel=True, mapping=True)]
+               m.triangle_system(relabel=True, mapping=True)[:2]]
     for d, mor in derived:
         gi = GeometricIntersectionPairing(d)
         assert intersection_table(gi, compose_images(mor, walks)) == reference, (name, walks)
@@ -1141,7 +1141,7 @@ def test_closed_two_derivations_invariance(name, m):
     assert len(ONE_VERTEX_MAPS) == 3
     walks = invariance_walks(m)
     reference = intersection_table(GeometricIntersectionPairing(m), walks)
-    t, mor = m.triangle_system(relabel=True, mapping=True)
+    t, mor, _ = m.triangle_system(relabel=True, mapping=True)
     b, mor2, _ = t.barycentric_subdivision(mapping=True)
     images = compose_images(mor2, compose_images(mor, walks))
     gi = GeometricIntersectionPairing(b)

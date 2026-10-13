@@ -327,7 +327,7 @@ class GeometricIntersectionPairing:
             # of such representatives on the closed surface is their
             # intersection on t with every face punctured (Dubois 2024,
             # Proposition 1.5), computed on the one-vertex map of t.
-            t, mor_t = self._cm.triangle_system(relabel=True, mapping=True)
+            t, mor_t, _ = self._cm.triangle_system(relabel=True, mapping=True)
             self._mor_t = _morphism_arrays(mor_t)
             self._T = BipartiteHyperbolicTriangulation(t)
             all_faces = list(range(t.num_faces()))

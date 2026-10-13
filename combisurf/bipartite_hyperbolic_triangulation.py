@@ -383,7 +383,7 @@ class BipartiteHyperbolicTriangulation:
             sage: from combisurf import OrientedMap
             sage: from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
             sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
-            sage: T = BipartiteHyperbolicTriangulation(m.triangle_system(relabel=True))
+            sage: T = BipartiteHyperbolicTriangulation(*m.triangle_system(relabel=True))
             sage: v = T.map().vertices()[0]
             sage: v
             [0, 27, 6, 25, 8, 29, 4, 21, 2, 23]
@@ -431,7 +431,7 @@ class BipartiteHyperbolicTriangulation:
             sage: from combisurf import OrientedMap
             sage: from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
             sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
-            sage: T = BipartiteHyperbolicTriangulation(m.triangle_system(relabel=True))
+            sage: T = BipartiteHyperbolicTriangulation(*m.triangle_system(relabel=True))
             sage: v = T.map().vertices()[0]
             sage: [T.weighted_turn(v[0] ^^ 1, h) for h in v]
             [0, 1, 2, 3, 4, 5, -4, -3, -2, -1]
@@ -496,7 +496,7 @@ class BipartiteHyperbolicTriangulation:
             sage: from combisurf import OrientedMap
             sage: from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
             sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
-            sage: T = BipartiteHyperbolicTriangulation(m.triangle_system(relabel=True))
+            sage: T = BipartiteHyperbolicTriangulation(*m.triangle_system(relabel=True))
             sage: f = T.map().faces()[0]
             sage: T.weighted_turns(f)
             [-1, -1, -1]
@@ -542,7 +542,7 @@ class BipartiteHyperbolicTriangulation:
             sage: from combisurf import OrientedMap
             sage: from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
             sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
-            sage: T = BipartiteHyperbolicTriangulation(m.triangle_system(relabel=True))
+            sage: T = BipartiteHyperbolicTriangulation(*m.triangle_system(relabel=True))
 
         The boundary of a triangle and a backtrack are not reduced::
 
@@ -638,7 +638,7 @@ class BipartiteHyperbolicTriangulation:
             sage: from combisurf import OrientedMap
             sage: from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
             sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
-            sage: t, mor = m.triangle_system(relabel=True, mapping=True)
+            sage: t, mor, _ = m.triangle_system(relabel=True, mapping=True)
             sage: T = BipartiteHyperbolicTriangulation(t)
 
         The boundary of a triangle and a backtrack are contractible::
@@ -792,7 +792,7 @@ class TurnRuns:
         sage: from combisurf import OrientedMap
         sage: from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation, TurnRuns
         sage: m = OrientedMap(fp="(0,1,~0,~1,2,3,~2,~3)")
-        sage: T = BipartiteHyperbolicTriangulation(m.triangle_system(relabel=True))
+        sage: T = BipartiteHyperbolicTriangulation(*m.triangle_system(relabel=True))
         sage: TurnRuns(T, [0, 1]).strongly_reduced()
         []
     """

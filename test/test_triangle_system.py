@@ -3,7 +3,9 @@ Triangle systems: strands, sizes, colours and images of the half-edges, on the
 maps of genus 2 to 4 of the barycentric subdivision tests, each with several
 random choices of tree, cotree and cocotree. The homotopy classes of closed
 walks are compared through the hyperbolic quadrangulations of the quad systems
-of the map and of its triangle system.
+of the map and of its triangle system. With punctured faces, the images of the
+face boundaries are compared through the strongly reduced closed walks of the
+triangle system.
 """
 import random
 
@@ -55,23 +57,44 @@ def random_strand_tree(strands, rng):
     return tree
 
 
-def choices(m, seed):
+def choices(m, seed, punctured_faces=False):
     r"""
     Return ``CHOICES`` triples ``(tree, cotree, cocotree)`` for ``m``, from
-    random roots and random spanning trees of the graph of strands.
+    random roots and random spanning trees of the graph of strands, the one
+    of the map with a loop in each face of ``punctured_faces``.
     """
     rng = random.Random(seed)
     result = []
     for _ in range(CHOICES):
         tree, cotree, _ = m.forest_coforest_decomposition((rng.randrange(m.num_vertices()),),
                                                           (rng.randrange(m.num_faces()),))
-        cocotree = random_strand_tree(m.strands(tree, cotree), rng)
+        cocotree = random_strand_tree(m.strands(tree, cotree, punctured_faces=punctured_faces), rng)
         result.append((tree, cotree, cocotree))
     return result
 
 
 CASES = [(name, m, c) for i, (name, m) in enumerate(MAPS) for c in choices(m, i)]
 IDS = [f"{name}-{j}" for name, _ in MAPS for j in range(CHOICES)]
+
+
+def punctured_sets(m):
+    r"""
+    Return the sets of punctured faces tested on ``m``: the face ``0``, every
+    other face and every face, without repetition.
+    """
+    nf = m.num_faces()
+    result = []
+    for s in ([0], list(range(0, nf, 2)), list(range(nf))):
+        if s not in result:
+            result.append(s)
+    return result
+
+
+# the sets of punctured faces of a map have distinct sizes, which name them
+PUNCTURED_CASES = [(f"{name}-b{len(p)}", m, p, c)
+                   for i, (name, m) in enumerate(MAPS) for p in punctured_sets(m)
+                   for c in choices(m, i, p)]
+PUNCTURED_IDS = [f"{name}-{j % CHOICES}" for j, (name, _, _, _) in enumerate(PUNCTURED_CASES)]
 
 
 def test_number_of_maps():
@@ -140,7 +163,8 @@ def test_strands(name, m, choice):
 def test_sizes(name, m, choice):
     g = m.genus()
     for relabel in (False, True):
-        t = m.triangle_system(*choice, relabel=relabel)
+        t, punctured = m.triangle_system(*choice, relabel=relabel)
+        assert punctured == []
         assert t.num_vertices() == 3
         assert t.num_edges() == 6 * g + 3
         assert t.num_faces() == 4 * g + 2
@@ -160,7 +184,7 @@ def image(mor, w):
 @pytest.mark.parametrize("name, m, choice", CASES, ids=IDS)
 def test_images(name, m, choice):
     tree, cotree, _ = choice
-    t, mor = m.triangle_system(*choice, mapping=True)
+    t, mor, _ = m.triangle_system(*choice, mapping=True)
     tree = {h // 2 for h in tree if h != -1}
     cotree = {h // 2 for h in cotree if h != -1}
     vp = m.vertex_permutation()
@@ -189,7 +213,7 @@ def test_images(name, m, choice):
 
 @pytest.mark.parametrize("name, m, choice", CASES, ids=IDS)
 def test_homotopy(name, m, choice):
-    t, mor = m.triangle_system(*choice, mapping=True, relabel=True)
+    t, mor, _ = m.triangle_system(*choice, mapping=True, relabel=True)
     q, proj, _ = t.quad_system(relabel=True, mapping=True)
     Q = HyperbolicQuadrangulation(q)
     mq, mproj, _ = m.quad_system(relabel=True, mapping=True)
@@ -239,6 +263,124 @@ def test_homotopy(name, m, choice):
         j = face.index(w[i])
         detour = w[:i] + face[j:] + face[:j] + w[i:]
         assert is_rotation(geodesic(detour, "right"), right)
+
+
+def reverse(w):
+    return [h ^ 1 for h in reversed(w)]
+
+
+@pytest.mark.parametrize("name, m, punctured, choice", PUNCTURED_CASES, ids=PUNCTURED_IDS)
+def test_punctured_strands(name, m, punctured, choice):
+    tree, cotree, _ = choice
+    g = m.genus()
+    b = len(punctured)
+    n = len(m.vertex_permutation())
+    strands = m.strands(tree, cotree, punctured_faces=punctured)
+    assert len(strands) == 4 * g + b
+    removed = {h // 2 for h in list(tree) + list(cotree) if h != -1}
+    remaining = [h for h in m.half_edges() if h // 2 not in removed]
+    loops = [n + 2 * k for k in range(b)]
+    assert sorted(h for h, _ in strands) == sorted(remaining + loops)
+    # a strand that neither starts nor ends at a loop is a strand without
+    # punctured face
+    closed = dict(m.strands(tree, cotree))
+    assert all(closed[h] == hh for h, hh in strands if h < n and hh < n)
+
+
+@pytest.mark.parametrize("name, m, punctured, choice", PUNCTURED_CASES, ids=PUNCTURED_IDS)
+def test_punctured_sizes(name, m, punctured, choice):
+    g = m.genus()
+    b = len(punctured)
+    for relabel in (False, True):
+        t, bigons = m.triangle_system(*choice, relabel=relabel, punctured_faces=punctured)
+        assert t.num_vertices() == 3
+        assert t.num_edges() == 6 * g + 3 + b
+        assert t.num_faces() == 4 * g + 2 + b
+        assert len(bigons) == b and bigons == sorted(bigons)
+        faces = t.faces()
+        assert all(len(faces[i]) == 2 for i in bigons)
+        triangles = [f for i, f in enumerate(faces) if i not in bigons]
+        assert all(len(f) == 3 and f[0] % 2 == f[1] % 2 == f[2] % 2 for f in triangles)
+        assert sorted(t.vertex_profile()) == [4 * g + 2, 4 * g + 2 + b, 4 * g + 2 + b]
+        assert t.genus() == g
+        assert not t.is_mutable()
+        BipartiteHyperbolicTriangulation(t, bigons)
+        if relabel:
+            assert list(t.half_edges()) == list(range(2 * (6 * g + 3 + b)))
+
+
+@pytest.mark.parametrize("name, m, punctured, choice", PUNCTURED_CASES, ids=PUNCTURED_IDS)
+def test_punctured_images(name, m, punctured, choice):
+    tree = {h // 2 for h in choice[0] if h != -1}
+    t, mor, _ = m.triangle_system(*choice, mapping=True, punctured_faces=punctured)
+    vp = m.vertex_permutation()
+    assert len(mor) == len(vp)
+    for h in range(len(vp)):
+        if vp[h] == -1:
+            assert mor[h] is None
+            continue
+        w = list(mor[h])
+        if h // 2 in tree:
+            assert w == []
+        assert len(w) <= 4
+        if w:
+            t._check_walk(w)
+        assert all(w[i + 1] != w[i] ^ 1 for i in range(len(w) - 1))
+        assert list(mor[h ^ 1]) == reverse(w)
+    for f in m.faces():
+        w = image(mor, f)
+        if w:
+            t._check_walk(w, closed=True)
+
+
+@pytest.mark.parametrize("name, m, punctured, choice", PUNCTURED_CASES, ids=PUNCTURED_IDS)
+def test_punctured_homotopy(name, m, punctured, choice):
+    t, mor, bigons = m.triangle_system(*choice, mapping=True, relabel=True, punctured_faces=punctured)
+    T = BipartiteHyperbolicTriangulation(t, bigons)
+    faces = t.faces()
+    around = {i: T.strongly_reduced(faces[i]) for i in bigons}
+    assert all(around.values())
+    matched = []
+    for i, f in enumerate(m.faces()):
+        r = T.strongly_reduced(image(mor, f))
+        if i not in punctured:
+            assert r == [], (i, r)
+            continue
+        # the puncture lies on the left of the boundary of the face, as the
+        # bigon does of its own boundary
+        found = [j for j in bigons if is_rotation(r, around[j])]
+        assert len(found) == 1, (i, r)
+        matched.append(found[0])
+    assert sorted(matched) == bigons
+
+
+@pytest.mark.parametrize("name, m, choice", CASES, ids=IDS)
+def test_no_punctured_face(name, m, choice):
+    reference = m.triangle_system(*choice, mapping=True, relabel=True)
+    for punctured in (False, []):
+        assert m.triangle_system(*choice, mapping=True, relabel=True, punctured_faces=punctured) == reference
+    assert m.strands(*choice[:2], punctured_faces=[]) == m.strands(*choice[:2])
+
+
+def test_punctured_errors():
+    torus = OrientedMap(vp="(0,1,~0,~1)")
+    torus.triangle_system()
+    with pytest.raises(NotImplementedError, match="genus one with punctured faces"):
+        torus.triangle_system(punctured_faces=True)
+    with pytest.raises(NotImplementedError, match="genus zero"):
+        OrientedMap(fp="(0,1,2)(~0,~2,~1)").triangle_system(punctured_faces=True)
+    m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+    tree, cotree, _ = m.tree_cotree_decomposition()
+    cocotree = random_strand_tree(m.strands(tree, cotree, punctured_faces=True), random.Random(0))
+    assert len(cocotree) == 5
+    m.triangle_system(tree, cotree, cocotree, punctured_faces=True)
+    with pytest.raises(ValueError, match="cocotree must have 5 strands"):
+        m.triangle_system(tree, cotree, cocotree[:4], punctured_faces=True)
+    # the strand around the monogon of the loop 14, 15 is left out
+    with pytest.raises(ValueError, match="the half-edge 15 starts no strand"):
+        m.triangle_system(tree, cotree, cocotree[:4] + [15], punctured_faces=True)
+    with pytest.raises(ValueError, match="face number out of range"):
+        m.triangle_system(punctured_faces=[2])
 
 
 def test_errors():

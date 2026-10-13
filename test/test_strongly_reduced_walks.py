@@ -26,7 +26,7 @@ def instances():
     """
     result = []
     for i, (name, m, choice) in enumerate(test_triangle_system.CASES):
-        t = m.triangle_system(*choice, relabel=True)
+        t, _ = m.triangle_system(*choice, relabel=True)
         result.append((f"closed-{name}-{i % 3}", t, []))
         rng = random.Random(i)
         punctured = sorted(rng.sample(range(t.num_faces()), rng.randint(1, 3)))
@@ -212,7 +212,7 @@ def test_weight_three_fails():
     puncture (the positions inside the punctured corner hold no half-edge).
     """
     name, m, choice = test_triangle_system.CASES[0]
-    t = m.triangle_system(*choice, relabel=True)
+    t, _ = m.triangle_system(*choice, relabel=True)
     punctured = [0]
     w = t.faces()[0]
     assert all(h % 2 == 0 for h in w)
@@ -417,7 +417,7 @@ def test_long_flips(monkeypatch):
 
 def test_errors():
     name, m, choice = test_triangle_system.CASES[0]
-    T = BipartiteHyperbolicTriangulation(m.triangle_system(*choice, relabel=True))
+    T = BipartiteHyperbolicTriangulation(*m.triangle_system(*choice, relabel=True))
     with pytest.raises(NotImplementedError):
         T.strongly_reduced([0, 1], closed=False)
     with pytest.raises(ValueError):
