@@ -180,3 +180,28 @@ def test_word_border_table():
             for i in range(1, n):
                 ref.append(b[i] if u[i] != u[b[i]] else ref[b[i]])
             assert list(t) == ref, (uu, list(t), ref)
+
+
+def test_word_apply_morphism_check():
+    from array import array
+    from combisurf.word import word_init, word_apply_morphism
+
+    mor = [word_init([0, 2, 1, 2]), word_init([1]), word_init([3, 0]), word_init([0, 0])]
+    w = word_init([0, 2, 0, 3, 1, 2, 1, 3])
+    for reduce in [False, True]:
+        assert word_apply_morphism(w, mor, reduce=reduce, check=False) == word_apply_morphism(w, mor, reduce=reduce)
+
+    # a bad entry is rejected by check=True only
+    for bad in [[0], array('l', [0]), None]:
+        bad_mor = [word_init([0]), bad]
+        with pytest.raises(ValueError, match="invalid morphism"):
+            word_apply_morphism(word_init([0]), bad_mor)
+        with pytest.raises(ValueError, match="invalid morphism"):
+            word_apply_morphism(word_init([0]), bad_mor, check=True)
+    assert word_apply_morphism(word_init([0]), [word_init([0]), [0]], check=False) == word_init([0])
+
+    # the letters are always checked, a negative one does not wrap around
+    for letter in [-1, 4]:
+        for check in [False, True]:
+            with pytest.raises(ValueError, match="invalid morphism"):
+                word_apply_morphism(word_init([0, letter]), mor, check=check)

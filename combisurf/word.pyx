@@ -877,9 +877,23 @@ def word_free_group_inverse(array.array w):
     return ans
 
 
-def word_apply_morphism(array.array w, list mor, bint reduce=True):
+def word_apply_morphism(array.array w, list mor, bint reduce=True, bint check=True):
     r"""
     Apply the free group morphism ``mor`` on the word ``w``.
+
+    INPUT:
+
+    - ``w`` -- an ``array('i')``
+
+    - ``mor`` -- a list of ``array('i')``, the images of the letters
+
+    - ``reduce`` -- boolean (default: ``True``); whether the images are
+      multiplied in the free group, otherwise they are concatenated
+
+    - ``check`` -- boolean (default: ``True``); whether to check that each
+      entry of ``mor`` is an ``array('i')``, which costs the length of ``mor``
+      at each call. With ``check=False`` the caller guarantees it. The letters
+      of ``w`` are checked to be indices of ``mor`` in both cases.
 
     EXAMPLES::
 
@@ -894,11 +908,36 @@ def word_apply_morphism(array.array w, list mor, bint reduce=True):
         array('i', [0, 2, 1, 2, 3, 0, 0, 2, 1, 2, 0, 0, 1, 3, 0, 1, 0, 0])
         sage: word_apply_morphism(word_init([0, 2, 0, 3, 1, 2, 1, 3]), mor, reduce=True)
         array('i', [0, 2, 0, 2, 1, 2, 0, 3, 0, 0])
+
+    An entry of ``mor`` that is not an ``array('i')`` is rejected unless
+    ``check=False``::
+
+        sage: from array import array
+        sage: word_apply_morphism(word_init([0]), [[0, 2]])
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid morphism
+        sage: word_apply_morphism(word_init([0]), [array('l', [0, 2])])
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid morphism
+        sage: word_apply_morphism(word_init([0, 1]), [word_init([0]), word_init([1])], check=False)
+        array('i')
+        sage: word_apply_morphism(word_init([0, 1]), [word_init([0]), word_init([2])], check=False)
+        array('i', [0, 2])
+
+    A letter out of range is rejected in both cases::
+
+        sage: word_apply_morphism(word_init([0, 2]), [word_init([0]), word_init([1])], check=False)
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid morphism
     """
     cdef array.array ans = array.array('i')
-    for item in mor:
-        if not isinstance(item, array.array) or item.typecode != "i":
-            raise ValueError("invalid morphism")
+    if check:
+        for item in mor:
+            if not isinstance(item, array.array) or item.typecode != "i":
+                raise ValueError("invalid morphism")
 
     for i in w:
         if i < 0 or i >= len(mor):

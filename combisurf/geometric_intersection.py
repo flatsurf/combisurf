@@ -70,7 +70,8 @@ def _morphism_arrays(mor):
     Return the list ``mor`` of images of half-edges with an empty
     ``array('i')`` in place of each ``None``, the image of an inactive
     half-edge, as :func:`~combisurf.word.word_apply_morphism` wants an
-    ``array('i')`` for every entry.
+    ``array('i')`` for every entry. Each entry is checked here, once, so that
+    the morphism can be applied with ``check=False``.
 
     EXAMPLES::
 
@@ -78,8 +79,16 @@ def _morphism_arrays(mor):
         sage: from combisurf.geometric_intersection import _morphism_arrays
         sage: _morphism_arrays([array('i', [0]), None, None, array('i', [1])])
         [array('i', [0]), array('i'), array('i'), array('i', [1])]
+        sage: _morphism_arrays([[0]])
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid morphism
     """
-    return [array('i') if x is None else x for x in mor]
+    ans = [array('i') if x is None else x for x in mor]
+    for x in ans:
+        if not isinstance(x, array) or x.typecode != 'i':
+            raise ValueError("invalid morphism")
+    return ans
 
 
 class GeometricIntersectionPairing:
@@ -368,9 +377,10 @@ class GeometricIntersectionPairing:
             raise NotImplementedError("geometric intersection is not implemented for maps with folded edges")
 
         self._cm = m.copy(mutable=False)
+        self._h2v = self._cm.half_edge_to_vertex()
 
         if isinstance(punctured_faces, Sequence):
-            punctured_faces = sorted(set(self._cm._check_face_index(f) for f in punctured_faces))
+            punctured_faces = self._cm._check_face_list(punctured_faces)
         elif punctured_faces:
             punctured_faces = list(range(self._cm.num_faces()))
         else:
@@ -428,7 +438,7 @@ class GeometricIntersectionPairing:
 
     def _reduce(self, w, check=False):
         if check:
-            w = self._cm._check_walk(w, closed=True)
+            w = self._cm._check_walk(w, closed=True, h2v=self._h2v)
 
         if self._mor is None:
             return word_cyclically_reduce(w)
@@ -439,12 +449,12 @@ class GeometricIntersectionPairing:
             # backtrack, read cyclically, so that its image below is
             # cyclically reduced once its ends cancel. A contractible walk
             # gives the empty walk.
-            w = word_apply_morphism(w, self._mor_t, reduce=False)
+            w = word_apply_morphism(w, self._mor_t, reduce=False, check=False)
             w = array('i', self._T.strongly_reduced(w, check=False))
 
         # NOTE: the images of the letters under self._mor are freely reduced so
         # that the output of word_apply_morphism is freely reduced as well
-        return word_cancel_ends(word_apply_morphism(w, self._mor, reduce=True))
+        return word_cancel_ends(word_apply_morphism(w, self._mor, reduce=True, check=False))
 
     def __repr__(self):
         return f"GeometricIntersectionPairing({self._cm}, {self._punctured_faces})"
@@ -552,11 +562,11 @@ class GeometricIntersectionPairing:
             ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2]]:
             ....:     assert gi([u]) == 1
         """
-        uwords, umult = self._cm._check_multiwalk(u, closed=True)
+        uwords, umult = self._cm._check_multiwalk(u, closed=True, h2v=self._h2v)
         if v is None:
             vwords = vmult = None
         else:
-            vwords, vmult = self._cm._check_multiwalk(v, closed=True)
+            vwords, vmult = self._cm._check_multiwalk(v, closed=True, h2v=self._h2v)
 
         return self._call(uwords, umult, vwords, vmult)
 

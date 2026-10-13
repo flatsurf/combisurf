@@ -873,6 +873,32 @@ def test_pair_of_pants():
             assert gi([mu], [mv]) == iuv, (mor, u, v)
 
 
+def test_pairing_checks_its_input_and_morphisms_once():
+    # the checks of the walks use the vertices stored at the build, and the
+    # error messages are those of the map
+    from array import array
+    from combisurf import OrientedMap
+    from combisurf.geometric_intersection import GeometricIntersectionPairing, _morphism_arrays
+
+    m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+    for algorithm in ["triangle_system", "reduced_map"]:
+        gi = GeometricIntersectionPairing(m, punctured_faces=[0, 1, 2], algorithm=algorithm)
+        assert list(gi._h2v) == list(m.half_edge_to_vertex())
+        for walk in [[0, 2], [0, 0], [0, 12], [-1], [1]]:
+            for u in [[walk], [(walk, 2)]]:
+                with pytest.raises(ValueError) as info:
+                    gi(u)
+                with pytest.raises(ValueError) as expected:
+                    m._check_multiwalk(u, closed=True)
+                assert str(info.value) == str(expected.value)
+        face = m.faces()[3]
+        assert gi([face]) == gi([array('i', face)]) == 0
+
+    assert all(isinstance(x, array) for x in _morphism_arrays([None, array('i', [1])]))
+    with pytest.raises(ValueError, match="invalid morphism"):
+        _morphism_arrays([array('l', [1])])
+
+
 def test_punctured_faces():
     # more punctures, less intersections
     from combisurf.word import word_init

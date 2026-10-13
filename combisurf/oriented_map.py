@@ -448,11 +448,13 @@ class OrientedMap:
             raise ValueError(f"inactive edge e={e}")
         return e
 
-    def _check_face_index(self, f):
+    def _check_face_index(self, f, num_faces=None):
         if not isinstance(f, numbers.Integral):
             raise TypeError(f"invalid face {f}")
         f = int(f)
-        if f < 0 or f >= self.num_faces():
+        if num_faces is None:
+            num_faces = self.num_faces()
+        if f < 0 or f >= num_faces:
             raise ValueError(f"face number out of range f={f}")
         return f
 
@@ -487,9 +489,10 @@ class OrientedMap:
             return list(range(self.num_faces())) if faces else []
         if not isinstance(faces, Sequence):
             raise TypeError(f"invalid list of faces {faces}")
-        return sorted(set(self._check_face_index(f) for f in faces))
+        num_faces = self.num_faces()
+        return sorted(set(self._check_face_index(f, num_faces) for f in faces))
 
-    def _check_walk(self, w, closed=False):
+    def _check_walk(self, w, closed=False, h2v=None):
         r"""
         Check that ``w`` is a walk on this map and return it as an ``array('i')``.
 
@@ -500,6 +503,9 @@ class OrientedMap:
         - ``w`` -- a string, a list of integers or an array
 
         - ``closed`` -- boolean (default: ``False``); whether the walk must be closed
+
+        - ``h2v`` -- (optional) the result of :meth:`half_edge_to_vertex`, to
+          avoid computing it, which costs the number of half-edges, at each call
 
         OUTPUT: the walk as an ``array('i')``. If ``w`` is already an
         ``array('i')`` then ``w`` itself is returned, not a copy.
@@ -538,16 +544,38 @@ class OrientedMap:
             Traceback (most recent call last):
             ...
             ValueError: non-closed walk [0, 2]: 2 at position 1 ends at vertex 2 but 0 at position 0 starts at vertex 0
+
+        The vertices of the half-edges can be given, with the same results::
+
+            sage: h2v = m.half_edge_to_vertex()
+            sage: m._check_walk([0, 2], h2v=h2v)
+            array('i', [0, 2])
+            sage: m._check_walk([0, 0], h2v=h2v)
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid walk [0, 0]: 0 at position 0 ends at vertex 1 but 0 at position 1 starts at vertex 0
+            sage: m._check_walk([0, 2], closed=True, h2v=h2v)
+            Traceback (most recent call last):
+            ...
+            ValueError: non-closed walk [0, 2]: 2 at position 1 ends at vertex 2 but 0 at position 0 starts at vertex 0
+            sage: m._check_walk([0, 12], h2v=h2v)
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid walk [0, 12]: half-edge number out of range (=12) at position 1
         """
         w = word_init(w)
-        h2v = self.half_edge_to_vertex()
+        if h2v is None:
+            h2v = self.half_edge_to_vertex()
 
+        vp = self._vp
+        n = len(vp)
         hprev = None # previous half-edge
         for i, h in enumerate(w):
-            try:
-                self._check_half_edge(h)
-            except ValueError as e:
-                raise ValueError(f"invalid walk {word_string(w)}: {e} at position {i}") from None
+            # the letters of w are C ints, no type check is needed
+            if h < 0 or h >= n:
+                raise ValueError(f"invalid walk {word_string(w)}: half-edge number out of range (={h}) at position {i}")
+            if vp[h] == -1:
+                raise ValueError(f"invalid walk {word_string(w)}: inactive half-edge (={h}) at position {i}")
             if hprev is not None and h2v[hprev ^ 1] != h2v[h]:
                 raise ValueError(f"invalid walk {word_string(w)}: {hprev} at position {i - 1} ends at vertex {h2v[hprev ^ 1]} but {h} at position {i} starts at vertex {h2v[h]}")
             hprev = h
@@ -557,7 +585,7 @@ class OrientedMap:
 
         return w
 
-    def _check_multiwalk(self, words, multiplicities=None, closed=False):
+    def _check_multiwalk(self, words, multiplicities=None, closed=False, h2v=None):
         r"""
         Return the multiwalk given by ``words`` and ``multiplicities`` in normal form.
 
@@ -580,6 +608,9 @@ class OrientedMap:
           `1` for a list of walks.
 
         - ``closed`` -- (boolean, default ``False``) whether the walks must be closed
+
+        - ``h2v`` -- (optional) the result of :meth:`half_edge_to_vertex`, see
+          :meth:`_check_walk`
 
         OUTPUT: a pair ``(words, multiplicities)`` of lists of the same length,
         where ``words`` contains arrays ``array('i')`` and ``multiplicities``
@@ -689,7 +720,7 @@ class OrientedMap:
         if single:
             if multiplicities is not None:
                 raise TypeError("invalid multiwalk: multiplicities can only be given with a list of walks")
-            return [self._check_walk(words, closed=closed)], [1]
+            return [self._check_walk(words, closed=closed, h2v=h2v)], [1]
 
         def is_pair(item):
             # the letters of a walk are integers, so a sequence of length 2
@@ -726,9 +757,9 @@ class OrientedMap:
             else:
                 w, m = item, multiplicities[i]
 
-            w = self._check_walk(w, closed=closed)
+            w = self._check_walk(w, closed=closed, h2v=h2v)
 
-            if not isinstance(m, numbers.Integral):
+            if not isinstance(m,numbers.Integral):
                 raise TypeError(f"invalid multiwalk: the multiplicity {m!r} of type {type(m).__name__} of the walk {word_string(w)} at position {i} must be an integer")
             m = int(m)
             if m < 0:

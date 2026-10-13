@@ -571,3 +571,67 @@ def test_half_edge_to_cell_with_a_folded_edge():
     for e in folded:
         assert h2v[2 * e] != -1 and h2f[2 * e] != -1, (m, e)
         assert h2v[2 * e + 1] == -1 and h2f[2 * e + 1] == -1, (m, e)
+
+
+def test_check_walk_with_h2v():
+    # given the vertices of the half-edges, the walk and the errors are the same
+    from array import array
+    from combisurf import OrientedMap
+
+    for m in [OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)"),
+              OrientedMap(vp="(0,3,6,~3)(~0,1,~6,~1)"),
+              OrientedMap(vp="(0,1,4,5,~0,~1,~4,~5)")]:
+        h2v = m.half_edge_to_vertex()
+        n = len(m.vertex_permutation())
+        walks = [[], [0], [n], [-1], [0, 0], [0, 2], [1, 3], [0, 2, 4], [0, n + 1], "0,~1", array('i', [0, 1])]
+        walks += [[h, k] for h in range(n) for k in range(n)]
+        walks += [[h, k, h] for h in range(n) for k in range(n)]
+        for w in walks:
+            for closed in [False, True]:
+                try:
+                    expected = m._check_walk(w, closed=closed)
+                except ValueError as e:
+                    with pytest.raises(ValueError) as info:
+                        m._check_walk(w, closed=closed, h2v=h2v)
+                    assert str(info.value) == str(e)
+                else:
+                    assert m._check_walk(w, closed=closed, h2v=h2v) == expected
+        # the inactive half-edges
+        vp = m.vertex_permutation()
+        for h in range(n):
+            if vp[h] == -1:
+                with pytest.raises(ValueError, match="inactive half-edge"):
+                    m._check_walk([h], h2v=h2v)
+
+    m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+    h2v = m.half_edge_to_vertex()
+    for words in [[[0, 2], [0, 1]], [([0, 2], 2)], [0, 2]]:
+        for closed in [False, True]:
+            try:
+                expected = m._check_multiwalk(words, closed=closed)
+            except ValueError as e:
+                with pytest.raises(ValueError) as info:
+                    m._check_multiwalk(words, closed=closed, h2v=h2v)
+                assert str(info.value) == str(e)
+            else:
+                assert m._check_multiwalk(words, closed=closed, h2v=h2v) == expected
+
+
+def test_check_face_list_checks_the_number_of_faces_once(monkeypatch):
+    from combisurf import OrientedMap
+
+    m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+    calls = []
+    num_faces = OrientedMap.num_faces
+
+    def counting(self):
+        calls.append(1)
+        return num_faces(self)
+
+    monkeypatch.setattr(OrientedMap, "num_faces", counting)
+    assert m._check_face_list([3, 1, 3, 0]) == [0, 1, 3]
+    assert len(calls) == 1
+    with pytest.raises(ValueError, match="face number out of range f=4"):
+        m._check_face_list([0, 4])
+    with pytest.raises(ValueError, match="face number out of range f=-1"):
+        m._check_face_list([-1])
