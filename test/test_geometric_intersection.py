@@ -1278,3 +1278,41 @@ def test_punctured_agreement():
                 num_different += unreduced != expected
     assert num_pairs == 119 * 78
     assert num_different > 0
+
+
+def punctured_triangle_system_instances():
+    r"""
+    Return the list of the triples ``(name, m, punctured, choice)``, one choice
+    of tree, cotree and cocotree for each map of genus 0, 1 and 2 with
+    punctured faces of the triangle system tests and each of its sets of
+    punctured faces.
+    """
+    result = []
+    for name, m, punctured, choice in test_triangle_system.PUNCTURED_CASES:
+        if m.genus() <= 2 and not any(r[0] == name for r in result):
+            result.append((name, m, punctured, choice))
+    return result
+
+
+def test_punctured_triangle_system_agreement():
+    # The images under the triangle system of the face boundaries and of
+    # random closed walks of m, strongly reduced, have on the triangle system
+    # with every face punctured the intersection numbers of the walks on m
+    # with the faces of P punctured.
+    from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+    instances = punctured_triangle_system_instances()
+    genera = [m.genus() for _, m, _, _ in instances]
+    assert (genera.count(0), genera.count(1), genera.count(2)) == (10, 17, 19)
+    num_pairs = 0
+    for name, m, punctured, choice in instances:
+        t, mor, t_punctured = m.triangle_system(*choice, relabel=True, mapping=True, punctured_faces=punctured)
+        T = BipartiteHyperbolicTriangulation(t, t_punctured)
+        rng = random.Random(len(m.vertex_permutation()) + len(punctured))
+        walks = m.faces() + [random_closed_walk(m, rng, length) for length in (3, 8, 20) for _ in range(2)]
+        reduced = [T.strongly_reduced(w) if w else [] for w in compose_images(mor, walks)]
+        reference = intersection_table(GeometricIntersectionPairing(m, punctured_faces=punctured), walks)
+        got = intersection_table(GeometricIntersectionPairing(t, punctured_faces=True), reduced)
+        assert got == reference, (name, choice)
+        num_pairs += len(walks) * (len(walks) + 1) // 2
+    assert num_pairs == 7605
