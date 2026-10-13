@@ -759,7 +759,7 @@ class OrientedMap:
 
             w = self._check_walk(w, closed=closed, h2v=h2v)
 
-            if not isinstance(m,numbers.Integral):
+            if not isinstance(m, numbers.Integral):
                 raise TypeError(f"invalid multiwalk: the multiplicity {m!r} of type {type(m).__name__} of the walk {word_string(w)} at position {i} must be an integer")
             m = int(m)
             if m < 0:
