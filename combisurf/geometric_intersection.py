@@ -16,7 +16,8 @@ ones. The fundamental group of the surface is then free on the edges of the
 reduced map, and a closed curve becomes a cyclically reduced word in its
 half-edges.
 
-On a closed surface, and on request with punctured faces, ``m`` is first
+On a closed surface, on request with punctured faces, and by default when
+the images of letters in the reduced map are long, ``m`` is first
 replaced by its triangle system (see
 :meth:`~combisurf.oriented_map.OrientedMap.triangle_system`), on which a
 closed curve has a canonical representative of its free homotopy class,
@@ -64,6 +65,15 @@ from combisurf.conjugate_tree import ConjugateTree
 from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, _cyclically_sorted_leaf_arcs, _leaf_weights,
                                      startpoint_sweep_sorted, startpoint_sweep_weighted, _tree_add_with_inverse,
                                      _word_arcs)
+
+
+# The default algorithm keeps the reduced map when its longest image of a
+# half-edge has at most this many letters. On the torus grids of 8 columns and
+# a rows with filled columns, the pair time of the triangle system over that
+# of the reduced map (random walks of length 1000 and 10000, geometric mean)
+# is at least 1 for every group with a longest image of at most 20 letters
+# (1.05 at 20, 1.07 at 19) and 0.98 at 24.
+_MAX_IMAGE_LENGTH = 20
 
 
 def _morphism_arrays(mor):
@@ -151,15 +161,18 @@ class GeometricIntersectionPairing:
         The images of letters have unbounded length when some face is filled,
         as the boundary of a filled face gets merged into a punctured one.
 
-      - ``None`` -- ``"reduced_map"`` if every face is punctured, where each
-        letter has an image of at most one letter, and ``"triangle_system"``
-        otherwise, closed surfaces included. With a filled face,
-        ``"triangle_system"`` is the one whose cost is `O(n + \log(g + b)
-        \ell)`, but it is not necessarily faster: for two walks of length
-        1000, a pair takes 1.14 ms against 0.42 ms with ``"reduced_map"`` when
-        7 faces of 14 are punctured (genus 4, 30 edges), and 0.26 ms against
-        0.51 ms with one punctured face on a map of genus 20 with 10000
-        edges
+      - ``None`` -- ``"triangle_system"`` on a closed surface. Otherwise the
+        reduced map is built, and kept if its longest image of a letter has at
+        most 20 letters, which holds in particular when every face is
+        punctured (one letter at most); else ``"triangle_system"`` is built.
+        The reduced map is then at most 20 times as costly per letter as the
+        triangle system, so that the cost is `O(n + \log(g + b) \ell)` in every
+        case. The threshold is where ``"reduced_map"`` stops being faster:
+        1.4 to 3 times faster in 92 % of the groups tested, and a pair of
+        walks of length 1000 and 10000 takes 0.79 ms against 1.36 ms with
+        ``"triangle_system"`` on a strip of 250 rows with half of the faces
+        punctured (longest image 3), but 1.00 ms against 0.86 ms on a map of
+        genus 20 with 10000 edges and one punctured face (longest image 77)
 
     EXAMPLES:
 
@@ -305,11 +318,10 @@ class GeometricIntersectionPairing:
         sage: gi3([eight01])
         1
 
-    With every face punctured the default algorithm is ``"reduced_map"``, and
-    with a filled face it is ``"triangle_system"``, which is not necessarily
-    faster (1.14 ms against 0.42 ms per pair of walks of length 1000 for
-    ``"reduced_map"`` with 7 of 14 faces punctured on a map of genus 4). The
-    two algorithms agree::
+    The default algorithm is ``"reduced_map"`` when every face is punctured,
+    and in general when its longest image of a letter has at most 20 letters;
+    it is ``"triangle_system"`` on a closed surface and when that image is
+    longer. The two algorithms agree::
 
         sage: curves = m.faces() + [eight01, word_init("0,1,2,0,~4,~3,0,1,2")]
         sage: for P in [[1, 2, 3], [0, 1, 2]]:
@@ -333,6 +345,29 @@ class GeometricIntersectionPairing:
         ValueError: algorithm must be "triangle_system", "reduced_map" or None (got 'quad_system')
 
     TESTS:
+
+    The algorithm the default picks, with every face punctured, on a closed
+    surface, and with a filled face. The map below has one vertex, a
+    triangle and a face of 27 sides, so that the longest image of
+    ``"reduced_map"`` with the triangle punctured has 26 letters, more than
+    20, and the default is then ``"triangle_system"``. With a shorter filled
+    face it stays ``"reduced_map"``::
+
+        sage: m = OrientedMap(fp="(0,1,2)(~2,~6,~3,~7,6,8,~14,~13,~10,14,~4,3,10,9,12,4,~1,5,~8,~0,~9,~11,~12,7,13,~5,11)")
+        sage: m.num_vertices(), m.num_faces()
+        (1, 2)
+        sage: GeometricIntersectionPairing(m, punctured_faces=True)._algorithm
+        'reduced_map'
+        sage: GeometricIntersectionPairing(m)._algorithm
+        'triangle_system'
+        sage: gi = GeometricIntersectionPairing(m, punctured_faces=[0])
+        sage: gi._algorithm
+        'triangle_system'
+        sage: GeometricIntersectionPairing(m, punctured_faces=[0], algorithm="reduced_map")._max_image_length()
+        26
+        sage: s = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+        sage: GeometricIntersectionPairing(s, punctured_faces=[1, 2, 3])._algorithm
+        'reduced_map'
 
     Repeated face indices count once::
 
@@ -378,8 +413,11 @@ class GeometricIntersectionPairing:
     cyclically reduced, is the input of the free group computation of
     :ref:`cohen-lustig-1987`. A deleted edge is sent to the rest of the
     boundary of a filled face, so the images of letters have unbounded length
-    unless every face is punctured; this is why it is the default only when
-    every face is punctured.
+    unless every face is punctured; this is why the default builds it first,
+    in time `O(n)`, and keeps it only when the longest image has at most 20
+    letters. Its cost per letter is then at most 20 times that of
+    ``"triangle_system"``, which keeps `O(n + \log(g + b) \ell)` for every
+    choice of punctured faces.
 
     With ``algorithm="triangle_system"``, ``m`` is replaced by its triangle
     system `t` (see
@@ -431,61 +469,95 @@ class GeometricIntersectionPairing:
             raise NotImplementedError("geometric intersection is only implemented on surfaces of negative Euler characteristic")
 
         if algorithm is None:
-            # With a filled face, only the triangle system has images of
-            # length at most 4 and a cost O(n + log(g + b) l); in the reduced
-            # map a deleted edge goes to the rest of the boundary of a filled
-            # face, of unbounded length. It is not always faster: for a pair
-            # of walks of length 1000, triangle system against reduced map
-            # per pair is 1.03 against 0.84 ms (random_26, 30 edges, genus 4,
-            # one punctured face of 14), 1.14 against 0.42 ms (7 of 14),
-            # 0.12 against 0.09 ms (10000 edges, genus 2, one of 7036),
-            # 0.26 against 0.51 ms (10000 edges, genus 20, one of 6974) and
-            # 0.40 against 2.26 ms on a closed walk repeating the letter of
-            # the longest image (79 letters) of that last map. With every
-            # face punctured, the reduced map has images of at most one
-            # letter and is faster (1.43 against 0.50 ms on genus 20).
-            if len(punctured_faces) == self._cm.num_faces():
-                algorithm = "reduced_map"
-            else:
-                algorithm = "triangle_system"
+            # Without a punctured face the reduced map does not exist. With
+            # one, the reduced map is built first, in O(n), and kept when no
+            # letter has an image longer than _MAX_IMAGE_LENGTH; otherwise
+            # the triangle system, whose images have at most 4 letters, has
+            # the cost O(n + log(g + b) l) and the reduced map does not (a
+            # deleted edge goes to the rest of the boundary of a filled face).
+            # The threshold is where the reduced map stops being faster:
+            # on the torus grids of 8 columns and a rows with some columns
+            # filled, ts/rm per pair of random walks of length 1000 and 10000
+            # is at least 1 for every group with L_inf <= 20 (1.05 at 20,
+            # 1.07 at 19) and 0.98 at 24, and 0.77 at 45. Over 29938 pairs
+            # on 40 maps rm was 1.4 to 3 times faster in 92 % of the groups,
+            # and ts won 0 of 110 groups at L_inf <= 20. The forests are
+            # breadth first, which keeps L_inf at 1 to 4 on the strips
+            # (1.25 a for depth first). Geometric mean of the pair times of
+            # rm and ts, for walks of length 1000 and 10000: 0.79 against
+            # 1.36 ms (strip of 250 rows, half of the faces punctured,
+            # L_inf 3), 1.31 against 3.01 ms (genus 2, 1000 edges, half
+            # punctured, L_inf 2), 0.28 against 0.36 ms (genus 2, 10000
+            # edges, one punctured face, L_inf 4), and 1.00 against 0.86 ms
+            # (genus 20, 10000 edges, one punctured face, L_inf 77), the
+            # only one of these where ts is kept. The default is the faster
+            # of the two on each of the 44 groups measured.
+            default = True
+            algorithm = "reduced_map" if punctured_faces else "triangle_system"
+        else:
+            default = False
         if algorithm == "reduced_map":
             if not punctured_faces:
                 raise ValueError('algorithm="reduced_map" requires at least one punctured face')
         elif algorithm != "triangle_system":
             raise ValueError(f'algorithm must be "triangle_system", "reduced_map" or None (got {algorithm!r})')
+
+        if algorithm == "reduced_map":
+            self._build_reduced_map()
+            if default and self._max_image_length() > _MAX_IMAGE_LENGTH:
+                algorithm = "triangle_system"
+        if algorithm == "triangle_system":
+            self._build_triangle_system()
         self._algorithm = algorithm
 
-        if algorithm == "triangle_system":
-            # A closed walk of self._cm goes to the triangle system t, a
-            # bipartite hyperbolic triangulation on which its strongly reduced
-            # representative is unique and stable under reversal. The
-            # geometric intersection of such representatives in the surface
-            # is their intersection on t with every face punctured (Dubois
-            # 2024, Proposition 1.5, for closed surfaces), computed on the
-            # one-vertex map of t.
-            t, mor_t, t_punctured = self._cm.triangle_system(relabel=True, mapping=True,
-                                                             punctured_faces=punctured_faces)
-            self._mor_t = _morphism_arrays(mor_t)
-            self._T = BipartiteHyperbolicTriangulation(t, t_punctured)
-            all_faces = list(range(t.num_faces()))
-            f, c, _ = t.forest_coforest_decomposition(root_faces=all_faces)
-            r, mor = t.reduced_map(forest=f, coforest=c, relabel=True, mapping=True, mutable=False)
-            self._r = r
-            self._mor = _morphism_arrays(mor)
-        elif self._cm.num_vertices() != 1 or len(self._punctured_faces) != self._cm.num_faces():
-            self._T = None
+        # NOTE: angles are the absolute angles made by half-edges around the unique
+        # vertex of self._r
+        self._angles = perm_dense_cycle_positions(self._r._vp)
+
+    def _build_reduced_map(self):
+        r"""
+        Set the attributes of the reduction to the reduced map of ``self._cm``.
+        """
+        self._T = None
+        if self._cm.num_vertices() != 1 or len(self._punctured_faces) != self._cm.num_faces():
             f, c, _ = self._cm.forest_coforest_decomposition(root_faces=self._punctured_faces)
             r, mor = self._cm.reduced_map(forest=f, coforest=c, relabel=True, mapping=True, mutable=False)
             self._r = r
             self._mor = _morphism_arrays(mor)
         else:
-            self._T = None
             self._r = self._cm
             self._mor = None
 
-        # NOTE: angles are the absolute angles made by half-edges around the unique
-        # vertex of self._r
-        self._angles = perm_dense_cycle_positions(self._r._vp)
+    def _max_image_length(self):
+        r"""
+        Return the length of the longest image of a half-edge of ``self._cm``
+        under the morphism to the reduced map, ``1`` when there is none.
+        """
+        if self._mor is None:
+            return 1
+        return max((len(x) for x in self._mor), default=1)
+
+    def _build_triangle_system(self):
+        r"""
+        Set the attributes of the reduction to the one-vertex map of the
+        triangle system of ``self._cm``.
+        """
+        # A closed walk of self._cm goes to the triangle system t, a
+        # bipartite hyperbolic triangulation on which its strongly reduced
+        # representative is unique and stable under reversal. The
+        # geometric intersection of such representatives in the surface
+        # is their intersection on t with every face punctured (Dubois
+        # 2024, Proposition 1.5, for closed surfaces), computed on the
+        # one-vertex map of t.
+        t, mor_t, t_punctured = self._cm.triangle_system(relabel=True, mapping=True,
+                                                         punctured_faces=self._punctured_faces)
+        self._mor_t = _morphism_arrays(mor_t)
+        self._T = BipartiteHyperbolicTriangulation(t, t_punctured)
+        all_faces = list(range(t.num_faces()))
+        f, c, _ = t.forest_coforest_decomposition(root_faces=all_faces)
+        r, mor = t.reduced_map(forest=f, coforest=c, relabel=True, mapping=True, mutable=False)
+        self._r = r
+        self._mor = _morphism_arrays(mor)
 
     def _reduce(self, w, check=False):
         if check:

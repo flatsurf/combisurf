@@ -1878,6 +1878,11 @@ class OrientedMap:
         root, the half-edge joining a cell to its parent at a cell some tree
         reached, and ``-2`` at a cell no tree reached
 
+        The forest is breadth first: the roots are visited first, in the order
+        given, then the cells in the order they are discovered, so that each
+        cell is at the least distance from a root among the edges the call
+        may use (those not yet in ``used``).
+
         This is exercised through :meth:`forest_coforest_decomposition`.
         """
         vp = self._vp
@@ -1902,10 +1907,14 @@ class OrientedMap:
                 forest[c] = -1
                 todo.append(c)
 
+        # breadth first: ``todo`` is the queue, read from ``i`` and never
+        # popped, so the cells are visited in the order they were discovered
         c0 = 0
+        i = 0
         while True:
-            while todo:
-                c = todo.pop()
+            while i < len(todo):
+                c = todo[i]
+                i += 1
                 for h in cycles[c]:
                     if used[h // 2]:
                         continue
@@ -1939,7 +1948,10 @@ class OrientedMap:
         This is the analogue of :meth:`tree_cotree_decomposition` with several
         roots: the tree is replaced by a spanning forest with one tree per root
         vertex and the cotree by a spanning coforest with one tree per root
-        face.
+        face. Both are breadth first: each vertex is at the least distance
+        from a root vertex in the graph of the map, and each face is at the
+        least distance from a root face in the dual graph without the edges of
+        the forest.
 
         INPUT:
 
@@ -1961,9 +1973,9 @@ class OrientedMap:
             sage: from combisurf import OrientedMap
             sage: m = OrientedMap(vp="(2,3,1,5,6,~5)(~1,4,~2,~6)(~3,7,~4,8)(~7,9,10,11,~9)(~8,~10,~11)")
             sage: m.forest_coforest_decomposition((0,2,4), (1,))
-            (array('i', [-1, 8, -1, 20, -1]),
-             array('i', [2, -1, 7, 22]),
-             array('i', [2, 5, 6, 7, 8, 9]))
+            (array('i', [-1, 3, -1, 15, -1]),
+             array('i', [5, -1, 7, 22]),
+             array('i', [4, 5, 6, 8, 9, 10]))
 
         The empty map has one vertex and one face, both roots, and no edge::
 

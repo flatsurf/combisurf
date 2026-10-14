@@ -79,6 +79,74 @@ def test_forest_coforest():
                     assert sum(f in cc for f in root_faces) == 1
 
 
+def bfs_distances(nc, adjacent, roots):
+    r"""
+    Return the distance of every cell to the set ``roots`` in the graph given
+    by the lists ``adjacent`` of neighbours.
+    """
+    dist = [None] * nc
+    queue = list(roots)
+    for c in queue:
+        dist[c] = 0
+    for c in queue:
+        for d in adjacent[c]:
+            if dist[d] is None:
+                dist[d] = dist[c] + 1
+                queue.append(d)
+    return dist
+
+
+def depths(tree, h2c):
+    r"""
+    Return the number of edges between each cell and its root in ``tree``.
+    """
+    depth = [None] * len(tree)
+
+    def get(c):
+        path = []
+        while depth[c] is None and tree[c] != -1:
+            path.append(c)
+            c = h2c[tree[c] ^ 1]
+        if depth[c] is None:
+            depth[c] = 0
+        d = depth[c]
+        for p in reversed(path):
+            d += 1
+            depth[p] = d
+        return
+    for c in range(len(tree)):
+        get(c)
+    return depth
+
+
+def test_forest_coforest_breadth_first():
+    # the depth of a vertex in the forest is its distance to the root
+    # vertices in the graph of the map, and the depth of a face in the
+    # coforest is its distance to the root faces in the dual graph without
+    # the edges of the forest
+    from test_barycentric_subdivision import random_maps
+
+    for m in random_maps():
+        nv, nf = m.num_vertices(), m.num_faces()
+        h2v = m.half_edge_to_vertex()
+        h2f = m.half_edge_to_face()
+        for root_vertices in some_roots(nv):
+            for root_faces in some_roots(nf):
+                forest, coforest, _ = m.forest_coforest_decomposition(root_vertices, root_faces)
+
+                vadj = [[] for _ in range(nv)]
+                for h in m.half_edges():
+                    vadj[h2v[h]].append(h2v[h ^ 1])
+                assert depths(forest, h2v) == bfs_distances(nv, vadj, root_vertices), (m, root_vertices)
+
+                in_forest = {h // 2 for h in forest if h != -1}
+                fadj = [[] for _ in range(nf)]
+                for h in m.half_edges():
+                    if h // 2 not in in_forest:
+                        fadj[h2f[h]].append(h2f[h ^ 1])
+                assert depths(coforest, h2f) == bfs_distances(nf, fadj, root_faces), (m, root_faces)
+
+
 def test_forest_coforest_roots():
     # a tree never leaves its connected component. Left to itself the
     # decomposition roots one tree per component; given roots that miss one it
