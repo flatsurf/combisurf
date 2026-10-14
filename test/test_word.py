@@ -287,10 +287,9 @@ def test_word_check_walk():
 
         compare([])
         compare([rng.choice(active)])
-        walks = 0
         for _ in range(5):
             w = random_backtracking_closed_walk(vp, h2v, rng, rng.randint(1, 30))
-            walks += 1
+            assert check_walk_reference(w, vp, h2v, True) == -1, w
             compare(w)
             compare(w[:rng.randint(1, len(w))])
             for bad in [-1, n, n + 7, rng.choice(active), rng.choice(active)] + inactive[:2]:
@@ -300,4 +299,3 @@ def test_word_check_walk():
             v = list(w)
             v[0], v[-1] = v[-1] ^ 1, v[0] ^ 1
             compare(v)
-        assert walks == 5
