@@ -67,13 +67,18 @@ from combisurf.crossing_arcs import (crossing_arcs_sweep_sorted, _cyclically_sor
                                      _word_arcs)
 
 
-# The default algorithm keeps the reduced map when its longest image of a
-# half-edge has at most this many letters. On the torus grids of 8 columns and
-# a rows with filled columns, the pair time of the triangle system over that
-# of the reduced map (random walks of length 1000 and 10000, geometric mean)
-# is at least 1 for every group with a longest image of at most 20 letters
-# (1.05 at 20, 1.07 at 19) and 0.98 at 24.
-_MAX_IMAGE_LENGTH = 20
+# The default algorithm keeps the reduced map (rm) when its longest image of a
+# half-edge has at most this many letters. `sage -python
+# extra/geometric_intersection_threshold.py` prints it: the largest measured rm
+# L_inf such that every group with a smaller or equal one has a pair time of
+# the triangle system (ts) over that of rm of at least 1, on torus grids of 8
+# columns and a rows with depth-first forests (random walks of length 1000 and
+# 10000, geometric mean). Output: ts/rm is 1.00 at L_inf 24 and 1.14 to 1.32
+# at 25, and 0.95 at 29. Beyond the constant, groups with filled columns have
+# ts/rm 1.04 to 1.31 at L_inf 30 to 45; they do not occur with the
+# breadth-first forests of the package, which give L_inf 1 to 4 on these
+# strips.
+_MAX_IMAGE_LENGTH = 25
 
 
 def _morphism_arrays(mor):
@@ -163,9 +168,9 @@ class GeometricIntersectionPairing:
 
       - ``None`` -- ``"triangle_system"`` on a closed surface. Otherwise the
         reduced map is built, and kept if its longest image of a letter has at
-        most 20 letters, which holds in particular when every face is
+        most 25 letters, which holds in particular when every face is
         punctured (one letter at most); else ``"triangle_system"`` is built.
-        The reduced map is then at most 20 times as costly per letter as the
+        The reduced map is then at most 25 times as costly per letter as the
         triangle system, so that the cost is `O(n + \log(g + b) \ell)` in every
         case. The threshold is where ``"reduced_map"`` stops being faster:
         1.4 to 3 times faster in 92 % of the groups tested, and a pair of
@@ -319,7 +324,7 @@ class GeometricIntersectionPairing:
         1
 
     The default algorithm is ``"reduced_map"`` when every face is punctured,
-    and in general when its longest image of a letter has at most 20 letters;
+    and in general when its longest image of a letter has at most 25 letters;
     it is ``"triangle_system"`` on a closed surface and when that image is
     longer. The two algorithms agree::
 
@@ -350,7 +355,7 @@ class GeometricIntersectionPairing:
     surface, and with a filled face. The map below has one vertex, a
     triangle and a face of 27 sides, so that the longest image of
     ``"reduced_map"`` with the triangle punctured has 26 letters, more than
-    20, and the default is then ``"triangle_system"``. With a shorter filled
+    25, and the default is then ``"triangle_system"``. With a shorter filled
     face it stays ``"reduced_map"``::
 
         sage: m = OrientedMap(fp="(0,1,2)(~2,~6,~3,~7,6,8,~14,~13,~10,14,~4,3,10,9,12,4,~1,5,~8,~0,~9,~11,~12,7,13,~5,11)")
@@ -414,8 +419,8 @@ class GeometricIntersectionPairing:
     :ref:`cohen-lustig-1987`. A deleted edge is sent to the rest of the
     boundary of a filled face, so the images of letters have unbounded length
     unless every face is punctured; this is why the default builds it first,
-    in time `O(n)`, and keeps it only when the longest image has at most 20
-    letters. Its cost per letter is then at most 20 times that of
+    in time `O(n)`, and keeps it only when the longest image has at most 25
+    letters. Its cost per letter is then at most 25 times that of
     ``"triangle_system"``, which keeps `O(n + \log(g + b) \ell)` for every
     choice of punctured faces.
 
@@ -475,11 +480,8 @@ class GeometricIntersectionPairing:
             # the triangle system, whose images have at most 4 letters, has
             # the cost O(n + log(g + b) l) and the reduced map does not (a
             # deleted edge goes to the rest of the boundary of a filled face).
-            # The threshold is where the reduced map stops being faster:
-            # on the torus grids of 8 columns and a rows with some columns
-            # filled, ts/rm per pair of random walks of length 1000 and 10000
-            # is at least 1 for every group with L_inf <= 20 (1.05 at 20,
-            # 1.07 at 19) and 0.98 at 24, and 0.77 at 45. Over 29938 pairs
+            # The threshold is where the reduced map stops being faster (see
+            # the comment of _MAX_IMAGE_LENGTH). Over 29938 pairs
             # on 40 maps rm was 1.4 to 3 times faster in 92 % of the groups,
             # and ts won 0 of 110 groups at L_inf <= 20. The forests are
             # breadth first, which keeps L_inf at 1 to 4 on the strips
