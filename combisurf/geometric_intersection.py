@@ -52,6 +52,7 @@ in this module make the geometric intersection computation linear in the length
 and logarithmic in the map size.
 """
 
+import numbers
 from array import array
 from collections.abc import Sequence
 
@@ -89,6 +90,33 @@ def _morphism_arrays(mor):
         if not isinstance(x, array) or x.typecode != 'i':
             raise ValueError("invalid morphism")
     return ans
+
+
+def _check_bound(bound):
+    r"""
+    Return ``bound`` as a Python integer, or ``None`` if it is ``None``.
+
+    EXAMPLES::
+
+        sage: from combisurf.geometric_intersection import _check_bound
+        sage: _check_bound(None), _check_bound(3), type(_check_bound(3))
+        (None, 3, <class 'int'>)
+        sage: _check_bound(-2)
+        Traceback (most recent call last):
+        ...
+        ValueError: bound must be non-negative (got -2)
+        sage: _check_bound("3")
+        Traceback (most recent call last):
+        ...
+        TypeError: bound must be an integer or None (got '3')
+    """
+    if bound is None:
+        return None
+    if not isinstance(bound, numbers.Integral):
+        raise TypeError(f"bound must be an integer or None (got {bound!r})")
+    if bound < 0:
+        raise ValueError(f"bound must be non-negative (got {bound})")
+    return int(bound)
 
 
 class GeometricIntersectionPairing:
@@ -459,7 +487,7 @@ class GeometricIntersectionPairing:
     def __repr__(self):
         return f"GeometricIntersectionPairing({self._cm}, {self._punctured_faces})"
 
-    def __call__(self, u, v=None):
+    def __call__(self, u, v=None, bound=None):
         r"""
         Return the geometric intersection between the multiwalks ``u`` and ``v``.
 
@@ -471,6 +499,14 @@ class GeometricIntersectionPairing:
           :mod:`~combisurf.oriented_map`)
 
         - ``v`` -- an optional multiwalk of closed walks on the underlying map
+
+        - ``bound`` -- (default: ``None``) a non-negative integer or ``None``;
+          when it is an integer, the computation stops as soon as the
+          intersection is known to exceed ``bound``
+
+        OUTPUT: a non-negative integer, the geometric intersection. With
+        ``bound`` given, the intersection when it is at most ``bound``, and
+        ``bound + 1`` otherwise.
 
         EXAMPLES::
 
@@ -528,6 +564,26 @@ class GeometricIntersectionPairing:
             sage: gi([u * 3])
             11
 
+        With ``bound``, a value at most ``bound`` is exact and a larger one is
+        replaced by ``bound + 1``, which may save most of the computation::
+
+            sage: gi([u * 3], bound=11), gi([u * 3], bound=12), gi([u * 3], bound=10)
+            (11, 11, 11)
+            sage: gi([u * 3], bound=3)
+            4
+            sage: gi([u * 2], bound=0)
+            1
+            sage: gi(ulist, vlist, bound=12), gi(ulist, vlist, bound=11), gi(ulist, vlist, bound=0)
+            (12, 12, 1)
+            sage: gi([u], bound=-1)
+            Traceback (most recent call last):
+            ...
+            ValueError: bound must be non-negative (got -1)
+            sage: gi([u], bound=1/2)
+            Traceback (most recent call last):
+            ...
+            TypeError: bound must be an integer or None (got 1/2)
+
         Two examples in genus 2 following :ref:`birman-series1984`, pages
         336-337. Their words list the sides of a fundamental octagon crossed
         by the curve, so they are closed walks on the one-vertex map whose
@@ -554,6 +610,7 @@ class GeometricIntersectionPairing:
             ....:         ans1 = all(bwt[i + 1] <= bwt[i] for i in range(l - 1))
             ....:         ans2 = gi([list(w)]) == 0
             ....:         assert ans1 == ans2
+            ....:         assert gi.is_simple(list(w)) == ans1
 
             sage: for u in [[0], [0, 2], [0, 2, 0], [0, 2, 0, 0, 2],  [0, 2, 0, 0, 2, 0, 2, 0]]:
             ....:     assert gi([u]) == 0
@@ -562,15 +619,71 @@ class GeometricIntersectionPairing:
             ....:           [0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 2]]:
             ....:     assert gi([u]) == 1
         """
+        bound = _check_bound(bound)
         uwords, umult = self._cm._check_multiwalk(u, closed=True, h2v=self._h2v)
         if v is None:
             vwords = vmult = None
         else:
             vwords, vmult = self._cm._check_multiwalk(v, closed=True, h2v=self._h2v)
 
-        return self._call(uwords, umult, vwords, vmult)
+        return self._call(uwords, umult, vwords, vmult, bound=bound)
 
-    def _call(self, uwords, umult, vwords=None, vmult=None):
+    def is_simple(self, w):
+        r"""
+        Return whether the closed walk ``w`` is homotopic to a simple curve.
+
+        This is whether the self-intersection of ``w`` is zero, computed with
+        ``bound=0`` so that the computation stops at the first intersection
+        found. A proper power is not simple, and a contractible walk is.
+
+        INPUT:
+
+        - ``w`` -- a closed walk on the underlying map
+
+        OUTPUT: a boolean
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.geometric_intersection import GeometricIntersectionPairing
+
+            sage: torus = OrientedMap(vp="(0,1,~0,~1)")
+            sage: gi = GeometricIntersectionPairing(torus, punctured_faces=True)
+            sage: gi.is_simple([0]), gi.is_simple([0, 2]), gi.is_simple([0, 0, 2, 2])
+            (True, True, False)
+
+        The `k`-th power of a curve `u` has self-intersection
+        `k^2 i(u, u) + k - 1`, so it is not simple for `k \geq 2`::
+
+            sage: gi.is_simple([0, 0]), gi.is_simple([0, 2] * 3)
+            (False, False)
+
+        On the closed surface of genus 2, the boundary of the octagon is
+        contractible, hence simple, while it is a simple curve around the
+        puncture of the punctured surface::
+
+            sage: octagon = OrientedMap(vp="(0,1,2,3,~0,~1,~2,~3)")
+            sage: boundary = octagon.faces()[0]
+            sage: closed = GeometricIntersectionPairing(octagon)
+            sage: closed([boundary]), closed.is_simple(boundary)
+            (0, True)
+            sage: punctured = GeometricIntersectionPairing(octagon, punctured_faces=True)
+            sage: punctured.is_simple(boundary), punctured.is_simple(boundary * 2)
+            (True, False)
+
+        TESTS::
+
+            sage: gi.is_simple([0, 1])
+            True
+            sage: gi.is_simple([8])
+            Traceback (most recent call last):
+            ...
+            ValueError: ...
+        """
+        w = self._cm._check_walk(w, closed=True, h2v=self._h2v)
+        return self._call([w], [1], bound=0) == 0
+
+    def _call(self, uwords, umult, vwords=None, vmult=None, bound=None):
         r"""
         Return the geometric intersection of the multiwalks ``(uwords, umult)``
         and ``(vwords, vmult)``, without checking the input.
@@ -580,7 +693,8 @@ class GeometricIntersectionPairing:
         ``closed=True`` on the original map ``self._cm``: ``uwords`` and
         ``vwords`` are lists of closed walks given as ``array('i')`` and
         ``umult`` and ``vmult`` are lists of positive integers of the same
-        lengths. Nothing is checked.
+        lengths. ``bound`` is ``None`` or a non-negative integer, with the
+        meaning of ``__call__``. Nothing is checked.
 
         TESTS::
 
@@ -597,10 +711,18 @@ class GeometricIntersectionPairing:
             6
             sage: gi._call(uwords, umult, vwords, vmult)
             14
+            sage: [gi._call(uwords, umult, bound=b) for b in range(8)]
+            [1, 2, 3, 4, 5, 6, 6, 6]
+            sage: [gi._call(uwords, umult, vwords, vmult, bound=b) for b in [0, 13, 14]]
+            [1, 14, 14]
         """
         # For general multicurves where u and v might have common components, each primitive
         # word (and hence each arc) has an associated u-multiplicity and v-multiplicity.
         intersections = 0  # result
+        # NOTE: intersections is a sum of non-negative terms that ends at twice
+        # the result, so the result exceeds bound exactly when intersections
+        # exceeds limit at any stage, at which point bound + 1 is returned
+        limit = None if bound is None else 2 * bound
         n = len(self._r._vp)
         T = ConjugateTree(n)
         u_multiplicities = []
@@ -621,6 +743,8 @@ class GeometricIntersectionPairing:
             if vwords is None:
                 # NOTE: non-primitive contribution to self-intersection
                 intersections += m * 2 * (exponent - 1)
+                if limit is not None and intersections > limit:
+                    return bound + 1
 
         if vwords is not None:
             self_intersection = False
@@ -655,11 +779,19 @@ class GeometricIntersectionPairing:
         # the arcs fill the n^2 / 2 possible pairs (n = 64, curves of length
         # 4000) it takes 260 us against 620 us.
         if self_intersection:
-            intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, check=False)
+            # the sweep adds to intersections as it is
+            sweep_bound = None if limit is None else limit - intersections
+            intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, check=False, bound=sweep_bound)
         else:
+            # intersections is 0 here and the sweep is doubled, so that
+            # 2 S > limit = 2 bound exactly when S > bound
             vkeys, vkey_weights = _word_arcs(n, angles, words, v_multiplicities)
-            intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, vkeys, vkey_weights, check=False)
+            intersections += crossing_arcs_sweep_sorted(n, ukeys, ukey_weights, vkeys, vkey_weights, check=False,
+                                                        bound=bound)
             intersections *= 2
+        if limit is not None and intersections > limit:
+            # NOTE: this skips the sorted leaves, the main remaining cost
+            return bound + 1
 
         # Essential intersections coming from pairs of conjugates with identical
         # start, each leaf being described by its startpoint, the angle from
@@ -670,11 +802,16 @@ class GeometricIntersectionPairing:
         uweights = _leaf_weights(word_index, u_multiplicities)
         if self_intersection:
             # with the v-weights equal to the u-weights, the sweep counts each
-            # pair of leaves in both orders
-            intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights) // 2
+            # pair of leaves in both orders; S // 2 > k exactly when
+            # S > 2 k + 1, whatever the parity of S
+            sweep_bound = None if limit is None else 2 * (limit - intersections) + 1
+            intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights, bound=sweep_bound) // 2
         else:
             vweights = _leaf_weights(word_index, v_multiplicities)
-            intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights, vweights)
+            sweep_bound = None if limit is None else limit - intersections
+            intersections += startpoint_sweep_weighted(n, starts, arc_angles, uweights, vweights, bound=sweep_bound)
+        if limit is not None and intersections > limit:
+            return bound + 1
 
         # we got twice the geometric intersection because we register all arcs and their inverses
         assert intersections % 2 == 0

@@ -78,6 +78,8 @@ EXAMPLES::
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
+import numbers
+
 from cpython cimport array
 from libc.limits cimport INT_MAX, LLONG_MAX
 from libc.stdlib cimport calloc, free, malloc, qsort
@@ -331,6 +333,20 @@ cdef long long *_as_longlongs(array.array a, str name) except? NULL:
     return a.data.as_longlongs
 
 
+cdef long long _check_bound(bound) except -2:
+    # -1 stands for no bound; a bound of at least LLONG_MAX is never passed
+    # by a long long sum, so it is no bound either
+    if bound is None:
+        return -1
+    if not isinstance(bound, numbers.Integral):
+        raise TypeError(f"bound must be an integer or None (got {bound!r})")
+    if bound < 0:
+        raise ValueError(f"bound must be non-negative (got {bound})")
+    if bound >= LLONG_MAX:
+        return -1
+    return bound
+
+
 cdef int _check_arcs(int n, long long *keys, Py_ssize_t num, str name) except -1:
     cdef Py_ssize_t k
     cdef long long first, last
@@ -348,7 +364,7 @@ cdef int _check_arcs(int n, long long *keys, Py_ssize_t num, str name) except -1
 
 def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uweights not None,
                                array.array vkeys=None, array.array vweights=None,
-                               array.array scratch=None, bint check=True):
+                               array.array scratch=None, bint check=True, bound=None):
     r"""
     Return the weighted number of pairs of crossing arcs, the arcs being given
     as two sorted arrays, one for the `u`-weights and one for the `v`-weights.
@@ -380,12 +396,22 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
     - ``check`` -- boolean (default: ``True``); whether to check that the
       keys are sorted and valid
 
+    - ``bound`` -- (default: ``None``) a non-negative integer or ``None``;
+      when it is an integer, the sweep stops as soon as its running sum
+      exceeds ``bound``
+
     OUTPUT: the integer `S` of the module documentation, held together with
     the running sweep in a C ``long long``. Writing `U` for the sum of
     ``uweights`` and `V` for the sum of ``vweights`` (or `U` again when
     ``vweights`` is ``None``), `S` is at most `2 U V` and is exact only while
     `2 U V < 2^{63}`; past that bound it silently wraps around, since it is
     a sum of products of weights rather than of the weights themselves.
+
+    With ``bound`` given, the value returned is `S` when `S \leq` ``bound``
+    and some integer between ``bound + 1`` and `S` otherwise: the weights
+    being non-negative, the running sum only grows. The sweep then stops at
+    the first group of arcs past ``bound``, before any wrap around within
+    the groups visited.
 
     ALGORITHM:
 
@@ -427,6 +453,25 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
         sage: all(x == 0 for x in scratch)
         True
 
+    With a ``bound``, a sum at most ``bound`` is exact and a larger one is
+    only known to exceed it; ``scratch`` is left as it was found in both
+    cases::
+
+        sage: n = 10
+        sage: ukeys = array('q', [6 * n + 0, 7 * n + 1, 8 * n + 2, 9 * n + 3])
+        sage: uweights = array('q', [1, 1, 1, 1])
+        sage: scratch = array('q', [0] * (2 * (n + 1)))
+        sage: crossing_arcs_sweep_sorted(n, ukeys, uweights, scratch=scratch)
+        12
+        sage: crossing_arcs_sweep_sorted(n, ukeys, uweights, scratch=scratch, bound=12)
+        12
+        sage: crossing_arcs_sweep_sorted(n, ukeys, uweights, scratch=scratch, bound=13)
+        12
+        sage: 0 < crossing_arcs_sweep_sorted(n, ukeys, uweights, scratch=scratch, bound=0) <= 12
+        True
+        sage: all(x == 0 for x in scratch)
+        True
+
     TESTS::
 
         sage: e = array('q')
@@ -460,9 +505,19 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
         Traceback (most recent call last):
         ...
         ValueError: scratch must have length at least 2 * (n + 1)
+        sage: crossing_arcs_sweep_sorted(4, e, e, bound=-1)
+        Traceback (most recent call last):
+        ...
+        ValueError: bound must be non-negative (got -1)
+        sage: crossing_arcs_sweep_sorted(4, e, e, bound=1/2)
+        Traceback (most recent call last):
+        ...
+        TypeError: bound must be an integer or None (got 1/2)
     """
     if n <= 0:
         raise ValueError("n must be positive")
+    cdef long long cbound = _check_bound(bound)
+    cdef bint bounded = cbound >= 0
     cdef bint symmetric = vkeys is None
     if symmetric != (vweights is None):
         raise ValueError("vkeys and vweights must be both given or both None")
@@ -518,7 +573,11 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
                 fenwick_add(fu, n, first + 1, wu[t])
                 fenwick_add(fu, n, last, -wu[t])
             iu = ju
-        for t in range(lu):
+            if bounded and S > cbound:
+                break
+        # only the arcs before iu were inserted, all of them unless the bound
+        # stopped the sweep
+        for t in range(iu):
             last = ku[t] // n
             fenwick_clear(fu, n, ku[t] - last * n + 1)
             fenwick_clear(fu, n, last)
@@ -546,11 +605,13 @@ def crossing_arcs_sweep_sorted(int n, array.array ukeys not None, array.array uw
                 fenwick_add(fv, n, last, -wv[t])
             iu = ju
             iv = jv
-        for t in range(lu):
+            if bounded and S > cbound:
+                break
+        for t in range(iu):
             last = ku[t] // n
             fenwick_clear(fu, n, ku[t] - last * n + 1)
             fenwick_clear(fu, n, last)
-        for t in range(lv):
+        for t in range(iv):
             last = kv[t] // n
             fenwick_clear(fv, n, kv[t] - last * n + 1)
             fenwick_clear(fv, n, last)
@@ -1179,7 +1240,7 @@ def _leaf_weights(array.array word_index not None, weights):
 
 def startpoint_sweep_weighted(int n, array.array starts not None, array.array angles not None,
                               array.array uweights not None, array.array vweights=None,
-                              array.array scratch=None, bint check=True):
+                              array.array scratch=None, bint check=True, bound=None):
     r"""
     Return the weighted number of pairs of arcs with the same startpoint that
     cross, the arcs being the leaves of a family of curves listed in cyclic
@@ -1216,10 +1277,17 @@ def startpoint_sweep_weighted(int n, array.array starts not None, array.array an
     - ``check`` -- boolean (default: ``True``); whether to check that the
       lengths match and that the angles lie in ``0 .. n - 2``
 
+    - ``bound`` -- (default: ``None``) a non-negative integer or ``None``;
+      when it is an integer, the sweep stops at the end of the first group
+      of leaves after which its running sum exceeds ``bound``
+
     OUTPUT: an integer, even when ``vweights`` is ``None``; exact only while
     twice the product of the total `u`-weight and the total `v`-weight given
     is below `2^{63}`, for the same reason as the bound given in the OUTPUT
-    of :func:`crossing_arcs_sweep_sorted`
+    of :func:`crossing_arcs_sweep_sorted`. With ``bound`` given, the value
+    returned is exact when it is at most ``bound``, and otherwise only known
+    to lie between ``bound + 1`` and the exact value, the running sum being
+    a sum of non-negative terms
 
     ALGORITHM:
 
@@ -1252,6 +1320,20 @@ def startpoint_sweep_weighted(int n, array.array starts not None, array.array an
         sage: all(x == 0 for x in scratch)
         True
 
+    With a ``bound``, a value at most ``bound`` is exact and a larger one is
+    only known to exceed it; here the two groups of startpoints ``0`` and
+    ``1`` give ``12`` each, and ``scratch`` is left as it was found::
+
+        sage: starts, angles, w = q(0, 0, 1, 1), q(1, 5, 1, 5), q(2, 3, 2, 3)
+        sage: startpoint_sweep_weighted(8, starts, angles, w, scratch=scratch)
+        24
+        sage: startpoint_sweep_weighted(8, starts, angles, w, scratch=scratch, bound=24)
+        24
+        sage: startpoint_sweep_weighted(8, starts, angles, w, scratch=scratch, bound=11)
+        12
+        sage: all(x == 0 for x in scratch)
+        True
+
     TESTS::
 
         sage: e = array('q')
@@ -1273,9 +1355,19 @@ def startpoint_sweep_weighted(int n, array.array starts not None, array.array an
         Traceback (most recent call last):
         ...
         ValueError: scratch must have length at least 2 * (n + 1)
+        sage: startpoint_sweep_weighted(4, e, e, e, bound=-1)
+        Traceback (most recent call last):
+        ...
+        ValueError: bound must be non-negative (got -1)
+        sage: startpoint_sweep_weighted(4, e, e, e, bound=1.0)
+        Traceback (most recent call last):
+        ...
+        TypeError: bound must be an integer or None (got 1.00000000000000)
     """
     if n <= 0:
         raise ValueError("n must be positive")
+    cdef long long cbound = _check_bound(bound)
+    cdef bint bounded = cbound >= 0
     cdef bint symmetric = vweights is None
     cdef long long *s = _as_longlongs(starts, "starts")
     cdef long long *a = _as_longlongs(angles, "angles")
@@ -1332,6 +1424,10 @@ def startpoint_sweep_weighted(int n, array.array starts not None, array.array an
             for t in range(i0, i):
                 fenwick_clear(fu, size, a[t])
                 fenwick_clear(fv, size, a[t])
+        # the trees are clear at the end of each group, so the sweep can stop
+        # there
+        if bounded and S > cbound:
+            break
 
     if owned:
         free(fu)

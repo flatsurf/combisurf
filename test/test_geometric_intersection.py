@@ -77,6 +77,16 @@ def test_torus_mcg():
             assert gi([ww]) == intersection
 
 
+def assert_bounded_call(gi, u, v, expected):
+    r"""
+    Check that ``gi(u, v, bound=b)`` is ``min(expected, b + 1)`` for ``b``
+    in ``expected - 1``, ``expected`` and ``expected + 1``, ``b >= 0``.
+    """
+    for b in range(max(expected - 1, 0), expected + 2):
+        got = gi(u, v, bound=b)
+        assert got == min(expected, b + 1), (u, v, b, got, expected)
+
+
 def test_geometric_intersection_multilinearity():
     import itertools
     from combisurf import OrientedMap
@@ -92,6 +102,11 @@ def test_geometric_intersection_multilinearity():
         assert gi([u, u]) == 4 * intersection
         assert gi([u * 2, u]) == 9 * intersection + 1
         assert gi([u * 3]) == 9 * intersection + 2
+        assert_bounded_call(gi, [u], None, intersection)
+        assert_bounded_call(gi, [u * 2], None, 4 * intersection + 1)
+        assert_bounded_call(gi, [u, u], None, 4 * intersection)
+        assert_bounded_call(gi, [u * 2, u], None, 9 * intersection + 1)
+        assert_bounded_call(gi, [u * 3], None, 9 * intersection + 2)
 
     wlist = [[0], [1], [0, 1], [0, 0, 1], [0, 1, 1], [0, 0, 1, 1]]
     Q = [[gi([w0], [w1]) for w1 in wlist] for w0 in wlist]
@@ -102,6 +117,8 @@ def test_geometric_intersection_multilinearity():
             ans0 = sum(ucoeffs[i] * vcoeffs[j] * Q[i][j] for i in range(6) for j in range(6))
             ans1 = gi(ulist, vlist)
             assert ans0 == ans1, gi
+            assert_bounded_call(gi, ulist, vlist, ans0)
+        assert_bounded_call(gi, ulist, None, gi(ulist))
 
 
 def polygon_4g(g):
@@ -437,6 +454,24 @@ def test_intersection_matrix_double_sum_identity():
                 assert I._double_sum(sx, sy) == crossing_arcs_double_sum(n, arcs), (g, length, sx, sy)
 
 
+def assert_bounded_sweep(sweep, expected, scratch, rng):
+    r"""
+    Check that ``sweep(scratch=scratch, bound=b)`` is ``expected`` for ``b``
+    at least ``expected`` and lies in ``b + 1 .. expected`` below it, leaving
+    ``scratch`` zero, for ``b`` around ``expected``, at ``0`` and at random.
+    """
+    bounds = {0, expected, expected + 1}
+    if expected:
+        bounds.update((expected - 1, rng.randrange(expected)))
+    for b in sorted(bounds):
+        value = sweep(scratch=scratch, bound=b)
+        if b < expected:
+            assert b < value <= expected, (b, value, expected)
+        else:
+            assert value == expected, (b, value, expected)
+        assert not any(scratch)
+
+
 def test_crossing_arcs_sweep_sorted_random():
     # the sorted sweep against the brute force, exactly, on random weighted
     # arcs, with and without a scratch
@@ -468,12 +503,16 @@ def test_crossing_arcs_sweep_sorted_random():
             assert crossing_arcs_sweep_sorted(n, *q) == expected
             assert crossing_arcs_sweep_sorted(n, *q, scratch) == expected
             assert not any(scratch)
+            assert_bounded_sweep(lambda **kw: crossing_arcs_sweep_sorted(n, *q, **kw), expected, scratch, rng)
 
             expected = crossing_arcs_brute_force(n, {k: [x, x] for k, x in zip(ukeys, uweights)})
             assert crossing_arcs_sweep_sorted(n, q[0], q[1]) == expected
             assert crossing_arcs_sweep_sorted(n, q[0], q[1], None, None, scratch) == expected
             assert crossing_arcs_sweep_sorted(n, q[0], q[1], q[0], q[1], scratch) == expected
             assert not any(scratch)
+            assert_bounded_sweep(lambda **kw: crossing_arcs_sweep_sorted(n, q[0], q[1], **kw), expected, scratch, rng)
+            assert_bounded_sweep(lambda **kw: crossing_arcs_sweep_sorted(n, q[0], q[1], q[0], q[1], **kw),
+                                 expected, scratch, rng)
 
 
 def random_leaves(n, num, rng):
@@ -549,6 +588,7 @@ def test_startpoint_sweep_weighted_random():
                 assert startpoint_sweep_weighted(n, *q) == expected
                 assert startpoint_sweep_weighted(n, *q, scratch) == expected
                 assert not any(scratch)
+                assert_bounded_sweep(lambda **kw: startpoint_sweep_weighted(n, *q, **kw), expected, scratch, rng)
 
                 expected = startpoint_sweep_brute_force(starts, angles, uweights, uweights)
                 assert expected % 2 == 0
@@ -556,6 +596,10 @@ def test_startpoint_sweep_weighted_random():
                 assert startpoint_sweep_weighted(n, q[0], q[1], q[2], None, scratch) == expected
                 assert startpoint_sweep_weighted(n, q[0], q[1], q[2], q[2], scratch) == expected
                 assert not any(scratch)
+                assert_bounded_sweep(lambda **kw: startpoint_sweep_weighted(n, q[0], q[1], q[2], **kw),
+                                     expected, scratch, rng)
+                assert_bounded_sweep(lambda **kw: startpoint_sweep_weighted(n, q[0], q[1], q[2], q[2], **kw),
+                                     expected, scratch, rng)
 
 
 def test_intersection_matrix_self_intersection():
@@ -630,7 +674,8 @@ def test_geometric_intersection_crossing_arcs_paths(monkeypatch):
         # geometric_intersection hands the arcs to crossing_arcs_sweep_sorted
         # as sorted arrays, which are turned back into the dictionary read by
         # the implementations
-        def sweep_sorted(n, ukeys, uweights, vkeys=None, vweights=None, scratch=None, check=True):
+        def sweep_sorted(n, ukeys, uweights, vkeys=None, vweights=None, scratch=None, check=True, bound=None):
+            # the exact sum is a valid answer whatever the bound
             assert list(ukeys) == sorted(set(ukeys))
             symmetric = vkeys is None
             arcs = {}
@@ -1040,12 +1085,16 @@ def test_closed_powers(name, m):
     powers = (1, 2, 3)
     for c in walks:
         ic = gi([c])
+        assert gi.is_simple(c) == (ic == 0), c
+        assert not gi.is_simple(c * 2), c
         for n in powers:
             assert gi([c * n]) == n * n * ic + n - 1, (c, n)
+            assert_bounded_call(gi, [c * n], None, n * n * ic + n - 1)
         for d in (c, reverse(c)):
             for n in powers:
                 for k in powers:
                     assert gi([c * n], [d * k]) == 2 * n * k * ic, (c, d, n, k)
+                    assert_bounded_call(gi, [c * n], [d * k], 2 * n * k * ic)
     for i, c in enumerate(walks):
         for d in walks[i + 1:]:
             if canonical.homotopic_up_to_reversal(c, d):
@@ -1055,6 +1104,7 @@ def test_closed_powers(name, m):
             for n in powers:
                 for k in powers:
                     assert gi([c * n], [d * k]) == n * k * expected, (c, d, n, k)
+                    assert_bounded_call(gi, [c * n], [d * k], n * k * expected)
 
 
 def homotopic_variants(m, w, rng):
@@ -1104,6 +1154,7 @@ def test_closed_face_boundaries(name, m):
     for f in faces:
         assert gi([f]) == 0, f
         assert gi([reverse(f)]) == 0, f
+        assert gi.is_simple(f) and gi.is_simple(f * 2), f
         for w in walks + faces:
             assert gi([f], [w]) == 0, (f, w)
             assert gi([w], [f]) == 0, (f, w)
@@ -1303,6 +1354,9 @@ def test_punctured_agreement():
                     got = gi_all([reduced[i]], [reduced[j]])
                     unreduced = gi_all([walks[i]], [walks[j]])
                 assert got == expected, (name, walks[i], walks[j])
+                v = None if i == j else [walks[j]]
+                assert_bounded_call(gi, [walks[i]], v, expected)
+                assert_bounded_call(gi_all, [walks[i]], v, unreduced)
                 num_pairs += 1
                 num_different += unreduced != expected
     assert num_pairs == 119 * 78
@@ -1369,10 +1423,14 @@ def test_algorithms_agreement():
     for name, m, punctured in instances:
         rng = random.Random(len(m.vertex_permutation()) + 7)
         walks = m.faces() + [random_closed_walk(m, rng, length) for length in (3, 8, 20) for _ in range(2)]
-        tables = [intersection_table(GeometricIntersectionPairing(m, punctured_faces=punctured, algorithm=algorithm),
-                                     walks)
-                  for algorithm in ("triangle_system", "reduced_map")]
+        pairings = [GeometricIntersectionPairing(m, punctured_faces=punctured, algorithm=algorithm)
+                    for algorithm in ("triangle_system", "reduced_map")]
+        tables = [intersection_table(gi, walks) for gi in pairings]
         assert tables[0] == tables[1], (name, punctured, walks)
+        for gi in pairings:
+            for i, u in enumerate(walks):
+                for j in range(i, len(walks)):
+                    assert_bounded_call(gi, [u], None if i == j else [walks[j]], tables[0][i][j])
         num_pairs += len(walks) * (len(walks) + 1) // 2
     assert num_pairs == 10544
 

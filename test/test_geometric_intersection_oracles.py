@@ -41,8 +41,11 @@ class pairing:
     def __init__(self, m, punctured_faces):
         self._gi = _skip_not_implemented(GeometricIntersectionPairing, m, punctured_faces=punctured_faces)
 
-    def __call__(self, u, v=None):
-        return _skip_not_implemented(self._gi, u, v)
+    def __call__(self, u, v=None, bound=None):
+        return _skip_not_implemented(self._gi, u, v, bound=bound)
+
+    def is_simple(self, w):
+        return _skip_not_implemented(self._gi.is_simple, w)
 
 
 def word(*pairs):
@@ -245,6 +248,10 @@ def test_cylinder_core_curves(name):
     for i in range(N):
         assert gi([left[i]]) == 0, i
         assert gi([right[i]]) == 0, i
+        # a core curve is simple, and its square is not: i(c^2) = 4 i(c) + 1
+        for c in (left[i], right[i]):
+            assert gi.is_simple(c), i
+            assert not gi.is_simple(c * 2), i
         # the two sides of a cylinder are homotopic simple curves
         assert gi([left[i]], [right[i]]) == 0, i
     for i in range(N):
