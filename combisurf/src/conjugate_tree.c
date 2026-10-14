@@ -76,7 +76,7 @@
  * the bits of their first letters with one branching crit node per child
  * but one: a lookup reads at most one crit node per bit of the letters. Up
  * to CT_PROMOTE * CT_ROW_RATIO = 1024 letters the rows come at CT_PROMOTE
- * children as before, and crit_min is CT_PROMOTE, so that no crit-bit tree
+ * children, and crit_min is CT_PROMOTE, so that no crit-bit tree
  * is built: one built at 8 children, then dropped at 16 for the row, made
  * the build 7 to 11 % slower at n = 128 and 1024 (Markov and Zipf words of
  * 2^16 letters: 36.3 against 33.1 ms, 43.7 against 39.3 ms). Past 1024
@@ -110,24 +110,26 @@
  * arrays of n entries; the dense layout costs O(n) per node by design, and
  * the sparse layout O(d) per lookup.
  *
- * Measured, before against after (best of 5, two random words and their
- * inverses, so 4 l letters in the tree; build and listing of the leaves):
+ * Against rows from CT_PROMOTE children on whatever the alphabet, with no
+ * crit-bit tree, a child replaced by walking the siblings and the children
+ * sorted by insertion alone (best of 5, two random words and their inverses,
+ * so 4 l letters in the tree; build and listing of the leaves):
  *
- *     n        l          before               after
+ *     n        l        rows at CT_PROMOTE    this layout
  *     1024     3000     1.58 ms  335 us     838 us  193 us
  *     4096     3000     8.17 ms  2.14 ms    714 us  155 us
  *     16384    3000     16.2 ms  10.4 ms    600 us  164 us
- *     16384    2^16      320 ms  44.3 ms   30.3 ms  7.83 ms   (1.1 GB -> 31 MB)
+ *     16384    2^16      320 ms  44.3 ms   30.3 ms  7.83 ms   (1.1 GB, 31 MB)
  *     1024     2^16     30.7 ms  13.0 ms   19.1 ms  7.69 ms
  *
- * At 1024 letters, where no crit-bit tree is built, the gain of the build is
- * the replacement of a child, which walked the siblings before, up to 1024
- * steps at the root, and that of the listing the sort of the children of the
- * root. On the words whose nodes have 2 to 8 children (Fibonacci over 1024
- * letters, 2^16 letters per word) the build takes 17.4 ms against 15.6 ms:
- * psib costs 4 bytes more per node. The first version, with psib kept for
- * every node and separate arrays for the number of children and the root of
- * the crit-bit tree, took 20.7 ms.
+ * At 1024 letters, where no crit-bit tree is built, the build gains on the
+ * replacement of a child, a walk of up to 1024 siblings at the root, and the
+ * listing on the sort of the children of the root. On the words whose nodes
+ * have 2 to 8 children (Fibonacci over 1024 letters, 2^16 letters per word)
+ * the build takes 17.4 ms against 15.6 ms: psib makes a node 4 bytes
+ * larger, and adding a child counts the siblings. Keeping the number of
+ * children and the root of the crit-bit tree in arrays of their own instead
+ * of the header made it 20.7 ms.
  */
 
 /* ------------------------------------------------------------------ */
@@ -220,7 +222,8 @@ static int promote_node(ct_tree *T, int s)
 
 /*
  * The crit nodes are allocated from one pool, crit nodes released by a node
- * that gets its row going to a free list. The pool keeps the invariant
+ * that gets its row going to a free list. The pool is allocated by the first
+ * crit-bit tree, and from then on keeps the invariant
  *
  *     crit_capacity - ncrit >= crit_promised - nstates,
  *
@@ -449,7 +452,11 @@ static int reserve(ct_tree *T, int num_words, int num_letters, int num_nodes)
         int promised = T->nstates + num_nodes;
         if (promised < T->crit_promised)
             promised = T->crit_promised;
-        if ((err = crit_grow(T, 0, promised)))
+        /* without a crit-bit tree, nothing takes from the pool before
+         * crit_build, which makes the room promised itself: up to 1024
+         * letters no crit-bit tree is built, and the pool would cost 12
+         * bytes per promised node for nothing */
+        if (T->crit_capacity > 0 && (err = crit_grow(T, 0, promised)))
             return err;
         T->crit_promised = promised;
     }
@@ -1506,8 +1513,11 @@ int ct_check(const ct_tree *T)
         CHECK(T->crit_min >= 1);
         CHECK(T->ncrit >= 0 && T->ncrit <= T->crit_capacity);
         CHECK(T->crit_free >= -1 && T->crit_free < T->ncrit);
-        /* the room promised to the insertions into the crit-bit trees */
-        CHECK((int64_t) T->crit_capacity - T->ncrit >= (int64_t) T->crit_promised - n);
+        /* the room promised to the insertions into the crit-bit trees, once
+         * the first one has allocated the pool */
+        CHECK(T->crit_capacity > 0 || T->ncrit == 0);
+        CHECK(T->crit_capacity == 0 ||
+              (int64_t) T->crit_capacity - T->ncrit >= (int64_t) T->crit_promised - n);
     }
 
     /* the words: laid end to end, non-empty, letters in range */
