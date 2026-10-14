@@ -26,6 +26,8 @@ Module Reference
    geometric_intersection
    hyperbolic_quadrangulation
    bipartite_hyperbolic_triangulation
+   bipartite_hyperbolic_triangulation_reduction
+   bipartite_hyperbolic_triangulation_reduction_naive
    crossing_arcs
    conjugate_tree
    conjugate_tree_naive

@@ -4,13 +4,19 @@ triangle systems of the maps of genus 2 to 4 of the triangle system tests,
 closed or with one to three punctured triangles, and on the barycentric
 subdivisions of the barycentric subdivision tests that are hyperbolic. Free
 homotopy is decided by the right-most geodesics of the hyperbolic
-quadrangulation of the quad system of each triangulation.
+quadrangulation of the quad system of each triangulation. The Cython
+reduction and its pure Python reference return the same walks, rotation
+included.
 """
 import random
+from array import array
 
 import pytest
 
-from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation, TurnRuns
+from combisurf import OrientedMap
+from combisurf.bipartite_hyperbolic_triangulation import BipartiteHyperbolicTriangulation
+from combisurf.bipartite_hyperbolic_triangulation_reduction import strongly_reduced as cython_strongly_reduced
+from combisurf.bipartite_hyperbolic_triangulation_reduction_naive import TurnRuns
 from combisurf.hyperbolic_quadrangulation import HyperbolicQuadrangulation
 
 import test_barycentric_subdivision
@@ -61,6 +67,26 @@ def is_rotation(u, v):
 
 def reverse(w):
     return [h ^ 1 for h in reversed(w)]
+
+
+def naive_reduced(T, w):
+    r"""
+    Return the strongly reduced closed walk of ``w`` computed by the pure
+    Python reference.
+    """
+    return TurnRuns(T, w).strongly_reduced() if w else []
+
+
+def check_same(T, w):
+    r"""
+    Check that the Cython reduction of ``w``, through
+    :meth:`BipartiteHyperbolicTriangulation.strongly_reduced` and directly on
+    the tables, equals the one of the reference, and return it.
+    """
+    r = T.strongly_reduced(w)
+    assert r == naive_reduced(T, w)
+    assert cython_strongly_reduced(T._h2v, T._wpos, T._wdeg, T._offset, T._at, array('i', w)) == r
+    return r
 
 
 class Oracle:
@@ -137,15 +163,15 @@ def test_strongly_reduced(name, t, punctured):
     walks = [random_closed_walk(t, rng, length) for length in LENGTHS]
     walks.append(walks[-2] + walks[-2])
     for w in walks:
-        r = T.strongly_reduced(w)
+        r = check_same(T, w)
         assert T.is_strongly_reduced(r)
         assert len(r) <= len(w)
         assert oracle.homotopic(r, w)
         assert (r == []) == (oracle(w) == [])
-        assert is_rotation(T.strongly_reduced(r), r)
-        assert is_rotation(T.strongly_reduced(reverse(w)), reverse(r))
+        assert is_rotation(check_same(T, r), r)
+        assert is_rotation(check_same(T, reverse(w)), reverse(r))
         for u in variants(t, punctured, w, rng):
-            assert is_rotation(T.strongly_reduced(u), r)
+            assert is_rotation(check_same(T, u), r)
 
 
 @pytest.mark.parametrize("name, t, punctured", INSTANCES, ids=IDS)
@@ -155,8 +181,11 @@ def test_contractible(name, t, punctured):
     filled = filled_half_edges_at(t, punctured)
     for i, f in enumerate(t.faces()):
         if i not in punctured:
-            assert T.strongly_reduced(f) == []
-            assert T.strongly_reduced(reverse(f)) == []
+            assert check_same(T, f) == []
+            assert check_same(T, reverse(f)) == []
+        else:
+            check_same(T, f)
+            check_same(T, reverse(f))
     rng = random.Random(t.num_faces())
     for length in LENGTHS:
         c = random_closed_walk(t, rng, length)
@@ -166,11 +195,11 @@ def test_contractible(name, t, punctured):
         f = face_from(t, rng.choice(filled[v]))
         g = face_from(t, rng.choice(filled[v]))
         w = c + f + reverse(c)
-        assert T.strongly_reduced(w) == []
+        assert check_same(T, w) == []
         # a product of two conjugates of boundaries of triangles, all based
         # at the start of c
         u = w + reverse(c) + reverse(g) + c
-        assert T.strongly_reduced(u) == []
+        assert check_same(T, u) == []
 
 
 def weighted_turns_with_weight(t, punctured, w, weight):
@@ -335,8 +364,11 @@ def test_cylinder_move(name, t, punctured, monkeypatch):
             assert T.weighted_turns(w) == [3 * s] * len(w)
             assert not T.is_strongly_reduced(w)
             before = counter.cylinders
-            r = T.strongly_reduced(w)
+            # the moves are counted on the reference, which the Cython
+            # reduction follows move for move
+            r = TurnRuns(T, w).strongly_reduced()
             assert counter.cylinders == before + 1
+            assert check_same(T, w) == r
             assert r and T.is_strongly_reduced(r)
             assert T.weighted_turns(r) == [-3 * s] * len(r)
             assert oracle.homotopic(r, w)
@@ -401,9 +433,10 @@ def test_long_flips(monkeypatch):
                     continue
                 num_walks += 1
                 before = len(counter.flips)
-                r = T.strongly_reduced(w)
+                r = TurnRuns(T, w).strongly_reduced()
                 # the reduction of w itself takes a flip with k, l >= 2
                 assert any(kk >= 2 and ll >= 2 for _, kk, ll in counter.flips[before:])
+                assert check_same(T, w) == r
                 assert T.is_strongly_reduced(r)
                 assert oracle.homotopic(r, w)
                 assert is_rotation(T.strongly_reduced(reverse(w)), reverse(r))
@@ -413,6 +446,39 @@ def test_long_flips(monkeypatch):
     long_flips = [(s, k, l) for s, k, l in counter.flips if k >= 2 and l >= 2]
     assert any(s == -1 for s, _, _ in long_flips)
     assert any(s == 1 for s, _, _ in long_flips)
+
+
+@pytest.mark.parametrize("name, t, punctured", INSTANCES[::40], ids=IDS[::40])
+def test_long_walks(name, t, punctured):
+    # walks of 10^4 turns, their reverses and their squares, on which the
+    # run arrays of the Cython reduction are grown many times
+    T = BipartiteHyperbolicTriangulation(t, punctured)
+    rng = random.Random(len(t.vertex_permutation()))
+    for _ in range(2):
+        w = random_closed_walk(t, rng, 10000)
+        r = check_same(T, w)
+        assert T.is_strongly_reduced(r)
+        check_same(T, reverse(w))
+        check_same(T, w + w)
+
+
+# a closed walk on the triangle system of a torus, whose vertices have degree
+# 6 with no punctured corner, on which the moves do not terminate
+TORUS_WALK = [12, 15, 7, 5, 17, 12, 15, 11, 6, 12, 17, 9, 10, 9, 5, 2, 1, 17, 11, 8, 16, 2, 6, 9, 1, 13, 14, 17]
+
+
+def test_non_termination():
+    t, _ = OrientedMap(fp="(0,1,~0,~1)").triangle_system(relabel=True)
+    assert t.vertex_profile() == [6, 6, 6]
+    T = BipartiteHyperbolicTriangulation(t, check=False)
+    message = "the reduction does not terminate; the triangulation is not a bipartite hyperbolic triangulation"
+    with pytest.raises(RuntimeError, match=message):
+        TurnRuns(T, TORUS_WALK).strongly_reduced()
+    with pytest.raises(RuntimeError, match=message):
+        T.strongly_reduced(TORUS_WALK)
+    # the error leaves no state behind: a second call raises it again
+    with pytest.raises(RuntimeError, match=message):
+        T.strongly_reduced(TORUS_WALK)
 
 
 def test_errors():
