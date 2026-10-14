@@ -573,6 +573,43 @@ def test_half_edge_to_cell_with_a_folded_edge():
         assert h2v[2 * e + 1] == -1 and h2f[2 * e + 1] == -1, (m, e)
 
 
+def test_check_walk_messages():
+    from array import array
+    from combisurf import OrientedMap
+
+    m = OrientedMap(vp="(0,3,6,~3)(~0,1,~6,~1)")
+    n = len(m.vertex_permutation())
+    vp = m.vertex_permutation()
+    h2v = m.half_edge_to_vertex()
+    inactive = [h for h in range(n) if vp[h] == -1]
+    assert inactive
+    h = inactive[0]
+
+    w = array('i', [0, 13])
+    assert m._check_walk(w, closed=True) is w
+    assert m._check_walk([]) == array('i')
+    assert m._check_walk([], closed=True) == array('i')
+
+    cases = [
+        ([0, n + 2], False, f"invalid walk [0, {n + 2}]: half-edge number out of range (={n + 2}) at position 1"),        ([-1], False, "invalid walk [-1]: half-edge number out of range (=-1) at position 0"),
+        ([0, h], False, f"invalid walk [0, {h}]: inactive half-edge (={h}) at position 1"),
+        ([0, 0], False, f"invalid walk [0, 0]: 0 at position 0 ends at vertex {h2v[1]} but 0 at position 1 starts at vertex {h2v[0]}"),
+    ]
+    for w, closed, message in cases:
+        for kwargs in [{}, {"h2v": h2v}]:
+            with pytest.raises(ValueError) as info:
+                m._check_walk(w, closed=closed, **kwargs)
+            assert str(info.value) == message
+
+    m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+    with pytest.raises(ValueError) as info:
+        m._check_walk([0, 2], closed=True)
+    assert str(info.value) == "non-closed walk [0, 2]: 2 at position 1 ends at vertex 2 but 0 at position 0 starts at vertex 0"
+    with pytest.raises(ValueError) as info:
+        m._check_walk([0, 2, 0, 0])
+    assert str(info.value) == "invalid walk [0, 2, 0, 0]: 2 at position 1 ends at vertex 2 but 0 at position 2 starts at vertex 0"
+
+
 def test_check_walk_with_h2v():
     # given the vertices of the half-edges, the walk and the errors are the same
     from array import array

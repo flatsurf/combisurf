@@ -151,8 +151,15 @@ class GeometricIntersectionPairing:
         The images of letters have unbounded length when some face is filled,
         as the boundary of a filled face gets merged into a punctured one.
 
-      - ``None`` -- ``"reduced_map"`` if some face is punctured, and
-        ``"triangle_system"`` on a closed surface
+      - ``None`` -- ``"reduced_map"`` if every face is punctured, where each
+        letter has an image of at most one letter, and ``"triangle_system"``
+        otherwise, closed surfaces included. With a filled face,
+        ``"triangle_system"`` is the one whose cost is `O(n + \log(g + b)
+        \ell)`, but it is not necessarily faster: for two walks of length
+        1000, a pair takes 1.14 ms against 0.42 ms with ``"reduced_map"`` when
+        7 faces of 14 are punctured (genus 4, 30 edges), and 0.26 ms against
+        0.51 ms with one punctured face on a map of genus 20 with 10000
+        edges
 
     EXAMPLES:
 
@@ -298,8 +305,11 @@ class GeometricIntersectionPairing:
         sage: gi3([eight01])
         1
 
-    With punctured faces, the default algorithm is ``"reduced_map"``, and the
-    algorithm ``"triangle_system"`` agrees with it::
+    With every face punctured the default algorithm is ``"reduced_map"``, and
+    with a filled face it is ``"triangle_system"``, which is not necessarily
+    faster (1.14 ms against 0.42 ms per pair of walks of length 1000 for
+    ``"reduced_map"`` with 7 of 14 faces punctured on a map of genus 4). The
+    two algorithms agree::
 
         sage: curves = m.faces() + [eight01, word_init("0,1,2,0,~4,~3,0,1,2")]
         sage: for P in [[1, 2, 3], [0, 1, 2]]:
@@ -368,7 +378,8 @@ class GeometricIntersectionPairing:
     cyclically reduced, is the input of the free group computation of
     :ref:`cohen-lustig-1987`. A deleted edge is sent to the rest of the
     boundary of a filled face, so the images of letters have unbounded length
-    unless every face is punctured.
+    unless every face is punctured; this is why it is the default only when
+    every face is punctured.
 
     With ``algorithm="triangle_system"``, ``m`` is replaced by its triangle
     system `t` (see
@@ -420,11 +431,23 @@ class GeometricIntersectionPairing:
             raise NotImplementedError("geometric intersection is only implemented on surfaces of negative Euler characteristic")
 
         if algorithm is None:
-            # the reduced map is faster even with filled faces: on a map with
-            # 60 half-edges, genus 4, 14 faces of which one punctured, a pair
-            # of walks of length 1000 takes 1.63 ms against 7.05 ms through
-            # the triangle system, whose one-vertex map has 25 edges against 8
-            algorithm = "reduced_map" if punctured_faces else "triangle_system"
+            # With a filled face, only the triangle system has images of
+            # length at most 4 and a cost O(n + log(g + b) l); in the reduced
+            # map a deleted edge goes to the rest of the boundary of a filled
+            # face, of unbounded length. It is not always faster: for a pair
+            # of walks of length 1000, triangle system against reduced map
+            # per pair is 1.03 against 0.84 ms (random_26, 30 edges, genus 4,
+            # one punctured face of 14), 1.14 against 0.42 ms (7 of 14),
+            # 0.12 against 0.09 ms (10000 edges, genus 2, one of 7036),
+            # 0.26 against 0.51 ms (10000 edges, genus 20, one of 6974) and
+            # 0.40 against 2.26 ms on a closed walk repeating the letter of
+            # the longest image (79 letters) of that last map. With every
+            # face punctured, the reduced map has images of at most one
+            # letter and is faster (1.43 against 0.50 ms on genus 20).
+            if len(punctured_faces) == self._cm.num_faces():
+                algorithm = "reduced_map"
+            else:
+                algorithm = "triangle_system"
         if algorithm == "reduced_map":
             if not punctured_faces:
                 raise ValueError('algorithm="reduced_map" requires at least one punctured face')

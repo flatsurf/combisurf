@@ -605,6 +605,88 @@ def word_is_cyclically_reduced(array.array w):
     return w.data.as_ints[0] ^ 1 != w.data.as_ints[len(w) - 1]
 
 
+def word_check_walk(array.array w, array.array vp, array.array h2v, bint closed):
+    r"""
+    Return the position of the first defect of ``w`` as a walk, or ``-1``.
+
+    INPUT:
+
+    - ``w`` -- an ``array('i')``, a sequence of half-edges
+
+    - ``vp`` -- an ``array('i')``, the vertex permutation of a map, with
+      ``-1`` for the inactive half-edges
+
+    - ``h2v`` -- an ``array('i')``, the vertex of each half-edge, as given by
+      :meth:`~combisurf.oriented_map.OrientedMap.half_edge_to_vertex`
+
+    - ``closed`` -- boolean; whether the walk must also be closed
+
+    OUTPUT: ``-1`` if ``w`` is a walk of the map, closed when ``closed`` is
+    true. Otherwise the position `i` of the first letter that is out of range,
+    inactive, or does not start where the letter at `i - 1` ends, in this
+    order of tests; or ``len(w)`` if every letter is fine but the walk is not
+    closed.
+
+    EXAMPLES::
+
+        sage: from combisurf import OrientedMap
+        sage: from combisurf.word import word_init, word_check_walk
+        sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+        sage: vp = m.vertex_permutation()
+        sage: h2v = m.half_edge_to_vertex()
+        sage: word_check_walk(word_init([0, 2]), vp, h2v, False)
+        -1
+        sage: word_check_walk(word_init([0, 2]), vp, h2v, True)
+        2
+        sage: word_check_walk(word_init([0, 1]), vp, h2v, True)
+        -1
+        sage: word_check_walk(word_init([0, 12]), vp, h2v, False)
+        1
+        sage: word_check_walk(word_init([-1]), vp, h2v, False)
+        0
+        sage: word_check_walk(word_init([0, 0]), vp, h2v, False)
+        1
+        sage: word_check_walk(word_init([]), vp, h2v, True)
+        -1
+
+    A walk through an inactive half-edge::
+
+        sage: m = OrientedMap(vp="(0,3,6,~3)(~0,1,~6,~1)")
+        sage: vp = m.vertex_permutation()
+        sage: word_check_walk(word_init([6, 4]), vp, m.half_edge_to_vertex(), False)
+        1
+    """
+    cdef Py_ssize_t n = len(w)
+    cdef Py_ssize_t nh = len(vp)
+    cdef Py_ssize_t i
+    cdef int h
+    cdef int hprev = 0
+
+    if w.ob_descr.typecode != c'i' or vp.ob_descr.typecode != c'i' or h2v.ob_descr.typecode != c'i':
+        raise TypeError("w, vp and h2v must be arrays of typecode 'i'")
+    if len(h2v) < nh:
+        raise ValueError("h2v is shorter than vp")
+
+    cdef int * a = w.data.as_ints
+    cdef int * p = vp.data.as_ints
+    cdef int * v = h2v.data.as_ints
+
+    for i in range(n):
+        h = a[i]
+        if h < 0 or h >= nh:
+            return i
+        if p[h] == -1:
+            return i
+        if i > 0 and v[hprev ^ 1] != v[h]:
+            return i
+        hprev = h
+
+    if n and closed and v[a[0]] != v[a[n - 1] ^ 1]:
+        return n
+
+    return -1
+
+
 def word_reduce(array.array w):
     r"""
     Return the free reduction of ``w``.

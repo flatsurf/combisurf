@@ -58,7 +58,7 @@ from combisurf.permutation import (perm_init, perm_check, perm_trim, perm_cycles
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
                           perm_orbit, perm_orbit_size,
                           perms_are_transitive, perms_orbits, perm_edge_orbits, edge_relabelling_from)
-from combisurf.word import word_init, word_string
+from combisurf.word import word_check_walk, word_init, word_string
 
 def check_relabelling(arg, ne):
     r"""
@@ -568,22 +568,20 @@ class OrientedMap:
             h2v = self.half_edge_to_vertex()
 
         vp = self._vp
-        n = len(vp)
-        hprev = None # previous half-edge
-        for i, h in enumerate(w):
-            # the letters of w are C ints, no type check is needed
-            if h < 0 or h >= n:
-                raise ValueError(f"invalid walk {word_string(w)}: half-edge number out of range (={h}) at position {i}")
-            if vp[h] == -1:
-                raise ValueError(f"invalid walk {word_string(w)}: inactive half-edge (={h}) at position {i}")
-            if hprev is not None and h2v[hprev ^ 1] != h2v[h]:
-                raise ValueError(f"invalid walk {word_string(w)}: {hprev} at position {i - 1} ends at vertex {h2v[hprev ^ 1]} but {h} at position {i} starts at vertex {h2v[h]}")
-            hprev = h
+        i = word_check_walk(w, vp, h2v, closed)
+        if i == -1:
+            return w
 
-        if w and closed and h2v[w[0]] != h2v[w[-1] ^ 1]:
+        # the defect is examined in Python to build the message
+        if i == len(w):
             raise ValueError(f"non-closed walk {word_string(w)}: {w[-1]} at position {len(w) - 1} ends at vertex {h2v[w[-1] ^ 1]} but {w[0]} at position 0 starts at vertex {h2v[w[0]]}")
-
-        return w
+        h = w[i]
+        if h < 0 or h >= len(vp):
+            raise ValueError(f"invalid walk {word_string(w)}: half-edge number out of range (={h}) at position {i}")
+        if vp[h] == -1:
+            raise ValueError(f"invalid walk {word_string(w)}: inactive half-edge (={h}) at position {i}")
+        hprev = w[i - 1]
+        raise ValueError(f"invalid walk {word_string(w)}: {hprev} at position {i - 1} ends at vertex {h2v[hprev ^ 1]} but {h} at position {i} starts at vertex {h2v[h]}")
 
     def _check_multiwalk(self, words, multiplicities=None, closed=False, h2v=None):
         r"""
