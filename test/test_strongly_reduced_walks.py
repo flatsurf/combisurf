@@ -481,6 +481,26 @@ def test_non_termination():
         T.strongly_reduced(TORUS_WALK)
 
 
+def test_half_edge_at_punctured_corner():
+    # A punctured corner weighs 4: the three weighted positions after its
+    # first one are empty. The moves never read them, but the guard raises.
+    name, t, punctured = next(x for x in INSTANCES if x[0].startswith("punctured-") and x[2])
+    T = BipartiteHyperbolicTriangulation(t, punctured)
+    h = next(h for h in range(len(T._wpos)) if T._h2v[h] != -1 and
+             any(x == -1 for x in T._at[T._offset[T._h2v[h]]:T._offset[T._h2v[h]] + T._wdeg[T._h2v[h]]]))
+    v = T._h2v[h]
+    d = T._wdeg[v]
+    empty = [s for s in range(d) if T._at[T._offset[v] + (T._wpos[h] + s) % d] == -1]
+    # the first empty position of a run of three follows a half-edge
+    s = next(s for s in empty if T._at[T._offset[v] + (T._wpos[h] + s - 1) % d] != -1)
+    runs = TurnRuns(T, [h, h ^ 1])
+    for k in range(3):
+        with pytest.raises(RuntimeError, match="inside a punctured corner"):
+            runs._half_edge_at(h, s + k)
+    assert runs._half_edge_at(h, s - 1) != -1
+    assert runs._half_edge_at(h, s + 3) != -1
+
+
 def test_errors():
     name, m, choice = test_triangle_system.CASES[0]
     T = BipartiteHyperbolicTriangulation(*m.triangle_system(*choice, relabel=True))

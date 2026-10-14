@@ -110,6 +110,10 @@ class TurnRuns:
         """
         v = self._h2v[h]
         x = self._at[self._offset[v] + (self._wpos[h] + t) % self._wdeg[v]]
+        # This guards an invariant the moves keep: a punctured corner weighs
+        # 4, so the three positions after its first one are empty, and every
+        # value the moves read (0, +-1, +-2, +-3) has a side with no
+        # punctured corner. The error is reached only by a direct call.
         if x == -1:
             raise RuntimeError(f"the weighted position {t} from the half-edge {h} is inside a punctured corner")
         return x

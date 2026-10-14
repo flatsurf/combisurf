@@ -375,7 +375,8 @@ def test_punctured_images(name, m, punctured, choice):
     t, mor, _ = m.triangle_system(*choice, mapping=True, punctured_faces=punctured)
     # The docstring bounds the images by four. The bound three in genus 0 is
     # observed, not proved: no image of length four occurs on any genus 0
-    # case of PUNCTURED_CASES.
+    # case of PUNCTURED_CASES, nor in test_genus_zero_images (30 random sets
+    # of at least three punctured faces on each of the 6 genus 0 maps).
     longest = 3 if m.genus() == 0 else 4
     vp = m.vertex_permutation()
     assert len(mor) == len(vp)
@@ -395,6 +396,26 @@ def test_punctured_images(name, m, punctured, choice):
         w = image(mor, f)
         if w:
             t._check_walk(w, closed=True)
+
+
+def test_genus_zero_images():
+    # observed, not proved: images of length at most 3 in genus 0, on seeded
+    # random sets of at least three punctured faces
+    maps = [(i, m) for i, (name, m, _) in enumerate(PUNCTURED_MAPS) if m.genus() == 0]
+    assert len(maps) == 6
+    count = 0
+    longest = 0
+    for i, m in maps:
+        nf = m.num_faces()
+        rng = random.Random(i)
+        for j in range(30):
+            punctured = sorted(rng.sample(range(nf), rng.randint(3, nf)))
+            for choice in choices(m, 1000 + j, punctured):
+                t, mor, _ = m.triangle_system(*choice, mapping=True, punctured_faces=punctured)
+                count += 1
+                longest = max([longest] + [len(w) for w in mor if w is not None])
+    assert count == 6 * 30 * CHOICES
+    assert longest == 3
 
 
 def check_punctured_homotopy(m, punctured, t, mor, t_punctured):

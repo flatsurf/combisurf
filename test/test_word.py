@@ -223,13 +223,50 @@ def check_walk_reference(w, vp, h2v, closed):
     return -1
 
 
+def random_backtracking_closed_walk(vp, h2v, rng, length):
+    # A walk of ``length`` half-edges that does not backtrack except at a
+    # vertex with a single half-edge, closed along a shortest path. Only the
+    # half-edges whose two ends are active are used.
+    n = len(vp)
+    out = {}
+    for h in range(n):
+        if h2v[h] != -1 and h2v[h ^ 1] != -1:
+            out.setdefault(h2v[h], []).append(h)
+    h = rng.choice([x for xs in out.values() for x in xs])
+    w = [h]
+    for _ in range(length - 1):
+        v = h2v[h ^ 1]
+        choices = [x for x in out[v] if x != h ^ 1] or out[v]
+        h = rng.choice(choices)
+        w.append(h)
+
+    start = h2v[w[0]]
+    parent = {h2v[w[-1] ^ 1]: None}
+    queue = list(parent)
+    for v in queue:
+        if v == start:
+            break
+        for x in out[v]:
+            u = h2v[x ^ 1]
+            if u not in parent:
+                parent[u] = x
+                queue.append(u)
+    path = []
+    v = start
+    while parent[v] is not None:
+        x = parent[v]
+        path.append(x)
+        v = h2v[x]
+    w.extend(reversed(path))
+    return w
+
+
 def test_word_check_walk():
     import random
     from array import array
     from combisurf import OrientedMap
     from combisurf.word import word_check_walk
     from test_barycentric_subdivision import random_maps
-    from test_geometric_intersection_oracles import random_closed_walk
 
     rng = random.Random(5)
     maps = random_maps() + [OrientedMap(vp="(0,3,6,~3)(~0,1,~6,~1)"),
@@ -250,12 +287,10 @@ def test_word_check_walk():
 
         compare([])
         compare([rng.choice(active)])
+        walks = 0
         for _ in range(5):
-            try:
-                w = list(random_closed_walk(m, rng, rng.randint(1, 30)))
-            except IndexError:
-                # the helper needs a half-edge to leave every vertex
-                break
+            w = random_backtracking_closed_walk(vp, h2v, rng, rng.randint(1, 30))
+            walks += 1
             compare(w)
             compare(w[:rng.randint(1, len(w))])
             for bad in [-1, n, n + 7, rng.choice(active), rng.choice(active)] + inactive[:2]:
@@ -265,3 +300,4 @@ def test_word_check_walk():
             v = list(w)
             v[0], v[-1] = v[-1] ^ 1, v[0] ^ 1
             compare(v)
+        assert walks == 5

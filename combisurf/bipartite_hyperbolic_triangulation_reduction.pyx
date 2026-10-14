@@ -125,6 +125,11 @@ cdef int half_edge_at(Runs* R, int h, int t) except -1:
     """
     cdef int v = R.h2v[h]
     cdef int x = R.at[R.offset[v] + pos_mod(R.wpos[h] + t, R.wdeg[v])]
+    # This guards an invariant the moves keep: a punctured corner weighs 4,
+    # so the three positions after its first one are empty, and every value
+    # the moves read (0, +-1, +-2, +-3) has a side with no punctured corner.
+    # A cdef function cannot be called from Python, so only the pure Python
+    # TurnRuns._half_edge_at is tested at such a position.
     if x == -1:
         raise RuntimeError(f"the weighted position {t} from the half-edge {h} is inside a punctured corner")
     return x
