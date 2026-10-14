@@ -146,16 +146,20 @@ cdef class ConjugateTree:
       front. This is a hint and nothing more: the tree grows on demand
       whatever it is given. A tree over words of total length ``T`` has at
       most ``2 T + 1`` nodes, so that value makes a reallocation of the nodes
-      impossible (with ``algorithm='rows'`` a node that reaches 16 children
-      may still allocate its row).
+      impossible (with ``algorithm='rows'`` a node with many children may
+      still allocate its row or its binary search tree).
 
     - ``algorithm`` -- (default: ``None``) how to hold the children of a node,
       either ``'dense'`` (one slot per letter, which needs ``alphabet``),
       ``'sparse'`` (a linked list of siblings) or ``'rows'`` (a linked list
-      of siblings, and one slot per letter for the nodes with at least 16
-      children when ``alphabet`` is given). The default takes ``'dense'``
-      for an alphabet of at most 32 letters and ``'rows'`` otherwise. It is
-      a time against memory trade-off and changes no answer.
+      of siblings; one slot per letter for the nodes with at least
+      ``max(16, alphabet / 64)`` children when ``alphabet`` is given; and a
+      binary search tree on the bits of the letters, a crit-bit tree, for
+      the nodes with many children but no row, so that a child is found in
+      a number of steps logarithmic in the alphabet at worst). The default takes
+      ``'dense'`` for an alphabet of at most 32 letters and ``'rows'``
+      otherwise. It is a time against memory trade-off and changes no
+      answer.
 
     EXAMPLES::
 

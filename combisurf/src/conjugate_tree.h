@@ -41,9 +41,13 @@ enum {
  * - CT_LAYOUT_SPARSE: a list of siblings per node, where a child is looked
  *   up by reading the first letter of each sibling's label in the words;
  * - CT_LAYOUT_DENSE: a table with one slot per node and letter;
- * - CT_LAYOUT_ROWS: a list of siblings per node with the first letter of
- *   each node in the array flet, and, when the alphabet is known, a dense
- *   row of alphabet_size slots for each node with at least promote children.
+ * - CT_LAYOUT_ROWS: a doubly linked list of siblings per node with the first
+ *   letter of each node in the array flet; when the alphabet is known, a
+ *   dense row of alphabet_size slots for each node with at least promote
+ *   children; and a crit-bit tree over the first letters for each node with
+ *   at least crit_min children and no row. A lookup then costs O(1) with a
+ *   row, O(log alphabet) with a crit-bit tree, and fewer than crit_min steps
+ *   otherwise.
  * CT_LAYOUT_DEFAULT lets ct_init choose. See conjugate_tree.c for the
  * measurements behind the choice.
  */
@@ -94,21 +98,54 @@ typedef struct ct_tree {
     int *fchild;         /* sparse, rows: node -> first child, -1 when none */
     int *nsib;           /* sparse, rows: node -> next sibling, -1 when last */
     int *flet;           /* rows: node -> first letter of the label into it, -1 for the root */
+    int *psib;           /* rows: node -> previous sibling, -1 when first */
+
+    /* rows: how the children of a node are looked up: look[s] is the row
+     * of s when >= 0, the header -2 - look[s] of its crit-bit tree when
+     * <= -2, and -1 when the sibling list is walked */
+    int *look;
 
     /* rows: the dense rows of the nodes with at least promote children */
     int promote;         /* may be changed before the first word is added */
-    int *row;            /* node -> its row, -1 when none */
     int *rows;           /* row * alphabet_size + letter -> child, -1 when absent */
     int nrows;
     int rows_capacity;
+
+    /*
+     * rows: the crit-bit trees of the nodes with at least crit_min children
+     * and no row, made of crit nodes of 3 ints each. The header j of the tree
+     * of a node s holds crit[3 j] = -2, the reference crit[3 j + 1] to its
+     * root and the number crit[3 j + 2] of children of s. A reference p is a
+     * child when p >= 0 and the crit node -2 - p when p <= -2. The branching
+     * crit node j reads the bit crit[3 j] of the first letter: crit[3 j + 1]
+     * holds the children whose letter has that bit 0, crit[3 j + 2] those
+     * whose letter has it 1, and all of them agree on the higher bits.
+     */
+    int crit_min;        /* may be changed before the first word is added */
+    int *crit;           /* crit node j -> crit[3 j .. 3 j + 2] as above */
+    int ncrit;           /* crit nodes in use or in the free list */
+    int crit_capacity;   /* crit nodes allocated */
+    int crit_free;       /* first crit node of the free list (chained by
+                          * crit[3 j + 1], with crit[3 j] == -1), -1 when empty */
+    int crit_promised;   /* until nstates reaches it, the crit nodes have room
+                          * for one more per new node (see reserve) */
 } ct_tree;
 
 /* The largest alphabet for which ct_init picks the dense layout by default;
  * past it, and without an alphabet, it picks the rows layout. */
 #define CT_DENSE_MAX_ALPHABET 32
 
-/* The number of children from which a node gets a dense row in CT_LAYOUT_ROWS. */
+/* The number of children from which a node gets a dense row in CT_LAYOUT_ROWS
+ * is the larger of CT_PROMOTE and alphabet_size / CT_ROW_RATIO (rounded up),
+ * so that a row costs at most CT_ROW_RATIO slots per child. */
 #define CT_PROMOTE 16
+#define CT_ROW_RATIO 64
+
+/* The number of children from which a node without a row gets a crit-bit
+ * tree in CT_LAYOUT_ROWS, when the alphabet is unknown or larger than
+ * CT_PROMOTE * CT_ROW_RATIO; otherwise a node gets its row first, and
+ * crit_min is CT_PROMOTE. */
+#define CT_CRIT_MIN 8
 
 /*
  * Set up an empty tree over an alphabet of the given size (0 when unknown)
@@ -132,10 +169,11 @@ int ct_process(ct_tree *T, const int *w, int len, int *result);
 /*
  * Make room for the given number of words more, of the given number of
  * letters in all: after it, ct_process on valid words of that total length
- * cannot fail. The rows of CT_LAYOUT_ROWS are not reserved and may still be
- * allocated, but a node whose row cannot be allocated keeps its sibling list
- * and the insertion succeeds. A caller that must add several words or none
- * calls it first.
+ * cannot fail. The rows and the crit-bit trees of CT_LAYOUT_ROWS are not
+ * reserved and may still be allocated, but a node whose row or crit-bit tree
+ * cannot be allocated keeps what it had and the insertion succeeds; the room
+ * for the insertions into the crit-bit trees that exist is reserved. A caller
+ * that must add several words or none calls it first.
  */
 int ct_reserve(ct_tree *T, int words, int letters);
 

@@ -424,6 +424,51 @@ def test_against_naive_long_words():
         assert T0.cyclically_sorted_leaves(order, pivot) == T1.cyclically_sorted_leaves(order, pivot)
 
 
+@pytest.mark.parametrize("alphabet", [4096, 16384])
+def test_against_naive_large_alphabet(alphabet):
+    r"""
+    The same, over large alphabets, with letters spread over the whole
+    alphabet: the nodes near the root have hundreds of children, past every
+    threshold of the rows layout, and their lookups go through dense rows,
+    binary search trees on the bits of the letters, or sibling lists.
+
+    Each word is followed by its inverse (reversed, each letter ``h``
+    replaced by ``h ^ 1``), as in the geometric intersection.
+    """
+    from combisurf.conjugate_tree import ConjugateTree
+    from combisurf.conjugate_tree_naive import ConjugateTreeNaive
+
+    rng = random.Random(alphabet)
+    for trial in range(4):
+        algorithm = [None, 'rows', 'sparse', None][trial]
+        T0 = ConjugateTree(0 if trial == 3 else alphabet, algorithm=algorithm)
+        T1 = ConjugateTreeNaive()
+        for _ in range(3):
+            if rng.random() < 0.5:
+                letters = range(alphabet)
+            else:
+                # few letters, spread over the alphabet: the nodes of depth 1
+                # have many children too
+                letters = rng.sample(range(alphabet), rng.choice([16, 64, 200]))
+            w = [rng.choice(letters) for _ in range(rng.randint(300, 900))]
+            winv = [h ^ 1 for h in reversed(w)]
+            for u in (w, winv):
+                assert T0.process(list(u)) == T1.process(list(u))
+        T0._check()
+        T1._check()
+        assert_same_tree(T0, T1)
+        assert len(T0.transitions(0)) > 256
+        for _ in range(3):
+            order, pivot = random_order_and_pivot(rng, alphabet)
+            leaves = T0.cyclically_sorted_leaves(order, pivot)
+            assert leaves == T1.cyclically_sorted_leaves(order, pivot)
+            words, shifts = T0.sorted_leaves_as_conjugates(order, pivot)
+            assert list(zip(words, shifts)) == [T0.leaf_as_conjugate(s) for s in leaves]
+            assert (words, shifts) == T1.sorted_leaves_as_conjugates(order, pivot)
+        pivot = [order[b ^ 1] for b in range(alphabet)]
+        assert T0.cyclically_sorted_leaves(order, pivot) == T1.cyclically_sorted_leaves(order, pivot)
+
+
 def test_reserve_is_only_a_hint():
     r"""
     A tree given the exact number of nodes it needs never reallocates, and a

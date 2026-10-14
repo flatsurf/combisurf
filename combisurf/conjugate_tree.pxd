@@ -44,11 +44,18 @@ cdef extern from "conjugate_tree.h":
         int *fchild
         int *nsib
         int *flet
+        int *psib
+        int *look
         int promote
-        int *row
         int *rows
         int nrows
         int rows_capacity
+        int crit_min
+        int *crit
+        int ncrit
+        int crit_capacity
+        int crit_free
+        int crit_promised
 
     int ct_init(ct_tree *T, int alphabet, int reserve, int layout) nogil
     void ct_free(ct_tree *T) nogil

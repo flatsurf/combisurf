@@ -65,6 +65,69 @@
  * Up to 32 letters the default is the dense table: it costs at most 128
  * bytes per node, and at 32 letters the rows are 3 to 50 % slower than it
  * (1000 letters: 147 us dense, 221 us rows).
+ *
+ * Large alphabets. A row costs O(alphabet) time and memory, and with rows
+ * from CT_PROMOTE children on there may be one per CT_PROMOTE leaves; with
+ * n = 16384 letters, two random words of 2^16 letters and their inverses
+ * took 1.1 GB in 8739 rows. A node therefore gets its row from
+ * max(CT_PROMOTE, n / CT_ROW_RATIO) children on, so that the rows cost at
+ * most CT_ROW_RATIO ints per child; below that, from crit_min children on,
+ * the children of a node are also held in a crit-bit tree, a binary trie on
+ * the bits of their first letters with one branching crit node per child
+ * but one: a lookup reads at most one crit node per bit of the letters. Up
+ * to CT_PROMOTE * CT_ROW_RATIO = 1024 letters the rows come at CT_PROMOTE
+ * children as before, and crit_min is CT_PROMOTE, so that no crit-bit tree
+ * is built: one built at 8 children, then dropped at 16 for the row, made
+ * the build 7 to 11 % slower at n = 128 and 1024 (Markov and Zipf words of
+ * 2^16 letters: 36.3 against 33.1 ms, 43.7 against 39.3 ms). Past 1024
+ * letters, a crit-bit tree from 8 children on beats 16 and 32 (n = 16384,
+ * 2^16 letters per word, nodes of depth 1 with 16 children on average: 30.5,
+ * 36.4 and 37.7 ms). CT_ROW_RATIO = 32, 64 or 128 made no difference
+ * there (29.6, 30.3, 30.7 ms), nor rows at 16 or 64 children at n = 4096
+ * and 3000 letters per word (709 and 711 us).
+ *
+ * The worst case, with b the number of bits of the letters (log2 of the
+ * alphabet, rounded up, or 31 without alphabet) and d the number of children
+ * of the node at hand, in the rows layout:
+ * - a lookup costs O(1) with a row, O(b) with a crit-bit tree, and fewer
+ *   than crit_min steps along the siblings otherwise;
+ * - adding a child costs the same, plus: counting the siblings, fewer than
+ *   crit_min; building the crit-bit tree, O(d b) once per node at d =
+ *   crit_min children; giving the row, O(n + d) once per node at d >=
+ *   n / CT_ROW_RATIO children, that is O(CT_ROW_RATIO) per child;
+ * - replacing a child by the node that splits its edge costs the same as a
+ *   lookup: the row and the crit-bit tree are walked by letter, the siblings
+ *   of a node with a row or a crit-bit tree are linked both ways (psib), and
+ *   the other nodes have fewer than crit_min children to walk.
+ * Ukkonen's construction makes O(l) of these operations on words of l
+ * letters in all, hence O(l b) for the build. These bounds assume that the
+ * allocations succeed: a node whose row or crit-bit tree cannot be allocated
+ * walks its siblings. The leaves are listed in O(n + l log n): the children
+ * of a node are sorted by an insertion sort up to 16 of them, by placing
+ * them in an array of n slots from n / 8 of them on (O(n), at most 8 per
+ * child), and by a merge sort in between. What remains in O(n) per call is
+ * the reading and checking of order and pivot in ct_sorted_leaves, with its
+ * arrays of n entries; the dense layout costs O(n) per node by design, and
+ * the sparse layout O(d) per lookup.
+ *
+ * Measured, before against after (best of 5, two random words and their
+ * inverses, so 4 l letters in the tree; build and listing of the leaves):
+ *
+ *     n        l          before               after
+ *     1024     3000     1.58 ms  335 us     838 us  193 us
+ *     4096     3000     8.17 ms  2.14 ms    714 us  155 us
+ *     16384    3000     16.2 ms  10.4 ms    600 us  164 us
+ *     16384    2^16      320 ms  44.3 ms   30.3 ms  7.83 ms   (1.1 GB -> 31 MB)
+ *     1024     2^16     30.7 ms  13.0 ms   19.1 ms  7.69 ms
+ *
+ * At 1024 letters, where no crit-bit tree is built, the gain of the build is
+ * the replacement of a child, which walked the siblings before, up to 1024
+ * steps at the root, and that of the listing the sort of the children of the
+ * root. On the words whose nodes have 2 to 8 children (Fibonacci over 1024
+ * letters, 2^16 letters per word) the build takes 17.4 ms against 15.6 ms:
+ * psib costs 4 bytes more per node. The first version, with psib kept for
+ * every node and separate arrays for the number of children and the root of
+ * the crit-bit tree, took 20.7 ms.
  */
 
 /* ------------------------------------------------------------------ */
@@ -114,25 +177,24 @@ static int max_nodes(const ct_tree *T)
  * list alone, which gives the same answers, and tries again at its next
  * child. An insertion therefore never fails because of the rows.
  */
-static void promote_node(ct_tree *T, int s)
+static void crit_release(ct_tree *T, int p);
+
+/* Give s a row; return 1 when done, 0 when it could not be allocated. */
+static int promote_node(ct_tree *T, int s)
 {
     size_t a = (size_t) T->alphabet_size;
-    int d = 0, r, t, c, *row;
-    for (t = T->fchild[s]; t != -1; t = T->nsib[t])
-        d++;
-    if (d < T->promote)
-        return;
+    int r, t, c, *row;
     if (T->nrows == T->rows_capacity) {
         int cap = T->rows_capacity;
         int *p;
         if (cap > INT_MAX / 2)
-            return;
+            return 0;
         cap = cap ? 2 * cap : 4;
         if ((size_t) cap > SIZE_MAX / sizeof(int) / a)
-            return;
+            return 0;
         p = (int *) realloc(T->rows, (size_t) cap * a * sizeof(int));
         if (p == NULL)
-            return;
+            return 0;
         T->rows = p;
         T->rows_capacity = cap;
     }
@@ -140,9 +202,178 @@ static void promote_node(ct_tree *T, int s)
     row = T->rows + (size_t) r * a;
     for (c = 0; c < T->alphabet_size; c++)
         row[c] = -1;
-    for (t = T->fchild[s]; t != -1; t = T->nsib[t])
+    /* the children of a node with a row or a crit-bit tree are linked both
+     * ways (see replace_child) */
+    for (c = -1, t = T->fchild[s]; t != -1; c = t, t = T->nsib[t]) {
         row[T->flet[t]] = t;
-    T->row[s] = r;
+        T->psib[t] = c;
+    }
+    /* the row answers every lookup from now on */
+    crit_release(T, T->look[s]);
+    T->look[s] = r;
+    return 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* the crit-bit trees of CT_LAYOUT_ROWS                                */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The crit nodes are allocated from one pool, crit nodes released by a node
+ * that gets its row going to a free list. The pool keeps the invariant
+ *
+ *     crit_capacity - ncrit >= crit_promised - nstates,
+ *
+ * where crit_promised is the number of nodes that the last reservations
+ * (ct_process, ct_reserve) promised to make room for. Inserting a child into
+ * an existing crit-bit tree takes one crit node, and comes with a new node of
+ * the tree (each call to add_child pairs with a call to add_node), so these
+ * insertions never run out of crit nodes. Building the crit-bit tree of a node
+ * with d children takes d crit nodes at once (its header and d - 1 branching
+ * ones) that no reservation accounted for: crit_build grows the pool itself,
+ * and when it cannot the node keeps its sibling list alone and tries again at
+ * its next child.
+ */
+
+/* Grow the pool so that it holds extra crit nodes on top of the room that
+ * the invariant above asks for with crit_promised = promised. */
+static int crit_grow(ct_tree *T, int extra, int promised)
+{
+    int64_t need = (int64_t) T->ncrit + extra + promised - T->nstates;
+    int cap, err;
+    if (need <= T->crit_capacity)
+        return CT_OK;
+    if (need > INT_MAX / 3)
+        return CT_ETOOLARGE;
+    cap = grown(T->crit_capacity, (int) need, INT_MAX / 3, 8);
+    if ((err = resize_ints(&T->crit, 3 * cap)))
+        return err;
+    T->crit_capacity = cap;
+    return CT_OK;
+}
+
+static inline int high_bit(unsigned x)
+{
+#if defined(__GNUC__)
+    return 31 - __builtin_clz(x);
+#else
+    int b = 0;
+    while (x >>= 1)
+        b++;
+    return b;
+#endif
+}
+
+/* The header of the crit-bit tree whose reference is look. */
+static inline int *crit_header(const ct_tree *T, int look)
+{
+    return T->crit + 3 * (size_t) (-2 - look);
+}
+
+/* The child reached from the reference p by the bits of letter: the only one
+ * that may start with letter. */
+static inline int crit_find(const ct_tree *T, int p, int letter)
+{
+    while (p < -1) {
+        const int *c = T->crit + 3 * (size_t) (-2 - p);
+        p = c[1 + ((letter >> c[0]) & 1)];
+    }
+    return p;
+}
+
+/* A crit node out of the free list or the pool, whose room the caller
+ * checked; -1 (and the tree marked broken) when there is none. */
+static inline int crit_new(ct_tree *T)
+{
+    int j = T->crit_free;
+    if (j != -1) {
+        T->crit_free = T->crit[3 * (size_t) j + 1];
+        return j;
+    }
+    if (T->ncrit == T->crit_capacity) {
+        T->broken = CT_EINTERNAL;
+        return -1;
+    }
+    return T->ncrit++;
+}
+
+/*
+ * Insert the child t into the crit-bit tree of header h, which holds no child
+ * with the letter of t yet. O(log alphabet): two descents of at most one crit
+ * node per bit.
+ */
+static int crit_insert(ct_tree *T, int *h, int t)
+{
+    int key = T->flet[t];
+    int p, b, j, side, *slot, *c;
+    p = crit_find(T, h[1], key);
+    b = high_bit((unsigned) (T->flet[p] ^ key));
+    if ((j = crit_new(T)) < 0)
+        return -1;
+    /* the crit nodes above b agree with key on their bit: key goes where
+     * the first crit node with a lower bit, or the child, was */
+    slot = h + 1;
+    while (*slot < -1) {
+        c = T->crit + 3 * (size_t) (-2 - *slot);
+        if (c[0] < b)
+            break;
+        slot = c + 1 + ((key >> c[0]) & 1);
+    }
+    c = T->crit + 3 * (size_t) j;
+    side = (key >> b) & 1;
+    c[0] = b;
+    c[1 + side] = t;
+    c[2 - side] = *slot;
+    *slot = -2 - j;
+    return 0;
+}
+
+/*
+ * Give s, which has neither row nor crit-bit tree, a crit-bit tree over its d
+ * children, if the pool can make room for it. O(d log alphabet). Return -1
+ * when the tree is broken, else 0.
+ */
+static int crit_build(ct_tree *T, int s, int d)
+{
+    int t = T->fchild[s];
+    int j, prev, *h;
+    if (crit_grow(T, d, T->crit_promised))
+        return 0;
+    if ((j = crit_new(T)) < 0)
+        return -1;
+    h = T->crit + 3 * (size_t) j;
+    h[0] = -2;
+    h[1] = t;
+    h[2] = d;
+    /* the children of a node with a row or a crit-bit tree are linked both
+     * ways (see replace_child) */
+    T->psib[t] = -1;
+    for (prev = t, t = T->nsib[t]; t != -1; prev = t, t = T->nsib[t]) {
+        T->psib[t] = prev;
+        if (crit_insert(T, h, t))
+            return -1;
+    }
+    T->look[s] = -2 - j;
+    return 0;
+}
+
+/* Put the crit nodes under the reference p (a header or a branching crit
+ * node) on the free list. */
+static void crit_release(ct_tree *T, int p)
+{
+    int *c;
+    int j;
+    if (p >= -1)
+        return;
+    j = -2 - p;
+    c = T->crit + 3 * (size_t) j;
+    crit_release(T, c[1]);
+    if (c[0] != -2)
+        crit_release(T, c[2]);
+    c[0] = -1;
+    c[1] = T->crit_free;
+    c[2] = -1;
+    T->crit_free = j;
 }
 
 /* ------------------------------------------------------------------ */
@@ -179,7 +410,8 @@ static int reserve_nodes(ct_tree *T, int need)
             return err;
     }
     if (T->layout == CT_LAYOUT_ROWS &&
-        ((err = resize_ints(&T->flet, cap)) || (err = resize_ints(&T->row, cap))))
+        ((err = resize_ints(&T->flet, cap)) || (err = resize_ints(&T->look, cap)) ||
+         (err = resize_ints(&T->psib, cap))))
         return err;
     T->capacity = cap;
     return CT_OK;
@@ -211,7 +443,17 @@ static int reserve(ct_tree *T, int num_words, int num_letters, int num_nodes)
             return err;
         T->wbuf_capacity = cap;
     }
-    return reserve_nodes(T, T->nstates + num_nodes);
+    if ((err = reserve_nodes(T, T->nstates + num_nodes)))
+        return err;
+    if (T->layout == CT_LAYOUT_ROWS) {
+        int promised = T->nstates + num_nodes;
+        if (promised < T->crit_promised)
+            promised = T->crit_promised;
+        if ((err = crit_grow(T, 0, promised)))
+            return err;
+        T->crit_promised = promised;
+    }
+    return CT_OK;
 }
 
 /*
@@ -245,7 +487,8 @@ static inline int add_node(ct_tree *T)
     }
     if (T->layout == CT_LAYOUT_ROWS) {
         T->flet[n] = -1;
-        T->row[n] = -1;
+        T->look[n] = -1;
+        T->psib[n] = -1;
     }
     return n;
 }
@@ -263,6 +506,12 @@ int ct_init(ct_tree *T, int alphabet, int reserve, int layout)
         layout = 0 < alphabet && alphabet <= CT_DENSE_MAX_ALPHABET ? CT_LAYOUT_DENSE : CT_LAYOUT_ROWS;
     T->layout = layout;
     T->promote = CT_PROMOTE;
+    if (alphabet / CT_ROW_RATIO >= CT_PROMOTE)
+        T->promote = alphabet / CT_ROW_RATIO + (alphabet % CT_ROW_RATIO != 0);
+    /* a node that gets its row at CT_PROMOTE children does without a
+     * crit-bit tree before (see the comment at the top) */
+    T->crit_min = alphabet && T->promote == CT_PROMOTE ? CT_PROMOTE : CT_CRIT_MIN;
+    T->crit_free = -1;
 
     if ((err = reserve_nodes(T, reserve > 1 ? reserve : 1)))
         return err;
@@ -293,8 +542,10 @@ void ct_free(ct_tree *T)
     free(T->fchild);
     free(T->nsib);
     free(T->flet);
-    free(T->row);
+    free(T->psib);
+    free(T->look);
     free(T->rows);
+    free(T->crit);
     memset(T, 0, sizeof(ct_tree));
 }
 
@@ -391,8 +642,13 @@ static int child_in_lists(const ct_tree *T, int s, int letter)
                 return t;
         return -1;
     }
-    if (T->row[s] != -1)
-        return T->rows[(size_t) T->row[s] * (size_t) T->alphabet_size + (size_t) letter];
+    t = T->look[s];
+    if (t >= 0)
+        return T->rows[(size_t) t * (size_t) T->alphabet_size + (size_t) letter];
+    if (t < -1) {
+        t = crit_find(T, crit_header(T, t)[1], letter);
+        return T->flet[t] == letter ? t : -1;
+    }
     for (t = T->fchild[s]; t != -1; t = T->nsib[t])
         if (T->flet[t] == letter)
             return t;
@@ -414,22 +670,58 @@ int ct_child(const ct_tree *T, int s, int letter)
     return child(T, s, letter);
 }
 
-/* Make t, whose label starts with letter, a child of s. */
-static inline void add_child(ct_tree *T, int s, int letter, int t)
+/*
+ * Make t, whose label starts with letter, a child of s. Return -1 when the
+ * tree is broken (a crit node missing in spite of the reservation), else 0.
+ */
+static inline int add_child(ct_tree *T, int s, int letter, int t)
 {
+    int d, l, u, lim;
     if (T->layout == CT_LAYOUT_DENSE) {
         T->trans[s * T->alphabet_size + letter] = t;
-        return;
+        return 0;
     }
-    T->nsib[t] = T->fchild[s];
+    u = T->fchild[s];
+    T->nsib[t] = u;
     T->fchild[s] = t;
-    if (T->layout == CT_LAYOUT_ROWS) {
-        T->flet[t] = letter;
-        if (T->row[s] != -1)
-            T->rows[(size_t) T->row[s] * (size_t) T->alphabet_size + (size_t) letter] = t;
-        else if (T->alphabet_size)
-            promote_node(T, s);
+    if (T->layout != CT_LAYOUT_ROWS)
+        return 0;
+    T->flet[t] = letter;
+    l = T->look[s];
+    if (l != -1) {
+        T->psib[t] = -1;
+        if (u != -1)
+            T->psib[u] = t;
     }
+    if (l >= 0) {
+        T->rows[(size_t) l * (size_t) T->alphabet_size + (size_t) letter] = t;
+        return 0;
+    }
+    if (l < -1) {
+        int *h = crit_header(T, l);
+        d = ++h[2];
+        if (crit_insert(T, h, t))
+            return -1;
+        if (d >= T->promote && T->alphabet_size)
+            promote_node(T, s);
+        return 0;
+    }
+    /* a node with neither row nor crit-bit tree has fewer than lim children
+     * but in the rare case where an allocation failed, so that counting them
+     * (t included) costs as much as the lookup that preceded the insertion */
+    lim = T->alphabet_size && T->promote < T->crit_min ? T->promote : T->crit_min;
+    for (d = 1; u != -1 && d < lim; u = T->nsib[u])
+        d++;
+    if (d < lim)
+        return 0;
+    if (T->alphabet_size && d >= T->promote && promote_node(T, s))
+        return 0;
+    /* the exact count, past lim only after a failed allocation */
+    for (; u != -1; u = T->nsib[u])
+        d++;
+    if (d >= T->crit_min)
+        return crit_build(T, s, d);
+    return 0;
 }
 
 /*
@@ -437,31 +729,57 @@ static inline void add_child(ct_tree *T, int s, int letter, int t)
  * of s.
  *
  * In the sibling lists old is found by its index and not by its letter, so
- * that the caller may change the label of old before or after the call.
+ * that the caller may change the label of old before or after the call. When
+ * s has neither row nor crit-bit tree (and always in the sparse layout), the
+ * siblings before old are walked, which costs no more than the lookup that
+ * found old. The children of a node with a row or a crit-bit tree are linked
+ * both ways instead, through psib, which is left stale elsewhere: keeping it
+ * up to date in every node made the build of the tree of the Fibonacci words
+ * over 1024 letters (2^16 letters per word, nodes with 2 children) 5 %
+ * slower, 17.8 against 17.0 ms.
  */
 static inline void replace_child(ct_tree *T, int s, int letter, int old, int new_)
 {
-    int prev, c;
+    int prev, next, c, l = -1;
     if (T->layout == CT_LAYOUT_DENSE) {
         T->trans[s * T->alphabet_size + letter] = new_;
         return;
     }
-    prev = -1;
-    c = T->fchild[s];
-    while (c != old) {
-        prev = c;
-        c = T->nsib[c];
+    if (T->layout == CT_LAYOUT_ROWS)
+        l = T->look[s];
+    if (l == -1) {
+        prev = -1;
+        c = T->fchild[s];
+        while (c != old) {
+            prev = c;
+            c = T->nsib[c];
+        }
+    } else {
+        prev = T->psib[old];
+        T->psib[new_] = prev;
     }
-    T->nsib[new_] = T->nsib[old];
+    next = T->nsib[old];
+    T->nsib[new_] = next;
     if (prev == -1)
         T->fchild[s] = new_;
     else
         T->nsib[prev] = new_;
     T->nsib[old] = -1;
     if (T->layout == CT_LAYOUT_ROWS) {
+        if (l != -1 && next != -1)
+            T->psib[next] = new_;
         T->flet[new_] = letter;
-        if (T->row[s] != -1)
-            T->rows[(size_t) T->row[s] * (size_t) T->alphabet_size + (size_t) letter] = new_;
+        c = l;
+        if (c >= 0) {
+            T->rows[(size_t) c * (size_t) T->alphabet_size + (size_t) letter] = new_;
+        } else if (c < -1) {
+            int *slot = crit_header(T, c) + 1;
+            while (*slot < -1) {
+                int *cn = T->crit + 3 * (size_t) (-2 - *slot);
+                slot = cn + 1 + ((letter >> cn[0]) & 1);
+            }
+            *slot = new_;
+        }
     }
 }
 
@@ -589,7 +907,8 @@ static inline int test_and_split(ct_tree *T, int s, int i, int k, int p, int let
         replace_child(T, s, first, t, ss);
         T->tstart[t] = index;
         T->parent[t] = ss;
-        add_child(T, ss, lletter, t);
+        if (add_child(T, ss, lletter, t))
+            return -2;
 #ifdef CT_DEBUG
         if (!debug_split(T, s, ss, t))
             return -2;
@@ -695,7 +1014,8 @@ static int update(ct_tree *T, int *sp, int i, int *kp, int p)
         if (rr < 0)
             return -1;
         created++;
-        add_child(T, r, letter, rr);
+        if (add_child(T, r, letter, rr))
+            return -1;
         T->parent[rr] = r;
         T->tword[rr] = i;
         T->tstart[rr] = p;
@@ -869,37 +1189,106 @@ int64_t ct_size(const ct_tree *T)
 }
 
 /*
- * Push kids[:d] onto stack by decreasing keys, so that popping them takes
- * them by increasing key.
- *
- * An insertion sort is the right one here: the number of children of an
- * internal node is 2 to 10 on average whatever the alphabet and whatever the
- * length of the words.
+ * The children of a node are sorted in three ways: by an insertion sort up
+ * to CT_SORT_RUN of them, the usual case (most internal nodes have 2 to 10
+ * children whatever the alphabet); by placing them at their key in an array
+ * of n slots and reading it back when there are at least n / CT_SORT_BUCKET
+ * of them, which costs O(n), at most CT_SORT_BUCKET per child; and by a merge
+ * sort, O(d log d), in between.
  */
-static int push_sorted(int *stack, int top, int *kids, int *keys, int d)
+#define CT_SORT_RUN 16
+#define CT_SORT_BUCKET 8
+
+/*
+ * Sort a[:d] by decreasing value with tmp as scratch: insertion sorts of runs
+ * of CT_SORT_RUN, then bottom-up merges.
+ */
+static void sort_decreasing(uint64_t *a, uint64_t *tmp, int d)
 {
-    int j, jj, kid, key;
-    for (j = 1; j < d; j++) {
-        kid = kids[j];
-        key = keys[j];
-        jj = j - 1;
-        while (jj >= 0 && keys[jj] < key) {
-            kids[jj + 1] = kids[jj];
-            keys[jj + 1] = keys[jj];
-            jj--;
+    uint64_t *src = a, *dst = tmp, *sw, x;
+    size_t n = (size_t) d, w, lo, mid, hi, i, j, k, r;
+    for (lo = 0; lo < n; lo += CT_SORT_RUN) {
+        hi = lo + CT_SORT_RUN < n ? lo + CT_SORT_RUN : n;
+        for (i = lo + 1; i < hi; i++) {
+            x = a[i];
+            for (j = i; j > lo && a[j - 1] < x; j--)
+                a[j] = a[j - 1];
+            a[j] = x;
         }
-        kids[jj + 1] = kid;
-        keys[jj + 1] = key;
+    }
+    for (w = CT_SORT_RUN; w < n; w *= 2) {
+        for (lo = 0; lo < n; lo += 2 * w) {
+            mid = lo + w < n ? lo + w : n;
+            hi = lo + 2 * w < n ? lo + 2 * w : n;
+            i = lo;
+            j = mid;
+            for (k = lo; k < hi; k++)
+                dst[k] = j == hi || (i < mid && src[i] > src[j]) ? src[i++] : src[j++];
+        }
+        sw = src;
+        src = dst;
+        dst = sw;
+    }
+    if (src != a)
+        for (r = 0; r < n; r++)
+            a[r] = src[r];
+}
+
+/*
+ * Push kids[:d] onto stack by decreasing keys (distinct, smaller than n),
+ * so that popping them takes them by increasing key. slot is an array of n
+ * entries -1, which it is again on return; a and tmp have room for n values.
+ *
+ * The insertion sort works on the two int arrays: packing each pair into one
+ * uint64_t made the listing of the leaves of the Fibonacci words over 1024
+ * letters (2^16 letters per word, almost every internal node with 2 children)
+ * 50 % slower, 11.8 ms against 7.8 ms.
+ */
+static int push_sorted(int *stack, int top, int *kids, int *keys, uint64_t *a,
+                       uint64_t *tmp, int *slot, int d, int n)
+{
+    int j, jj, kid, key, c;
+    if (d <= CT_SORT_RUN) {
+        for (j = 1; j < d; j++) {
+            kid = kids[j];
+            key = keys[j];
+            jj = j - 1;
+            while (jj >= 0 && keys[jj] < key) {
+                kids[jj + 1] = kids[jj];
+                keys[jj + 1] = keys[jj];
+                jj--;
+            }
+            kids[jj + 1] = kid;
+            keys[jj + 1] = key;
+        }
+        for (j = 0; j < d; j++)
+            stack[top + j] = kids[j];
+        return top + d;
+    }
+    if ((int64_t) d * CT_SORT_BUCKET >= n) {
+        for (j = 0; j < d; j++)
+            slot[keys[j]] = kids[j];
+        for (c = n - 1; c >= 0; c--) {
+            if (slot[c] != -1) {
+                stack[top++] = slot[c];
+                slot[c] = -1;
+            }
+        }
+        return top;
     }
     for (j = 0; j < d; j++)
-        stack[top + j] = kids[j];
+        a[j] = (uint64_t) keys[j] << 32 | (uint64_t) kids[j];
+    sort_decreasing(a, tmp, d);
+    for (j = 0; j < d; j++)
+        stack[top + j] = (int) (a[j] & 0xffffffffu);
     return top + d;
 }
 
 int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n,
                      int *out, int *num)
 {
-    int *stack, *kids, *keys;
+    int *stack, *kids, *keys, *slot;
+    uint64_t *a, *tmp;
     int top = 0;
     int count = 0;
     int c, s, t, d, key, base;
@@ -915,26 +1304,38 @@ int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n
     stack = (int *) malloc((size_t) T->nstates * sizeof(int));
     kids = (int *) malloc((size_t) n * sizeof(int));
     keys = (int *) malloc((size_t) n * sizeof(int));
-    if (stack == NULL || kids == NULL || keys == NULL) {
+    slot = (int *) malloc((size_t) n * sizeof(int));
+    a = (uint64_t *) malloc((size_t) n * sizeof(uint64_t));
+    tmp = (uint64_t *) malloc((size_t) n * sizeof(uint64_t));
+    if (stack == NULL || kids == NULL || keys == NULL || slot == NULL || a == NULL ||
+        tmp == NULL) {
         free(stack);
         free(kids);
         free(keys);
+        free(slot);
+        free(a);
+        free(tmp);
         return CT_ENOMEM;
     }
 
-    /* order is a permutation: keys[] marks the values seen, which also
+    /* order is a permutation: slot[] marks the values seen, which also
      * makes the keys of the children of a node distinct */
     for (c = 0; c < n; c++)
-        keys[c] = 0;
+        slot[c] = -1;
     for (c = 0; c < n; c++) {
-        if (keys[order[c]]) {
+        if (slot[order[c]] != -1) {
             free(stack);
             free(kids);
             free(keys);
+            free(slot);
+            free(a);
+            free(tmp);
             return CT_EINVALID;
         }
-        keys[order[c]] = 1;
+        slot[order[c]] = 0;
     }
+    for (c = 0; c < n; c++)
+        slot[c] = -1;
 
     /* the children of the root, ordered by order[] of their first letter */
     d = 0;
@@ -954,7 +1355,7 @@ int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n
             d++;
         }
     }
-    top = push_sorted(stack, top, kids, keys, d);
+    top = push_sorted(stack, top, kids, keys, a, tmp, slot, d, n);
 
     while (top) {
         s = stack[--top];
@@ -989,12 +1390,15 @@ int ct_sorted_leaves(const ct_tree *T, const int *order, const int *pivot, int n
                 d++;
             }
         }
-        top = push_sorted(stack, top, kids, keys, d);
+        top = push_sorted(stack, top, kids, keys, a, tmp, slot, d, n);
     }
 
     free(stack);
     free(kids);
     free(keys);
+    free(slot);
+    free(a);
+    free(tmp);
     *num = count;
     return CT_OK;
 }
@@ -1033,6 +1437,52 @@ static void node_word(const ct_tree *T, int s, int *buf)
     }
 }
 
+/*
+ * Check the part under the reference p of the crit-bit tree of s, whose crit
+ * nodes have bits below above: every crit node is in no other tree and has
+ * both sides, its children are children of s seen nowhere else, and on each
+ * side of a crit node of bit b the first letters agree above b and have the
+ * bit b of the side. Accumulate the number of children in *count and the AND
+ * and OR of their first letters in *all and *any. The bits decrease strictly
+ * downwards, so that the recursion is at most 32 deep. Return 1 when it holds.
+ */
+static int check_crit(const ct_tree *T, int s, int p, int above, char *owned, char *seen,
+                      int *count, unsigned *all, unsigned *any)
+{
+    int j, b, c0 = 0, c1 = 0;
+    unsigned all0, any0, all1, any1;
+    const int *c;
+    if (p >= 0) {
+        if (p >= T->nstates || T->parent[p] != s || seen[p])
+            return 0;
+        seen[p] = 1;
+        *count = 1;
+        *all = *any = (unsigned) T->flet[p];
+        return 1;
+    }
+    if (p == -1 || -(p + 2) >= T->ncrit)
+        return 0;
+    j = -(p + 2);
+    if (owned[j])
+        return 0;
+    owned[j] = 1;
+    c = T->crit + 3 * (size_t) j;
+    b = c[0];
+    if (b < 0 || b >= above)
+        return 0;
+    if (!check_crit(T, s, c[1], b, owned, seen, &c0, &all0, &any0) ||
+        !check_crit(T, s, c[2], b, owned, seen, &c1, &all1, &any1))
+        return 0;
+    if ((any0 >> b) & 1 || !((all1 >> b) & 1))
+        return 0;
+    *all = all0 & all1;
+    *any = any0 | any1;
+    if ((*all ^ *any) >> b >> 1)
+        return 0;
+    *count = c0 + c1;
+    return 1;
+}
+
 #define CHECK(cond) do { if (!(cond)) { err = CT_EINTERNAL; goto done; } } while (0)
 
 int ct_check(const ct_tree *T)
@@ -1040,6 +1490,7 @@ int ct_check(const ct_tree *T)
     int n = T->nstates;
     int err = CT_OK;
     int *buf = NULL, *buf2 = NULL, *owned = NULL;
+    char *crit_owned = NULL, *seen = NULL;
     int i, j, s, t, r, c, k, count, steps, max_dep, ei, ek;
 
     CHECK(n >= 1 && n <= T->capacity);
@@ -1052,6 +1503,11 @@ int ct_check(const ct_tree *T)
         CHECK(T->nrows >= 0 && T->nrows <= T->rows_capacity);
         /* without an alphabet, rows cannot be allocated */
         CHECK(T->alphabet_size > 0 || T->nrows == 0);
+        CHECK(T->crit_min >= 1);
+        CHECK(T->ncrit >= 0 && T->ncrit <= T->crit_capacity);
+        CHECK(T->crit_free >= -1 && T->crit_free < T->ncrit);
+        /* the room promised to the insertions into the crit-bit trees */
+        CHECK((int64_t) T->crit_capacity - T->ncrit >= (int64_t) T->crit_promised - n);
     }
 
     /* the words: laid end to end, non-empty, letters in range */
@@ -1102,7 +1558,9 @@ int ct_check(const ct_tree *T)
      * letter, and there are n - 1 children in all, so each one exactly once */
     if (T->layout == CT_LAYOUT_ROWS) {
         owned = (int *) calloc((size_t) T->nrows + 1, sizeof(int));
-        if (owned == NULL) {
+        crit_owned = (char *) calloc((size_t) T->ncrit + 1, 1);
+        seen = (char *) calloc((size_t) n, 1);
+        if (owned == NULL || crit_owned == NULL || seen == NULL) {
             err = CT_ENOMEM;
             goto done;
         }
@@ -1120,23 +1578,43 @@ int ct_check(const ct_tree *T)
                 d++;
             }
         } else {
+            int prev = -1;
             steps = 0;
             for (t = T->fchild[s]; t != -1; t = T->nsib[t]) {
                 CHECK(++steps < n);
                 CHECK(t >= 1 && t < n && T->parent[t] == s);
+                /* the rows layout links the children of a node with a row
+                 * or a crit-bit tree both ways */
+                CHECK(T->layout != CT_LAYOUT_ROWS || T->look[s] == -1 || T->psib[t] == prev);
+                prev = t;
                 d++;
             }
         }
         CHECK(s == 0 || (T->tend[s] == -1) == (d == 0));
         count += d;
+        /* a crit-bit tree belongs to one node with at least crit_min
+         * children, counts them in its header, and holds exactly them; a node
+         * with that many children may lack it (see crit_build) */
+        if (T->layout == CT_LAYOUT_ROWS && T->look[s] < -1) {
+            int e = 0;
+            unsigned all, any;
+            const int *h;
+            j = -(T->look[s] + 2);
+            CHECK(j < T->ncrit && !crit_owned[j]);
+            crit_owned[j] = 1;
+            h = T->crit + 3 * (size_t) j;
+            CHECK(h[0] == -2 && h[2] == d && d >= T->crit_min);
+            CHECK(check_crit(T, s, h[1], 32, crit_owned, seen, &e, &all, &any));
+            CHECK(e == d);
+        }
         /* a row belongs to one node with at least promote children, and
          * holds exactly its children, each at its first letter; a node with
          * that many children may lack a row (see promote_node) */
-        if (T->layout == CT_LAYOUT_ROWS && T->row[s] != -1) {
+        if (T->layout == CT_LAYOUT_ROWS && T->look[s] >= 0) {
             const int *row;
             int e = 0;
-            r = T->row[s];
-            CHECK(r >= 0 && r < T->nrows && !owned[r]);
+            r = T->look[s];
+            CHECK(r < T->nrows && !owned[r]);
             owned[r] = 1;
             CHECK(d >= T->promote);
             row = T->rows + (size_t) r * (size_t) T->alphabet_size;
@@ -1151,9 +1629,19 @@ int ct_check(const ct_tree *T)
         }
     }
     CHECK(count == n - 1);
-    if (T->layout == CT_LAYOUT_ROWS)
+    if (T->layout == CT_LAYOUT_ROWS) {
+        CHECK(T->psib[0] == -1);
         for (r = 0; r < T->nrows; r++)
             CHECK(owned[r]);
+        /* every crit node is either in a crit-bit tree or free */
+        for (j = T->crit_free; j != -1; j = T->crit[3 * (size_t) j + 1]) {
+            CHECK(j >= 0 && j < T->ncrit && !crit_owned[j]);
+            CHECK(T->crit[3 * (size_t) j] == -1);
+            crit_owned[j] = 1;
+        }
+        for (j = 0; j < T->ncrit; j++)
+            CHECK(crit_owned[j]);
+    }
     for (t = 1; t < n; t++)
         CHECK(child(T, T->parent[t], letter_of(T, T->tword[t], T->tstart[t])) == t);
 
@@ -1209,5 +1697,7 @@ done:
     free(buf);
     free(buf2);
     free(owned);
+    free(crit_owned);
+    free(seen);
     return err;
 }

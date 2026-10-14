@@ -52,16 +52,21 @@ static long num_checks = 0;
 
 static const char *layout_names[] = {"sparse", "dense", "rows"};
 
-/* The promotion threshold of the rows layout in the tests: small, so that
- * small trees have rows, and changed by the cases that vary it. */
+/* The promotion threshold and the crit-bit threshold of the rows layout in
+ * the tests: small, so that small trees have rows and crit-bit trees, and
+ * changed by the cases that vary them. A crit-bit tree is only built below
+ * the promotion threshold, hence the default of 1 for test_crit. */
 static int test_promote = 2;
+static int test_crit = 1;
 
-/* ct_init, with the promotion threshold of the tests for the rows layout. */
+/* ct_init, with the thresholds of the tests for the rows layout. */
 static int init_tree(ct_tree *T, int alphabet, int reserve, int layout)
 {
     int err = ct_init(T, alphabet, reserve, layout);
-    if (err == CT_OK && T->layout == CT_LAYOUT_ROWS)
+    if (err == CT_OK && T->layout == CT_LAYOUT_ROWS) {
         T->promote = test_promote;
+        T->crit_min = test_crit;
+    }
     return err;
 }
 
@@ -272,8 +277,11 @@ static int trees_equal(const ct_tree *A, const ct_tree *B)
         return 0;
     if (A->layout == CT_LAYOUT_ROWS)
         return A->promote == B->promote && A->nrows == B->nrows &&
-               memcmp(A->flet, B->flet, n * sz) == 0 && memcmp(A->row, B->row, n * sz) == 0 &&
-               (A->nrows == 0 || memcmp(A->rows, B->rows, (size_t) A->nrows * (size_t) A->alphabet_size * sz) == 0);
+               A->crit_min == B->crit_min && A->ncrit == B->ncrit && A->crit_free == B->crit_free &&
+               memcmp(A->flet, B->flet, n * sz) == 0 && memcmp(A->look, B->look, n * sz) == 0 &&
+               memcmp(A->psib, B->psib, n * sz) == 0 &&
+               (A->nrows == 0 || memcmp(A->rows, B->rows, (size_t) A->nrows * (size_t) A->alphabet_size * sz) == 0) &&
+               (A->ncrit == 0 || memcmp(A->crit, B->crit, 3 * (size_t) A->ncrit * sz) == 0);
     return 1;
 }
 
@@ -503,7 +511,8 @@ static void test_random(void)
         layout = rnd(4) - 1;
         if (layout == CT_LAYOUT_DENSE && !alphabet)
             layout = CT_LAYOUT_DEFAULT;
-        test_promote = 1 + rnd(4);
+        test_promote = rnd(4) ? 1 + rnd(4) : 1000;
+        test_crit = 1 + rnd(4);
         random_tree(alphabet, A, layout, rnd(2) ? 0 : rnd(64), 1 + rnd(15), 1 + rnd(12));
     }
 
@@ -515,11 +524,13 @@ static void test_random(void)
         for (trial = 0; trial < 60; trial++) {
             alphabet = trial % 2 ? 0 : 33 + rnd(168);
             A = alphabet ? alphabet : 2 + rnd(199);
-            test_promote = 1 + rnd(16);
+            test_promote = rnd(3) ? 1 + rnd(16) : 1000;
+            test_crit = 1 + rnd(16);
             random_tree(alphabet, A, layout, 0, 1 + rnd(8), 300);
         }
     }
     test_promote = 2;
+    test_crit = 1;
 
     current_case = "random long words, dense past 32 letters";
     for (trial = 0; trial < 40; trial++) {
@@ -809,6 +820,35 @@ static void values_for(int x, int n, int wl, int *v)
 
 #define NVALUES 8
 
+/* Every field of the crit node j of the crit-bit tree of s, a header or a
+ * branching node, and then of the crit nodes under it. */
+static void corrupt_crit(ct_tree *T, int j, int header, int s)
+{
+    int *c = T->crit + 3 * (size_t) j;
+    int v[NVALUES];
+    int k, m;
+    if (header) {
+        corrupt(T, c, -1, 0, "crit header tag", s);
+        corrupt(T, c, 0, 0, "crit header tag", s);
+        values_for(c[2], T->nstates, 0, v);
+        for (m = 0; m < 7; m++)
+            corrupt(T, c + 2, v[m], 0, "crit count", s);
+    } else {
+        values_for(c[0], 31, 0, v);
+        for (m = 0; m < 7; m++)
+            corrupt(T, c, v[m], 0, "crit bit", s);
+    }
+    for (k = 1; k < (header ? 2 : 3); k++) {
+        values_for(c[k], T->nstates, 0, v);
+        for (m = 0; m < 7; m++)
+            corrupt(T, c + k, v[m], 0, "crit reference", s);
+        corrupt(T, c + k, -2 - T->ncrit, 0, "crit reference", s);
+        corrupt(T, c + k, -2 - j, 0, "crit reference", s);
+        if (c[k] < -1)
+            corrupt_crit(T, -2 - c[k], 0, s);
+    }
+}
+
 static void corrupt_node(ct_tree *T, int s)
 {
     int v[NVALUES];
@@ -859,14 +899,28 @@ static void corrupt_node(ct_tree *T, int s)
         values_for(T->flet[s], n, 0, v);
         for (j = 0; j < 5; j++)
             corrupt(T, T->flet + s, v[j], 0, "flet", s);
-        corrupt(T, T->flet + s, rnd(T->alphabet_size), 0, "flet", s);
+        corrupt(T, T->flet + s, rnd(T->alphabet_size ? T->alphabet_size : T->max_letter + 1), 0,
+                "flet", s);
     }
     if (T->layout == CT_LAYOUT_ROWS) {
-        values_for(T->row[s], T->nrows, 0, v);
+        /* psib is only kept for the children of a node with a row or a
+         * crit-bit tree */
+        if (s > 0 && T->look[T->parent[s]] != -1) {
+            values_for(T->psib[s], n, 0, v);
+            for (j = 0; j < 5; j++)
+                corrupt(T, T->psib + s, v[j], 0, "psib", s);
+            corrupt(T, T->psib + s, s, 0, "psib", s);
+            corrupt(T, T->psib + s, 1 + rnd(n - 1), 0, "psib", s);
+        } else if (s == 0) {
+            corrupt(T, T->psib, 1 + rnd(n - 1), 0, "psib", s);
+        }
+        values_for(T->look[s], T->look[s] >= 0 ? T->nrows : -2 - T->ncrit, 0, v);
         for (j = 0; j < 7; j++)
-            corrupt(T, T->row + s, v[j], 0, "row", s);
-        if (T->row[s] != -1) {
-            int *row = T->rows + (size_t) T->row[s] * (size_t) T->alphabet_size;
+            corrupt(T, T->look + s, v[j], 0, "look", s);
+        if (T->look[s] < -1)
+            corrupt_crit(T, -2 - T->look[s], 1, s);
+        if (T->look[s] >= 0) {
+            int *row = T->rows + (size_t) T->look[s] * (size_t) T->alphabet_size;
             for (c = 0; c < T->alphabet_size; c++) {
                 values_for(row[c], n, 0, v);
                 for (j = 0; j < 5; j++)
@@ -878,14 +932,24 @@ static void corrupt_node(ct_tree *T, int s)
     }
 }
 
-static void test_corruption(int layout)
+/*
+ * The corruption of every field of a small tree over (alphabet, layout). In
+ * the rows layout, with the thresholds of the tests, the nodes get rows and
+ * the crit nodes of the crit-bit trees they had are free; with crit_only, the
+ * nodes keep their crit-bit trees.
+ */
+static void test_corruption(int layout, int alphabet, int crit_only)
 {
     ct_tree T;
     model M;
     int w1[] = {0, 2, 0, 3, 1, 0, 2}, w2[] = {2, 0, 2, 0, 1}, w3[] = {3, 3, 1};
     int s, j, x;
-    current_case = layout_names[layout];
-    CHECK_CODE(init_tree(&T, 4, 0, layout), CT_OK);
+    current_case = crit_only ? "rows, crit-bit trees only" : layout_names[layout];
+    if (crit_only) {
+        test_promote = 1000;
+        test_crit = 1 + crit_only % 2;
+    }
+    CHECK_CODE(init_tree(&T, alphabet, 0, layout), CT_OK);
     model_init(&M);
     process_checked(&T, &M, w1, 7);
     process_checked(&T, &M, w2, 5);
@@ -894,14 +958,43 @@ static void test_corruption(int layout)
     /* every node, the root included */
     for (s = 0; s < T.nstates; s++)
         corrupt_node(&T, s);
-    if (T.layout == CT_LAYOUT_ROWS) {
+    if (T.layout == CT_LAYOUT_ROWS && !crit_only && alphabet) {
         /* the root has 4 children, so it has a row */
-        CHECK(T.nrows > 0 && T.row[0] != -1);
+        CHECK(T.nrows > 0 && T.look[0] >= 0);
         corrupt(&T, &T.nrows, T.nrows - 1, 0, "nrows", 0);
         if (T.nrows < T.rows_capacity)
             corrupt(&T, &T.nrows, T.nrows + 1, 0, "nrows", 0);
         corrupt(&T, &T.promote, 0, 0, "promote", 0);
         corrupt(&T, &T.promote, 5, 0, "promote", 0);
+    }
+    if (T.layout == CT_LAYOUT_ROWS) {
+        /* the crit nodes: in use or free, and their room */
+        CHECK(T.ncrit > 0);
+        CHECK(crit_only || !alphabet ? T.look[0] < -1 : T.crit_free != -1);
+        corrupt(&T, &T.ncrit, T.ncrit - 1, 0, "ncrit", 0);
+        if (T.ncrit < T.crit_capacity)
+            corrupt(&T, &T.ncrit, T.ncrit + 1, 0, "ncrit", 0);
+        corrupt(&T, &T.ncrit, T.crit_capacity + 1, 0, "ncrit", 0);
+        corrupt(&T, &T.crit_free, T.ncrit, 0, "crit_free", 0);
+        corrupt(&T, &T.crit_free, -2, 0, "crit_free", 0);
+        corrupt(&T, &T.crit_min, 0, 0, "crit_min", 0);
+        /* the root has 4 children */
+        if (crit_only)
+            corrupt(&T, &T.crit_min, 5, 0, "crit_min", 0);
+        corrupt(&T, &T.crit_promised, T.nstates + T.crit_capacity - T.ncrit + 1, 0,
+                "crit_promised", 0);
+        if (T.crit_free != -1) {
+            corrupt(&T, &T.crit_free, -1, 0, "crit_free", 0);
+            for (j = T.crit_free; j != -1; j = T.crit[3 * (size_t) j + 1]) {
+                corrupt(&T, T.crit + 3 * (size_t) j, 0, 0, "free crit tag", j);
+                corrupt(&T, T.crit + 3 * (size_t) j + 1, j, 0, "free crit next", j);
+                corrupt(&T, T.crit + 3 * (size_t) j + 1, T.ncrit, 0, "free crit next", j);
+            }
+        }
+    }
+    if (crit_only) {
+        test_promote = 2;
+        test_crit = 1;
     }
 
     /* the words */
@@ -994,16 +1087,31 @@ static void test_odd_states(void)
     CHECK(T.layout == CT_LAYOUT_DENSE);
     ct_free(&T);
     CHECK_CODE(ct_init(&T, CT_DENSE_MAX_ALPHABET + 1, 0, CT_LAYOUT_DEFAULT), CT_OK);
-    CHECK(T.layout == CT_LAYOUT_ROWS && T.promote == CT_PROMOTE);
+    CHECK(T.layout == CT_LAYOUT_ROWS && T.promote == CT_PROMOTE && T.crit_min == CT_PROMOTE);
+    ct_free(&T);
+    /* past CT_PROMOTE * CT_ROW_RATIO letters, a row needs alphabet / CT_ROW_RATIO
+     * children, rounded up */
+    CHECK_CODE(ct_init(&T, CT_PROMOTE * CT_ROW_RATIO, 0, CT_LAYOUT_DEFAULT), CT_OK);
+    CHECK(T.promote == CT_PROMOTE);
+    ct_free(&T);
+    CHECK_CODE(ct_init(&T, CT_PROMOTE * CT_ROW_RATIO + 1, 0, CT_LAYOUT_DEFAULT), CT_OK);
+    CHECK(T.promote == CT_PROMOTE + 1 && T.crit_min == CT_CRIT_MIN);
+    ct_free(&T);
+    CHECK_CODE(ct_init(&T, 16384, 0, CT_LAYOUT_DEFAULT), CT_OK);
+    CHECK(T.promote == 16384 / CT_ROW_RATIO && T.crit_min == CT_CRIT_MIN);
+    ct_free(&T);
+    CHECK_CODE(ct_init(&T, 0, 0, CT_LAYOUT_DEFAULT), CT_OK);
+    CHECK(T.crit_min == CT_CRIT_MIN);
     ct_free(&T);
 
-    /* without an alphabet, the rows layout never promotes a node */
+    /* without an alphabet, the rows layout never promotes a node, and the
+     * crit-bit trees answer instead */
     {
         int w[] = {0, 1, 2, 3, 4, 5, 6, 7}, r;
         CHECK_CODE(init_tree(&T, 0, 0, CT_LAYOUT_ROWS), CT_OK);
         CHECK(T.layout == CT_LAYOUT_ROWS && T.promote == test_promote);
         CHECK_CODE(ct_process(&T, w, 8, &r), CT_OK);
-        CHECK(T.nrows == 0 && T.row[0] == -1);
+        CHECK(T.nrows == 0 && T.look[0] < -1);
         CHECK_CODE(ct_check(&T), CT_OK);
         ct_free(&T);
     }
@@ -1126,10 +1234,12 @@ static void test_reserve(void)
         int layout = rnd(4) - 1;
         if (layout == CT_LAYOUT_DENSE && !alphabet)
             layout = CT_LAYOUT_DEFAULT;
-        test_promote = 1 + rnd(4);
+        test_promote = rnd(4) ? 1 + rnd(4) : 1000;
+        test_crit = 1 + rnd(4);
         check_reserve(alphabet, layout, trial % 2 ? 0 : 1 + rnd(5), 1 + rnd(10), 1 + rnd(40));
     }
     test_promote = 2;
+    test_crit = 1;
 
     for (trial = 0; trial < 6; trial++) {
         CHECK_CODE(init_tree(&T, 4, 0, trial % 3), CT_OK);
@@ -1167,6 +1277,87 @@ static void test_reserve(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* 7: nodes with many children                                         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A tree of the rows layout over (alphabet, letters below A), with the given
+ * promotion and crit-bit thresholds (0 for the defaults), of nw random words
+ * of length len, each followed by its inverse (reversed, each letter h
+ * replaced by h ^ 1) as geometric_intersection inserts them. With skew, the
+ * letters are drawn small more often, so that the nodes below the root have
+ * many children too. ct_check runs after each insertion; the sorted leaves
+ * are compared with the brute force when sorted is set.
+ */
+static int many_children_tree(int alphabet, int A, int promote, int crit, int nw, int len,
+                              int skew, int sorted)
+{
+    ct_tree T;
+    model M;
+    int *w = (int *) xmalloc((size_t) len * sizeof(int));
+    int *inv = (int *) xmalloc((size_t) len * sizeof(int));
+    int j, k, t, d;
+    CHECK_CODE(ct_init(&T, alphabet, 0, CT_LAYOUT_ROWS), CT_OK);
+    if (promote)
+        T.promote = promote;
+    if (crit)
+        T.crit_min = crit;
+    model_init(&M);
+    for (j = 0; j < nw; j++) {
+        for (k = 0; k < len; k++)
+            w[k] = skew ? rnd(1 + rnd(A)) : rnd(A);
+        process_checked(&T, &M, w, len);
+        for (k = 0; k < len; k++)
+            inv[k] = w[len - 1 - k] ^ 1;
+        if (A % 2 == 0)
+            process_checked(&T, &M, inv, len);
+    }
+    /* the lookup structure of the root follows its number of children */
+    d = 0;
+    for (t = T.fchild[0]; t != -1; t = T.nsib[t])
+        d++;
+    if (d >= T.promote && alphabet > 0)
+        CHECK(T.look[0] >= 0);
+    else if (d >= T.crit_min)
+        CHECK(T.look[0] < -1);
+    else
+        CHECK(T.look[0] == -1);
+    if (sorted)
+        check_sorted_leaves(&T);
+    ct_free(&T);
+    model_free(&M);
+    free(w);
+    free(inv);
+    return d;
+}
+
+static void test_many_children(void)
+{
+    int trial, alphabet;
+    /* the root has a child per letter: about 1000 to 3800 of them */
+    current_case = "many children, default thresholds";
+    CHECK(many_children_tree(4096, 4096, 0, 0, 2, 3000, 0, 1) > 1000);
+    CHECK(many_children_tree(16384, 16384, 0, 0, 2, 3000, 0, 1) > 1000);
+    CHECK(many_children_tree(16384, 16384, 0, 0, 2, 3000, 1, 1) > 1000);
+    current_case = "many children, crit-bit trees only";
+    CHECK(many_children_tree(4096, 4096, INT_MAX, 0, 2, 3000, 0, 1) > 1000);
+    CHECK(many_children_tree(16384, 16384, INT_MAX, 0, 2, 2000, 1, 1) > 1000);
+    CHECK(many_children_tree(16384, 16384, INT_MAX, 2, 1, 2000, 1, 1) > 1000);
+    current_case = "many children, no alphabet";
+    CHECK(many_children_tree(0, 1 << 20, 0, 0, 2, 2000, 0, 1) > 1000);
+    CHECK(many_children_tree(0, 1 << 20, 0, 0, 2, 2000, 1, 1) > 1000);
+    /* letters up to INT_MAX - 1, so that the crit nodes read bit 30; the
+     * sorted leaves would need arrays of that size */
+    CHECK(many_children_tree(0, INT_MAX - 1, 0, 0, 2, 2000, 0, 0) > 1000);
+    current_case = "many children, random thresholds";
+    for (trial = 0; trial < 20; trial++) {
+        alphabet = 64 + 2 * rnd(2000);
+        many_children_tree(rnd(2) ? 0 : alphabet, alphabet, 1 + rnd(300), 1 + rnd(40),
+                           1 + rnd(3), 50 + rnd(500), rnd(2), 1);
+    }
+}
+
+/* ------------------------------------------------------------------ */
 
 int main(int argc, char **argv)
 {
@@ -1185,9 +1376,14 @@ int main(int argc, char **argv)
             test_hand_picked(layout, 16);
             if (layout != CT_LAYOUT_DENSE)
                 test_hand_picked(layout, 0);
-            test_corruption(layout);
+            test_corruption(layout, 4, 0);
         }
+        test_corruption(CT_LAYOUT_ROWS, 0, 0);
+        test_corruption(CT_LAYOUT_ROWS, 4, 1);
+        test_corruption(CT_LAYOUT_ROWS, 4, 2);
+        test_corruption(CT_LAYOUT_ROWS, 0, 1);
     }
+    test_many_children();
     test_odd_states();
     test_reserve();
     test_random();

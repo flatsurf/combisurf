@@ -2,11 +2,12 @@
  * Benchmark of the conjugate trees of combisurf/src/conjugate_tree.c.
  *
  * Usage: bench <word file> [rounds] [--with-inverse] [--layout <layout>]
- *              [--promote <P>]
+ *              [--promote <P>] [--crit <C>]
  *
  * Reads a word file (see extra/word_files.py), builds a fresh tree over its
  * alphabet with the given layout (default, sparse, dense or rows; with
- * --promote, the rows layout gives a row to a node at P children)
+ * --promote, the rows layout gives a row to a node at P children, with
+ * --crit a crit-bit tree to a node without row at C children)
  * and inserts every word with ct_process;
  * with --with-inverse, it inserts each new word followed by the inverse of
  * its primitive root (reversed, each letter h replaced by h ^ 1), as
@@ -39,6 +40,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+#define USAGE "usage: bench <word file> [rounds] [--with-inverse] [--layout <layout>] " \
+              "[--promote <P>] [--crit <C>]"
 
 static void die(const char *msg)
 {
@@ -162,7 +166,7 @@ static void record(int need, int len, int size, const int *src)
 }
 
 static int *invbuf;
-static int opt_layout = CT_LAYOUT_DEFAULT, opt_promote = 0;
+static int opt_layout = CT_LAYOUT_DEFAULT, opt_promote = 0, opt_crit = 0;
 
 static void process(ct_tree *T, const int *w, int len, int *result, int rec)
 {
@@ -181,6 +185,8 @@ static void build(ct_tree *T, int with_inverse, int rec)
         die("ct_init failed");
     if (opt_promote)
         T->promote = opt_promote;
+    if (opt_crit)
+        T->crit_min = opt_crit;
     for (j = 0; j < nwords; j++) {
         if (!with_inverse) {
             process(T, words[j], lens[j], &status, rec);
@@ -376,9 +382,10 @@ static double tree_bytes(const ct_tree *T)
     else
         per_node += 2;
     if (T->layout == CT_LAYOUT_ROWS)
-        per_node += 2;
+        per_node += 3;
     b = 4 * (per_node * T->capacity + T->wbuf_capacity + 2.0 * T->words_capacity);
     b += 4.0 * T->rows_capacity * T->alphabet_size;
+    b += 4.0 * 3 * T->crit_capacity;
     return b;
 }
 
@@ -416,15 +423,19 @@ int main(int argc, char **argv)
             opt_promote = atoi(argv[++j]);
             if (opt_promote <= 0)
                 die("--promote needs a positive integer");
+        } else if (strcmp(argv[j], "--crit") == 0 && j + 1 < argc) {
+            opt_crit = atoi(argv[++j]);
+            if (opt_crit <= 0)
+                die("--crit needs a positive integer");
         } else if (argv[j][0] == '-')
-            die("usage: bench <word file> [rounds] [--with-inverse] [--layout <layout>] [--promote <P>]");
+            die(USAGE);
         else if (positional++ == 0)
             path = argv[j];
         else
             rounds = atoi(argv[j]);
     }
     if (path == NULL || rounds <= 0)
-        die("usage: bench <word file> [rounds] [--with-inverse] [--layout <layout>] [--promote <P>]");
+        die(USAGE);
     read_file(path);
     if (opt_inverse && alphabet % 2)
         die("an alphabet of odd size has no inverses");
@@ -441,7 +452,8 @@ int main(int argc, char **argv)
     printf("%s: n = %d, %d words, %ld letters, %s, layout %s", path, alphabet, nwords,
            total_letters, opt_inverse ? "with inverse" : "plain", layout_name(T.layout));
     if (T.layout == CT_LAYOUT_ROWS)
-        printf(" (promote %d, %d rows)", T.promote, T.nrows);
+        printf(" (promote %d, %d rows, crit_min %d, %d crit nodes)", T.promote, T.nrows,
+               T.crit_min, T.ncrit);
     printf("\n");
     print_time("build:", t_build);
     printf(" per tree, %.2f ns per letter\n", t_build / (double) total_letters * 1e9);
