@@ -1,7 +1,7 @@
 /*
  * Tests of the canonical keys of combisurf/src/omap.c, in C.
  *
- * Usage: test_isomorphism [seed]
+ * Usage: test_omap [seed]
  *
  * Exits 0 and prints one summary line when every case passes; otherwise
  * prints the failing case and exits 1. The fixed cases are the examples of
@@ -1742,6 +1742,6 @@ main(int argc, char **argv)
     test_search_random();
     test_search_tied();
     test_invariants();
-    printf("test_isomorphism: %ld checks passed\n", num_checks);
+    printf("test_omap: %ld checks passed\n", num_checks);
     return 0;
 }
