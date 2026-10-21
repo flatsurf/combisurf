@@ -70,7 +70,8 @@
 #define COMBISURF_ISOMORPHISM_H
 
 /* Return value of iso_canonical on a map that is not connected. */
-enum {
+enum
+{
     ISO_DISCONNECTED = -1
 };
 
@@ -80,7 +81,8 @@ enum {
  * a base rule (0 to 4), possibly combined with the flag ISO_ROOTS_DATA by |.
  * The functions below read the base rule as rule & ~ISO_ROOTS_DATA.
  */
-typedef enum {
+typedef enum
+{
     ISO_ROOTS_ALL = 0,
     ISO_ROOTS_HALF_EDGE_MAX = 1,
     ISO_ROOTS_HALF_EDGE_FEWEST = 2,
@@ -103,8 +105,9 @@ typedef enum {
  * the start of each class in that order (3 n + 1), then the relabelling of
  * the best root and the parents of the union-find of the orbits of the
  * automorphisms found (2 n). Under ISO_ROOTS_DATA the order-preserving
- * numbers of the data values (nd n) live in the candidate key, which is not used before the
- * classes are computed, so that the flag needs no more room.
+ * numbers of the data values (nd n) live in the candidate key, which is not
+ * used before the classes are computed, so that the flag needs no more
+ * room.
  */
 #define ISO_WORK_SIZE(n, nd, nc) (9 * (n) + 1 + ISO_KEY_SIZE(n, nd, nc))
 
@@ -122,7 +125,8 @@ int iso_num_edges(int n, const int *fp);
  * Return the number k of labels used; the map is connected if and only if
  * k is twice its number of active edges.
  */
-int iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv, int *queue);
+int iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv,
+                         int *queue);
 
 /*
  * Write into key the key of the relabelling (r, rinv) using k labels, as
@@ -132,8 +136,9 @@ int iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv, int 
  *
  * Return the length of the key.
  */
-int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-            const int *r, const int *rinv, int k, int *key, int *names);
+int iso_key(int n, const int *fp, int nd, const int *data, int nc,
+            const int *classes, const int *r, const int *rinv, int k, int *key,
+            int *names);
 
 /* Size of the work buffer of iso_invariants_differ, in ints. */
 #define ISO_INVARIANTS_WORK_SIZE(n) (2 * (n) + 1)
@@ -157,9 +162,10 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * map, on top of those the search makes anyway, and it rejects few pairs
  * that the other invariants accept.
  */
-int iso_invariants_differ(int n1, const int *fp1, const int *data1, const int *classes1,
-                          int n2, const int *fp2, const int *data2, const int *classes2,
-                          int nd, int nc, int *work);
+int iso_invariants_differ(int n1, const int *fp1, const int *data1,
+                          const int *classes1, int n2, const int *fp2,
+                          const int *data2, const int *classes2, int nd,
+                          int nc, int *work);
 
 /*
  * Try every active half-edge of fp of the class of the rule as a root (every
@@ -218,9 +224,9 @@ int iso_invariants_differ(int n1, const int *fp1, const int *data1, const int *c
  * active half-edges (a heap sort, O(n log n) per array). They add nd or
  * 2 nd entries.
  */
-int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-                  iso_root_rule rule, int *key, int *relabelling, int *roots, int *nroots,
-                  int *work);
+int iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
+                  const int *classes, iso_root_rule rule, int *key,
+                  int *relabelling, int *roots, int *nroots, int *work);
 
 /*
  * Maps that may be disconnected: the search over the labellings component
@@ -249,21 +255,22 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
  * levels of the search (its root, the root of the best leaf at that level,
  * its first label, the position and the length of its block, and the counts
  * of class values before it: (5 + nc) (n / 2 + 1)), the counts of class
- * values (nc), the current sequence
- * (ISO_SEQUENCE_SIZE), one candidate block (ISO_KEY_SIZE + 1), and for the
- * rules other than ISO_ROOTS_ALL the active half-edges sorted by invariant,
- * the class of each half-edge, the start of each class in that order and
- * the number of half-edges not labelled yet in each class (4 n + 1). Under
- * ISO_ROOTS_DATA the order-preserving numbers of the data values (nd n) live
- * in the candidate block, which is not used before the classes are computed, so that the
+ * values (nc), the current sequence (ISO_SEQUENCE_SIZE), one candidate
+ * block (ISO_KEY_SIZE + 1), and for the rules other than ISO_ROOTS_ALL the
+ * active half-edges sorted by invariant, the class of each half-edge, the
+ * start of each class in that order and the number of half-edges not
+ * labelled yet in each class (4 n + 1). Under ISO_ROOTS_DATA the
+ * order-preserving numbers of the data values (nd n) live in the candidate
+ * block, which is not used before the classes are computed, so that the
  * flag needs no more room.
  *
  * These sizes are computed in int and overflow for about
  * 2^31 / (14 + 2 nd + 3.5 nc) half-edges; the caller checks them first.
  */
-#define ISO_SEARCH_WORK_SIZE(n, nd, nc) \
-    ((5 + (nc)) * (n) + (5 + (nc)) * ((n) / 2 + 1) + (nc) \
-     + ISO_SEQUENCE_SIZE(n, nd, nc) + ISO_KEY_SIZE(n, nd, nc) + 1 + 4 * (n) + 1)
+#define ISO_SEARCH_WORK_SIZE(n, nd, nc)                                     \
+    ((5 + (nc)) * (n) + (5 + (nc)) * ((n) / 2 + 1) + (nc)                   \
+     + ISO_SEQUENCE_SIZE(n, nd, nc) + ISO_KEY_SIZE(n, nd, nc) + 1           \
+     + 4 * (n) + 1)
 
 /*
  * Callback of iso_search, called on a leaf: leaf is the relabelling of the
@@ -339,8 +346,9 @@ typedef int (*iso_leaf_callback)(const int *leaf, int first, void *arg);
  * Return 0, or the nonzero value returned by the callback, which stops the
  * search and leaves the outputs undefined.
  */
-int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-               iso_root_rule rule, int all_leaves, int *sequence, int *length, int *relabelling,
+int iso_search(int n, const int *fp, int nd, const int *data, int nc,
+               const int *classes, iso_root_rule rule, int all_leaves,
+               int *sequence, int *length, int *relabelling,
                iso_leaf_callback callback, void *arg, int *work);
 
 #endif

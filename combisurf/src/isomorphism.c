@@ -69,19 +69,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ISO_CHECK(cond) do { \
-        if (!(cond)) { \
-            fprintf(stderr, "isomorphism.c:%d: check failed: %s\n", __LINE__, #cond); \
-            abort(); \
-        } \
+#define ISO_CHECK(cond)                                                     \
+    do                                                                      \
+    {                                                                       \
+        if (!(cond))                                                        \
+        {                                                                   \
+            fprintf(stderr, "isomorphism.c:%d: check failed: %s\n",         \
+                    __LINE__, #cond);                                       \
+            abort();                                                        \
+        }                                                                   \
     } while (0)
 
 /* Check that (r, rinv) is a relabelling of the reached edges by k labels. */
-static void debug_relabelling(int n, const int *fp, const int *r, const int *rinv, int k)
+static void
+debug_relabelling(int n, const int *fp, const int *r, const int *rinv, int k)
 {
     int h, i;
     ISO_CHECK(k % 2 == 0 && 0 <= k && k <= n);
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         ISO_CHECK(-1 <= r[h] && r[h] < k);
         ISO_CHECK((r[h] == -1) == (r[h ^ 1] == -1));
         if (r[h] != -1)
@@ -89,17 +95,24 @@ static void debug_relabelling(int n, const int *fp, const int *r, const int *rin
         if (r[h] != -1 && fp[h] != -1)
             ISO_CHECK(r[fp[h]] != -1);
     }
-    for (i = 0; i < k; i++) {
-        if (rinv[i] == -1) {
-            ISO_CHECK(i % 2 == 1 && rinv[i ^ 1] != -1 && fp[rinv[i ^ 1] ^ 1] == -1);
-        } else {
-            ISO_CHECK(0 <= rinv[i] && rinv[i] < n && fp[rinv[i]] != -1 && r[rinv[i]] == i);
+    for (i = 0; i < k; i++)
+    {
+        if (rinv[i] == -1)
+        {
+            ISO_CHECK(i % 2 == 1 && rinv[i ^ 1] != -1
+                      && fp[rinv[i ^ 1] ^ 1] == -1);
+        }
+        else
+        {
+            ISO_CHECK(0 <= rinv[i] && rinv[i] < n && fp[rinv[i]] != -1
+                      && r[rinv[i]] == i);
         }
     }
 }
 
 /* Check that names is all -1. */
-static void debug_names(int n, const int *names)
+static void
+debug_names(int n, const int *names)
 {
     int v;
     for (v = 0; v < n; v++)
@@ -107,7 +120,8 @@ static void debug_names(int n, const int *names)
 }
 #endif
 
-int iso_num_edges(int n, const int *fp)
+int
+iso_num_edges(int n, const int *fp)
 {
     int e, ne = 0;
     for (e = 0; 2 * e < n; e++)
@@ -116,7 +130,9 @@ int iso_num_edges(int n, const int *fp)
     return ne;
 }
 
-int iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv, int *queue)
+int
+iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv,
+                     int *queue)
 {
     int head = 0, tail = 0, k = 0;
     int h, x;
@@ -124,20 +140,26 @@ int iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv, int 
     for (h = 0; h < n; h++)
         r[h] = -1;
     queue[tail++] = root;
-    while (head < tail) {
+    while (head < tail)
+    {
         h = queue[head++];
         x = h;
-        do {
-            if (r[x] == -1) {
+        do
+        {
+            if (r[x] == -1)
+            {
                 r[x] = k;
                 r[x ^ 1] = k + 1;
                 rinv[k] = x;
-                if (fp[x ^ 1] != -1) {
+                if (fp[x ^ 1] != -1)
+                {
                     rinv[k + 1] = x ^ 1;
                     /* one push per edge, when it gets its labels, and the
                      * root: at most n / 2 + 1 <= n entries */
                     queue[tail++] = x ^ 1;
-                } else {
+                }
+                else
+                {
                     rinv[k + 1] = -1;
                 }
                 k += 2;
@@ -151,8 +173,10 @@ int iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv, int 
     return k;
 }
 
-int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-            const int *r, const int *rinv, int k, int *key, int *names)
+int
+iso_key(int n, const int *fp, int nd, const int *data, int nc,
+        const int *classes, const int *r, const int *rinv, int k, int *key,
+        int *names)
 {
     int i, j, h, pos, next;
     const int *a;
@@ -160,25 +184,31 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
 #ifdef ISO_DEBUG
     debug_names(n, names);
 #endif
-    for (i = 0; i < k; i++) {
+    for (i = 0; i < k; i++)
+    {
         h = rinv[i];
         key[i] = h == -1 ? -1 : r[fp[h]];
     }
     pos = k;
-    for (j = 0; j < nd; j++) {
+    for (j = 0; j < nd; j++)
+    {
         a = data + (long) j * n;
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = rinv[i];
             if (h != -1)
                 key[pos++] = a[h];
         }
     }
-    for (j = 0; j < nc; j++) {
+    for (j = 0; j < nc; j++)
+    {
         a = classes + (long) j * n;
         next = 0;
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = rinv[i];
-            if (h != -1) {
+            if (h != -1)
+            {
 #ifdef ISO_DEBUG
                 ISO_CHECK(0 <= a[h] && a[h] < n);
 #endif
@@ -187,7 +217,8 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
                 key[pos++] = names[a[h]];
             }
         }
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = rinv[i];
             if (h != -1)
                 names[a[h]] = -1;
@@ -201,9 +232,11 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
 
 /* A bijective mixing of the 32 bits of x into 64 bits (multiplications by
  * odd constants and xorshifts, each invertible). */
-static inline unsigned long long mix_value(int x)
+static inline unsigned long long
+mix_value(int x)
 {
-    unsigned long long y = (unsigned long long) (unsigned int) x * 0x9E3779B97F4A7C15ULL;
+    unsigned long long y =
+        (unsigned long long) (unsigned int) x * 0x9E3779B97F4A7C15ULL;
     y ^= y >> 29;
     y *= 0xBF58476D1CE4E5B9ULL;
     return y ^ (y >> 32);
@@ -217,7 +250,8 @@ static inline unsigned long long mix_value(int x)
  * values instead, counted per value or heap sorted, needs a buffer and
  * branches.
  */
-static unsigned long long values_hash(int n, const int *fp, const int *a)
+static unsigned long long
+values_hash(int n, const int *fp, const int *a)
 {
     unsigned long long s = 0;
     int h;
@@ -232,8 +266,9 @@ static unsigned long long values_hash(int n, const int *fp, const int *a)
  * on the active half-edges, as many on both sides. sz (n ints) and cnt
  * (n + 1 ints) are zero on entry and, when they are equal, on return.
  */
-static int class_sizes_differ(int n1, const int *fp1, const int *a1, int n2, const int *fp2,
-                              const int *a2, int *sz, int *cnt)
+static int
+class_sizes_differ(int n1, const int *fp1, const int *a1, int n2,
+                   const int *fp2, const int *a2, int *sz, int *cnt)
 {
     int h;
 
@@ -241,8 +276,10 @@ static int class_sizes_differ(int n1, const int *fp1, const int *a1, int n2, con
         if (fp1[h] != -1)
             sz[a1[h]]++;
     /* each class counted at its first half-edge, its size then reset */
-    for (h = 0; h < n1; h++) {
-        if (fp1[h] != -1 && sz[a1[h]] != 0) {
+    for (h = 0; h < n1; h++)
+    {
+        if (fp1[h] != -1 && sz[a1[h]] != 0)
+        {
             cnt[sz[a1[h]]]++;
             sz[a1[h]] = 0;
         }
@@ -252,8 +289,10 @@ static int class_sizes_differ(int n1, const int *fp1, const int *a1, int n2, con
             sz[a2[h]]++;
     /* the sizes sum to the same number of half-edges on both sides, so no
      * count going negative means equal counts */
-    for (h = 0; h < n2; h++) {
-        if (fp2[h] != -1 && sz[a2[h]] != 0) {
+    for (h = 0; h < n2; h++)
+    {
+        if (fp2[h] != -1 && sz[a2[h]] != 0)
+        {
             if (--cnt[sz[a2[h]]] < 0)
                 return 1;
             sz[a2[h]] = 0;
@@ -262,15 +301,18 @@ static int class_sizes_differ(int n1, const int *fp1, const int *a1, int n2, con
     return 0;
 }
 
-int iso_invariants_differ(int n1, const int *fp1, const int *data1, const int *classes1,
-                          int n2, const int *fp2, const int *data2, const int *classes2,
-                          int nd, int nc, int *work)
+int
+iso_invariants_differ(int n1, const int *fp1, const int *data1,
+                      const int *classes1, int n2, const int *fp2,
+                      const int *data2, const int *classes2, int nd, int nc,
+                      int *work)
 {
     int n = n1 > n2 ? n1 : n2;
     int j;
 
     for (j = 0; j < nd; j++)
-        if (values_hash(n1, fp1, data1 + (long) j * n1) != values_hash(n2, fp2, data2 + (long) j * n2))
+        if (values_hash(n1, fp1, data1 + (long) j * n1)
+            != values_hash(n2, fp2, data2 + (long) j * n2))
             return 1;
     if (nc == 0)
         return 0;
@@ -289,23 +331,27 @@ int iso_invariants_differ(int n1, const int *fp1, const int *data1, const int *c
  * half-edges) of each active half-edge, -1 on the inactive ones, and into
  * size the length of that cycle (not written on the inactive half-edges).
  */
-static void cycles(int n, const int *p, int *id, int *size)
+static void
+cycles(int n, const int *p, int *id, int *size)
 {
     int h, x, len, c = 0;
 
     for (h = 0; h < n; h++)
         id[h] = -1;
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         if (p[h] == -1 || id[h] != -1)
             continue;
         len = 0;
         x = h;
-        do {
+        do
+        {
             id[x] = c;
             len++;
             x = p[x];
         } while (x != h);
-        do {
+        do
+        {
             size[x] = len;
             x = p[x];
         } while (x != h);
@@ -319,23 +365,25 @@ static void cycles(int n, const int *p, int *id, int *size)
  * and monogon as 0 or 1. vid and fid are the indices of the vertices and of
  * the faces, vdeg and fdeg their degrees.
  */
-static int invariant_entry(int j, int h, const int *fp, const int *vid, const int *vdeg,
-                           const int *fid, const int *fdeg)
+static int
+invariant_entry(int j, int h, const int *fp, const int *vid, const int *vdeg,
+                const int *fid, const int *fdeg)
 {
     int t = fp[h ^ 1] != -1 ? h ^ 1 : h;
-    switch (j) {
-    case 0:
-        return vdeg[h] - 1;
-    case 1:
-        return fdeg[h] - 1;
-    case 2:
-        return vdeg[t] - 1;
-    case 3:
-        return fdeg[t] - 1;
-    case 4:
-        return vid[h] == vid[t];
-    default:
-        return fid[h] == fid[t];
+    switch (j)
+    {
+        case 0:
+            return vdeg[h] - 1;
+        case 1:
+            return fdeg[h] - 1;
+        case 2:
+            return vdeg[t] - 1;
+        case 3:
+            return fdeg[t] - 1;
+        case 4:
+            return vid[h] == vid[t];
+        default:
+            return fid[h] == fid[t];
     }
 }
 
@@ -346,18 +394,22 @@ static int invariant_entry(int j, int h, const int *fp, const int *vid, const in
  * values at h (nd entries), and under the edge rules those at the twin t (nd
  * more). rank holds the nd arrays of numbers, nd being 0 without the flag.
  */
-struct invariants {
+struct invariants
+{
     const int *fp, *vid, *vdeg, *fid, *fdeg, *rank;
     int n, nd, base, edge;
 };
 
 /* The entry j of the invariant of the active half-edge h. */
-static inline int entry(const struct invariants *iv, int j, int h)
+static inline int
+entry(const struct invariants *iv, int j, int h)
 {
     if (j < iv->base)
-        return invariant_entry(j, h, iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg);
+        return invariant_entry(j, h, iv->fp, iv->vid, iv->vdeg, iv->fid,
+                               iv->fdeg);
     j -= iv->base;
-    if (j >= iv->nd) {
+    if (j >= iv->nd)
+    {
         j -= iv->nd;
         if (iv->fp[h ^ 1] != -1)
             h ^= 1;
@@ -365,11 +417,16 @@ static inline int entry(const struct invariants *iv, int j, int h)
     return iv->rank[(long) j * iv->n + h];
 }
 
-/* Sift down the entry i of the max-heap a[0:len] ordered by the values v[a[.]]. */
-static void sift_down(int *a, int i, int len, const int *v)
+/*
+ * Sift down the entry i of the max-heap a[0:len] ordered by the values
+ * v[a[.]].
+ */
+static void
+sift_down(int *a, int i, int len, const int *v)
 {
     int c, x = a[i];
-    while ((c = 2 * i + 1) < len) {
+    while ((c = 2 * i + 1) < len)
+    {
         if (c + 1 < len && v[a[c + 1]] > v[a[c]])
             c++;
         if (v[a[c]] <= v[x])
@@ -391,11 +448,13 @@ static void sift_down(int *a, int i, int len, const int *v)
  * active half-edges, sorted by value by a heap sort, which needs no buffer
  * beyond them and runs in O(n log n) whatever the values.
  */
-static void data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
+static void
+data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
 {
     int h, i, x, na = 0, k = 0, lo = 0, hi = 0;
 
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         if (fp[h] == -1)
             continue;
         if (na == 0 || a[h] < lo)
@@ -405,7 +464,8 @@ static void data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
         na++;
     }
     /* hi - lo reaches 2^32 - 1, which a 32-bit long does not hold */
-    if ((long long) hi - (long long) lo < (long long) n) {
+    if ((long long) hi - (long long) lo < (long long) n)
+    {
         for (h = 0; h < n; h++)
             if (fp[h] != -1)
                 rank[h] = (int) ((long long) a[h] - (long long) lo);
@@ -417,13 +477,15 @@ static void data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
             tmp[na++] = h;
     for (i = na / 2 - 1; i >= 0; i--)
         sift_down(tmp, i, na, a);
-    for (i = na - 1; i > 0; i--) {
+    for (i = na - 1; i > 0; i--)
+    {
         x = tmp[0];
         tmp[0] = tmp[i];
         tmp[i] = x;
         sift_down(tmp, 0, i, a);
     }
-    for (i = 0; i < na; i++) {
+    for (i = 0; i < na; i++)
+    {
         if (i > 0 && a[tmp[i]] != a[tmp[i - 1]])
             k++;
         rank[tmp[i]] = k;
@@ -436,19 +498,26 @@ static void data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
  * directly, from the degrees and the data values themselves rather than
  * their ranks: -1, 0 or 1.
  */
-static int debug_compare_invariants(const struct invariants *iv, const int *data, int h1, int h2)
+static int
+debug_compare_invariants(const struct invariants *iv, const int *data, int h1,
+                         int h2)
 {
     int j, x, y, side, t1, t2;
-    for (j = 0; j < iv->base; j++) {
-        x = invariant_entry(j, h1, iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg);
-        y = invariant_entry(j, h2, iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg);
+    for (j = 0; j < iv->base; j++)
+    {
+        x = invariant_entry(j, h1, iv->fp, iv->vid, iv->vdeg, iv->fid,
+                            iv->fdeg);
+        y = invariant_entry(j, h2, iv->fp, iv->vid, iv->vdeg, iv->fid,
+                            iv->fdeg);
         if (x != y)
             return x < y ? -1 : 1;
     }
-    for (side = 0; side <= iv->edge; side++) {
+    for (side = 0; side <= iv->edge; side++)
+    {
         t1 = side && iv->fp[h1 ^ 1] != -1 ? h1 ^ 1 : h1;
         t2 = side && iv->fp[h2 ^ 1] != -1 ? h2 ^ 1 : h2;
-        for (j = 0; j < iv->nd; j++) {
+        for (j = 0; j < iv->nd; j++)
+        {
             x = data[(long) j * iv->n + t1];
             y = data[(long) j * iv->n + t2];
             if (x != y)
@@ -465,16 +534,21 @@ static int debug_compare_invariants(const struct invariants *iv, const int *data
  * one class have equal invariants and come in increasing order, and the
  * invariants increase from a class to the next.
  */
-static void debug_classes(const struct invariants *iv, const int *data, int na, const int *order,
-                          const int *pos_cls)
+static void
+debug_classes(const struct invariants *iv, const int *data, int na,
+              const int *order, const int *pos_cls)
 {
     int i, cmp;
     ISO_CHECK(pos_cls[0] == 0);
-    for (i = 1; i < na; i++) {
+    for (i = 1; i < na; i++)
+    {
         cmp = debug_compare_invariants(iv, data, order[i - 1], order[i]);
-        if (pos_cls[i] == pos_cls[i - 1]) {
+        if (pos_cls[i] == pos_cls[i - 1])
+        {
             ISO_CHECK(cmp == 0 && order[i - 1] < order[i]);
-        } else {
+        }
+        else
+        {
             ISO_CHECK(pos_cls[i] == pos_cls[i - 1] + 1 && cmp < 0);
         }
     }
@@ -491,22 +565,25 @@ static void debug_classes(const struct invariants *iv, const int *data, int na, 
  * by the number of active half-edges (the class c is order[start[c]],
  * ..., order[start[c + 1] - 1]). order holds n ints, start n + 1 and tmp
  * 4 n. Under ISO_ROOTS_DATA, the nd data arrays (nd n ints) are read and
- * ranks (nd n ints) receives their numbers of data_ranks. Return the number of classes.
+ * ranks (nd n ints) receives their numbers of data_ranks. Return the number
+ * of classes.
  *
  * The sort is a least significant digit radix sort: one stable counting
- * sort per entry of the invariant (2 or 6 of them, plus nd or 2 nd data entries
- * under ISO_ROOTS_DATA, each in 0, ..., n - 1), from the last to the
- * first, O(n) each.
+ * sort per entry of the invariant (2 or 6 of them, plus nd or 2 nd data
+ * entries under ISO_ROOTS_DATA, each in 0, ..., n - 1), from the last to
+ * the first, O(n) each.
  */
-static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
-                        int *order, int *cls, int *start, int *tmp, int *ranks)
+static int
+root_classes(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
+             int *order, int *cls, int *start, int *tmp, int *ranks)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *aux = tmp + 2 * n, *count = tmp + 3 * n;
     /* the indices of the vertices and of the faces, until the classes are
      * written over them */
     int *vid = cls, *fid = start;
     int base_rule = rule & ~ISO_ROOTS_DATA;
-    int edge = base_rule == ISO_ROOTS_EDGE_MAX || base_rule == ISO_ROOTS_EDGE_FEWEST;
+    int edge = base_rule == ISO_ROOTS_EDGE_MAX
+        || base_rule == ISO_ROOTS_EDGE_FEWEST;
     struct invariants iv;
     int entries;
     int h, t, i, j, v, sum, na = 0, m;
@@ -533,7 +610,8 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const 
     /* the vertex permutation, in aux */
     for (h = 0; h < n; h++)
         aux[h] = -1;
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         if (fp[h] == -1)
             continue;
         t = fp[h ^ 1] != -1 ? h ^ 1 : h;
@@ -545,25 +623,29 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const 
     for (h = 0; h < n; h++)
         if (fp[h] != -1)
             order[na++] = h;
-    if (na == 0) {
+    if (na == 0)
+    {
         for (h = 0; h < n; h++)
             cls[h] = -1;
         start[0] = 0;
         return 0;
     }
 
-    for (j = entries - 1; j >= 0; j--) {
+    for (j = entries - 1; j >= 0; j--)
+    {
         for (v = 0; v < n; v++)
             count[v] = 0;
         for (i = 0; i < na; i++)
             count[entry(&iv, j, src[i])]++;
         sum = 0;
-        for (v = 0; v < n; v++) {
+        for (v = 0; v < n; v++)
+        {
             t = count[v];
             count[v] = sum;
             sum += t;
         }
-        for (i = 0; i < na; i++) {
+        for (i = 0; i < na; i++)
+        {
             h = src[i];
             dst[count[entry(&iv, j, h)]++] = h;
         }
@@ -578,10 +660,13 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const 
 
     /* the class of each position, in aux */
     aux[0] = 0;
-    for (i = 1; i < na; i++) {
+    for (i = 1; i < na; i++)
+    {
         aux[i] = aux[i - 1];
-        for (j = 0; j < entries; j++) {
-            if (entry(&iv, j, order[i - 1]) != entry(&iv, j, order[i])) {
+        for (j = 0; j < entries; j++)
+        {
+            if (entry(&iv, j, order[i - 1]) != entry(&iv, j, order[i]))
+            {
                 aux[i]++;
                 break;
             }
@@ -594,7 +679,8 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const 
     m = aux[na - 1] + 1;
     for (h = 0; h < n; h++)
         cls[h] = -1;
-    for (i = 0; i < na; i++) {
+    for (i = 0; i < na; i++)
+    {
         cls[order[i]] = aux[i];
         if (i == 0 || aux[i] != aux[i - 1])
             start[aux[i]] = i;
@@ -614,17 +700,20 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const 
  * write n more ints. Each cycle is walked once, its
  * half-edges kept in stack (n ints) for the writes.
  */
-static inline void cycle_degrees(int n, const int *fp, int vertex, int *id, int *deg, int *stack,
-                                 int *lo, int *hi)
+static inline void
+cycle_degrees(int n, const int *fp, int vertex, int *id, int *deg, int *stack,
+              int *lo, int *hi)
 {
     int h, x, i, len, c = 0;
 
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         if (fp[h] == -1 || deg[h] != 0)
             continue;
         len = 0;
         x = h;
-        do {
+        do
+        {
             stack[len++] = x;
             x = vertex ? fp[fp[x ^ 1] != -1 ? x ^ 1 : x] : fp[x];
         } while (x != h);
@@ -647,7 +736,8 @@ static inline void cycle_degrees(int n, const int *fp, int vertex, int *id, int 
  * in long long. A test by division, range > bound / *prod, costs an integer
  * division where a multiplication in long long suffices.
  */
-static inline int radix_fits(long long *prod, long long range, long long bound)
+static inline int
+radix_fits(long long *prod, long long range, long long bound)
 {
     *prod *= range;
     return *prod <= bound;
@@ -678,14 +768,18 @@ static int choose_class(iso_root_rule rule, int m, const int *cnt);
  * counting sort of n buckets per entry of the invariant (2 or 6, plus nd or
  * 2 nd data entries) and its data ranks first.
  */
-static int packed_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
-                        long long bound, int *out, int *tmp, int *pv, int *aux, int *count)
+static int
+packed_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
+             long long bound, int *out, int *tmp, int *pv, int *aux,
+             int *count)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *vid = tmp + 2 * n, *fid = tmp + 3 * n;
     int *dmin = aux, *drange = aux + nd;
     int base_rule = rule & ~ISO_ROOTS_DATA;
-    int edge = base_rule == ISO_ROOTS_EDGE_MAX || base_rule == ISO_ROOTS_EDGE_FEWEST;
-    int h, t, j, c, v, k, vmin = 0, vmax = 0, fmin = 0, fmax = 0, lo, hi, rv, rf;
+    int edge = base_rule == ISO_ROOTS_EDGE_MAX
+        || base_rule == ISO_ROOTS_EDGE_FEWEST;
+    int h, t, j, c, v, k, vmin = 0, vmax = 0, fmin = 0,
+        fmax = 0, lo, hi, rv, rf;
     long long prod = 1;
     const int *a;
 
@@ -694,7 +788,8 @@ static int packed_class(int n, const int *fp, iso_root_rule rule, int nd, const 
     if (2 * (long) nd > (long) n + 1)
         return 0;
     /* out serves as the stack of the cycle walks */
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         vdeg[h] = 0;
         fdeg[h] = 0;
     }
@@ -711,11 +806,13 @@ static int packed_class(int n, const int *fp, iso_root_rule rule, int nd, const 
                  || !radix_fits(&prod, 4, bound)))
         return 0;
     /* the data values span the same values at h and at its twin */
-    for (j = 0; j < nd; j++) {
+    for (j = 0; j < nd; j++)
+    {
         a = data + (long) j * n;
         lo = hi = 0;
         k = 0;
-        for (h = 0; h < n; h++) {
+        for (h = 0; h < n; h++)
+        {
             if (fp[h] == -1)
                 continue;
             if (k == 0 || a[h] < lo)
@@ -734,7 +831,8 @@ static int packed_class(int n, const int *fp, iso_root_rule rule, int nd, const 
 
     /* every value below is below prod <= bound, which fits in int */
     memset(count, 0, (size_t) prod * sizeof(int));
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         if (fp[h] == -1)
             continue;
         v = (vdeg[h] - vmin) * rf + (fdeg[h] - fmin);
@@ -743,10 +841,12 @@ static int packed_class(int n, const int *fp, iso_root_rule rule, int nd, const 
             v = ((v * rv + (vdeg[t] - vmin)) * rf + (fdeg[t] - fmin)) * 4
                 + 2 * (vid[h] == vid[t]) + (fid[h] == fid[t]);
         for (j = 0; j < nd; j++)
-            v = v * drange[j] + (int) ((long long) data[(long) j * n + h] - dmin[j]);
+            v = v * drange[j]
+                + (int) ((long long) data[(long) j * n + h] - dmin[j]);
         if (edge)
             for (j = 0; j < nd; j++)
-                v = v * drange[j] + (int) ((long long) data[(long) j * n + t] - dmin[j]);
+                v = v * drange[j]
+                    + (int) ((long long) data[(long) j * n + t] - dmin[j]);
         pv[h] = v;
         count[v]++;
     }
@@ -765,12 +865,15 @@ static int packed_class(int n, const int *fp, iso_root_rule rule, int nd, const 
  * the class of smallest positive count, ties broken by the largest class.
  * The flag ISO_ROOTS_DATA does not change the choice.
  */
-static int choose_class(iso_root_rule rule, int m, const int *cnt)
+static int
+choose_class(iso_root_rule rule, int m, const int *cnt)
 {
     int c, best = -1;
     int base_rule = rule & ~ISO_ROOTS_DATA;
 
-    if (base_rule == ISO_ROOTS_HALF_EDGE_MAX || base_rule == ISO_ROOTS_EDGE_MAX) {
+    if (base_rule == ISO_ROOTS_HALF_EDGE_MAX
+        || base_rule == ISO_ROOTS_EDGE_MAX)
+    {
         for (c = m - 1; cnt[c] == 0; c--)
             ;
         return c;
@@ -787,11 +890,13 @@ static int choose_class(iso_root_rule rule, int m, const int *cnt)
  * class chosen among the classes of root_classes on the same input, in
  * buffers of its own.
  */
-static void debug_packed_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
-                               const int *out, int len)
+static void
+debug_packed_class(int n, const int *fp, iso_root_rule rule, int nd,
+                   const int *data, const int *out, int len)
 {
     int *buf = malloc(((size_t) 8 * n + 1 + (size_t) nd * n) * sizeof(int));
-    int *order = buf, *cls = buf + n, *start = buf + 2 * n, *tmp = buf + 3 * n + 1;
+    int *order = buf, *cls = buf + n, *start = buf + 2 * n,
+        *tmp = buf + 3 * n + 1;
     int *ranks = buf + 7 * n + 1;
     int m, c, i;
 
@@ -819,9 +924,9 @@ static void debug_packed_class(int n, const int *fp, iso_root_rule rule, int nd,
  * reaches a step that starts at 2 and doubles after each comparison, and
  * at the end of the walk. A rejected root has thus given about twice
  * the labels needed to make the differing entry final, plus those of the
- * half-edges still waiting in the queue, and a tied root runs O(log n) comparison
- * passes. The doubling step avoids one comparison pass per face on
- * maps where every root ties.
+ * half-edges still waiting in the queue, and a tied root runs O(log n)
+ * comparison passes. The doubling step avoids one comparison pass per face
+ * on maps where every root ties.
  *
  * At the first entry larger than the one of best, the walk stops and 1 is
  * returned; at the first entry smaller, the comparison stops, the walk
@@ -831,25 +936,32 @@ static void debug_packed_class(int n, const int *fp, iso_root_rule rule, int nd,
  * The number of labels given is stored into *k; r and rinv hold them, and
  * reset_local sets r back to -1.
  */
-static int walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
-                        const int *best, int *k)
+static int
+walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
+             const int *best, int *k)
 {
     int head = 0, tail = 0, used = 0, p = 0, cmp = 0, step = 1, next = 0;
     int h, x, v, lim;
 
     queue[tail++] = root;
-    while (head < tail) {
+    while (head < tail)
+    {
         h = queue[head++];
         x = h;
-        do {
-            if (r[x] == -1) {
+        do
+        {
+            if (r[x] == -1)
+            {
                 r[x] = used;
                 r[x ^ 1] = used + 1;
                 rinv[used] = x;
-                if (fp[x ^ 1] != -1) {
+                if (fp[x ^ 1] != -1)
+                {
                     rinv[used + 1] = x ^ 1;
                     queue[tail++] = x ^ 1;
-                } else {
+                }
+                else
+                {
                     rinv[used + 1] = -1;
                 }
                 used += 2;
@@ -863,14 +975,17 @@ static int walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
             continue;
         step *= 2;
         next = lim + step;
-        for (; p < lim; p++) {
+        for (; p < lim; p++)
+        {
             x = rinv[p];
             v = x == -1 ? -1 : r[fp[x]];
 #ifdef ISO_DEBUG
             ISO_CHECK(v != -1 || x == -1);
 #endif
-            if (v != best[p]) {
-                if (v > best[p]) {
+            if (v != best[p])
+            {
+                if (v > best[p])
+                {
                     *k = used;
                     return 1;
                 }
@@ -893,20 +1008,24 @@ static int walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
  * with cur only partly written; otherwise write the parts in full and
  * return -1 or 0 as the comparison. names is all -1 on entry and on return.
  */
-static int tail_compare(int n, int nd, const int *data, int nc, const int *classes,
-                        const int *rinv, int k, const int *best, int *cur, int *names)
+static int
+tail_compare(int n, int nd, const int *data, int nc, const int *classes,
+             const int *rinv, int k, const int *best, int *cur, int *names)
 {
     int i, j, h, v, pos = k, next, cmp = 0;
     const int *a;
 
-    for (j = 0; j < nd; j++) {
+    for (j = 0; j < nd; j++)
+    {
         a = data + (long) j * n;
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = rinv[i];
             if (h == -1)
                 continue;
             v = a[h];
-            if (cmp == 0 && v != best[pos]) {
+            if (cmp == 0 && v != best[pos])
+            {
                 if (v > best[pos])
                     return 1;
                 cmp = -1;
@@ -914,18 +1033,22 @@ static int tail_compare(int n, int nd, const int *data, int nc, const int *class
             cur[pos++] = v;
         }
     }
-    for (j = 0; j < nc; j++) {
+    for (j = 0; j < nc; j++)
+    {
         a = classes + (long) j * n;
         next = 0;
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = rinv[i];
             if (h == -1)
                 continue;
             if (names[a[h]] == -1)
                 names[a[h]] = next++;
             v = names[a[h]];
-            if (cmp == 0 && v != best[pos]) {
-                if (v > best[pos]) {
+            if (cmp == 0 && v != best[pos])
+            {
+                if (v > best[pos])
+                {
                     /* the values named so far are on the labels 0, ..., i */
                     for (; i >= 0; i--)
                         if (rinv[i] != -1)
@@ -936,7 +1059,8 @@ static int tail_compare(int n, int nd, const int *data, int nc, const int *class
             }
             cur[pos++] = v;
         }
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = rinv[i];
             if (h != -1)
                 names[a[h]] = -1;
@@ -954,18 +1078,22 @@ static void reset_local(int k, const int *lrinv, int *lr);
  * cmp says, and equals cur when cmp < 0. scratch holds 3 n +
  * ISO_KEY_SIZE(n, nd, nc) ints.
  */
-static void debug_root(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-                       int root, int cmp, const int *best, const int *cur, int len, int *names,
-                       int *scratch)
+static void
+debug_root(int n, const int *fp, int nd, const int *data, int nc,
+           const int *classes, int root, int cmp, const int *best,
+           const int *cur, int len, int *names, int *scratch)
 {
-    int *r2 = scratch, *rinv2 = scratch + n, *queue2 = scratch + 2 * n, *key2 = scratch + 3 * n;
+    int *r2 = scratch, *rinv2 = scratch + n, *queue2 = scratch + 2 * n,
+        *key2 = scratch + 3 * n;
     int k2, len2, i, ref = 0;
 
     k2 = iso_relabelling_from(n, fp, root, r2, rinv2, queue2);
     len2 = iso_key(n, fp, nd, data, nc, classes, r2, rinv2, k2, key2, names);
     ISO_CHECK(len2 == len);
-    for (i = 0; i < len; i++) {
-        if (key2[i] != best[i]) {
+    for (i = 0; i < len; i++)
+    {
+        if (key2[i] != best[i])
+        {
             ref = key2[i] < best[i] ? -1 : 1;
             break;
         }
@@ -983,24 +1111,30 @@ static void debug_root(int n, const int *fp, int nd, const int *data, int nc, co
  * fp and with the twin, keeps the data arrays and the class arrays up to a
  * bijection of their values. scratch holds 4 n ints.
  */
-static void debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
-                               const int *classes, const int *rbest, const int *rinv, int *scratch)
+static void
+debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
+                   const int *classes, const int *rbest, const int *rinv,
+                   int *scratch)
 {
-    int *aut = scratch, *seen = scratch + n, *fwd = scratch + 2 * n, *bwd = scratch + 3 * n;
+    int *aut = scratch, *seen = scratch + n, *fwd = scratch + 2 * n,
+        *bwd = scratch + 3 * n;
     int h, j, v, w;
     const int *a;
 
     for (h = 0; h < n; h++)
         seen[h] = 0;
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         if (fp[h] == -1)
             continue;
         ISO_CHECK(0 <= rbest[h] && rbest[h] < n);
         aut[h] = rinv[rbest[h]];
-        ISO_CHECK(0 <= aut[h] && aut[h] < n && fp[aut[h]] != -1 && !seen[aut[h]]);
+        ISO_CHECK(0 <= aut[h] && aut[h] < n && fp[aut[h]] != -1
+                  && !seen[aut[h]]);
         seen[aut[h]] = 1;
     }
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         if (fp[h] == -1)
             continue;
         ISO_CHECK(aut[fp[h]] == fp[aut[h]]);
@@ -1009,24 +1143,29 @@ static void debug_automorphism(int n, const int *fp, int nd, const int *data, in
         else
             ISO_CHECK(fp[aut[h] ^ 1] == -1);
     }
-    for (j = 0; j < nd; j++) {
+    for (j = 0; j < nd; j++)
+    {
         a = data + (long) j * n;
         for (h = 0; h < n; h++)
             if (fp[h] != -1)
                 ISO_CHECK(a[aut[h]] == a[h]);
     }
-    for (j = 0; j < nc; j++) {
+    for (j = 0; j < nc; j++)
+    {
         a = classes + (long) j * n;
-        for (v = 0; v < n; v++) {
+        for (v = 0; v < n; v++)
+        {
             fwd[v] = -1;
             bwd[v] = -1;
         }
-        for (h = 0; h < n; h++) {
+        for (h = 0; h < n; h++)
+        {
             if (fp[h] == -1)
                 continue;
             v = a[h];
             w = a[aut[h]];
-            ISO_CHECK((fwd[v] == -1 && bwd[w] == -1) || (fwd[v] == w && bwd[w] == v));
+            ISO_CHECK((fwd[v] == -1 && bwd[w] == -1)
+                      || (fwd[v] == w && bwd[w] == v));
             fwd[v] = w;
             bwd[w] = v;
         }
@@ -1038,9 +1177,11 @@ static void debug_automorphism(int n, const int *fp, int nd, const int *data, in
  * The representative of the orbit of h in the union-find parent, its
  * smallest half-edge, with path halving.
  */
-static inline int orbit_find(int *parent, int h)
+static inline int
+orbit_find(int *parent, int h)
 {
-    while (parent[h] != h) {
+    while (parent[h] != h)
+    {
         parent[h] = parent[parent[h]];
         h = parent[h];
     }
@@ -1048,7 +1189,8 @@ static inline int orbit_find(int *parent, int h)
 }
 
 /* Merge the orbits of a and b, the larger representative under the smaller. */
-static inline void orbit_union(int *parent, int a, int b)
+static inline void
+orbit_union(int *parent, int a, int b)
 {
     a = orbit_find(parent, a);
     b = orbit_find(parent, b);
@@ -1067,7 +1209,8 @@ static inline void orbit_union(int *parent, int a, int b)
  * then every orbit is a single half-edge and no root is skipped, so that a
  * map whose roots are all rejected pays nothing for the union-find.
  */
-struct canonical_state {
+struct canonical_state
+{
     int n, nd, nc, ne, len, best_root, merged;
     const int *fp, *data, *classes;
     int *r, *rinv, *queue, *names, *best, *cur, *rbest, *parent;
@@ -1088,50 +1231,63 @@ struct canonical_state {
  * was the best root then, and the later best roots only have smaller keys.
  * Hence a root that ties is outside the orbit of the best root.
  */
-static inline void canonical_root(struct canonical_state *s, int root)
+static inline void
+canonical_root(struct canonical_state *s, int root)
 {
     int n = s->n, k, cmp, h;
     int *r = s->r, *rinv = s->rinv, *tmp;
 
-    if (s->merged && orbit_find(s->parent, root) < root) {
+    if (s->merged && orbit_find(s->parent, root) < root)
+    {
 #ifdef ISO_DEBUG
-        cmp = orbit_find(s->parent, root) == orbit_find(s->parent, s->best_root) ? 0 : 1;
-        debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp, s->best, s->cur,
-                   s->len, s->names, s->scratch);
+        cmp = orbit_find(s->parent, root)
+            == orbit_find(s->parent, s->best_root) ? 0 : 1;
+        debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp,
+                   s->best, s->cur, s->len, s->names, s->scratch);
 #endif
         return;
     }
 
     cmp = walk_compare(s->fp, root, r, rinv, s->queue, s->best, &k);
-    if (cmp < 0) {
-        iso_key(n, s->fp, s->nd, s->data, s->nc, s->classes, r, rinv, k, s->cur, s->names);
-    } else if (cmp == 0) {
-        cmp = tail_compare(n, s->nd, s->data, s->nc, s->classes, rinv, k, s->best, s->cur, s->names);
+    if (cmp < 0)
+    {
+        iso_key(n, s->fp, s->nd, s->data, s->nc, s->classes, r, rinv, k,
+                s->cur, s->names);
+    }
+    else if (cmp == 0)
+    {
+        cmp = tail_compare(n, s->nd, s->data, s->nc, s->classes, rinv, k,
+                           s->best, s->cur, s->names);
         if (cmp < 0)
             memcpy(s->cur, s->best, (size_t) k * sizeof(int));
     }
 #ifdef ISO_DEBUG
     ISO_CHECK(cmp == 1 || k == 2 * s->ne);
-    debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp, s->best, s->cur, s->len,
-               s->names, s->scratch);
+    debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp, s->best,
+               s->cur, s->len, s->names, s->scratch);
 #endif
-    if (cmp < 0) {
+    if (cmp < 0)
+    {
         tmp = s->best;
         s->best = s->cur;
         s->cur = tmp;
         s->best_root = root;
         memcpy(s->rbest, r, (size_t) n * sizeof(int));
-    } else if (cmp == 0) {
+    }
+    else if (cmp == 0)
+    {
         /* the automorphism h -> rinv[rbest[h]] sends the best root to root */
-        if (!s->merged) {
+        if (!s->merged)
+        {
             for (h = 0; h < n; h++)
                 s->parent[h] = h;
             s->merged = 1;
         }
 #ifdef ISO_DEBUG
-        ISO_CHECK(orbit_find(s->parent, root) != orbit_find(s->parent, s->best_root));
-        debug_automorphism(n, s->fp, s->nd, s->data, s->nc, s->classes, s->rbest, rinv,
-                           s->scratch);
+        ISO_CHECK(orbit_find(s->parent, root)
+                  != orbit_find(s->parent, s->best_root));
+        debug_automorphism(n, s->fp, s->nd, s->data, s->nc, s->classes,
+                           s->rbest, rinv, s->scratch);
 #endif
         for (h = 0; h < n; h++)
             if (s->fp[h] != -1)
@@ -1153,9 +1309,10 @@ static inline void canonical_root(struct canonical_state *s, int root)
 #endif
 }
 
-int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-                  iso_root_rule rule, int *key, int *relabelling, int *roots, int *nroots,
-                  int *work)
+int
+iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
+              const int *classes, iso_root_rule rule, int *key,
+              int *relabelling, int *roots, int *nroots, int *work)
 {
     int *r = work;
     int *rinv = work + n;
@@ -1174,7 +1331,8 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     ne = iso_num_edges(n, fp);
     for (first = 0; first < n && fp[first] == -1; first++)
         ;
-    if (first == n) {
+    if (first == n)
+    {
         if (relabelling != NULL)
             for (i = 0; i < n; i++)
                 relabelling[i] = -1;
@@ -1183,7 +1341,8 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
         return 0;
     }
 
-    if (!all) {
+    if (!all)
+    {
         /* r, rinv, queue and names (4 n) are free until the first walk, cls
          * and start until the walks (they serve root_classes only), cur (the
          * numbers of the data values of root_classes) until the first key,
@@ -1192,9 +1351,12 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
          * into start, its counts into rbest and parent, which bounds the
          * product of the ranges by 2 n; the sizes of the classes of
          * root_classes go into r. */
-        hi = packed_class(n, fp, rule, nd, data, 2 * (long long) n, order, work, cls, start, rbest);
-        if (hi == 0) {
-            m = root_classes(n, fp, rule, nd, data, order, cls, start, work, cur);
+        hi = packed_class(n, fp, rule, nd, data, 2 * (long long) n, order,
+                          work, cls, start, rbest);
+        if (hi == 0)
+        {
+            m = root_classes(n, fp, rule, nd, data, order, cls, start, work,
+                             cur);
             for (c = 0; c < m; c++)
                 r[c] = start[c + 1] - start[c];
             c = choose_class(rule, m, r);
@@ -1202,7 +1364,8 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
             hi = start[c + 1];
         }
 #ifdef ISO_DEBUG
-        else {
+        else
+        {
             debug_packed_class(n, fp, rule, nd, data, order, hi);
         }
 #endif
@@ -1238,18 +1401,22 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
     memcpy(rbest, r, (size_t) n * sizeof(int));
     reset_local(k, rinv, r);
 #ifdef ISO_DEBUG
-    s.scratch = malloc(((size_t) 3 * n + (size_t) ISO_KEY_SIZE(n, nd, nc)) * sizeof(int));
+    s.scratch = malloc(((size_t) 3 * n
+                        + (size_t) ISO_KEY_SIZE(n, nd, nc)) * sizeof(int));
     ISO_CHECK(s.scratch != NULL);
 #endif
 
     /* the other roots: r is -1 on entry of each, and only the labels a root
      * gave are reset after it. The loop is chosen once per call, so that
      * ISO_ROOTS_ALL tests no class per root. */
-    if (all) {
+    if (all)
+    {
         for (root = first + 1; root < n; root++)
             if (fp[root] != -1)
                 canonical_root(&s, root);
-    } else {
+    }
+    else
+    {
         for (i = lo + 1; i < hi; i++)
             canonical_root(&s, order[i]);
     }
@@ -1263,29 +1430,39 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
 
     /* the roots of minimal key: the orbit of the best root, which is its
      * smallest half-edge (a smaller one would have been tried first) */
-    if (!s.merged) {
+    if (!s.merged)
+    {
         if (roots != NULL)
             roots[0] = s.best_root;
         count = 1;
-    } else {
+    }
+    else
+    {
         rep = orbit_find(parent, s.best_root);
 #ifdef ISO_DEBUG
         ISO_CHECK(rep == s.best_root);
 #endif
         count = 0;
-        if (all) {
-            for (root = rep; root < n; root++) {
-                if (fp[root] != -1 && orbit_find(parent, root) == rep) {
+        if (all)
+        {
+            for (root = rep; root < n; root++)
+            {
+                if (fp[root] != -1 && orbit_find(parent, root) == rep)
+                {
                     if (roots != NULL)
                         roots[count] = root;
                     count++;
                 }
             }
-        } else {
+        }
+        else
+        {
             /* the orbit lies in the class, increasing in order[lo..hi) */
-            for (i = lo; i < hi; i++) {
+            for (i = lo; i < hi; i++)
+            {
                 root = order[i];
-                if (orbit_find(parent, root) == rep) {
+                if (orbit_find(parent, root) == rep)
+                {
                     if (roots != NULL)
                         roots[count] = root;
                     count++;
@@ -1304,24 +1481,31 @@ int iso_canonical(int n, const int *fp, int nd, const int *data, int nc, const i
  * is left set there (reset_local undoes it), so that a walk costs the size
  * of the component and not n.
  */
-static int local_walk(const int *fp, int root, int *lr, int *lrinv, int *queue)
+static int
+local_walk(const int *fp, int root, int *lr, int *lrinv, int *queue)
 {
     int head = 0, tail = 0, k = 0;
     int h, x;
 
     queue[tail++] = root;
-    while (head < tail) {
+    while (head < tail)
+    {
         h = queue[head++];
         x = h;
-        do {
-            if (lr[x] == -1) {
+        do
+        {
+            if (lr[x] == -1)
+            {
                 lr[x] = k;
                 lr[x ^ 1] = k + 1;
                 lrinv[k] = x;
-                if (fp[x ^ 1] != -1) {
+                if (fp[x ^ 1] != -1)
+                {
                     lrinv[k + 1] = x ^ 1;
                     queue[tail++] = x ^ 1;
-                } else {
+                }
+                else
+                {
                     lrinv[k + 1] = -1;
                 }
                 k += 2;
@@ -1333,11 +1517,13 @@ static int local_walk(const int *fp, int root, int *lr, int *lrinv, int *queue)
 }
 
 /* Set lr back to -1 on the component walked by local_walk. */
-static void reset_local(int k, const int *lrinv, int *lr)
+static void
+reset_local(int k, const int *lrinv, int *lr)
 {
     int i, h;
     /* an even label is always on an active half-edge, the one met in a face */
-    for (i = 0; i < k; i += 2) {
+    for (i = 0; i < k; i += 2)
+    {
         h = lrinv[i];
         lr[h] = -1;
         lr[h ^ 1] = -1;
@@ -1351,34 +1537,41 @@ static void reset_local(int k, const int *lrinv, int *lr)
  * numbering keeps the new values and next is updated; otherwise names is
  * left as on entry. Return the length of the block.
  */
-static int component_block(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-                           const int *lr, const int *lrinv, int k, int *names, int *next,
-                           int commit, int *block)
+static int
+component_block(int n, const int *fp, int nd, const int *data, int nc,
+                const int *classes, const int *lr, const int *lrinv, int k,
+                int *names, int *next, int commit, int *block)
 {
     int i, j, h, pos = 0, count;
     const int *a;
     int *nm;
 
     block[pos++] = k;
-    for (i = 0; i < k; i++) {
+    for (i = 0; i < k; i++)
+    {
         h = lrinv[i];
         block[pos++] = h == -1 ? -1 : lr[fp[h]];
     }
-    for (j = 0; j < nd; j++) {
+    for (j = 0; j < nd; j++)
+    {
         a = data + (long) j * n;
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = lrinv[i];
             if (h != -1)
                 block[pos++] = a[h];
         }
     }
-    for (j = 0; j < nc; j++) {
+    for (j = 0; j < nc; j++)
+    {
         a = classes + (long) j * n;
         nm = names + (long) j * n;
         count = next[j];
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = lrinv[i];
-            if (h != -1) {
+            if (h != -1)
+            {
 #ifdef ISO_DEBUG
                 ISO_CHECK(0 <= a[h] && a[h] < n);
 #endif
@@ -1387,12 +1580,16 @@ static int component_block(int n, const int *fp, int nd, const int *data, int nc
                 block[pos++] = nm[a[h]];
             }
         }
-        if (commit) {
+        if (commit)
+        {
             next[j] = count;
-        } else {
+        }
+        else
+        {
             /* the values numbered by this component are those numbered
              * from next[j] on */
-            for (i = 0; i < k; i++) {
+            for (i = 0; i < k; i++)
+            {
                 h = lrinv[i];
                 if (h != -1 && nm[a[h]] >= next[j])
                     nm[a[h]] = -1;
@@ -1406,7 +1603,8 @@ static int component_block(int n, const int *fp, int nd, const int *data, int nc
  * Compare the flat sequences a (la ints) and b (lb ints)
  * lexicographically: -1, 0 or 1.
  */
-static int compare_sequences(const int *a, int la, const int *b, int lb)
+static int
+compare_sequences(const int *a, int la, const int *b, int lb)
 {
     int i, m = la < lb ? la : lb;
     for (i = 0; i < m; i++)
@@ -1420,7 +1618,8 @@ static int compare_sequences(const int *a, int la, const int *b, int lb)
  * ints) with as many blocks. The blocks of equal prefixes have equal
  * lengths, so the first difference, if any, lies within min(la, lb) ints.
  */
-static int exceeds_prefix(const int *a, int la, const int *b, int lb)
+static int
+exceeds_prefix(const int *a, int la, const int *b, int lb)
 {
     int i, m = la < lb ? la : lb;
     for (i = 0; i < m; i++)
@@ -1434,12 +1633,14 @@ static int exceeds_prefix(const int *a, int la, const int *b, int lb)
  * (see component_block, without commit); return its length. lr is -1 on
  * entry and on return.
  */
-static inline int root_block(int n, const int *fp, int nd, const int *data, int nc,
-                             const int *classes, int root, int *lr, int *lrinv, int *queue,
-                             int *names, int *next, int *cand)
+static inline int
+root_block(int n, const int *fp, int nd, const int *data, int nc,
+           const int *classes, int root, int *lr, int *lrinv, int *queue,
+           int *names, int *next, int *cand)
 {
     int k = local_walk(fp, root, lr, lrinv, queue);
-    int len = component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names, next, 0, cand);
+    int len = component_block(n, fp, nd, data, nc, classes, lr, lrinv, k,
+                              names, next, 0, cand);
     reset_local(k, lrinv, lr);
     return len;
 }
@@ -1449,7 +1650,8 @@ static inline int root_block(int n, const int *fp, int nd, const int *data, int 
  * class value from next[j] on in some class array j, that is, whether its
  * component extends the numbering names.
  */
-static int block_extends(const int *block, int len, int nd, int nc, const int *next)
+static int
+block_extends(const int *block, int len, int nd, int nc, const int *next)
 {
     int k = block[0];
     int na = (len - 1 - k) / (nd + nc);
@@ -1468,19 +1670,23 @@ static int block_extends(const int *block, int len, int nd, int nc, const int *n
  * component of root (not labelled yet) with set, or set back to -1 those
  * numbered from next[j] on without set; lr is -1 on entry and on return.
  */
-static void number_component(int n, const int *fp, int nc, const int *classes, int root, int *lr,
-                             int *lrinv, int *queue, int *names, const int *next, int set)
+static void
+number_component(int n, const int *fp, int nc, const int *classes, int root,
+                 int *lr, int *lrinv, int *queue, int *names, const int *next,
+                 int set)
 {
     int k = local_walk(fp, root, lr, lrinv, queue);
     int i, j, h, count;
     const int *a;
     int *nm;
 
-    for (j = 0; j < nc; j++) {
+    for (j = 0; j < nc; j++)
+    {
         a = classes + (long) j * n;
         nm = names + (long) j * n;
         count = next[j];
-        for (i = 0; i < k; i++) {
+        for (i = 0; i < k; i++)
+        {
             h = lrinv[i];
             if (h == -1)
                 continue;
@@ -1504,9 +1710,10 @@ static void number_component(int n, const int *fp, int nc, const int *classes, i
  * those numbered from next[j] on. names is left as on entry; lr is -1 on
  * entry and on return. Costs three walks of the components.
  */
-static int same_extension(int n, const int *fp, int nd, int nc, const int *classes, int root1,
-                          int root2, const int *block, int len, int *lr, int *lrinv, int *queue,
-                          int *names, const int *next)
+static int
+same_extension(int n, const int *fp, int nd, int nc, const int *classes,
+               int root1, int root2, const int *block, int len, int *lr,
+               int *lrinv, int *queue, int *names, const int *next)
 {
     int k = block[0];
     int na = (len - 1 - k) / (nd + nc);
@@ -1515,26 +1722,31 @@ static int same_extension(int n, const int *fp, int nd, int nc, const int *class
     const int *a;
     const int *nm;
 
-    number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next, 1);
+    number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next,
+                     1);
     i = local_walk(fp, root2, lr, lrinv, queue);
 #ifdef ISO_DEBUG
     ISO_CHECK(i == k);
 #endif
-    for (j = 0; j < nc && same; j++, b += na) {
+    for (j = 0; j < nc && same; j++, b += na)
+    {
         a = classes + (long) j * n;
         nm = names + (long) j * n;
-        for (i = 0, idx = 0; i < k; i++) {
+        for (i = 0, idx = 0; i < k; i++)
+        {
             h = lrinv[i];
             if (h == -1)
                 continue;
-            if (nm[a[h]] != b[idx++]) {
+            if (nm[a[h]] != b[idx++])
+            {
                 same = 0;
                 break;
             }
         }
     }
     reset_local(k, lrinv, lr);
-    number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next, 0);
+    number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next,
+                     0);
     return same;
 }
 
@@ -1544,9 +1756,11 @@ static int same_extension(int n, const int *fp, int nd, int nc, const int *class
  * (see root_classes) under the other rules. The scans are written twice, once
  * per kind of position, so that ISO_ROOTS_ALL tests no class per root.
  */
-int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int *classes,
-               iso_root_rule rule, int all_leaves, int *sequence, int *length, int *relabelling,
-               iso_leaf_callback callback, void *arg, int *work)
+int
+iso_search(int n, const int *fp, int nd, const int *data, int nc,
+           const int *classes, iso_root_rule rule, int all_leaves,
+           int *sequence, int *length, int *relabelling,
+           iso_leaf_callback callback, void *arg, int *work)
 {
     long levels = n / 2 + 1;
     int *r = work;
@@ -1575,7 +1789,8 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
     int root, best_root, blen, len, k, cmp, ret, i, j, h, c, found;
 
     ne = iso_num_edges(n, fp);
-    if (!all) {
+    if (!all)
+    {
         /* r, rinv, lr and lrinv (4 n) are free until they are cleared below,
          * cand (the numbers of the data values) until the first block;
          * cnt[c] is the number of half-edges of the class c not labelled */
@@ -1583,7 +1798,8 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
         for (c = 0; c < m; c++)
             cnt[c] = start[c + 1] - start[c];
     }
-    for (h = 0; h < n; h++) {
+    for (h = 0; h < n; h++)
+    {
         r[h] = -1;
         lr[h] = -1;
     }
@@ -1592,17 +1808,22 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
     for (j = 0; j < nc; j++)
         next[j] = 0;
 
-    for (;;) {
+    for (;;)
+    {
         /* enter the state: depth levels labelled, used labels, the blocks
          * in seq[0:seqlen] */
-        int cut = bestlen >= 0 && exceeds_prefix(seq, seqlen, sequence, bestlen);
+        int cut = bestlen >= 0
+            && exceeds_prefix(seq, seqlen, sequence, bestlen);
 
         /* the deepest level whose further tied roots are tried when the
          * search backtracks from this state */
         target = depth - 1;
-        if (!cut && used == 2 * ne) {
-            cmp = bestlen < 0 ? -1 : compare_sequences(seq, seqlen, sequence, bestlen);
-            if (cmp < 0) {
+        if (!cut && used == 2 * ne)
+        {
+            cmp = bestlen < 0
+                ? -1 : compare_sequences(seq, seqlen, sequence, bestlen);
+            if (cmp < 0)
+            {
                 memcpy(sequence, seq, (size_t) seqlen * sizeof(int));
                 bestlen = seqlen;
                 memcpy(lvl_best, lvl_root, (size_t) depth * sizeof(int));
@@ -1610,10 +1831,14 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
                     memcpy(relabelling, r, (size_t) n * sizeof(int));
                 if (callback != NULL && (ret = callback(r, 1, arg)) != 0)
                     return ret;
-            } else if (cmp == 0 && all_leaves) {
+            }
+            else if (cmp == 0 && all_leaves)
+            {
                 if (callback != NULL && (ret = callback(r, 0, arg)) != 0)
                     return ret;
-            } else if (cmp == 0) {
+            }
+            else if (cmp == 0)
+            {
                 /* Backjump. Both leaves have the same sequence, so the
                  * relabelling of the best leaf followed by the inverse of
                  * the one of this leaf is an automorphism of fp and data,
@@ -1634,32 +1859,44 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
             cut = 1;
         }
 
-        if (!cut) {
+        if (!cut)
+        {
             /* the minimal block over the roots not labelled yet, written
              * in place in seq, and its first root */
             best_root = -1;
             blen = 0;
-            if (all) {
-                for (root = 0; root < n; root++) {
+            if (all)
+            {
+                for (root = 0; root < n; root++)
+                {
                     if (fp[root] == -1 || r[root] != -1)
                         continue;
-                    len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
-                                     names, next, cand);
-                    if (best_root == -1 || compare_sequences(cand, len, seq + seqlen, blen) < 0) {
+                    len = root_block(n, fp, nd, data, nc, classes, root, lr,
+                                     lrinv, queue, names, next, cand);
+                    if (best_root == -1
+                        || compare_sequences(cand, len, seq + seqlen,
+                                             blen) < 0)
+                    {
                         memcpy(seq + seqlen, cand, (size_t) len * sizeof(int));
                         blen = len;
                         best_root = root;
                     }
                 }
-            } else {
+            }
+            else
+            {
                 c = choose_class(rule, m, cnt);
-                for (i = start[c]; i < start[c + 1]; i++) {
+                for (i = start[c]; i < start[c + 1]; i++)
+                {
                     root = order[i];
                     if (r[root] != -1)
                         continue;
-                    len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
-                                     names, next, cand);
-                    if (best_root == -1 || compare_sequences(cand, len, seq + seqlen, blen) < 0) {
+                    len = root_block(n, fp, nd, data, nc, classes, root, lr,
+                                     lrinv, queue, names, next, cand);
+                    if (best_root == -1
+                        || compare_sequences(cand, len, seq + seqlen,
+                                             blen) < 0)
+                    {
                         memcpy(seq + seqlen, cand, (size_t) len * sizeof(int));
                         blen = len;
                         best_root = i;
@@ -1675,20 +1912,25 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
             lvl_len[depth] = blen;
             for (j = 0; j < nc; j++)
                 lvl_next[(long) depth * nc + j] = next[j];
-        } else {
+        }
+        else
+        {
             /* backtrack to the deepest level with a further tied root */
             found = 0;
-            while (!found && depth > 0) {
+            while (!found && depth > 0)
+            {
                 depth--;
                 if (!all)
                     for (i = lvl_used[depth]; i < used; i++)
                         if (rinv[i] != -1)
                             cnt[cls[rinv[i]]]++;
-                for (i = lvl_used[depth]; i < used; i++) {
+                for (i = lvl_used[depth]; i < used; i++)
+                {
                     h = rinv[i];
                     if (h == -1)
                         continue;
-                    for (j = 0; j < nc; j++) {
+                    for (j = 0; j < nc; j++)
+                    {
                         int *nm = names + (long) j * n;
                         const int *a = classes + (long) j * n;
                         if (nm[a[h]] >= lvl_next[(long) depth * nc + j])
@@ -1717,29 +1959,41 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
                  * they are empty, every tied root after the first is
                  * skipped. */
                 blen = lvl_len[depth];
-                if (cut_ties && !block_extends(seq + seqlen, blen, nd, nc, next))
+                if (cut_ties
+                    && !block_extends(seq + seqlen, blen, nd, nc, next))
                     continue;
                 /* the tied roots after the current one: their block is
                  * the one of the level, already in seq; under a rule, they
                  * are in the class of the root of the level, the one chosen
                  * at the level since the state is back to it */
-                if (all) {
-                    for (root = lvl_root[depth] + 1; root < n && !found; root++) {
+                if (all)
+                {
+                    for (root = lvl_root[depth] + 1; root < n && !found;
+                         root++)
+                    {
                         if (fp[root] == -1 || r[root] != -1)
                             continue;
-                        len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
-                                         names, next, cand);
-                        if (len != blen || compare_sequences(cand, len, seq + seqlen, len) != 0)
+                        len = root_block(n, fp, nd, data, nc, classes, root,
+                                         lr, lrinv, queue, names, next, cand);
+                        if (len != blen
+                            || compare_sequences(cand, len, seq + seqlen,
+                                                 len) != 0)
                             continue;
                         found = 1;
-                        for (t = 0; cut_ties && t < root; t++) {
+                        for (t = 0; cut_ties && t < root; t++)
+                        {
                             if (fp[t] == -1 || r[t] != -1)
                                 continue;
-                            len = root_block(n, fp, nd, data, nc, classes, t, lr, lrinv, queue,
-                                             names, next, cand);
-                            if (len == blen && compare_sequences(cand, len, seq + seqlen, len) == 0
-                                && same_extension(n, fp, nd, nc, classes, t, root, seq + seqlen, blen,
-                                                  lr, lrinv, queue, names, next)) {
+                            len = root_block(n, fp, nd, data, nc, classes, t,
+                                             lr, lrinv, queue, names, next,
+                                             cand);
+                            if (len == blen
+                                && compare_sequences(cand, len, seq + seqlen,
+                                                     len) == 0
+                                && same_extension(n, fp, nd, nc, classes, t,
+                                                  root, seq + seqlen, blen, lr,
+                                                  lrinv, queue, names, next))
+                            {
                                 found = 0;
                                 break;
                             }
@@ -1747,26 +2001,38 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
                         if (found)
                             lvl_root[depth] = root;
                     }
-                } else {
+                }
+                else
+                {
                     c = cls[order[lvl_root[depth]]];
-                    for (i = lvl_root[depth] + 1; i < start[c + 1] && !found; i++) {
+                    for (i = lvl_root[depth] + 1; i < start[c + 1] && !found;
+                         i++)
+                    {
                         root = order[i];
                         if (r[root] != -1)
                             continue;
-                        len = root_block(n, fp, nd, data, nc, classes, root, lr, lrinv, queue,
-                                         names, next, cand);
-                        if (len != blen || compare_sequences(cand, len, seq + seqlen, len) != 0)
+                        len = root_block(n, fp, nd, data, nc, classes, root,
+                                         lr, lrinv, queue, names, next, cand);
+                        if (len != blen
+                            || compare_sequences(cand, len, seq + seqlen,
+                                                 len) != 0)
                             continue;
                         found = 1;
-                        for (t = start[c]; cut_ties && t < i; t++) {
+                        for (t = start[c]; cut_ties && t < i; t++)
+                        {
                             if (r[order[t]] != -1)
                                 continue;
-                            len = root_block(n, fp, nd, data, nc, classes, order[t], lr, lrinv,
-                                             queue, names, next, cand);
-                            if (len == blen && compare_sequences(cand, len, seq + seqlen, len) == 0
-                                && same_extension(n, fp, nd, nc, classes, order[t], root,
-                                                  seq + seqlen, blen, lr, lrinv, queue, names,
-                                                  next)) {
+                            len = root_block(n, fp, nd, data, nc, classes,
+                                             order[t], lr, lrinv, queue, names,
+                                             next, cand);
+                            if (len == blen
+                                && compare_sequences(cand, len, seq + seqlen,
+                                                     len) == 0
+                                && same_extension(n, fp, nd, nc, classes,
+                                                  order[t], root, seq + seqlen,
+                                                  blen, lr, lrinv, queue,
+                                                  names, next))
+                            {
                                 found = 0;
                                 break;
                             }
@@ -1783,14 +2049,16 @@ int iso_search(int n, const int *fp, int nd, const int *data, int nc, const int 
         /* label the component of the root of the level depth */
         root = all ? lvl_root[depth] : order[lvl_root[depth]];
         k = local_walk(fp, root, lr, lrinv, queue);
-        for (i = 0; i < k; i += 2) {
+        for (i = 0; i < k; i += 2)
+        {
             h = lrinv[i];
             r[h] = used + i;
             r[h ^ 1] = used + i + 1;
             rinv[used + i] = h;
             rinv[used + i + 1] = lrinv[i + 1];
         }
-        component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names, next, 1, cand);
+        component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names,
+                        next, 1, cand);
         if (!all)
             for (i = 0; i < k; i++)
                 if (lrinv[i] != -1)
