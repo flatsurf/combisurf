@@ -23,7 +23,10 @@
  * rule. The rules run with and without the flag DOMAP_ISO_ROOTS_DATA, whose
  * reference invariants read the data values themselves; half of the random
  * cases take their data values among -7, n + 11, INT_MIN and INT_MAX, far
- * from the ranks 0, ..., n - 1 the C code sorts by.
+ * from the ranks 0, ..., n - 1 the C code sorts by. domap_stabiliser is
+ * checked on isolated edges decorated by one class array: the order of the
+ * group and the number of generators, each generator being an automorphism
+ * carrying the class values by a bijection.
  *
  * This file is part of combisurf.
  *
@@ -1779,6 +1782,167 @@ test_invariants(void)
     }
 }
 
+/* ------------------------------------------------------------------ */
+/* stabiliser of the classes                                           */
+/* ------------------------------------------------------------------ */
+
+#define STAB_MAX_N 28
+
+/*
+ * The state of the generator callback: the map (fp and one class array on
+ * n half-edges), the number of generators received, and the value returned
+ * from the first one on (0 to go on).
+ */
+struct generators
+{
+    int n;
+    const int *fp;
+    const int *classes;
+    int count;
+    int stop;
+};
+
+/*
+ * Check that g is a permutation of the half-edges commuting with fp and
+ * carrying the values of the class array by a bijection.
+ */
+static int
+check_generator(const int *g, void *arg)
+{
+    struct generators *s = arg;
+    int n = s->n, h, v, w;
+    int seen[STAB_MAX_N], fwd[STAB_MAX_N], bwd[STAB_MAX_N];
+
+    for (h = 0; h < n; h++)
+    {
+        seen[h] = 0;
+        fwd[h] = -1;
+        bwd[h] = -1;
+    }
+    for (h = 0; h < n; h++)
+    {
+        CHECK(0 <= g[h] && g[h] < n && !seen[g[h]]);
+        seen[g[h]] = 1;
+    }
+    for (h = 0; h < n; h++)
+    {
+        CHECK(g[s->fp[h]] == s->fp[g[h]]);
+        v = s->classes[h];
+        w = s->classes[g[h]];
+        CHECK((fwd[v] == -1 && bwd[w] == -1) || (fwd[v] == w && bwd[w] == v));
+        fwd[v] = w;
+        bwd[w] = v;
+    }
+    s->count++;
+    return s->stop;
+}
+
+/*
+ * The k isolated edges fp[h] = h of n = 2 k half-edges decorated by the
+ * class array c: one kind, whose first copy is the edge 0 with the face
+ * permutation cfp = {0, 1}, the canonical relabelling cra = {0, 1} and the
+ * two labels of roots {0, 1} (the layout of the isolated edges in
+ * combisurf/isomorphism.pyx), and k copies, the edge e at the offset 2 e of
+ * lab with lab[2 e + i] = 2 e + i. Run domap_stabiliser and check the
+ * product of the orbit sizes and the number of generators.
+ */
+static void
+check_isolated_edges(int n, const int *c, long long order, int ngens)
+{
+    static const int cfp[] = { 0, 1 }, cra[] = { 0, 1 }, crainv[] = { 0, 1 };
+    static const int coff[] = { 0 }, csize[] = { 2 }, labels[] = { 0, 1 };
+    static const int loff[] = { 0, 2 };
+    static int work[DOMAP_STABILISER_WORK_SIZE(STAB_MAX_N, 1)];
+    int fp[STAB_MAX_N], kind[STAB_MAX_N / 2], off[STAB_MAX_N / 2],
+        lab[STAB_MAX_N], orbits[STAB_MAX_N / 2], start[2];
+    int k = n / 2, h, j;
+    long long product = 1;
+    struct generators s;
+    domap_t m;
+    domap_wreath_t w;
+
+    CHECK(n <= STAB_MAX_N && n % 2 == 0);
+    for (h = 0; h < n; h++)
+    {
+        fp[h] = h;
+        lab[h] = h;
+    }
+    for (j = 0; j < k; j++)
+    {
+        kind[j] = 0;
+        off[j] = 2 * j;
+    }
+    start[0] = 0;
+    start[1] = k;
+    set_map(m, fp, n, 0, NULL, 1, c);
+    w->ncomp = k;
+    w->kind = kind;
+    w->off = off;
+    w->lab = lab;
+    w->start = start;
+    w->coff = coff;
+    w->csize = csize;
+    w->cfp = cfp;
+    w->cra = cra;
+    w->crainv = crainv;
+    w->loff = loff;
+    w->labels = labels;
+
+    s.n = n;
+    s.fp = fp;
+    s.classes = c;
+    s.count = 0;
+    s.stop = 0;
+    CHECK(domap_stabiliser(orbits, m, w, check_generator, &s, work) == 0);
+    for (j = 0; j < k; j++)
+    {
+        CHECK(orbits[j] >= 1);
+        product *= orbits[j];
+    }
+    CHECK(product == order);
+    CHECK(s.count == ngens);
+
+    /* without callback: the same orbits */
+    CHECK(domap_stabiliser(orbits, m, w, NULL, NULL, work) == 0);
+    for (j = 0, product = 1; j < k; j++)
+        product *= orbits[j];
+    CHECK(product == order);
+
+    /* a nonzero value of the callback stops the search at once */
+    if (ngens > 0)
+    {
+        s.count = 0;
+        s.stop = 5;
+        CHECK(domap_stabiliser(orbits, m, w, check_generator, &s, work) == 5);
+        CHECK(s.count == 1);
+    }
+}
+
+static void
+test_stabiliser(void)
+{
+    static const int c1[] = { 0, 0, 1, 1 };
+    static const int c2[] = { 0, 1, 0, 0 };
+    static const int c3[] = { 0, 1, 1, 2, 2, 0 };
+    int c4[28], h;
+
+    for (h = 0; h < 12; h++)
+        c4[h] = 0;
+    for (h = 12; h < 28; h++)
+        c4[h] = h % 2;
+
+    /* the values of combisurf.isomorphism.canonical_key (the count) and of
+     * automorphism_generators on these maps */
+    current_case = "stabiliser, 2 edges 00 11";
+    check_isolated_edges(4, c1, 8, 3);
+    current_case = "stabiliser, 2 edges 01 00";
+    check_isolated_edges(4, c2, 2, 1);
+    current_case = "stabiliser, 3 edges 01 12 20";
+    check_isolated_edges(6, c3, 6, 2);
+    current_case = "stabiliser, 6 edges 00 and 8 edges 01";
+    check_isolated_edges(28, c4, 1857945600LL, 18);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1792,6 +1956,7 @@ main(int argc, char **argv)
     test_search_random();
     test_search_tied();
     test_invariants();
+    test_stabiliser();
     printf("test_omap: %ld checks passed\n", num_checks);
     return 0;
 }

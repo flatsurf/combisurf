@@ -46,3 +46,27 @@ cdef extern from "omap.h":
     int domap_iso_search(int *sequence, int *length, int *relabelling,
                        const domap_t m, domap_iso_root_rule rule, int all_leaves,
                        domap_iso_leaf_callback callback, void *arg, int *work) except -1
+
+    ctypedef struct domap_wreath_struct:
+        int ncomp
+        const int *kind
+        const int *off
+        const int *lab
+        const int *start
+        const int *coff
+        const int *csize
+        const int *cfp
+        const int *cra
+        const int *crainv
+        const int *loff
+        const int *labels
+
+    ctypedef domap_wreath_struct domap_wreath_t[1]
+
+    # as domap_iso_leaf_callback: -1 with a Python exception set stops the
+    # search and is returned by domap_stabiliser
+    ctypedef int (*domap_stabiliser_callback)(const int *g, void *arg) except -1
+
+    int DOMAP_STABILISER_WORK_SIZE(int n, int nc)
+    int domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
+                         domap_stabiliser_callback callback, void *arg, int *work) except -1

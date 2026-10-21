@@ -391,4 +391,120 @@ int domap_iso_search(int *sequence, int *length, int *relabelling,
                      int all_leaves, domap_iso_leaf_callback callback,
                      void *arg, int *work);
 
+/*
+ * Maps that may be disconnected, with classes: the automorphisms of fp and
+ * data that preserve the partitions of the half-edges by the values of each
+ * class array.
+ *
+ * The components of the map, grouped into kinds of isomorphic components
+ * (fp and data alone), are laid out by domap_wreath_struct; the arrays it
+ * points into are owned by the caller. The levels are the ncomp components,
+ * kinds in order, copies in order. Per level j: kind[j] its kind and off[j]
+ * the offset of its half-edges in lab, by canonical label (lab[off[j] + i]
+ * is its half-edge of label i). Per kind t: its copies are the levels
+ * start[t], ..., start[t + 1] - 1; its first copy as a map of its own has
+ * the face permutation cfp, the canonical relabelling cra (local index to
+ * label) and its inverse crainv, all of csize[t] entries at the offset
+ * coff[t]; the labels of its roots of minimal key are labels[loff[t]], ...,
+ * labels[loff[t + 1] - 1], in increasing order. The isomorphism from a copy
+ * to another sends the half-edge of label i to the one of label i.
+ */
+typedef struct
+{
+    int ncomp;
+    const int *kind;
+    const int *off;
+    const int *lab;
+    const int *start;
+    const int *coff;
+    const int *csize;
+    const int *cfp;
+    const int *cra;
+    const int *crainv;
+    const int *loff;
+    const int *labels;
+}
+domap_wreath_struct;
+
+typedef domap_wreath_struct domap_wreath_t[1];
+
+/*
+ * Callback of domap_stabiliser, called on each generator: g is the
+ * generator (n ints, g[h] the image of h), valid during the call only. A
+ * nonzero return value stops the search, which returns it; the Cython
+ * layer returns -1 with a Python exception set.
+ */
+typedef int (*domap_stabiliser_callback)(const int *g, void *arg);
+
+/*
+ * Size of the work buffer of domap_stabiliser, in ints, for at most n / 2
+ * components of at most n half-edges each: the forward and backward maps of
+ * the values of each class array and the trail of the entries set (3 nc n),
+ * the arrays of the levels used, target, choice, mark and dead
+ * (5 (n / 2)), the buffers of the size of the largest component rb, rbinv,
+ * queue, perm and ident (5 n), the parents and the sizes of the union-find
+ * of the orbits (2 n), and the generator being built (n).
+ *
+ * This size is computed in int; the caller checks it first.
+ */
+#define DOMAP_STABILISER_WORK_SIZE(n, nc) \
+    (3 * (nc) * (n) + 5 * ((n) / 2) + 8 * (n))
+
+/*
+ * Compute the group H of the automorphisms of the map m, laid out by w,
+ * that preserve the partitions defined by its class arrays.
+ *
+ * H is the stabiliser of these partitions in the group G of m with its data
+ * alone, a product over the kinds of wreath products, computed by a
+ * subgroup search of Sims. The base is b_0, ..., b_{ncomp-1}, the half-edge
+ * of canonical label 0 of each level (lab[off[i]]); the pointwise
+ * stabiliser of b_0, ..., b_{i-1} in G fixes their components and permutes
+ * the others as the wreath products do, so the orbit of b_i in it is made
+ * of the half-edges whose label is one of labels[loff[t]], ...,
+ * labels[loff[t + 1] - 1] in the copies of the kind t of b_i at the levels
+ * >= i. The levels are processed from the last to the first: each point x
+ * of that orbit outside the orbit of b_i under the generators found so far
+ * (a union-find over the half-edges) is tried by a depth-first search for
+ * an element of H, the identity on the levels < i, sending b_i to x, which
+ * maps the following levels one after the other to unused copies of their
+ * kinds and rejects a step whose values contradict the bijections of values
+ * built so far. The first element found is a generator. The generators
+ * found at the levels >= i generate the stabiliser of b_0, ..., b_{i-1} in
+ * H, so the order of H is the product over the levels of the size of the
+ * orbit of b_i right after its level. A level that is the only copy of its
+ * kind and has a single root label has an orbit of size 1 and is skipped.
+ *
+ * Two placements of a level adding no entry to the bijections of values,
+ * onto the copies b1 and b2 (or twice onto one copy), put equal values at
+ * the labels they match: the automorphism of the copy relating their labels
+ * is an isomorphism from b1 to b2 carrying the values, and exchanging b1
+ * and b2 through it, the identity on the levels placed before, is an
+ * element of H that sends a completion of either placement onto one of the
+ * other. After one of them failed, the others are skipped, at the levels
+ * of the depth-first search and among the candidates x, which are then
+ * outside the orbit of b_i exactly when the earlier one is. On tied copies
+ * whose values are all mapped after the first levels, each level then
+ * descends into at most one failed subtree per entry, and the search takes
+ * a time polynomial in the number of components. It stays exponential in
+ * the worst case, when the placements map new values and the values of
+ * classes reject them only deep in the search, as on a graph on the class
+ * values given by its edges as isolated edges.
+ *
+ * Write into orbits (w->ncomp ints) the size of the orbit of b_i right
+ * after its level i (1 at a skipped level), so that the order of H is their
+ * product: it can exceed every C integer type (k isolated edges of equal
+ * values have 2^k k! automorphisms), and the caller multiplies the sizes in
+ * its own integers. When callback is not NULL, call it with arg on each
+ * generator, from the last level to the first and, at a level, in the order
+ * of the candidates x: there are up to n - 1 generators of n ints each,
+ * which no buffer of the caller holds. The generators are the identity on
+ * the half-edges of the inactive edges. work is a buffer of
+ * DOMAP_STABILISER_WORK_SIZE(n, nc) ints.
+ *
+ * Return 0, or the nonzero value returned by the callback, which stops the
+ * search and leaves orbits undefined.
+ */
+int domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
+                     domap_stabiliser_callback callback, void *arg, int *work);
+
 #endif

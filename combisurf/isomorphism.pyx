@@ -208,7 +208,7 @@ from cpython.number cimport PyNumber_Index
 from cpython.ref cimport PyObject
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
-from cysignals.signals cimport sig_on, sig_off, sig_check, sig_block, sig_unblock
+from cysignals.signals cimport sig_on, sig_off, sig_block, sig_unblock
 from combisurf.perm cimport _perm_check, _perm_id, _perm_orbits_find, _perm_orbits_union
 from math import factorial
 from numbers import Integral
@@ -280,7 +280,8 @@ def _check_sizes(n, nd, nc):
     sequence = key + n // 2
     search = (5 + nc) * n + (5 + nc) * (n // 2 + 1) + nc + sequence + key + 1 + 4 * n + 1
     invariants = 2 * n + 1
-    if max(n, key, work, sequence, search, invariants) > INT_MAX:
+    stabiliser = 3 * nc * n + 5 * (n // 2) + 8 * n
+    if max(n, key, work, sequence, search, invariants, stabiliser) > INT_MAX:
         raise OverflowError("map too large: {} half-edges with {} arrays of data and {} of classes".format(n, nd, nc))
 
 
@@ -1256,229 +1257,77 @@ cdef _wreath_order(const domap_struct *m):
     return order
 
 
-cdef class _Stabiliser:
+# State of the generator callback of ``domap_stabiliser`` for
+# ``automorphism_generators``: ``n`` the number of half-edges and ``result``
+# the list of the generators, owned by the caller of ``domap_stabiliser``,
+# which outlives the search; ``result`` is borrowed and the list is appended
+# in place, never rebound.
+cdef struct _generator_state:
+    int n
+    PyObject *result
+
+
+ctypedef int (*_unchecked_generator_callback)(const int *g, void *arg) noexcept
+
+
+cdef int _stabiliser_generator(const int *g, void *arg) except -1:
     r"""
-    The state of the search of :func:`_stabiliser` on a disconnected map.
+    Generator callback of ``domap_stabiliser`` for
+    :func:`automorphism_generators`: append a copy of the generator to the
+    list.
 
-    The levels are the components, in the order of ``_wreath`` (kinds in
-    order, copies in order). Per level ``j``: ``kind[j]`` its kind and
-    ``off[j]`` the offset of its half-edges in ``lab``, by canonical label
-    (``lab[off[j] + i]`` is its half-edge of label ``i``). Per kind ``t``:
-    its copies are the levels ``start[t], ..., start[t + 1] - 1``; its
-    first copy as a map of its own has the face permutation ``cfp``, the
-    canonical relabelling ``cra`` (local index to label) and its inverse
-    ``crainv``, all of ``csize[t]`` entries at the offset ``coff[t]``; the
-    labels of its roots of minimal key are ``labels[loff[t]], ...,
-    labels[loff[t + 1] - 1]``, in increasing order.
-
-    The search state: ``fw`` and ``bw`` the forward and backward maps of the
-    values of each array of ``classes`` (``-1`` where unset, the array
-    ``q`` at the offset ``q * n``), ``trail`` the entries of ``fw`` set, in
-    order, ``used`` the copies already images, and per level its image
-    ``target``, the index ``choice`` of its label in ``labels``, the
-    length ``mark`` of the trail before its step and the flag ``dead``, set
-    when a placement of the level adding no entry to the trail had no
-    completion since the level was entered (the later placements adding
-    none are then skipped, see ``extend``). ``rb``, ``rbinv``,
-    ``queue``, ``perm`` and ``ident`` are buffers of the size of the
-    largest component. ``m`` is the map, whose buffers are owned by the
-    array ``buf`` (see ``_convert``), kept for as long as the state lives.
+    The callback runs inside the ``sig_on`` of ``_stabiliser``, and is
+    called as ``_automorphism_leaf`` calls ``_collect_automorphism``, for
+    the same reasons: ``sig_block`` delays an interrupt to the
+    ``sig_unblock``, reached when ``_collect_generator`` has returned and
+    released its references, and the call goes through a pointer without
+    exception check, so that the ``sig_unblock`` also runs when
+    ``_collect_generator`` raises; its ``-1``, with the exception set, is
+    then returned to ``domap_stabiliser``.
     """
-    cdef domap_struct m
-    cdef array.array buf
-    cdef int ncomp
-    cdef int ntrail
-    cdef array.array kind, off, lab, start, coff, csize, cfp, cra, crainv, loff, labels
-    cdef array.array fw, bw, trail, used, target, choice, mark, dead
-    cdef array.array rb, rbinv, queue, perm, ident
-
-    cdef int relabel(self, int t, int l) except -1:
-        r"""
-        Write into ``perm`` the automorphism of the first copy of the kind
-        ``t`` sending the half-edge of label ``0`` to the one of label
-        ``l``, on the labels: ``perm[i]`` is the label of the image of the
-        half-edge of label ``i``.
-        """
-        cdef int o = self.coff.data.as_ints[t], size = self.csize.data.as_ints[t], h
-        cdef int *cra = self.cra.data.as_ints + o
-        cdef int *rb = self.rb.data.as_ints
-        cdef int *rbinv = self.rbinv.data.as_ints
-        cdef int *perm = self.perm.data.as_ints
-        # omap_relabelling_from writes -1 into rbinv at the labels of the
-        # inactive halves of folded edges, which are rebuilt from rb
-        _omap_relabelling_from(rb, rbinv, self.cfp.data.as_ints + o, size,
-                               self.crainv.data.as_ints[o + l], self.queue.data.as_ints)
-        for h in range(size):
-            rbinv[rb[h]] = h
-        for h in range(size):
-            perm[h] = cra[rbinv[h]]
-        return 0
-
-    cdef int step(self, int a, int b, int *perm) except -1:
-        r"""
-        Extend the maps of values by the isomorphism from the level ``a`` to
-        the level ``b`` sending the half-edge of label ``i`` to the one of
-        label ``perm[i]``; return ``0`` on a conflict (the entries set
-        before it stay on the trail) and ``1`` otherwise.
-        """
-        cdef int n = self.m.map.n, size = self.csize.data.as_ints[self.kind.data.as_ints[a]]
-        cdef const int *f = self.m.map.fp
-        cdef const int *cls = self.m.classes
-        cdef int *la = self.lab.data.as_ints + self.off.data.as_ints[a]
-        cdef int *lb = self.lab.data.as_ints + self.off.data.as_ints[b]
-        cdef int *fw = self.fw.data.as_ints
-        cdef int *bw = self.bw.data.as_ints
-        cdef int *trail = self.trail.data.as_ints
-        cdef int i, q, h, y, v, w, base
-        for i in range(size):
-            h = la[i]
-            if f[h] == -1:
-                continue
-            y = lb[perm[i]]
-            for q in range(self.m.nc):
-                base = q * n
-                v = cls[base + h]
-                w = cls[base + y]
-                if fw[base + v] == -1:
-                    if bw[base + w] != -1:
-                        return 0
-                    fw[base + v] = w
-                    bw[base + w] = v
-                    trail[self.ntrail] = base + v
-                    self.ntrail += 1
-                elif fw[base + v] != w:
-                    return 0
-        return 1
-
-    cdef void undo(self, int length):
-        r"""
-        Unset the entries of the maps of values set after the first
-        ``length`` entries of the trail.
-        """
-        cdef int *fw = self.fw.data.as_ints
-        cdef int *bw = self.bw.data.as_ints
-        cdef int e
-        while self.ntrail > length:
-            self.ntrail -= 1
-            e = self.trail.data.as_ints[self.ntrail]
-            bw[(e // self.m.map.n) * self.m.map.n + fw[e]] = -1
-            fw[e] = -1
-
-    cdef int extend(self, int i) except -1:
-        r"""
-        Search images for the levels ``i + 1, ..., ncomp - 1``, each a copy
-        of its kind not used yet, through any label of its roots, in
-        order; return ``1`` at the first leaf, the choices left in
-        ``target`` and ``choice``, and ``0`` if there is none. A placement
-        adding no entry to the trail is skipped when one such placement of
-        its level already failed since the level was entered (``dead``).
-        """
-        cdef int *kind = self.kind.data.as_ints
-        cdef int *start = self.start.data.as_ints
-        cdef int *loff = self.loff.data.as_ints
-        cdef int *labels = self.labels.data.as_ints
-        cdef int *used = self.used.data.as_ints
-        cdef int *target = self.target.data.as_ints
-        cdef int *choice = self.choice.data.as_ints
-        cdef int *mark = self.mark.data.as_ints
-        cdef int *dead = self.dead.data.as_ints
-        cdef int j = i + 1, t, b, placed
-        if j < self.ncomp:
-            target[j] = start[kind[j]]
-            choice[j] = 0
-            dead[j] = 0
-        while True:
-            sig_check()
-            if j == self.ncomp:
-                return 1
-            if j <= i:
-                return 0
-            t = kind[j]
-            placed = 0
-            while target[j] < start[t + 1]:
-                b = target[j]
-                if used[b] or choice[j] >= loff[t + 1] - loff[t]:
-                    target[j] += 1
-                    choice[j] = 0
-                    continue
-                mark[j] = self.ntrail
-                self.relabel(t, labels[loff[t] + choice[j]])
-                if self.step(j, b, self.perm.data.as_ints):
-                    # Two placements of the level adding no entry to the maps
-                    # of values, onto the copies b1 and b2 (or twice onto
-                    # one copy), put equal values at the labels they match:
-                    # the automorphism of the copy relating their labels is
-                    # an isomorphism from b1 to b2 carrying the values, and
-                    # exchanging b1 and b2 through it sends a completion of
-                    # either placement onto one of the other.
-                    if self.ntrail == mark[j] and dead[j]:
-                        choice[j] += 1
-                        continue
-                    used[b] = 1
-                    placed = 1
-                    break
-                self.undo(mark[j])
-                choice[j] += 1
-            if placed:
-                j += 1
-                if j < self.ncomp:
-                    target[j] = start[kind[j]]
-                    choice[j] = 0
-                    dead[j] = 0
-            else:
-                j -= 1
-                if j > i:
-                    # the trail is back to its length after the step of the
-                    # level j, whose subtree failed
-                    if self.ntrail == mark[j]:
-                        dead[j] = 1
-                    self.undo(mark[j])
-                    used[target[j]] = 0
-                    choice[j] += 1
-
-    cdef array.array leaf(self, int i):
-        r"""
-        Return the automorphism of the map given by the choices of the
-        levels ``i, ..., ncomp - 1`` (the identity on the other levels and
-        on the inactive edges).
-        """
-        cdef array.array g = _identity(self.m.map.n)
-        cdef int *lab = self.lab.data.as_ints
-        cdef int *perm = self.perm.data.as_ints
-        cdef int j, t, k, oa, ob
-        for j in range(i, self.ncomp):
-            t = self.kind.data.as_ints[j]
-            self.relabel(t, self.labels.data.as_ints[self.loff.data.as_ints[t] + self.choice.data.as_ints[j]])
-            oa = self.off.data.as_ints[j]
-            ob = self.off.data.as_ints[self.target.data.as_ints[j]]
-            for k in range(self.csize.data.as_ints[t]):
-                g.data.as_ints[lab[oa + k]] = lab[ob + perm[k]]
-        return g
+    cdef int status
+    sig_block()
+    status = (<_unchecked_generator_callback> _collect_generator)(g, arg)
+    sig_unblock()
+    return status
 
 
-cdef _Stabiliser _stabiliser_state(const domap_struct *m, array.array buf):
+cdef int _collect_generator(const int *g, void *arg) except -1:
     r"""
-    Return the :class:`_Stabiliser` of the disconnected map ``m``, its
-    search state cleared; ``buf`` is the array that owns the buffers of
-    ``m`` (see ``_convert``), which the state keeps alive.
+    Append to the list of the ``_generator_state`` ``arg`` a copy of the
+    generator ``g``.
     """
-    cdef _Stabiliser s = _Stabiliser.__new__(_Stabiliser)
-    cdef int n = m.map.n, size, i, largest = 0
+    cdef _generator_state *s = <_generator_state *> arg
+    cdef array.array c = _new(s.n)
+    memcpy(c.data.as_ints, g, s.n * sizeof(int))
+    (<list> s.result).append(c)
+    return 0
+
+
+cdef tuple _stabiliser(const domap_struct *m, bint generators):
+    r"""
+    Return the generators (an empty list unless ``generators``) and the
+    order (a Python integer) of the group of the automorphisms of the
+    disconnected map ``m`` that preserve the partitions defined by its
+    arrays of ``classes``.
+
+    The group is computed by ``domap_stabiliser`` (see
+    ``combisurf/src/omap.h``) on the components of ``m`` laid out from
+    ``_wreath``: the order is the product of the sizes of the orbits it
+    returns, one per component.
+    """
+    cdef int n = m.map.n, size, i
     cdef array.array halves_c, r
-    kind = []
-    off = []
-    lab = []
-    start = [0]
-    coff = []
-    csize = []
-    cfp = []
-    cra = []
-    crainv = []
-    loff = [0]
-    labels = []
+    cdef array.array kind = _new(0), off = _new(0), lab = _new(0)
+    cdef array.array start = array.array('i', [0]), coff = _new(0), csize = _new(0)
+    cdef array.array cfp = _new(0), cra = _new(0), crainv = _new(0)
+    cdef array.array loff = array.array('i', [0]), labels = _new(0)
+    cdef array.array orbits, work
+    cdef domap_wreath_t w
+    cdef _generator_state state
+    cdef domap_stabiliser_callback callback = NULL
     for t, (copies, _aut, _count, local, roots) in enumerate(_wreath(m, False, True)):
         size = len(copies[0][0])
-        largest = max(largest, size)
         coff.append(len(cfp))
         csize.append(size)
         cfp.extend(local)
@@ -1497,143 +1346,37 @@ cdef _Stabiliser _stabiliser_state(const domap_struct *m, array.array buf):
                 inv[r.data.as_ints[i]] = halves_c.data.as_ints[i]
             lab.extend(inv)
         start.append(len(kind))
-    s.m = m[0]
-    s.buf = buf
-    s.ncomp = len(kind)
-    s.ntrail = 0
-    s.kind = array.array('i', kind)
-    s.off = array.array('i', off)
-    s.lab = array.array('i', lab)
-    s.start = array.array('i', start)
-    s.coff = array.array('i', coff)
-    s.csize = array.array('i', csize)
-    s.cfp = array.array('i', cfp)
-    s.cra = array.array('i', cra)
-    s.crainv = array.array('i', crainv)
-    s.loff = array.array('i', loff)
-    s.labels = array.array('i', labels)
-    s.fw = array.array('i', [-1]) * (m.nc * n)
-    s.bw = array.array('i', [-1]) * (m.nc * n)
-    s.trail = _new(m.nc * n)
-    s.used = array.array('i', [0]) * s.ncomp
-    s.target = _new(s.ncomp)
-    s.choice = _new(s.ncomp)
-    s.mark = _new(s.ncomp)
-    s.dead = array.array('i', [0]) * s.ncomp
-    s.rb = _new(largest)
-    s.rbinv = _new(largest)
-    s.queue = _new(largest)
-    s.perm = _new(largest)
-    s.ident = array.array('i', range(largest))
-    return s
-
-
-cdef tuple _stabiliser(const domap_struct *m, array.array buf):
-    r"""
-    Return the generators and the order (a Python integer) of the group of
-    the automorphisms of the disconnected map ``m`` that preserve the
-    partitions defined by its arrays of ``classes``.
-
-    This group `H` is the stabiliser of these partitions in the group `G`
-    of ``m`` with its ``data`` alone (see ``_wreath``), computed by a
-    subgroup search of Sims. The base is ``b_1, ..., b_c``, the half-edge of
-    canonical label ``0`` of each component, in the order of ``_wreath``;
-    the pointwise stabiliser of ``b_1, ..., b_{i-1}`` in `G` fixes their
-    components and permutes the others as the wreath products do, so the
-    orbit of ``b_i`` in it is made of the half-edges whose label is the one
-    of a root of minimal key in the copies of the kind of ``b_i`` at the
-    levels ``>= i``. The levels are processed from the last to the first:
-    each point ``x`` of that orbit outside the orbit of ``b_i`` under the
-    generators found so far (a union-find over the half-edges) is tried by
-    a depth-first search for an element of `H`, the identity on the levels
-    ``< i``, sending ``b_i`` to ``x``, which maps the following levels one
-    after the other to unused copies of their kinds and rejects a step
-    whose values contradict the bijections of values built so far. The
-    first element found is a generator. The generators found at the levels
-    ``>= i`` generate the stabiliser of ``b_1, ..., b_{i-1}`` in `H`, so
-    the order of `H` is the product over the levels of the size of the
-    orbit of ``b_i`` right after its level.
-
-    Two placements of a level adding no entry to the bijections of values
-    are related by an element of `H` fixing the levels placed before (see
-    ``extend``): after one of them failed, the others are skipped, at the
-    levels of ``extend`` and among the candidates ``x``. On tied copies
-    whose values are all mapped after the first levels, each level then
-    descends into at most one failed subtree per entry, and the search
-    takes a time polynomial in the number of components (``k`` isolated
-    edges with one or two class values in any pattern). It stays
-    exponential in the worst case, when the placements map new values and
-    the values of ``classes`` reject them only deep in the search, as on a
-    graph on the class values given by its edges as isolated edges.
-    """
-    cdef _Stabiliser s = _stabiliser_state(m, buf)
-    cdef int n = m.map.n, i, t, b, q, h, x, y, bi, nl
-    cdef bint dead, empty, found
-    cdef array.array parent = _new(n)
-    cdef array.array sizes = _new(n)
-    cdef array.array g
-    cdef int *p = parent.data.as_ints
-    cdef int *sz = sizes.data.as_ints
-    cdef int *used = s.used.data.as_ints
-    cdef int *start = s.start.data.as_ints
-    cdef int *loff = s.loff.data.as_ints
-    cdef int *labels = s.labels.data.as_ints
-    cdef int *lab = s.lab.data.as_ints
-    cdef int *off = s.off.data.as_ints
-    for h in range(n):
-        p[h] = h
-        sz[h] = 1
+    # the arrays are complete: they are not resized while w points into them
+    w.ncomp = len(kind)
+    w.kind = kind.data.as_ints
+    w.off = off.data.as_ints
+    w.lab = lab.data.as_ints
+    w.start = start.data.as_ints
+    w.coff = coff.data.as_ints
+    w.csize = csize.data.as_ints
+    w.cfp = cfp.data.as_ints
+    w.cra = cra.data.as_ints
+    w.crainv = crainv.data.as_ints
+    w.loff = loff.data.as_ints
+    w.labels = labels.data.as_ints
+    orbits = _new(w.ncomp)
+    work = _new(DOMAP_STABILISER_WORK_SIZE(n, m.nc))
     gens = []
+    state.n = n
+    state.result = <PyObject *> gens
+    if generators:
+        callback = _stabiliser_generator
+    # as in _search: an interrupt leaves domap_stabiliser by a longjmp back
+    # to sig_on, and an exception of the callback returns from it normally,
+    # hence the sig_off in the finally
+    sig_on()
+    try:
+        domap_stabiliser(orbits.data.as_ints, m, w, callback, &state, work.data.as_ints)
+    finally:
+        sig_off()
     order = 1
-    for i in range(s.ncomp - 1, -1, -1):
-        t = s.kind.data.as_ints[i]
-        nl = loff[t + 1] - loff[t]
-        bi = lab[off[i]]
-        if start[t + 1] - start[t] == 1 and nl == 1:
-            continue
-        # the levels < i are fixed: their values are mapped to themselves
-        for b in range(i):
-            used[b] = 1
-            s.step(b, b, s.ident.data.as_ints)
-        dead = 0
-        for b in range(max(start[t], i), start[t + 1]):
-            for q in range(nl):
-                sig_check()
-                x = lab[off[b] + labels[loff[t] + q]]
-                if x == bi or _perm_orbits_find(p, x) == _perm_orbits_find(p, bi):
-                    continue
-                s.target.data.as_ints[i] = b
-                s.choice.data.as_ints[i] = q
-                s.mark.data.as_ints[i] = s.ntrail
-                used[b] = 1
-                s.relabel(t, labels[loff[t] + q])
-                found = 0
-                if s.step(i, b, s.perm.data.as_ints):
-                    # as in extend: a candidate adding no entry to the maps of
-                    # values is the image of an earlier one adding none by
-                    # an element of H fixing the levels < i, so it is in the
-                    # orbit of b_i exactly when that one is
-                    empty = s.ntrail == s.mark.data.as_ints[i]
-                    if not (empty and dead):
-                        found = s.extend(i)
-                        if empty and not found:
-                            dead = 1
-                if found:
-                    g = s.leaf(i)
-                    gens.append(g)
-                    for h in range(n):
-                        x = _perm_orbits_find(p, h)
-                        y = _perm_orbits_find(p, g.data.as_ints[h])
-                        if x != y:
-                            p[x] = y
-                            sz[y] += sz[x]
-                s.undo(s.mark.data.as_ints[i])
-                for h in range(i, s.ncomp):
-                    used[h] = 0
-        s.undo(0)
-        for b in range(i):
-            used[b] = 0
-        order *= sz[_perm_orbits_find(p, bi)]
+    for i in range(w.ncomp):
+        order *= orbits.data.as_ints[i]
     return gens, order
 
 
@@ -1872,7 +1615,7 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef domap_t m
-    cdef array.array buf = _prepare(m, fp, data, classes)
+    cdef array.array _buf = _prepare(m, fp, data, classes)
     cdef int n = m.map.n
     cdef int count
     cdef array.array key = _new(DOMAP_ISO_KEY_SIZE(n, m.nd, m.nc))
@@ -1882,7 +1625,7 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
         return _connected_generators(m, ra, roots, count)
     if m.nc == 0:
         return _wreath_generators(m)
-    return _stabiliser(m, buf)[0]
+    return _stabiliser(m, True)[0]
 
 
 def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA):
@@ -2200,7 +1943,7 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     """
     cdef int rule = _check_root_rule(root_rule)
     cdef domap_t m
-    cdef array.array buf = _prepare(m, fp, data, classes)
+    cdef array.array _buf = _prepare(m, fp, data, classes)
     cdef array.array key = _new(DOMAP_ISO_KEY_SIZE(m.map.n, m.nd, m.nc))
     cdef array.array r = _new(m.map.n)
     cdef int count, length
@@ -2209,7 +1952,7 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     if length == DOMAP_ISO_DISCONNECTED:
         _search(m, rule, False, _new(DOMAP_ISO_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
         if automorphism_count:
-            order = _stabiliser(m, buf)[1] if m.nc else _wreath_order(m)
+            order = _stabiliser(m, False)[1] if m.nc else _wreath_order(m)
         length = _key_of(m, r, key)
     out = [(<char *> key.data.as_ints)[:length * sizeof(int)]]
     if relabelling:

@@ -2030,3 +2030,375 @@ domap_iso_search(int *sequence, int *length, int *relabelling,
     *length = bestlen;
     return 0;
 }
+
+/*
+ * The state of domap_stabiliser: the map, its layout, the maps of values fw
+ * and bw of each class array (-1 where unset, the array q at the offset
+ * q * n), the trail of the entries of fw set, in order, and its length
+ * ntrail, the copies already images (used), and per level its image target,
+ * the index choice of its label among the labels of the roots of its kind,
+ * the length mark of the trail before its step and the flag dead, set when
+ * a placement of the level adding no entry to the trail had no completion
+ * since the level was entered (the later placements adding none are then
+ * skipped, see extend). rb, rbinv, queue, perm and ident are buffers of the
+ * size of the largest component, ident holding the identity.
+ */
+struct stabiliser_state
+{
+    domap_struct m;
+    domap_wreath_struct w;
+    int ntrail;
+    int *fw, *bw, *trail, *used, *target, *choice, *mark, *dead;
+    int *rb, *rbinv, *queue, *perm, *ident;
+};
+
+/*
+ * Write into perm the automorphism of the first copy of the kind t sending
+ * the half-edge of label 0 to the one of label l, on the labels: perm[i] is
+ * the label of the image of the half-edge of label i.
+ */
+static void
+relabel(struct stabiliser_state *s, int t, int l)
+{
+    int o = s->w.coff[t], size = s->w.csize[t], h;
+    const int *cra = s->w.cra + o;
+    int *rb = s->rb, *rbinv = s->rbinv, *perm = s->perm;
+
+    /* _omap_relabelling_from writes -1 into rbinv at the labels of the
+     * inactive halves of folded edges, which are rebuilt from rb */
+    _omap_relabelling_from(rb, rbinv, s->w.cfp + o, size, s->w.crainv[o + l],
+                           s->queue);
+    for (h = 0; h < size; h++)
+        rbinv[rb[h]] = h;
+    for (h = 0; h < size; h++)
+        perm[h] = cra[rbinv[h]];
+}
+
+/*
+ * Extend the maps of values by the isomorphism from the level a to the level
+ * b sending the half-edge of label i to the one of label perm[i]; return 0
+ * on a conflict (the entries set before it stay on the trail) and 1
+ * otherwise.
+ */
+static int
+step(struct stabiliser_state *s, int a, int b, const int *perm)
+{
+    int n = s->m.map.n, nc = s->m.nc, size = s->w.csize[s->w.kind[a]];
+    const int *f = s->m.map.fp, *cls = s->m.classes;
+    const int *la = s->w.lab + s->w.off[a], *lb = s->w.lab + s->w.off[b];
+    int *fw = s->fw, *bw = s->bw, *trail = s->trail;
+    int i, q, h, y, v, w, base;
+
+    for (i = 0; i < size; i++)
+    {
+        h = la[i];
+        if (f[h] == -1)
+            continue;
+        y = lb[perm[i]];
+        for (q = 0; q < nc; q++)
+        {
+            base = q * n;
+            v = cls[base + h];
+            w = cls[base + y];
+            if (fw[base + v] == -1)
+            {
+                if (bw[base + w] != -1)
+                    return 0;
+                fw[base + v] = w;
+                bw[base + w] = v;
+                trail[s->ntrail++] = base + v;
+            }
+            else if (fw[base + v] != w)
+                return 0;
+        }
+    }
+    return 1;
+}
+
+/*
+ * Unset the entries of the maps of values set after the first length
+ * entries of the trail.
+ */
+static void
+undo(struct stabiliser_state *s, int length)
+{
+    int n = s->m.map.n, e;
+    int *fw = s->fw, *bw = s->bw;
+
+    while (s->ntrail > length)
+    {
+        e = s->trail[--s->ntrail];
+        bw[(e / n) * n + fw[e]] = -1;
+        fw[e] = -1;
+    }
+}
+
+/*
+ * Search images for the levels i + 1, ..., ncomp - 1, each a copy of its
+ * kind not used yet, through any label of its roots, in order; return 1 at
+ * the first leaf, the choices left in target and choice, and 0 if there is
+ * none. A placement adding no entry to the trail is skipped when one such
+ * placement of its level already failed since the level was entered (dead).
+ */
+static int
+extend(struct stabiliser_state *s, int i)
+{
+    const int *kind = s->w.kind, *start = s->w.start, *loff = s->w.loff,
+        *labels = s->w.labels;
+    int *used = s->used, *target = s->target, *choice = s->choice,
+        *mark = s->mark, *dead = s->dead;
+    int ncomp = s->w.ncomp, j = i + 1, t, b, placed;
+
+    if (j < ncomp)
+    {
+        target[j] = start[kind[j]];
+        choice[j] = 0;
+        dead[j] = 0;
+    }
+    for (;;)
+    {
+        if (j == ncomp)
+            return 1;
+        if (j <= i)
+            return 0;
+        t = kind[j];
+        placed = 0;
+        while (target[j] < start[t + 1])
+        {
+            b = target[j];
+            if (used[b] || choice[j] >= loff[t + 1] - loff[t])
+            {
+                target[j]++;
+                choice[j] = 0;
+                continue;
+            }
+            mark[j] = s->ntrail;
+            relabel(s, t, labels[loff[t] + choice[j]]);
+            if (step(s, j, b, s->perm))
+            {
+                /* Two placements of the level adding no entry to the maps
+                 * of values, onto the copies b1 and b2 (or twice onto one
+                 * copy), put equal values at the labels they match: the
+                 * automorphism of the copy relating their labels is an
+                 * isomorphism from b1 to b2 carrying the values, and
+                 * exchanging b1 and b2 through it sends a completion of
+                 * either placement onto one of the other. */
+                if (s->ntrail == mark[j] && dead[j])
+                {
+                    choice[j]++;
+                    continue;
+                }
+                used[b] = 1;
+                placed = 1;
+                break;
+            }
+            undo(s, mark[j]);
+            choice[j]++;
+        }
+        if (placed)
+        {
+            j++;
+            if (j < ncomp)
+            {
+                target[j] = start[kind[j]];
+                choice[j] = 0;
+                dead[j] = 0;
+            }
+        }
+        else
+        {
+            j--;
+            if (j > i)
+            {
+                /* the trail is back to its length after the step of the
+                 * level j, whose subtree failed */
+                if (s->ntrail == mark[j])
+                    dead[j] = 1;
+                undo(s, mark[j]);
+                used[target[j]] = 0;
+                choice[j]++;
+            }
+        }
+    }
+}
+
+/*
+ * Write into g (n ints) the automorphism of the map given by the choices of
+ * the levels i, ..., ncomp - 1 (the identity on the other levels and on the
+ * inactive edges).
+ */
+static void
+leaf(int *g, struct stabiliser_state *s, int i)
+{
+    const int *lab = s->w.lab, *perm = s->perm;
+    int n = s->m.map.n, j, t, k, oa, ob, h;
+
+    for (h = 0; h < n; h++)
+        g[h] = h;
+    for (j = i; j < s->w.ncomp; j++)
+    {
+        t = s->w.kind[j];
+        relabel(s, t, s->w.labels[s->w.loff[t] + s->choice[j]]);
+        oa = s->w.off[j];
+        ob = s->w.off[s->target[j]];
+        for (k = 0; k < s->w.csize[t]; k++)
+            g[lab[oa + k]] = lab[ob + perm[k]];
+    }
+}
+
+#ifdef OMAP_DEBUG
+/*
+ * Check that the generator g is a permutation of the half-edges, sending the
+ * inactive ones to inactive ones, and an automorphism of the decorated map
+ * (see debug_automorphism).
+ */
+static void
+debug_generator(const domap_t m, const int *g)
+{
+    const int *fp = m->map.fp;
+    int n = m->map.n, h;
+    int *buf = malloc(((size_t) 6 * n + 1) * sizeof(int));
+    int *ident = buf, *seen = buf + n, *scratch = buf + 2 * n;
+
+    OMAP_CHECK(buf != NULL);
+    for (h = 0; h < n; h++)
+    {
+        ident[h] = h;
+        seen[h] = 0;
+    }
+    for (h = 0; h < n; h++)
+    {
+        OMAP_CHECK(0 <= g[h] && g[h] < n && !seen[g[h]]);
+        OMAP_CHECK((fp[h] == -1) == (fp[g[h]] == -1));
+        seen[g[h]] = 1;
+    }
+    debug_automorphism(m, g, ident, scratch);
+    free(buf);
+}
+#endif
+
+int
+domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
+                 domap_stabiliser_callback callback, void *arg, int *work)
+{
+    int n = m->map.n, nc = m->nc, ncomp = w->ncomp;
+    int levels = n / 2;
+    struct stabiliser_state s;
+    int *p, *sz, *g;
+    int i, t, b, q, h, x, y, bi, nl, dead, empty, found, ret;
+    const int *start = w->start, *loff = w->loff, *labels = w->labels,
+        *lab = w->lab, *off = w->off;
+
+    s.m = *m;
+    s.w = *w;
+    s.ntrail = 0;
+    s.fw = work;
+    s.bw = s.fw + nc * n;
+    s.trail = s.bw + nc * n;
+    s.used = s.trail + nc * n;
+    s.target = s.used + levels;
+    s.choice = s.target + levels;
+    s.mark = s.choice + levels;
+    s.dead = s.mark + levels;
+    s.rb = s.dead + levels;
+    s.rbinv = s.rb + n;
+    s.queue = s.rbinv + n;
+    s.perm = s.queue + n;
+    s.ident = s.perm + n;
+    p = s.ident + n;
+    sz = p + n;
+    g = sz + n;
+
+    for (i = 0; i < nc * n; i++)
+    {
+        s.fw[i] = -1;
+        s.bw[i] = -1;
+    }
+    for (i = 0; i < ncomp; i++)
+    {
+        s.used[i] = 0;
+        s.dead[i] = 0;
+    }
+    for (h = 0; h < n; h++)
+    {
+        s.ident[h] = h;
+        p[h] = h;
+        sz[h] = 1;
+    }
+
+    for (i = ncomp - 1; i >= 0; i--)
+    {
+        t = w->kind[i];
+        nl = loff[t + 1] - loff[t];
+        bi = lab[off[i]];
+        if (start[t + 1] - start[t] == 1 && nl == 1)
+        {
+            orbits[i] = 1;
+            continue;
+        }
+        /* the levels < i are fixed: their values are mapped to themselves */
+        for (b = 0; b < i; b++)
+        {
+            s.used[b] = 1;
+            step(&s, b, b, s.ident);
+        }
+        dead = 0;
+        for (b = start[t] > i ? start[t] : i; b < start[t + 1]; b++)
+        {
+            for (q = 0; q < nl; q++)
+            {
+                x = lab[off[b] + labels[loff[t] + q]];
+                if (x == bi
+                    || _perm_orbits_find(p, x) == _perm_orbits_find(p, bi))
+                    continue;
+                s.target[i] = b;
+                s.choice[i] = q;
+                s.mark[i] = s.ntrail;
+                s.used[b] = 1;
+                relabel(&s, t, labels[loff[t] + q]);
+                found = 0;
+                if (step(&s, i, b, s.perm))
+                {
+                    /* as in extend: a candidate adding no entry to the maps
+                     * of values is the image of an earlier one adding none
+                     * by an element of H fixing the levels < i, so it is in
+                     * the orbit of b_i exactly when that one is */
+                    empty = s.ntrail == s.mark[i];
+                    if (!(empty && dead))
+                    {
+                        found = extend(&s, i);
+                        if (empty && !found)
+                            dead = 1;
+                    }
+                }
+                if (found)
+                {
+                    leaf(g, &s, i);
+#ifdef OMAP_DEBUG
+                    debug_generator(m, g);
+#endif
+                    if (callback != NULL && (ret = callback(g, arg)) != 0)
+                        return ret;
+                    for (h = 0; h < n; h++)
+                    {
+                        x = _perm_orbits_find(p, h);
+                        y = _perm_orbits_find(p, g[h]);
+                        if (x != y)
+                        {
+                            p[x] = y;
+                            sz[y] += sz[x];
+                        }
+                    }
+                }
+                undo(&s, s.mark[i]);
+                for (h = i; h < ncomp; h++)
+                    s.used[h] = 0;
+            }
+        }
+        undo(&s, 0);
+        for (b = 0; b < i; b++)
+            s.used[b] = 0;
+        orbits[i] = sz[_perm_orbits_find(p, bi)];
+    }
+    return 0;
+}
