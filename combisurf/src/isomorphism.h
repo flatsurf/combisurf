@@ -153,11 +153,9 @@ int iso_key(int n, const int *fp, int nd, const int *data, int nc, const int *cl
  * (it may be NULL otherwise).
  *
  * The multisets of the face degrees and of the vertex degrees are not
- * compared: walking the cycles of the two maps cost about 10 % of the time
- * of the isomorphism of two isomorphic maps (random triangulations of 4092
- * half-edges: 372 against 327 µs per pair), and rejected none of the 193
- * pairs of non-isomorphic triangulations tried (192 pairs of veering
- * triangulations of H(1^12), one pair of 1092 half-edges).
+ * compared: walking the cycles of the two maps is one more pass over each
+ * map, on top of those the search makes anyway, and it rejects few pairs
+ * that the other invariants accept.
  */
 int iso_invariants_differ(int n1, const int *fp1, const int *data1, const int *classes1,
                           int n2, const int *fp2, const int *data2, const int *classes2,

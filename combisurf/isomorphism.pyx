@@ -110,10 +110,9 @@ half-edges tried as roots. The default is ``ROOTS_HALF_EDGE_FEWEST |
 ROOTS_DATA`` (the integer ``10``): decorations narrow the roots tried, and
 on an undecorated map it is :data:`ROOTS_HALF_EDGE_FEWEST`, which tries
 fewer roots: against
-:data:`ROOTS_ALL`, one run each, a GL(2, Z)-orbit exploration of 50
-squares took 1.44 s instead of 2.81 s and the canonical labelling of an
-origami of 1000 squares 307 us instead of 446 us, while a random
-triangulation of 4092 half-edges took 118 us instead of 91.1 us. The
+:data:`ROOTS_ALL`, this pays on maps with many tied roots, at the price of
+the invariants computed to choose the roots, which costs on maps where few
+roots tie anyway. The
 flag :data:`ROOTS_DATA`, combined by ``|`` with one of the four rules
 other than :data:`ROOTS_ALL`, appends the values of ``data`` to the
 invariants, as in :mod:`combisurf.isomorphism_naive`, so that fewer roots

@@ -214,8 +214,8 @@ static inline unsigned long long mix_value(int x)
  * fp: the sum modulo 2^64 of their mixed values, independent of their order.
  * Equal multisets have equal hashes, so different hashes prove different
  * multisets. One pass without a buffer or a branch: comparing the sorted
- * values instead, counted per value or heap sorted, was 3 times slower on the
- * pairs of veering triangulations of H(1^12) (0.9 against 0.3 µs per pair).
+ * values instead, counted per value or heap sorted, needs a buffer and
+ * branches.
  */
 static unsigned long long values_hash(int n, const int *fp, const int *a)
 {
@@ -610,8 +610,8 @@ static int root_classes(int n, const int *fp, iso_root_rule rule, int nd, const 
  * inactive half-edges); store the smallest and the largest length into *lo
  * and *hi (fp has an active half-edge). The vertex permutation is not
  * stored: x -> fp[t], t the twin of x (x itself on a folded edge), is its
- * inverse, whose cycles are the same; storing it first was 6 % slower on a
- * random triangulation of 4092 half-edges. Each cycle is walked once, its
+ * inverse, whose cycles are the same, computed on the fly: storing it would
+ * write n more ints. Each cycle is walked once, its
  * half-edges kept in stack (n ints) for the writes.
  */
 static inline void cycle_degrees(int n, const int *fp, int vertex, int *id, int *deg, int *stack,
@@ -644,9 +644,8 @@ static inline void cycle_degrees(int n, const int *fp, int vertex, int *id, int 
 /*
  * Multiply *prod by range and return whether the product is at most bound.
  * With *prod at most bound < 2^31 and range at most 2^32, the product fits
- * in long long. A test by division, range > bound / *prod, cost 4 % on the
- * maps of 30 half-edges of the core automaton of H(4) (1.12 against
- * 1.08 µs per map).
+ * in long long. A test by division, range > bound / *prod, costs an integer
+ * division where a multiplication in long long suffices.
  */
 static inline int radix_fits(long long *prod, long long range, long long bound)
 {
@@ -821,9 +820,8 @@ static void debug_packed_class(int n, const int *fp, iso_root_rule rule, int nd,
  * at the end of the walk. A rejected root has thus given about twice
  * the labels needed to make the differing entry final, plus those of the
  * half-edges still waiting in the queue, and a tied root runs O(log n) comparison
- * passes. On regular maps (S_5 to PSL(2, 17), 120 to 2448 half-edges),
- * where every root ties, comparing after every face was 11 to 32 % slower
- * than walking and keying every root in full, and this step 5 to 12 %.
+ * passes. The doubling step avoids one comparison pass per face on
+ * maps where every root ties.
  *
  * At the first entry larger than the one of best, the walk stops and 1 is
  * returned; at the first entry smaller, the comparison stops, the walk
@@ -1140,8 +1138,7 @@ static inline void canonical_root(struct canonical_state *s, int root)
                 orbit_union(s->parent, h, rinv[s->rbest[h]]);
     }
     /* past n / 2 labels, a sequential clear (all bytes 0xff, the int
-     * -1) is cheaper than the scattered writes of reset_local: 6 to
-     * 13 % of the time of a regular map, where every root walks all */
+     * -1) is cheaper than the scattered writes of reset_local */
     if (2 * k >= n)
         memset(r, -1, (size_t) n * sizeof(int));
     else
