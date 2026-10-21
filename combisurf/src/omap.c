@@ -14,8 +14,8 @@
  * whose roots all tie (a regular map) costs O(n log2 |Aut|) instead of
  * O(n^2) for n half-edges.
  *
- * On any map (domap_search), the search goes component after component. Its
- * memory does not grow with the depth beyond a few ints per level: the
+ * On any map (domap_iso_search), the search goes component after component.
+ * Its memory does not grow with the depth beyond a few ints per level: the
  * state of a level is its root, its first label, the position and length
  * of its block in the current sequence and the counts of class values
  * before it. A level is undone by walking the labels it gave, and its next
@@ -23,31 +23,32 @@
  * a block equal to the one of the level, which is still in the sequence.
  * With classes and without all_leaves, a tied root found so is skipped when
  * an earlier tied root of the level extends the numbering of the class
- * values alike (see domap_search in omap.h); the earlier roots are found
- * again by the same scan, from the start of the class, so that this needs
- * no memory either.
+ * values alike (see domap_iso_search in omap.h); the earlier roots are
+ * found again by the same scan, from the start of the class, so that this
+ * needs no memory either.
  *
- * Under a rule other than DOMAP_ROOTS_ALL, domap_canonical needs the chosen
- * class only, in increasing order. packed_class packs the entries of the
- * invariant of each active half-edge, shifted by their minimum, into one
- * int in mixed radix over their ranges, whose order is the lexicographic
- * order of the invariants; when the product of the ranges is at most 2 n,
- * it counts the half-edges per packed value, chooses the class from these
- * counts and collects its half-edges by one scan, in O(n (1 + nd)) with
- * one cycle walk for the vertices and one for the faces. Otherwise, and
- * always in domap_search, which needs every class, the classes are computed
- * by root_classes: a radix sort of the active half-edges by invariant,
- * O(n) per entry. Under DOMAP_ROOTS_DATA, whose invariants end with data
- * values, arbitrary ints, root_classes first replaces each data array by
- * order-preserving numbers of 0, ..., n - 1 (O(n) when its values span
- * fewer than n values, O(n log n) otherwise), so that every entry of the
- * radix sort lies in 0, ..., n - 1. The flag is masked wherever the base
- * rule is tested. domap_canonical then tries the half-edges of the chosen
- * class only. domap_search keeps the number of half-edges not
- * labelled yet in each class, updated as components are labelled and
- * undone, and chooses the class at each step from these numbers (O(number
- * of classes)); its scans run over the half-edges of that class. Under
- * DOMAP_ROOTS_ALL the loops over the roots are those without classes.
+ * Under a rule other than DOMAP_ISO_ROOTS_ALL, domap_canonical needs the
+ * chosen class only, in increasing order. packed_class packs the entries of
+ * the invariant of each active half-edge, shifted by their minimum, into
+ * one int in mixed radix over their ranges, whose order is the
+ * lexicographic order of the invariants; when the product of the ranges is
+ * at most 2 n, it counts the half-edges per packed value, chooses the class
+ * from these counts and collects its half-edges by one scan, in
+ * O(n (1 + nd)) with one cycle walk for the vertices and one for the faces.
+ * Otherwise, and always in domap_iso_search, which needs every class, the
+ * classes are computed by root_classes: a radix sort of the active
+ * half-edges by invariant, O(n) per entry. Under DOMAP_ISO_ROOTS_DATA,
+ * whose invariants end with data values, arbitrary ints, root_classes first
+ * replaces each data array by order-preserving numbers of 0, ..., n - 1
+ * (O(n) when its values span fewer than n values, O(n log n) otherwise), so
+ * that every entry of the radix sort lies in 0, ..., n - 1. The flag is
+ * masked wherever the base rule is tested. domap_canonical then tries the
+ * half-edges of the chosen class only. domap_iso_search keeps the number of
+ * half-edges not labelled yet in each class, updated as components are
+ * labelled and undone, and chooses the class at each step from these
+ * numbers (O(number of classes)); its scans run over the half-edges of that
+ * class. Under DOMAP_ISO_ROOTS_ALL the loops over the roots are those
+ * without classes.
  *
  * With OMAP_DEBUG defined, the relabellings and keys are checked as they are
  * computed, and a failed check aborts with a message.
@@ -175,8 +176,8 @@ _omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root,
 }
 
 int
-domap_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
-          int *names)
+domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
+              int *names)
 {
     const int *fp = m->map.fp;
     int n = m->map.n, nd = m->nd, nc = m->nc;
@@ -358,11 +359,12 @@ invariant_entry(const int *fp, const int *vid, const int *vdeg,
 }
 
 /*
- * The entries of the invariants of a rule other than DOMAP_ROOTS_ALL, each in
- * 0, ..., n - 1: the base entries of invariant_entry, then, under
- * DOMAP_ROOTS_DATA, the order-preserving numbers of data_ranks for the data
- * values at h (nd entries), and under the edge rules those at the twin t (nd
- * more). rank holds the nd arrays of numbers, nd being 0 without the flag.
+ * The entries of the invariants of a rule other than DOMAP_ISO_ROOTS_ALL,
+ * each in 0, ..., n - 1: the base entries of invariant_entry, then, under
+ * DOMAP_ISO_ROOTS_DATA, the order-preserving numbers of data_ranks for the
+ * data values at h (nd entries), and under the edge rules those at the twin
+ * t (nd more). rank holds the nd arrays of numbers, nd being 0 without the
+ * flag.
  */
 struct invariants
 {
@@ -526,40 +528,41 @@ debug_classes(const struct invariants *iv, const int *data,
 #endif
 
 /*
- * The classes of the rule (not DOMAP_ROOTS_ALL) on the active half-edges of
- * fp, from the invariants of the whole map. Write into order the active
- * half-edges sorted by invariant, the half-edges of equal invariant in
- * increasing order, into cls (n ints) the class of each half-edge, -1 on the
- * inactive ones, the classes being numbered 0, 1, ... in increasing order
- * of invariant, and into start the start of each class in order, followed
- * by the number of active half-edges (the class c is order[start[c]],
- * ..., order[start[c + 1] - 1]). order holds n ints, start n + 1 and tmp
- * 4 n. Under DOMAP_ROOTS_DATA, the nd data arrays (nd n ints) are read and
- * ranks (nd n ints) receives their numbers of data_ranks. Return the number
- * of classes.
+ * The classes of the rule (not DOMAP_ISO_ROOTS_ALL) on the active
+ * half-edges of fp, from the invariants of the whole map. Write into order
+ * the active half-edges sorted by invariant, the half-edges of equal
+ * invariant in increasing order, into cls (n ints) the class of each
+ * half-edge, -1 on the inactive ones, the classes being numbered 0, 1, ...
+ * in increasing order of invariant, and into start the start of each class
+ * in order, followed by the number of active half-edges (the class c is
+ * order[start[c]], ..., order[start[c + 1] - 1]). order holds n ints, start
+ * n + 1 and tmp 4 n. Under DOMAP_ISO_ROOTS_DATA, the nd data arrays (nd n
+ * ints) are read and ranks (nd n ints) receives their numbers of
+ * data_ranks. Return the number of classes.
  *
  * The sort is a least significant digit radix sort: one stable counting
  * sort per entry of the invariant (2 or 6 of them, plus nd or 2 nd data
- * entries under DOMAP_ROOTS_DATA, each in 0, ..., n - 1), from the last to
- * the first, O(n) each.
+ * entries under DOMAP_ISO_ROOTS_DATA, each in 0, ..., n - 1), from the last
+ * to the first, O(n) each.
  */
 static int
 root_classes(int *order, int *cls, int *start, int *ranks, const int *fp,
-             int n, const int *data, int nd, domap_root_rule rule, int *tmp)
+             int n, const int *data, int nd, domap_iso_root_rule rule,
+             int *tmp)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *aux = tmp + 2 * n, *count = tmp + 3 * n;
     /* the indices of the vertices and of the faces, until the classes are
      * written over them */
     int *vid = cls, *fid = start;
-    int base_rule = rule & ~DOMAP_ROOTS_DATA;
-    int edge = base_rule == DOMAP_ROOTS_EDGE_MAX
-        || base_rule == DOMAP_ROOTS_EDGE_FEWEST;
+    int base_rule = rule & ~DOMAP_ISO_ROOTS_DATA;
+    int edge = base_rule == DOMAP_ISO_ROOTS_EDGE_MAX
+        || base_rule == DOMAP_ISO_ROOTS_EDGE_FEWEST;
     struct invariants iv;
     int entries;
     int h, t, i, j, v, sum, na = 0, m;
     int *src = order, *dst = aux, *swap;
 
-    if (!(rule & DOMAP_ROOTS_DATA))
+    if (!(rule & DOMAP_ISO_ROOTS_DATA))
         nd = 0;
     iv.fp = fp;
     iv.vid = vid;
@@ -713,10 +716,10 @@ radix_fits(long long *prod, long long range, long long bound)
     return *prod <= bound;
 }
 
-static int choose_class(const int *cnt, int m, domap_root_rule rule);
+static int choose_class(const int *cnt, int m, domap_iso_root_rule rule);
 
 /*
- * The class of the rule (not DOMAP_ROOTS_ALL) chosen by choose_class among
+ * The class of the rule (not DOMAP_ISO_ROOTS_ALL) chosen by choose_class among
  * the classes of root_classes, without sorting: every entry of the
  * invariant is shifted by its minimum over the active half-edges (the
  * degrees, the data values; loop and monogon are 0 or 1) and the entries
@@ -740,20 +743,20 @@ static int choose_class(const int *cnt, int m, domap_root_rule rule);
  */
 static int
 packed_class(int *out, const int *fp, int n, const int *data, int nd,
-             domap_root_rule rule, long long bound, int *tmp, int *pv,
+             domap_iso_root_rule rule, long long bound, int *tmp, int *pv,
              int *aux, int *count)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *vid = tmp + 2 * n, *fid = tmp + 3 * n;
     int *dmin = aux, *drange = aux + nd;
-    int base_rule = rule & ~DOMAP_ROOTS_DATA;
-    int edge = base_rule == DOMAP_ROOTS_EDGE_MAX
-        || base_rule == DOMAP_ROOTS_EDGE_FEWEST;
+    int base_rule = rule & ~DOMAP_ISO_ROOTS_DATA;
+    int edge = base_rule == DOMAP_ISO_ROOTS_EDGE_MAX
+        || base_rule == DOMAP_ISO_ROOTS_EDGE_FEWEST;
     int h, t, j, c, v, k, vmin = 0, vmax = 0, fmin = 0,
         fmax = 0, lo, hi, rv, rf;
     long long prod = 1;
     const int *a;
 
-    if (!(rule & DOMAP_ROOTS_DATA))
+    if (!(rule & DOMAP_ISO_ROOTS_DATA))
         nd = 0;
     if (2 * (long) nd > (long) n + 1)
         return 0;
@@ -833,16 +836,16 @@ packed_class(int *out, const int *fp, int n, const int *data, int nd,
  * number of half-edges of the class c that may be roots (at least one class
  * has one): under *_MAX the largest class of positive count, under *_FEWEST
  * the class of smallest positive count, ties broken by the largest class.
- * The flag DOMAP_ROOTS_DATA does not change the choice.
+ * The flag DOMAP_ISO_ROOTS_DATA does not change the choice.
  */
 static int
-choose_class(const int *cnt, int m, domap_root_rule rule)
+choose_class(const int *cnt, int m, domap_iso_root_rule rule)
 {
     int c, best = -1;
-    int base_rule = rule & ~DOMAP_ROOTS_DATA;
+    int base_rule = rule & ~DOMAP_ISO_ROOTS_DATA;
 
-    if (base_rule == DOMAP_ROOTS_HALF_EDGE_MAX
-        || base_rule == DOMAP_ROOTS_EDGE_MAX)
+    if (base_rule == DOMAP_ISO_ROOTS_HALF_EDGE_MAX
+        || base_rule == DOMAP_ISO_ROOTS_EDGE_MAX)
     {
         for (c = m - 1; cnt[c] == 0; c--)
             ;
@@ -862,7 +865,7 @@ choose_class(const int *cnt, int m, domap_root_rule rule)
  */
 static void
 debug_packed_class(const int *out, int len, const int *fp, int n,
-                   const int *data, int nd, domap_root_rule rule)
+                   const int *data, int nd, domap_iso_root_rule rule)
 {
     int *buf = malloc(((size_t) 8 * n + 1 + (size_t) nd * n) * sizeof(int));
     int *order = buf, *cls = buf + n, *start = buf + 2 * n,
@@ -1046,9 +1049,9 @@ static void reset_local(int *lr, const int *lrinv, int k);
 #ifdef OMAP_DEBUG
 /*
  * Check the outcome cmp of the root against the key computed in full by
- * omap_relabelling_from and domap_key (len ints): it compares with best as
+ * omap_relabelling_from and domap_iso_key (len ints): it compares with best as
  * cmp says, and equals cur when cmp < 0. scratch holds 3 n +
- * DOMAP_KEY_SIZE(n, nd, nc) ints.
+ * DOMAP_ISO_KEY_SIZE(n, nd, nc) ints.
  */
 static void
 debug_root(const domap_t m, const int *best, const int *cur, int len,
@@ -1060,7 +1063,7 @@ debug_root(const domap_t m, const int *best, const int *cur, int len,
     int k2, len2, i, ref = 0;
 
     k2 = _omap_relabelling_from(r2, rinv2, m->map.fp, n, root, queue2);
-    len2 = domap_key(key2, m, r2, rinv2, k2, names);
+    len2 = domap_iso_key(key2, m, r2, rinv2, k2, names);
     OMAP_CHECK(len2 == len);
     for (i = 0; i < len; i++)
     {
@@ -1199,7 +1202,7 @@ canonical_root(struct canonical_state *s, int root)
     cmp = walk_compare(r, rinv, &k, fp, s->best, root, s->queue);
     if (cmp < 0)
     {
-        domap_key(s->cur, &s->m, r, rinv, k, s->names);
+        domap_iso_key(s->cur, &s->m, r, rinv, k, s->names);
     }
     else if (cmp == 0)
     {
@@ -1256,7 +1259,7 @@ canonical_root(struct canonical_state *s, int root)
 
 int
 domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
-                const domap_t m, domap_root_rule rule, int *work)
+                const domap_t m, domap_iso_root_rule rule, int *work)
 {
     const int *fp = m->map.fp;
     int n = m->map.n, nd = m->nd, nc = m->nc;
@@ -1266,13 +1269,13 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
     int *queue = work + 2 * n;
     int *names = work + 3 * n;
     int *cur = work + 4 * n;
-    int *order = cur + DOMAP_KEY_SIZE(n, nd, nc);
+    int *order = cur + DOMAP_ISO_KEY_SIZE(n, nd, nc);
     int *cls = order + n;
     int *start = cls + n;
     int *rbest = start + n + 1;
     int *parent = rbest + n;
     struct canonical_state s;
-    int all = (rule & ~DOMAP_ROOTS_DATA) == DOMAP_ROOTS_ALL;
+    int all = (rule & ~DOMAP_ISO_ROOTS_DATA) == DOMAP_ISO_ROOTS_ALL;
     int ne, first, root, k, i, c, ncls, rep, count, lo = 0, hi = 0;
 
     ne = _omap_num_edges(fp, n);
@@ -1326,7 +1329,7 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
      * root, so only this walk can fail */
     k = _omap_relabelling_from(r, rinv, fp, n, first, queue);
     if (k != 2 * ne)
-        return DOMAP_DISCONNECTED;
+        return DOMAP_ISO_DISCONNECTED;
     s.m = *m;
     s.ne = ne;
     s.r = r;
@@ -1339,18 +1342,19 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
     s.parent = parent;
     s.best_root = first;
     s.merged = 0;
-    s.len = domap_key(s.best, m, r, rinv, k, names);
+    s.len = domap_iso_key(s.best, m, r, rinv, k, names);
     memcpy(rbest, r, (size_t) n * sizeof(int));
     reset_local(r, rinv, k);
 #ifdef OMAP_DEBUG
     s.scratch = malloc(((size_t) 3 * n
-                        + (size_t) DOMAP_KEY_SIZE(n, nd, nc)) * sizeof(int));
+                        + (size_t) DOMAP_ISO_KEY_SIZE(n, nd, nc))
+                       * sizeof(int));
     OMAP_CHECK(s.scratch != NULL);
 #endif
 
     /* the other roots: r is -1 on entry of each, and only the labels a root
      * gave are reset after it. The loop is chosen once per call, so that
-     * DOMAP_ROOTS_ALL tests no class per root. */
+     * DOMAP_ISO_ROOTS_ALL tests no class per root. */
     if (all)
     {
         for (root = first + 1; root < n; root++)
@@ -1696,14 +1700,15 @@ same_extension(const domap_t m, const int *block, int len, const int *next,
 
 /*
  * The levels of the search store the position of their root in the scan of
- * the roots: the half-edge itself under DOMAP_ROOTS_ALL, its index in order
- * (see root_classes) under the other rules. The scans are written twice, once
- * per kind of position, so that DOMAP_ROOTS_ALL tests no class per root.
+ * the roots: the half-edge itself under DOMAP_ISO_ROOTS_ALL, its index in
+ * order (see root_classes) under the other rules. The scans are written
+ * twice, once per kind of position, so that DOMAP_ISO_ROOTS_ALL tests no
+ * class per root.
  */
 int
-domap_search(int *sequence, int *length, int *relabelling, const domap_t m,
-             domap_root_rule rule, int all_leaves,
-             domap_leaf_callback callback, void *arg, int *work)
+domap_iso_search(int *sequence, int *length, int *relabelling,
+                 const domap_t m, domap_iso_root_rule rule, int all_leaves,
+                 domap_iso_leaf_callback callback, void *arg, int *work)
 {
     const int *fp = m->map.fp;
     int n = m->map.n, nd = m->nd, nc = m->nc;
@@ -1723,14 +1728,14 @@ domap_search(int *sequence, int *length, int *relabelling, const domap_t m,
     int *lvl_next = lvl_best + levels;
     int *next = lvl_next + (long) nc * levels;
     int *seq = next + nc;
-    int *cand = seq + DOMAP_SEQUENCE_SIZE(n, nd, nc);
-    int *order = cand + DOMAP_KEY_SIZE(n, nd, nc) + 1;
+    int *cand = seq + DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc);
+    int *order = cand + DOMAP_ISO_KEY_SIZE(n, nd, nc) + 1;
     int *cls = order + n;
     int *start = cls + n;
     int *cnt = start + n + 1;
     int follow_ties = nc > 0 || all_leaves;
     int cut_ties = nc > 0 && !all_leaves;
-    int all = (rule & ~DOMAP_ROOTS_DATA) == DOMAP_ROOTS_ALL;
+    int all = (rule & ~DOMAP_ISO_ROOTS_DATA) == DOMAP_ISO_ROOTS_ALL;
     int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, ncls = 0, target, t;
     int root, best_root, blen, len, k, cmp, ret, i, j, h, c, found;
 

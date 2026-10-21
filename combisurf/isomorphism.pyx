@@ -589,7 +589,7 @@ cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
         off = (nd + j) * n
         # renumbered by first appearance in half-edge order, which leaves
         # the key unchanged (it renumbers them again in the order of the
-        # new labels) and puts the values in range(n) as domap_key needs
+        # new labels) and puts the values in range(n) as domap_iso_key needs
         names = {}
         for h in range(n):
             if f[h] == -1:
@@ -621,15 +621,15 @@ cdef int _run(const domap_struct *m, int rule, array.array key, int *relabelling
     r"""
     Run ``domap_canonical`` on ``m`` under the rule ``rule`` (checked by
     ``_check_root_rule``): write the minimal key into ``key`` (of
-    ``DOMAP_KEY_SIZE`` entries) and return its length, or ``DOMAP_DISCONNECTED``.
+    ``DOMAP_ISO_KEY_SIZE`` entries) and return its length, or ``DOMAP_ISO_DISCONNECTED``.
     """
-    cdef array.array work = _new(DOMAP_WORK_SIZE(m.map.n, m.nd, m.nc))
+    cdef array.array work = _new(DOMAP_CANONICAL_WORK_SIZE(m.map.n, m.nd, m.nc))
     cdef int length
     # an interrupt leaves domap_canonical by a longjmp back to sig_on: every
     # buffer it writes is owned here or by the caller, and it allocates none
     sig_on()
     length = domap_canonical(key.data.as_ints, relabelling, roots, nroots, m,
-                           <domap_root_rule> rule, work.data.as_ints)
+                           <domap_iso_root_rule> rule, work.data.as_ints)
     sig_off()
     return length
 
@@ -651,22 +651,22 @@ cdef array.array _complete(array.array r, int n, int ne):
 
 
 cdef int _search(const domap_struct *m, int rule, bint all_leaves, array.array sequence, int *relabelling,
-                 domap_leaf_callback callback, void *arg) except -1:
+                 domap_iso_leaf_callback callback, void *arg) except -1:
     r"""
-    Run ``domap_search`` on ``m`` under the rule ``rule``: write the minimal
-    sequence of blocks into ``sequence`` (of ``DOMAP_SEQUENCE_SIZE`` entries)
+    Run ``domap_iso_search`` on ``m`` under the rule ``rule``: write the minimal
+    sequence of blocks into ``sequence`` (of ``DOMAP_ISO_SEQUENCE_SIZE`` entries)
     and return its length. A Python exception raised by ``callback``
     propagates.
     """
-    cdef array.array work = _new(DOMAP_SEARCH_WORK_SIZE(m.map.n, m.nd, m.nc))
+    cdef array.array work = _new(DOMAP_ISO_SEARCH_WORK_SIZE(m.map.n, m.nd, m.nc))
     cdef int length
-    # as in _run, an interrupt leaves domap_search by a longjmp back to sig_on,
+    # as in _run, an interrupt leaves domap_iso_search by a longjmp back to sig_on,
     # which also resets the count of sig_on; an exception of the callback
-    # returns from domap_search normally, hence the sig_off in the finally
+    # returns from domap_iso_search normally, hence the sig_off in the finally
     sig_on()
     try:
-        domap_search(sequence.data.as_ints, &length, relabelling, m, <domap_root_rule> rule,
-                   all_leaves, callback, arg, work.data.as_ints)
+        domap_iso_search(sequence.data.as_ints, &length, relabelling, m, <domap_iso_root_rule> rule,
+                       all_leaves, callback, arg, work.data.as_ints)
     finally:
         sig_off()
     return length
@@ -674,7 +674,7 @@ cdef int _search(const domap_struct *m, int rule, bint all_leaves, array.array s
 
 cdef int _key_of(const domap_struct *m, array.array r, array.array key) except -1:
     r"""
-    Write into ``key`` (of ``DOMAP_KEY_SIZE`` entries) the key of the
+    Write into ``key`` (of ``DOMAP_ISO_KEY_SIZE`` entries) the key of the
     relabelling ``r`` of ``m`` by the ``2*ne`` labels of its active edges
     (``-1`` on the half-edges of the inactive edges) and return its length.
     """
@@ -690,14 +690,14 @@ cdef int _key_of(const domap_struct *m, array.array r, array.array key) except -
     for h in range(n):
         if f[h] != -1:
             rinv.data.as_ints[a[h]] = h
-    return domap_key(key.data.as_ints, m, a, rinv.data.as_ints, k, names.data.as_ints)
+    return domap_iso_key(key.data.as_ints, m, a, rinv.data.as_ints, k, names.data.as_ints)
 
 
-# State of the leaf callback of ``domap_search`` for ``automorphisms``: ``ra``
+# State of the leaf callback of ``domap_iso_search`` for ``automorphisms``: ``ra``
 # is the first leaf reaching the best sequence so far, ``result`` the list of
 # the automorphisms ``g[h] = rb^{-1}[ra[h]]`` over the leaves ``rb`` reaching
 # it, and ``rbinv`` a work array of ``n`` entries. ``ra``, ``rbinv`` and the
-# list are owned by the caller of ``domap_search``, which outlives the search;
+# list are owned by the caller of ``domap_iso_search``, which outlives the search;
 # ``result`` is borrowed and the list is emptied in place, never rebound.
 cdef struct _leaf_state:
     int n
@@ -711,7 +711,7 @@ ctypedef int (*_unchecked_leaf_callback)(const int *leaf, int first, void *arg) 
 
 cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
     r"""
-    Leaf callback of ``domap_search`` for :func:`automorphisms`: append the
+    Leaf callback of ``domap_iso_search`` for :func:`automorphisms`: append the
     automorphism of the leaf to the list, restarted at a smaller leaf.
 
     The callback runs inside the ``sig_on`` of ``_search``, where an
@@ -725,7 +725,7 @@ cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
     leaves reaching the best sequence, which can be the whole search. The
     call goes through a pointer without exception check, so that the
     ``sig_unblock`` also runs when ``_collect_automorphism`` raises; its
-    ``-1``, with the exception set, is then returned to ``domap_search``.
+    ``-1``, with the exception set, is then returned to ``domap_iso_search``.
     """
     cdef int status
     sig_block()
@@ -888,10 +888,10 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
     cdef int rule = _check_root_rule(root_rule)
     cdef domap_t m
     cdef array.array _buf = _prepare(m, fp, data, classes)
-    cdef array.array key = _new(DOMAP_KEY_SIZE(m.map.n, m.nd, m.nc))
+    cdef array.array key = _new(DOMAP_ISO_KEY_SIZE(m.map.n, m.nd, m.nc))
     cdef array.array r = _new(m.map.n)
-    if _run(m, rule, key, r.data.as_ints, NULL, NULL) == DOMAP_DISCONNECTED:
-        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+    if _run(m, rule, key, r.data.as_ints, NULL, NULL) == DOMAP_ISO_DISCONNECTED:
+        _search(m, rule, False, _new(DOMAP_ISO_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
     return _complete(r, m.map.n, omap_num_edges(&m.map))
 
 
@@ -998,10 +998,10 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | R
     cdef int rule = _check_root_rule(root_rule)
     cdef domap_t m
     cdef array.array _buf = _prepare(m, fp, data, classes)
-    cdef array.array key = _new(DOMAP_KEY_SIZE(m.map.n, m.nd, m.nc))
+    cdef array.array key = _new(DOMAP_ISO_KEY_SIZE(m.map.n, m.nd, m.nc))
     cdef array.array r = _new(m.map.n)
-    if _run(m, rule, key, r.data.as_ints, NULL, NULL) == DOMAP_DISCONNECTED:
-        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+    if _run(m, rule, key, r.data.as_ints, NULL, NULL) == DOMAP_ISO_DISCONNECTED:
+        _search(m, rule, False, _new(DOMAP_ISO_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
         _key_of(m, r, key)
     return _form(m, key, r, data)
 
@@ -1034,7 +1034,7 @@ cdef array.array _automorphism_from(const domap_struct *m, array.array ra, int r
 cdef list _leaf_automorphisms(const domap_struct *m, int rule, array.array ra):
     r"""
     Return the list of the automorphisms of the disconnected map ``m``, from
-    the leaves of ``domap_search`` under the rule ``rule``, in their order;
+    the leaves of ``domap_iso_search`` under the rule ``rule``, in their order;
     ``ra`` is a buffer of ``m.map.n`` entries.
     """
     cdef _leaf_state s
@@ -1044,7 +1044,7 @@ cdef list _leaf_automorphisms(const domap_struct *m, int rule, array.array ra):
     s.ra = ra.data.as_ints
     s.rbinv = rbinv.data.as_ints
     s.result = <PyObject *> result
-    _search(m, rule, True, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), NULL, _automorphism_leaf,
+    _search(m, rule, True, _new(DOMAP_ISO_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), NULL, _automorphism_leaf,
             &s)
     return result
 
@@ -1175,11 +1175,11 @@ cdef list _wreath(const domap_struct *m, bint lift, bint labels=False):
         ld = tuple([array.array('i', [dec[j * n + halves_c.data.as_ints[i]] for i in range(size)])
                     for j in range(m.nd)])
         _bc = _convert(mc, lf, ld, ())
-        key = _new(DOMAP_KEY_SIZE(size, m.nd, 0))
+        key = _new(DOMAP_ISO_KEY_SIZE(size, m.nd, 0))
         ra = _new(size)
         roots = _new(size)
         length = _run(mc, _ROOTS_ALL, key, ra.data.as_ints, roots.data.as_ints, &cnt)
-        if length == DOMAP_DISCONNECTED:
+        if length == DOMAP_ISO_DISCONNECTED:
             raise RuntimeError("a component of a map is not connected")
         kb = (<char *> key.data.as_ints)[:length * sizeof(int)]
         if kb in position:
@@ -1722,11 +1722,11 @@ def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | RO
     cdef array.array _buf = _prepare(m, fp, data, classes)
     cdef int n = m.map.n
     cdef int count, j
-    cdef array.array key = _new(DOMAP_KEY_SIZE(n, m.nd, m.nc))
+    cdef array.array key = _new(DOMAP_ISO_KEY_SIZE(n, m.nd, m.nc))
     cdef array.array ra = _new(n)
     cdef array.array roots = _new(n)
     cdef array.array rb, rbinv, queue
-    if _run(m, rule, key, ra.data.as_ints, roots.data.as_ints, &count) == DOMAP_DISCONNECTED:
+    if _run(m, rule, key, ra.data.as_ints, roots.data.as_ints, &count) == DOMAP_ISO_DISCONNECTED:
         return _leaf_automorphisms(m, rule, ra)
     if count == 0:
         return [array.array('i', range(n))]
@@ -1875,10 +1875,10 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
     cdef array.array buf = _prepare(m, fp, data, classes)
     cdef int n = m.map.n
     cdef int count
-    cdef array.array key = _new(DOMAP_KEY_SIZE(n, m.nd, m.nc))
+    cdef array.array key = _new(DOMAP_ISO_KEY_SIZE(n, m.nd, m.nc))
     cdef array.array ra = _new(n)
     cdef array.array roots = _new(n)
-    if _run(m, rule, key, ra.data.as_ints, roots.data.as_ints, &count) != DOMAP_DISCONNECTED:
+    if _run(m, rule, key, ra.data.as_ints, roots.data.as_ints, &count) != DOMAP_ISO_DISCONNECTED:
         return _connected_generators(m, ra, roots, count)
     if m.nc == 0:
         return _wreath_generators(m)
@@ -1986,18 +1986,18 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
         work = _new(DOMAP_INVARIANTS_WORK_SIZE(n1 if n1 > n2 else n2))
     if domap_invariants_differ(m1, m2, NULL if work is None else work.data.as_ints):
         return None
-    key1 = _new(DOMAP_KEY_SIZE(n1, m1.nd, m1.nc))
-    key2 = _new(DOMAP_KEY_SIZE(n2, m2.nd, m2.nc))
+    key1 = _new(DOMAP_ISO_KEY_SIZE(n1, m1.nd, m1.nc))
+    key2 = _new(DOMAP_ISO_KEY_SIZE(n2, m2.nd, m2.nc))
     ra = _new(n1)
     rb = _new(n2)
     len1 = _run(m1, rule, key1, ra.data.as_ints, NULL, NULL)
     len2 = _run(m2, rule, key2, rb.data.as_ints, NULL, NULL)
-    if len1 == DOMAP_DISCONNECTED or len2 == DOMAP_DISCONNECTED:
+    if len1 == DOMAP_ISO_DISCONNECTED or len2 == DOMAP_ISO_DISCONNECTED:
         # a connected map has one block, a disconnected one several
         if len1 != len2:
             return None
-        seq1 = _new(DOMAP_SEQUENCE_SIZE(n1, m1.nd, m1.nc))
-        seq2 = _new(DOMAP_SEQUENCE_SIZE(n2, m2.nd, m2.nc))
+        seq1 = _new(DOMAP_ISO_SEQUENCE_SIZE(n1, m1.nd, m1.nc))
+        seq2 = _new(DOMAP_ISO_SEQUENCE_SIZE(n2, m2.nd, m2.nc))
         len1 = _search(m1, rule, False, seq1, ra.data.as_ints, NULL, NULL)
         len2 = _search(m2, rule, False, seq2, rb.data.as_ints, NULL, NULL)
         if (len1 != len2
@@ -2201,13 +2201,13 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     cdef int rule = _check_root_rule(root_rule)
     cdef domap_t m
     cdef array.array buf = _prepare(m, fp, data, classes)
-    cdef array.array key = _new(DOMAP_KEY_SIZE(m.map.n, m.nd, m.nc))
+    cdef array.array key = _new(DOMAP_ISO_KEY_SIZE(m.map.n, m.nd, m.nc))
     cdef array.array r = _new(m.map.n)
     cdef int count, length
     order = 0
     length = _run(m, rule, key, r.data.as_ints, NULL, &count)
-    if length == DOMAP_DISCONNECTED:
-        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+    if length == DOMAP_ISO_DISCONNECTED:
+        _search(m, rule, False, _new(DOMAP_ISO_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
         if automorphism_count:
             order = _stabiliser(m, buf)[1] if m.nc else _wreath_order(m)
         length = _key_of(m, r, key)

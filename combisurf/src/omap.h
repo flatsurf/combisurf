@@ -35,26 +35,27 @@
  * each class array read in the same order and renumbered 0, 1, 2, ... by
  * first appearance. Keys are compared as sequences of signed ints.
  *
- * The roots tried by domap_canonical and domap_search are restricted by a rule
- * (domap_root_rule), as the keyword root_rule of isomorphism_naive. For an
- * active half-edge h, vdeg(h) and fdeg(h) are the degrees of its vertex and
- * of its face, and its twin t is h ^ 1, or h itself on a folded edge; the
- * vertex permutation is vp[fp[t]] = h. A rule gives each active half-edge
- * an invariant: the pair (vdeg(h), fdeg(h)) under the half-edge rules, the
- * tuple (vdeg(h), fdeg(h), vdeg(t), fdeg(t), loop, monogon) under the edge
- * rules, loop (monogon) being 1 when h and t are at the same vertex (in the
- * same face) and 0 otherwise. The half-edges of equal invariant form a
- * class, and only the half-edges of one class are tried: under *_MAX the
- * class of the largest invariant (tuples compared lexicographically), under
- * *_FEWEST the class with the fewest half-edges, ties broken by the largest
- * invariant. The invariants are computed once per call on the whole map.
- * The base rules read fp alone. The flag DOMAP_ROOTS_DATA, combined with a
- * rule other than DOMAP_ROOTS_ALL by |, appends to the invariant the values
- * of the data arrays (signed ints, never the class arrays, whose values are
- * renumbered and so not invariant): data_0[h], ..., data_{nd-1}[h] under the
- * half-edge rules, followed by data_0[t], ..., data_{nd-1}[t] under the edge
- * rules; with nd = 0 it changes nothing. Under DOMAP_ROOTS_ALL every active
- * half-edge is a root.
+ * The roots tried by domap_canonical and domap_iso_search are restricted by
+ * a rule (domap_iso_root_rule), as the keyword root_rule of
+ * isomorphism_naive. For an active half-edge h, vdeg(h) and fdeg(h) are the
+ * degrees of its vertex and of its face, and its twin t is h ^ 1, or h
+ * itself on a folded edge; the vertex permutation is vp[fp[t]] = h. A rule
+ * gives each active half-edge an invariant: the pair (vdeg(h), fdeg(h))
+ * under the half-edge rules, the tuple (vdeg(h), fdeg(h), vdeg(t), fdeg(t),
+ * loop, monogon) under the edge rules, loop (monogon) being 1 when h and t
+ * are at the same vertex (in the same face) and 0 otherwise. The half-edges
+ * of equal invariant form a class, and only the half-edges of one class are
+ * tried: under *_MAX the class of the largest invariant (tuples compared
+ * lexicographically), under *_FEWEST the class with the fewest half-edges,
+ * ties broken by the largest invariant. The invariants are computed once per
+ * call on the whole map. The base rules read fp alone. The flag
+ * DOMAP_ISO_ROOTS_DATA, combined with a rule other than DOMAP_ISO_ROOTS_ALL
+ * by |, appends to the invariant the values of the data arrays (signed ints,
+ * never the class arrays, whose values are renumbered and so not invariant):
+ * data_0[h], ..., data_{nd-1}[h] under the half-edge rules, followed by
+ * data_0[t], ..., data_{nd-1}[t] under the edge rules; with nd = 0 it
+ * changes nothing. Under DOMAP_ISO_ROOTS_ALL every active half-edge is a
+ * root.
  *
  * No function allocates memory: every buffer is handed in by the caller,
  * with the sizes documented below.
@@ -101,44 +102,46 @@ typedef domap_struct domap_t[1];
 /* Return value of domap_canonical on a map that is not connected. */
 enum
 {
-    DOMAP_DISCONNECTED = -1
+    DOMAP_ISO_DISCONNECTED = -1
 };
 
 /*
  * The rules restricting the roots, with the values of the constants
  * ROOTS_ALL, ..., ROOTS_EDGE_FEWEST and ROOTS_DATA of isomorphism_naive:
- * a base rule (0 to 4), possibly combined with the flag DOMAP_ROOTS_DATA by |.
- * The functions below read the base rule as rule & ~DOMAP_ROOTS_DATA.
+ * a base rule (0 to 4), possibly combined with the flag DOMAP_ISO_ROOTS_DATA
+ * by |. The functions below read the base rule as
+ * rule & ~DOMAP_ISO_ROOTS_DATA.
  */
 typedef enum
 {
-    DOMAP_ROOTS_ALL = 0,
-    DOMAP_ROOTS_HALF_EDGE_MAX = 1,
-    DOMAP_ROOTS_HALF_EDGE_FEWEST = 2,
-    DOMAP_ROOTS_EDGE_MAX = 3,
-    DOMAP_ROOTS_EDGE_FEWEST = 4,
-    DOMAP_ROOTS_DATA = 8
-} domap_root_rule;
+    DOMAP_ISO_ROOTS_ALL = 0,
+    DOMAP_ISO_ROOTS_HALF_EDGE_MAX = 1,
+    DOMAP_ISO_ROOTS_HALF_EDGE_FEWEST = 2,
+    DOMAP_ISO_ROOTS_EDGE_MAX = 3,
+    DOMAP_ISO_ROOTS_EDGE_FEWEST = 4,
+    DOMAP_ISO_ROOTS_DATA = 8
+} domap_iso_root_rule;
 
 /*
  * Upper bound on the length of a key, in ints: n for the face permutation
  * and n for each decoration array.
  */
-#define DOMAP_KEY_SIZE(n, nd, nc) ((n) * (1 + (nd) + (nc)))
+#define DOMAP_ISO_KEY_SIZE(n, nd, nc) ((n) * (1 + (nd) + (nc)))
 
 /*
  * Size of the work buffer of domap_canonical, in ints: the relabelling, its
  * inverse, the queue and the numbering of the class values (4 n), a
- * candidate key (DOMAP_KEY_SIZE), under a rule other than DOMAP_ROOTS_ALL the
- * active half-edges sorted by invariant, the class of each half-edge and
- * the start of each class in that order (3 n + 1), then the relabelling of
- * the best root and the parents of the union-find of the orbits of the
- * automorphisms found (2 n). Under DOMAP_ROOTS_DATA the order-preserving
- * numbers of the data values (nd n) live in the candidate key, which is not
- * used before the classes are computed, so that the flag needs no more
- * room.
+ * candidate key (DOMAP_ISO_KEY_SIZE), under a rule other than
+ * DOMAP_ISO_ROOTS_ALL the active half-edges sorted by invariant, the class
+ * of each half-edge and the start of each class in that order (3 n + 1),
+ * then the relabelling of the best root and the parents of the union-find of
+ * the orbits of the automorphisms found (2 n). Under DOMAP_ISO_ROOTS_DATA
+ * the order-preserving numbers of the data values (nd n) live in the
+ * candidate key, which is not used before the classes are computed, so that
+ * the flag needs no more room.
  */
-#define DOMAP_WORK_SIZE(n, nd, nc) (9 * (n) + 1 + DOMAP_KEY_SIZE(n, nd, nc))
+#define DOMAP_CANONICAL_WORK_SIZE(n, nd, nc) \
+    (9 * (n) + 1 + DOMAP_ISO_KEY_SIZE(n, nd, nc))
 
 /* Return the number of active edges of fp. */
 int _omap_num_edges(const int *fp, int n);
@@ -171,14 +174,14 @@ omap_relabelling_from(int *r, int *rinv, const omap_t m, int root, int *queue)
 
 /*
  * Write into key the key of m under the relabelling (r, rinv) using k labels,
- * as computed by omap_relabelling_from. key has room for DOMAP_KEY_SIZE(n, nd,
- * nc) ints. names is a work buffer of n ints, all -1 on entry, and all -1
- * again on return.
+ * as computed by omap_relabelling_from. key has room for
+ * DOMAP_ISO_KEY_SIZE(n, nd, nc) ints. names is a work buffer of n ints, all
+ * -1 on entry, and all -1 again on return.
  *
  * Return the length of the key.
  */
-int domap_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
-              int *names);
+int domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv,
+                  int k, int *names);
 
 /* Size of the work buffer of domap_invariants_differ, in ints. */
 #define DOMAP_INVARIANTS_WORK_SIZE(n) (2 * (n) + 1)
@@ -206,8 +209,8 @@ int domap_invariants_differ(const domap_t m1, const domap_t m2, int *work);
 
 /*
  * Try every active half-edge of m of the class of the rule as a root (every
- * active half-edge under DOMAP_ROOTS_ALL), in increasing order, and write
- * into key (DOMAP_KEY_SIZE(n, nd, nc) ints) the minimal key.
+ * active half-edge under DOMAP_ISO_ROOTS_ALL), in increasing order, and write
+ * into key (DOMAP_ISO_KEY_SIZE(n, nd, nc) ints) the minimal key.
  *
  * When relabelling is not NULL (n ints), write there the relabelling from
  * the first root of minimal key (-1 on the half-edges of the inactive
@@ -217,13 +220,13 @@ int domap_invariants_differ(const domap_t m1, const domap_t m2, int *work);
  * under every rule (0 when the map has no active half-edge): an
  * automorphism of a connected map is determined by the image of one
  * half-edge and preserves the invariants, so the roots of minimal key form
- * one orbit of the group. work is a buffer of DOMAP_WORK_SIZE(n, nd, nc)
- * ints.
+ * one orbit of the group. work is a buffer of
+ * DOMAP_CANONICAL_WORK_SIZE(n, nd, nc) ints.
  *
  * Return the length of the key (0 when the map has no active half-edge),
- * or DOMAP_DISCONNECTED when the walk from the first active half-edge does
- * not reach every active edge; nothing is written into the output buffers
- * in that case.
+ * or DOMAP_ISO_DISCONNECTED when the walk from the first active half-edge
+ * does not reach every active edge; nothing is written into the output
+ * buffers in that case.
  *
  * The first root is walked and keyed in full. Every other root is walked
  * with its key compared with the best one as the entries of its face
@@ -249,20 +252,20 @@ int domap_invariants_differ(const domap_t m1, const domap_t m2, int *work);
  * automorphism. A map whose roots all tie (a regular map) costs
  * O(n log2 |Aut| (1 + nd + nc)) for them instead of O(n^2 (1 + nd + nc)).
  * The roots of minimal key are the orbit of the best root, written by a
- * final scan. Under a rule other than DOMAP_ROOTS_ALL, the class costs O(n)
- * more. The entries of the invariant, shifted by their minimum, are packed
- * into one int in mixed radix over their ranges; when the product of the
- * ranges is at most 2 n, the half-edges are counted per packed value and
+ * final scan. Under a rule other than DOMAP_ISO_ROOTS_ALL, the class costs
+ * O(n) more. The entries of the invariant, shifted by their minimum, are
+ * packed into one int in mixed radix over their ranges; when the product of
+ * the ranges is at most 2 n, the half-edges are counted per packed value and
  * the class is collected by one scan, in O(n (1 + nd)). Otherwise the
  * half-edges are sorted by invariant by counting sorts on its 2 or 6
- * entries. Under DOMAP_ROOTS_DATA each data array is then first replaced by
- * order-preserving numbers of 0, ..., n - 1: the values minus their minimum
- * when they span fewer than n values (O(n)), else their ranks among the
- * active half-edges (a heap sort, O(n log n) per array). They add nd or
+ * entries. Under DOMAP_ISO_ROOTS_DATA each data array is then first replaced
+ * by order-preserving numbers of 0, ..., n - 1: the values minus their
+ * minimum when they span fewer than n values (O(n)), else their ranks among
+ * the active half-edges (a heap sort, O(n log n) per array). They add nd or
  * 2 nd entries.
  */
 int domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
-                    const domap_t m, domap_root_rule rule, int *work);
+                    const domap_t m, domap_iso_root_rule rule, int *work);
 
 /*
  * Maps that may be disconnected: the search over the labellings component
@@ -280,44 +283,45 @@ int domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
  *
  * A sequence of blocks has at most ne + 2 * ne + (nd + nc) * na ints (one k
  * per component, at most ne components) for ne active edges and na active
- * half-edges, hence at most DOMAP_SEQUENCE_SIZE(n, nd, nc) ints.
+ * half-edges, hence at most DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc) ints.
  */
-#define DOMAP_SEQUENCE_SIZE(n, nd, nc) (DOMAP_KEY_SIZE(n, nd, nc) + (n) / 2)
+#define DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc) \
+    (DOMAP_ISO_KEY_SIZE(n, nd, nc) + (n) / 2)
 
 /*
- * Size of the work buffer of domap_search, in ints: the global and local
+ * Size of the work buffer of domap_iso_search, in ints: the global and local
  * relabellings with their inverses and the queue (5 n), the numberings of
  * the class values (nc n), the state of each of the at most n / 2 + 1
  * levels of the search (its root, the root of the best leaf at that level,
  * its first label, the position and the length of its block, and the counts
  * of class values before it: (5 + nc) (n / 2 + 1)), the counts of class
- * values (nc), the current sequence (DOMAP_SEQUENCE_SIZE), one candidate
- * block (DOMAP_KEY_SIZE + 1), and for the rules other than DOMAP_ROOTS_ALL the
- * active half-edges sorted by invariant, the class of each half-edge, the
- * start of each class in that order and the number of half-edges not
- * labelled yet in each class (4 n + 1). Under DOMAP_ROOTS_DATA the
- * order-preserving numbers of the data values (nd n) live in the candidate
- * block, which is not used before the classes are computed, so that the
- * flag needs no more room.
+ * values (nc), the current sequence (DOMAP_ISO_SEQUENCE_SIZE), one candidate
+ * block (DOMAP_ISO_KEY_SIZE + 1), and for the rules other than
+ * DOMAP_ISO_ROOTS_ALL the active half-edges sorted by invariant, the class
+ * of each half-edge, the start of each class in that order and the number of
+ * half-edges not labelled yet in each class (4 n + 1). Under
+ * DOMAP_ISO_ROOTS_DATA the order-preserving numbers of the data values
+ * (nd n) live in the candidate block, which is not used before the classes
+ * are computed, so that the flag needs no more room.
  *
  * These sizes are computed in int and overflow for about
  * 2^31 / (14 + 2 nd + 3.5 nc) half-edges; the caller checks them first.
  */
-#define DOMAP_SEARCH_WORK_SIZE(n, nd, nc)                                   \
+#define DOMAP_ISO_SEARCH_WORK_SIZE(n, nd, nc)                               \
     ((5 + (nc)) * (n) + (5 + (nc)) * ((n) / 2 + 1) + (nc)                   \
-     + DOMAP_SEQUENCE_SIZE(n, nd, nc) + DOMAP_KEY_SIZE(n, nd, nc) + 1       \
-     + 4 * (n) + 1)
+     + DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc) + DOMAP_ISO_KEY_SIZE(n, nd, nc)   \
+     + 1 + 4 * (n) + 1)
 
 /*
- * Callback of domap_search, called on a leaf: leaf is the relabelling of the
- * leaf (n ints, -1 on the half-edges of the inactive edges), valid during
- * the call only. first is 1 when the leaf is smaller than every leaf
+ * Callback of domap_iso_search, called on a leaf: leaf is the relabelling of
+ * the leaf (n ints, -1 on the half-edges of the inactive edges), valid
+ * during the call only. first is 1 when the leaf is smaller than every leaf
  * reported before, which the caller discards, and 0 when it is equal to
  * the last leaf reported with first = 1. A nonzero return value stops the
  * search, which returns it; the Cython layer returns -1 with a Python
  * exception set.
  */
-typedef int (*domap_leaf_callback)(const int *leaf, int first, void *arg);
+typedef int (*domap_iso_leaf_callback)(const int *leaf, int first, void *arg);
 
 /*
  * Search the lexicographically minimal sequence of blocks over the
@@ -327,7 +331,7 @@ typedef int (*domap_leaf_callback)(const int *leaf, int first, void *arg);
  * labelled yet (by the invariants of the whole map, and by the numbers of
  * half-edges not labelled yet in each class under *_FEWEST), the
  * half-edges of that class not labelled yet are tried as roots (every
- * active half-edge not labelled yet under DOMAP_ROOTS_ALL), in increasing
+ * active half-edge not labelled yet under DOMAP_ISO_ROOTS_ALL), in increasing
  * order, and only the roots of minimal block are followed,
  * depth first in increasing root order; the component gets the labels
  * following those used. When several roots tie, every one of them is
@@ -368,22 +372,23 @@ typedef int (*domap_leaf_callback)(const int *leaf, int first, void *arg);
  * block, which is its key preceded by k. The empty map gives the empty
  * sequence and one leaf.
  *
- * The minimal sequence is written into sequence (DOMAP_SEQUENCE_SIZE(n, nd,
- * nc) ints) and its length into *length. When relabelling is not NULL (n
- * ints), the relabelling of the first leaf reaching the minimal sequence
- * is written there (-1 on the half-edges of the inactive edges). When
- * callback is not NULL, it is called with arg on every leaf that is
- * smaller than the best one so far (first = 1) and, when all_leaves is
- * nonzero, on every leaf equal to the best one so far (first = 0). The
- * leaves reported since the last call with first = 1 are then the leaves
- * reaching the minimal sequence, in the order of the search. work is a
- * buffer of DOMAP_SEARCH_WORK_SIZE(n, nd, nc) ints.
+ * The minimal sequence is written into sequence
+ * (DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc) ints) and its length into *length.
+ * When relabelling is not NULL (n ints), the relabelling of the first leaf
+ * reaching the minimal sequence is written there (-1 on the half-edges of
+ * the inactive edges). When callback is not NULL, it is called with arg on
+ * every leaf that is smaller than the best one so far (first = 1) and, when
+ * all_leaves is nonzero, on every leaf equal to the best one so far
+ * (first = 0). The leaves reported since the last call with first = 1 are
+ * then the leaves reaching the minimal sequence, in the order of the
+ * search. work is a buffer of DOMAP_ISO_SEARCH_WORK_SIZE(n, nd, nc) ints.
  *
  * Return 0, or the nonzero value returned by the callback, which stops the
  * search and leaves the outputs undefined.
  */
-int domap_search(int *sequence, int *length, int *relabelling,
-                 const domap_t m, domap_root_rule rule, int all_leaves,
-                 domap_leaf_callback callback, void *arg, int *work);
+int domap_iso_search(int *sequence, int *length, int *relabelling,
+                     const domap_t m, domap_iso_root_rule rule,
+                     int all_leaves, domap_iso_leaf_callback callback,
+                     void *arg, int *work);
 
 #endif
