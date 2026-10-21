@@ -338,28 +338,6 @@ cdef bint _ints_from(_sequence s, const int *f, int *out, int n, bint edges) exc
     return True
 
 
-cdef array.array _as_int_array(a):
-    r"""
-    Return ``a`` if it is an array of typecode ``'i'`` and a copy of it as
-    such an array otherwise.
-
-    A list of Python ``int`` is copied by a typed loop; any other input, or
-    a list holding another value, goes through ``array.array('i', a)``,
-    which raises the exceptions of :mod:`array` on invalid values.
-    """
-    cdef array.array out
-    cdef Py_ssize_t size
-    if type(a) is array.array and (<array.array> a).ob_descr.typecode == b'i':
-        return <array.array> a
-    if type(a) is list:
-        size = len(<list> a)
-        if size <= INT_MAX:
-            out = _new(size)
-            if _ints_from(<list> a, NULL, out.data.as_ints, <int> size, False):
-                return out
-    return array.array('i', a)
-
-
 def _decoration_array(d, array.array fp, bint edges=False):
     r"""
     Return the decoration ``d`` of the map of face permutation ``fp`` as an
@@ -505,24 +483,16 @@ def _constant_on_cycles(array.array d not None, array.array p not None):
     return True
 
 
-cdef class _Map:
+cdef inline int _num_active(const omap_struct *m):
     r"""
-    A face permutation and its decorations converted to C ``int`` arrays.
-
-    ``dec`` holds the ``nd`` arrays of ``data`` then the ``nc`` renumbered
-    arrays of ``classes``, each of ``n`` entries (``0`` on the inactive
-    half-edges). ``ne`` is the number of active edges, ``na`` the number of
-    active half-edges. ``c`` is the same map for the C functions, pointing
-    into ``fp`` and ``dec``, which are never resized after ``_convert``.
+    Return the number of active half-edges of ``m``, those ``h`` with
+    ``m.fp[h] != -1``.
     """
-    cdef array.array fp
-    cdef array.array dec
-    cdef int n
-    cdef int nd
-    cdef int nc
-    cdef int ne
-    cdef int na
-    cdef domap_struct c
+    cdef int h, k = 0
+    for h in range(m.n):
+        if m.fp[h] != -1:
+            k += 1
+    return k
 
 
 cdef _check_input(fp, data, classes):
@@ -545,46 +515,55 @@ cdef _check_input(fp, data, classes):
             raise ValueError("classes arrays must have length {}".format(n))
 
 
-cdef _Map _convert(fp, tuple data, tuple classes):
+cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
     r"""
-    Return the :class:`_Map` of ``fp`` decorated by ``data`` and
-    ``classes``, whose lengths are checked already.
+    Fill ``m`` with the map of face permutation ``fp`` decorated by
+    ``data`` and ``classes`` (whose lengths are checked already) and return
+    the array that owns the buffers ``m`` points into.
+
+    The array holds ``(1 + nd + nc) * n`` entries: a copy of ``fp``, the
+    ``nd`` arrays of ``data`` then the ``nc`` renumbered arrays of
+    ``classes``, each of ``n`` entries (``0`` on the inactive half-edges).
+    ``fp`` is copied so that the buffers stay valid if the caller resizes
+    its own array. The array is never resized, and ``m`` is valid as long
+    as it is alive.
 
     Raise ``ValueError`` if ``fp`` is not a permutation of its active
     half-edges and ``OverflowError`` if a value of ``data`` on an active
     half-edge is outside the range of a C ``int`` or if the map is too
     large for the buffers of the C code.
     """
-    cdef _Map m = _Map.__new__(_Map)
-    cdef int n, h, j, off, i
+    cdef int n, h, j, off, i, nd = len(data), nc = len(classes)
     cdef int *f
     cdef int *dec
     cdef int *a
-    cdef array.array seen
+    cdef array.array buf, seen, tmp
     cdef Py_ssize_t size = len(fp)
     # every buffer has at most 16 + 4 * (nd + nc) ints per half-edge (plus
     # a constant): below that bound the exact check in Python integers is
     # skipped, which keeps it off the path of small maps
     if size * (16 + 4 * (len(data) + len(classes))) + 64 > INT_MAX:
         _check_sizes(size, len(data), len(classes))
-    m.fp = _as_int_array(fp)
-    n = m.n = len(m.fp)
-    m.nd = len(data)
-    m.nc = len(classes)
-    f = m.fp.data.as_ints
+    n = <int> size
+    buf = _new((1 + nd + nc) * size)
+    f = buf.data.as_ints
+    if type(fp) is array.array and (<array.array> fp).ob_descr.typecode == b'i':
+        memcpy(f, (<array.array> fp).data.as_ints, n * sizeof(int))
+    elif not (type(fp) is list and size <= INT_MAX
+              and _ints_from(<list> fp, NULL, f, n, False)):
+        # anything else, or a list holding a value that is not a C int,
+        # goes through array.array, which raises its own exceptions
+        tmp = array.array('i', fp)
+        if len(tmp) != size:
+            raise ValueError("fp has inconsistent length")
+        memcpy(f, tmp.data.as_ints, n * sizeof(int))
 
     seen = _new(n)
     if _perm_check(f, n, seen.data.as_ints) != 1:
         raise ValueError("fp must be a permutation of its active half-edges")
-    m.na = 0
-    for h in range(n):
-        if f[h] != -1:
-            m.na += 1
-    m.ne = _omap_num_edges(f, n)
 
-    m.dec = _new((m.nd + m.nc) * n)
-    dec = m.dec.data.as_ints
-    for j in range(m.nd):
+    dec = f + n
+    for j in range(nd):
         d = data[j]
         off = j * n
         if type(d) is array.array and (<array.array> d).ob_descr.typecode == b'i':
@@ -604,9 +583,9 @@ cdef _Map _convert(fp, tuple data, tuple classes):
                     dec[off + h] = 0
                 else:
                     dec[off + h] = PyNumber_Index(d[h])
-    for j in range(m.nc):
+    for j in range(nc):
         c = classes[j]
-        off = (m.nd + j) * n
+        off = (nd + j) * n
         # renumbered by first appearance in half-edge order, which leaves
         # the key unchanged (it renumbers them again in the order of the
         # new labels) and puts the values in range(n) as domap_key needs
@@ -618,37 +597,37 @@ cdef _Map _convert(fp, tuple data, tuple classes):
                 v = c[h]
                 i = names.setdefault(v, len(names))
                 dec[off + h] = i
-    m.c.map.fp = f
-    m.c.map.n = n
-    m.c.nd = m.nd
-    m.c.data = dec
-    m.c.nc = m.nc
-    m.c.classes = dec + m.nd * n
-    return m
+    m.map.fp = f
+    m.map.n = n
+    m.nd = nd
+    m.data = dec
+    m.nc = nc
+    m.classes = dec + nd * n
+    return buf
 
 
-cdef _Map _prepare(fp, data, classes):
+cdef array.array _prepare(domap_struct *m, fp, data, classes):
     r"""
-    Check the input as ``isomorphism_naive._check_input`` does and convert
-    it.
+    Check the input as ``isomorphism_naive._check_input`` does, fill ``m``
+    from it and return the array that owns its buffers (see ``_convert``).
     """
     _check_input(fp, data, classes)
     # _check_input accepts any instance of tuple, _convert only the exact type
-    return _convert(fp, tuple(data), tuple(classes))
+    return _convert(m, fp, tuple(data), tuple(classes))
 
 
-cdef int _run(_Map m, int rule, array.array key, int *relabelling, int *roots, int *nroots) except? -2:
+cdef int _run(const domap_struct *m, int rule, array.array key, int *relabelling, int *roots, int *nroots) except? -2:
     r"""
     Run ``domap_canonical`` on ``m`` under the rule ``rule`` (checked by
     ``_check_root_rule``): write the minimal key into ``key`` (of
     ``DOMAP_KEY_SIZE`` entries) and return its length, or ``DOMAP_DISCONNECTED``.
     """
-    cdef array.array work = _new(DOMAP_WORK_SIZE(m.n, m.nd, m.nc))
+    cdef array.array work = _new(DOMAP_WORK_SIZE(m.map.n, m.nd, m.nc))
     cdef int length
     # an interrupt leaves domap_canonical by a longjmp back to sig_on: every
     # buffer it writes is owned here or by the caller, and it allocates none
     sig_on()
-    length = domap_canonical(key.data.as_ints, relabelling, roots, nroots, &m.c,
+    length = domap_canonical(key.data.as_ints, relabelling, roots, nroots, m,
                            <domap_root_rule> rule, work.data.as_ints)
     sig_off()
     return length
@@ -670,7 +649,7 @@ cdef array.array _complete(array.array r, int n, int ne):
     return r
 
 
-cdef int _search(_Map m, int rule, bint all_leaves, array.array sequence, int *relabelling,
+cdef int _search(const domap_struct *m, int rule, bint all_leaves, array.array sequence, int *relabelling,
                  domap_leaf_callback callback, void *arg) except -1:
     r"""
     Run ``domap_search`` on ``m`` under the rule ``rule``: write the minimal
@@ -678,28 +657,28 @@ cdef int _search(_Map m, int rule, bint all_leaves, array.array sequence, int *r
     and return its length. A Python exception raised by ``callback``
     propagates.
     """
-    cdef array.array work = _new(DOMAP_SEARCH_WORK_SIZE(m.n, m.nd, m.nc))
+    cdef array.array work = _new(DOMAP_SEARCH_WORK_SIZE(m.map.n, m.nd, m.nc))
     cdef int length
     # as in _run, an interrupt leaves domap_search by a longjmp back to sig_on,
     # which also resets the count of sig_on; an exception of the callback
     # returns from domap_search normally, hence the sig_off in the finally
     sig_on()
     try:
-        domap_search(sequence.data.as_ints, &length, relabelling, &m.c, <domap_root_rule> rule,
+        domap_search(sequence.data.as_ints, &length, relabelling, m, <domap_root_rule> rule,
                    all_leaves, callback, arg, work.data.as_ints)
     finally:
         sig_off()
     return length
 
 
-cdef int _key_of(_Map m, array.array r, array.array key) except -1:
+cdef int _key_of(const domap_struct *m, array.array r, array.array key) except -1:
     r"""
     Write into ``key`` (of ``DOMAP_KEY_SIZE`` entries) the key of the
     relabelling ``r`` of ``m`` by the ``2*ne`` labels of its active edges
     (``-1`` on the half-edges of the inactive edges) and return its length.
     """
-    cdef int n = m.n, k = 2 * m.ne, h
-    cdef int *f = m.fp.data.as_ints
+    cdef int n = m.map.n, k = 2 * omap_num_edges(&m.map), h
+    cdef const int *f = m.map.fp
     cdef int *a = r.data.as_ints
     cdef array.array rinv = _new(n)
     cdef array.array names = _new(n)
@@ -710,7 +689,7 @@ cdef int _key_of(_Map m, array.array r, array.array key) except -1:
     for h in range(n):
         if f[h] != -1:
             rinv.data.as_ints[a[h]] = h
-    return domap_key(key.data.as_ints, &m.c, a, rinv.data.as_ints, k, names.data.as_ints)
+    return domap_key(key.data.as_ints, m, a, rinv.data.as_ints, k, names.data.as_ints)
 
 
 cdef class _Automorphisms:
@@ -905,34 +884,36 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
         ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 13
     """
     cdef int rule = _check_root_rule(root_rule)
-    cdef _Map m = _prepare(fp, data, classes)
-    cdef array.array key = _new(DOMAP_KEY_SIZE(m.n, m.nd, m.nc))
-    cdef array.array r = _new(m.n)
+    cdef domap_t m
+    cdef array.array _buf = _prepare(m, fp, data, classes)
+    cdef array.array key = _new(DOMAP_KEY_SIZE(m.map.n, m.nd, m.nc))
+    cdef array.array r = _new(m.map.n)
     if _run(m, rule, key, r.data.as_ints, NULL, NULL) == DOMAP_DISCONNECTED:
-        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
-    return _complete(r, m.n, m.ne)
+        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+    return _complete(r, m.map.n, omap_num_edges(&m.map))
 
 
-cdef tuple _form(_Map m, array.array key, array.array r, tuple data):
+cdef tuple _form(const domap_struct *m, array.array key, array.array r, tuple data):
     r"""
     Return the canonical form of ``m`` from its minimal key and the
     relabelling ``r`` that reaches it; the values of ``data`` are read from
     the original arrays, as in ``isomorphism_naive._key``.
     """
-    cdef int k = 2 * m.ne
+    cdef int k = 2 * omap_num_edges(&m.map)
+    cdef int na = _num_active(&m.map)
     cdef int h, i, pos
     cdef int *kd = key.data.as_ints
     rinv = [-1] * k
-    for h in range(m.n):
-        if m.fp.data.as_ints[h] != -1:
+    for h in range(m.map.n):
+        if m.map.fp[h] != -1:
             rinv[r.data.as_ints[h]] = h
     out = [tuple([kd[i] for i in range(k)])]
     for d in data:
         out.append(tuple([d[x] for x in rinv if x != -1]))
-    pos = k + m.nd * m.na
+    pos = k + m.nd * na
     while len(out) < 1 + m.nd + m.nc:
-        out.append(tuple([kd[i] for i in range(pos, pos + m.na)]))
-        pos += m.na
+        out.append(tuple([kd[i] for i in range(pos, pos + na)]))
+        pos += na
     return tuple(out)
 
 
@@ -1013,28 +994,29 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | R
         ((2, 5, 4, 1, 0, 3, 6, -1),)
     """
     cdef int rule = _check_root_rule(root_rule)
-    cdef _Map m = _prepare(fp, data, classes)
-    cdef array.array key = _new(DOMAP_KEY_SIZE(m.n, m.nd, m.nc))
-    cdef array.array r = _new(m.n)
+    cdef domap_t m
+    cdef array.array _buf = _prepare(m, fp, data, classes)
+    cdef array.array key = _new(DOMAP_KEY_SIZE(m.map.n, m.nd, m.nc))
+    cdef array.array r = _new(m.map.n)
     if _run(m, rule, key, r.data.as_ints, NULL, NULL) == DOMAP_DISCONNECTED:
-        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
         _key_of(m, r, key)
     return _form(m, key, r, data)
 
 
-cdef array.array _automorphism_from(_Map m, array.array ra, int root, array.array rb,
+cdef array.array _automorphism_from(const domap_struct *m, array.array ra, int root, array.array rb,
                                     array.array rbinv, array.array queue):
     r"""
     Return the automorphism sending the half-edge of label ``i`` from the
     relabelling ``ra`` to the half-edge of label ``i`` from ``root``;
-    ``rb``, ``rbinv`` and ``queue`` are buffers of ``m.n`` entries.
+    ``rb``, ``rbinv`` and ``queue`` are buffers of ``m.map.n`` entries.
     """
-    cdef int n = m.n, h
+    cdef int n = m.map.n, h
     cdef array.array g = _new(n)
     # omap_relabelling_from writes -1 into rbinv at the labels of the
     # inactive halves of folded edges; the automorphism maps those
     # halves too, so the inverse is rebuilt on every labelled half-edge
-    omap_relabelling_from(rb.data.as_ints, rbinv.data.as_ints, &m.c.map, root,
+    omap_relabelling_from(rb.data.as_ints, rbinv.data.as_ints, &m.map, root,
                          queue.data.as_ints)
     for h in range(n):
         if rb.data.as_ints[h] != -1:
@@ -1047,23 +1029,23 @@ cdef array.array _automorphism_from(_Map m, array.array ra, int root, array.arra
     return g
 
 
-cdef list _leaf_automorphisms(_Map m, int rule, array.array ra):
+cdef list _leaf_automorphisms(const domap_struct *m, int rule, array.array ra):
     r"""
     Return the list of the automorphisms of the disconnected map ``m``, from
     the leaves of ``domap_search`` under the rule ``rule``, in their order;
-    ``ra`` is a buffer of ``m.n`` entries.
+    ``ra`` is a buffer of ``m.map.n`` entries.
     """
     cdef _Automorphisms s = _Automorphisms.__new__(_Automorphisms)
-    s.n = m.n
+    s.n = m.map.n
     s.ra = ra
-    s.rbinv = _new(m.n)
+    s.rbinv = _new(m.map.n)
     s.result = []
-    _search(m, rule, True, _new(DOMAP_SEQUENCE_SIZE(m.n, m.nd, m.nc)), NULL, _automorphism_leaf,
+    _search(m, rule, True, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), NULL, _automorphism_leaf,
             <void *> s)
     return s.result
 
 
-cdef list _connected_generators(_Map m, array.array ra, array.array roots, int count):
+cdef list _connected_generators(const domap_struct *m, array.array ra, array.array roots, int count):
     r"""
     Return the generators of the automorphism group of the connected map
     ``m`` from its ``count`` roots of minimal key ``roots`` and the
@@ -1071,7 +1053,7 @@ cdef list _connected_generators(_Map m, array.array ra, array.array roots, int c
     ``b_j`` is built only when ``b_j`` is outside the orbit of ``b_0`` under
     the generators kept (a union-find over the half-edges).
     """
-    cdef int n = m.n, j, h, b0
+    cdef int n = m.map.n, j, h, b0
     cdef array.array parent, rb, rbinv, queue, g
     cdef int *p
     cdef int *r
@@ -1105,7 +1087,7 @@ cdef array.array _identity(int n):
     return g
 
 
-cdef list _wreath(_Map m, bint lift, bint labels=False):
+cdef list _wreath(const domap_struct *m, bint lift, bint labels=False):
     r"""
     Return the structure of the automorphism group of the disconnected map
     ``m`` with its arrays of ``data`` alone, a product of wreath products.
@@ -1128,8 +1110,9 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
       first copy, lifted to ``m`` (the identity elsewhere); empty unless
       ``lift``
     - ``count`` -- the order of the automorphism group of a copy
-    - ``local`` -- the first copy as a map of its own (a ``_Map``, in the
-      local indices of ``halves``) if ``labels``, ``None`` otherwise
+    - ``local`` -- the face permutation of the first copy as a map of its
+      own (an ``array('i')`` in the local indices of ``halves``) if
+      ``labels``, ``None`` otherwise
     - ``roots`` -- the canonical labels of the roots of minimal key of the
       first copy, in increasing order (an ``array('i')`` starting with
       ``0``; its automorphism sending the half-edge of label ``0`` to the
@@ -1139,15 +1122,15 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
     The group is the product over the kinds of the wreath product of the
     group of a copy by the symmetric group on the copies.
     """
-    cdef int n = m.n, c, h, x, y, i, j, size, cnt, length, top
+    cdef int n = m.map.n, c, h, x, y, i, j, size, cnt, length, top
     cdef int ncomp = 0
-    cdef int *f = m.fp.data.as_ints
-    cdef int *dec = m.dec.data.as_ints
+    cdef const int *f = m.map.fp
+    cdef const int *dec = m.data
     cdef array.array comp = _new(n)
     cdef array.array stack = _new(n)
     cdef array.array idx = _new(n)
-    cdef array.array halves_c, lf, key, ra, roots, g, gl
-    cdef _Map mc
+    cdef array.array halves_c, lf, key, ra, roots, g, gl, _bc
+    cdef domap_t mc
     halves = []
     for h in range(n):
         comp.data.as_ints[h] = -1
@@ -1187,8 +1170,8 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
             lf.data.as_ints[i] = -1 if y == -1 else idx.data.as_ints[y]
         ld = tuple([array.array('i', [dec[j * n + halves_c.data.as_ints[i]] for i in range(size)])
                     for j in range(m.nd)])
-        mc = _convert(lf, ld, ())
-        key = _new(DOMAP_KEY_SIZE(size, mc.nd, 0))
+        _bc = _convert(mc, lf, ld, ())
+        key = _new(DOMAP_KEY_SIZE(size, m.nd, 0))
         ra = _new(size)
         roots = _new(size)
         length = _run(mc, _ROOTS_ALL, key, ra.data.as_ints, roots.data.as_ints, &cnt)
@@ -1207,7 +1190,7 @@ cdef list _wreath(_Map m, bint lift, bint labels=False):
                     g.data.as_ints[halves_c.data.as_ints[i]] = halves_c.data.as_ints[gl.data.as_ints[i]]
                 gens.append(g)
         if labels:
-            kinds.append(([(halves_c, ra)], gens, cnt, mc,
+            kinds.append(([(halves_c, ra)], gens, cnt, lf,
                           array.array('i', sorted([ra.data.as_ints[roots.data.as_ints[i]] for i in range(cnt)]))))
         else:
             kinds.append(([(halves_c, ra)], gens, cnt, None, None))
@@ -1230,7 +1213,7 @@ cdef int _place(array.array g, tuple a, tuple b) except -1:
     return 0
 
 
-cdef list _wreath_generators(_Map m):
+cdef list _wreath_generators(const domap_struct *m):
     r"""
     Return the generators of the automorphism group of the disconnected map
     ``m`` without arrays of ``classes``: for each kind of isomorphic
@@ -1245,19 +1228,19 @@ cdef list _wreath_generators(_Map m):
         gens.extend(aut)
         k = len(copies)
         if k >= 2:
-            g = _identity(m.n)
+            g = _identity(m.map.n)
             _place(g, copies[0], copies[1])
             _place(g, copies[1], copies[0])
             gens.append(g)
         if k >= 3:
-            g = _identity(m.n)
+            g = _identity(m.map.n)
             for t in range(k):
                 _place(g, copies[t], copies[(t + 1) % k])
             gens.append(g)
     return gens
 
 
-cdef _wreath_order(_Map m):
+cdef _wreath_order(const domap_struct *m):
     r"""
     Return the number of automorphisms of the disconnected map ``m`` without
     arrays of ``classes``, as a Python integer: the product over the kinds
@@ -1294,15 +1277,13 @@ cdef class _Stabiliser:
     completion since the level was entered (the later placements adding
     none are then skipped, see ``extend``). ``rb``, ``rbinv``,
     ``queue``, ``perm`` and ``ident`` are buffers of the size of the
-    largest component.
+    largest component. ``m`` is the map, whose buffers are owned by the
+    array ``buf`` (see ``_convert``), kept for as long as the state lives.
     """
-    cdef int n
-    cdef int nd
-    cdef int nc
+    cdef domap_struct m
+    cdef array.array buf
     cdef int ncomp
     cdef int ntrail
-    cdef array.array fp
-    cdef array.array dec
     cdef array.array kind, off, lab, start, coff, csize, cfp, cra, crainv, loff, labels
     cdef array.array fw, bw, trail, used, target, choice, mark, dead
     cdef array.array rb, rbinv, queue, perm, ident
@@ -1336,9 +1317,9 @@ cdef class _Stabiliser:
         label ``perm[i]``; return ``0`` on a conflict (the entries set
         before it stay on the trail) and ``1`` otherwise.
         """
-        cdef int n = self.n, size = self.csize.data.as_ints[self.kind.data.as_ints[a]]
-        cdef int *f = self.fp.data.as_ints
-        cdef int *cls = self.dec.data.as_ints + self.nd * n
+        cdef int n = self.m.map.n, size = self.csize.data.as_ints[self.kind.data.as_ints[a]]
+        cdef const int *f = self.m.map.fp
+        cdef const int *cls = self.m.classes
         cdef int *la = self.lab.data.as_ints + self.off.data.as_ints[a]
         cdef int *lb = self.lab.data.as_ints + self.off.data.as_ints[b]
         cdef int *fw = self.fw.data.as_ints
@@ -1350,7 +1331,7 @@ cdef class _Stabiliser:
             if f[h] == -1:
                 continue
             y = lb[perm[i]]
-            for q in range(self.nc):
+            for q in range(self.m.nc):
                 base = q * n
                 v = cls[base + h]
                 w = cls[base + y]
@@ -1376,7 +1357,7 @@ cdef class _Stabiliser:
         while self.ntrail > length:
             self.ntrail -= 1
             e = self.trail.data.as_ints[self.ntrail]
-            bw[(e // self.n) * self.n + fw[e]] = -1
+            bw[(e // self.m.map.n) * self.m.map.n + fw[e]] = -1
             fw[e] = -1
 
     cdef int extend(self, int i) except -1:
@@ -1457,7 +1438,7 @@ cdef class _Stabiliser:
         levels ``i, ..., ncomp - 1`` (the identity on the other levels and
         on the inactive edges).
         """
-        cdef array.array g = _identity(self.n)
+        cdef array.array g = _identity(self.m.map.n)
         cdef int *lab = self.lab.data.as_ints
         cdef int *perm = self.perm.data.as_ints
         cdef int j, t, k, oa, ob
@@ -1471,15 +1452,15 @@ cdef class _Stabiliser:
         return g
 
 
-cdef _Stabiliser _stabiliser_state(_Map m):
+cdef _Stabiliser _stabiliser_state(const domap_struct *m, array.array buf):
     r"""
     Return the :class:`_Stabiliser` of the disconnected map ``m``, its
-    search state cleared.
+    search state cleared; ``buf`` is the array that owns the buffers of
+    ``m`` (see ``_convert``), which the state keeps alive.
     """
     cdef _Stabiliser s = _Stabiliser.__new__(_Stabiliser)
-    cdef int n = m.n, size, i, largest = 0
+    cdef int n = m.map.n, size, i, largest = 0
     cdef array.array halves_c, r
-    cdef _Map local
     kind = []
     off = []
     lab = []
@@ -1496,7 +1477,7 @@ cdef _Stabiliser _stabiliser_state(_Map m):
         largest = max(largest, size)
         coff.append(len(cfp))
         csize.append(size)
-        cfp.extend(local.fp)
+        cfp.extend(local)
         r = copies[0][1]
         cra.extend(r)
         inv = [0] * size
@@ -1512,13 +1493,10 @@ cdef _Stabiliser _stabiliser_state(_Map m):
                 inv[r.data.as_ints[i]] = halves_c.data.as_ints[i]
             lab.extend(inv)
         start.append(len(kind))
-    s.n = n
-    s.nd = m.nd
-    s.nc = m.nc
+    s.m = m[0]
+    s.buf = buf
     s.ncomp = len(kind)
     s.ntrail = 0
-    s.fp = m.fp
-    s.dec = m.dec
     s.kind = array.array('i', kind)
     s.off = array.array('i', off)
     s.lab = array.array('i', lab)
@@ -1546,7 +1524,7 @@ cdef _Stabiliser _stabiliser_state(_Map m):
     return s
 
 
-cdef tuple _stabiliser(_Map m):
+cdef tuple _stabiliser(const domap_struct *m, array.array buf):
     r"""
     Return the generators and the order (a Python integer) of the group of
     the automorphisms of the disconnected map ``m`` that preserve the
@@ -1584,8 +1562,8 @@ cdef tuple _stabiliser(_Map m):
     the values of ``classes`` reject them only deep in the search, as on a
     graph on the class values given by its edges as isolated edges.
     """
-    cdef _Stabiliser s = _stabiliser_state(m)
-    cdef int n = m.n, i, t, b, q, h, x, y, bi, nl
+    cdef _Stabiliser s = _stabiliser_state(m, buf)
+    cdef int n = m.map.n, i, t, b, q, h, x, y, bi, nl
     cdef bint dead, empty, found
     cdef array.array parent = _new(n)
     cdef array.array sizes = _new(n)
@@ -1736,8 +1714,9 @@ def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | RO
         (6, True)
     """
     cdef int rule = _check_root_rule(root_rule)
-    cdef _Map m = _prepare(fp, data, classes)
-    cdef int n = m.n
+    cdef domap_t m
+    cdef array.array _buf = _prepare(m, fp, data, classes)
+    cdef int n = m.map.n
     cdef int count, j
     cdef array.array key = _new(DOMAP_KEY_SIZE(n, m.nd, m.nc))
     cdef array.array ra = _new(n)
@@ -1888,8 +1867,9 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
         6
     """
     cdef int rule = _check_root_rule(root_rule)
-    cdef _Map m = _prepare(fp, data, classes)
-    cdef int n = m.n
+    cdef domap_t m
+    cdef array.array buf = _prepare(m, fp, data, classes)
+    cdef int n = m.map.n
     cdef int count
     cdef array.array key = _new(DOMAP_KEY_SIZE(n, m.nd, m.nc))
     cdef array.array ra = _new(n)
@@ -1898,7 +1878,7 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
         return _connected_generators(m, ra, roots, count)
     if m.nc == 0:
         return _wreath_generators(m)
-    return _stabiliser(m)[0]
+    return _stabiliser(m, buf)[0]
 
 
 def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA):
@@ -1985,20 +1965,22 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
         raise ValueError("data1 and data2 must have the same number of arrays")
     if len(classes1) != len(classes2):
         raise ValueError("classes1 and classes2 must have the same number of arrays")
-    cdef _Map m1 = _convert(fp1, tuple(data1), tuple(classes1))
-    cdef _Map m2 = _convert(fp2, tuple(data2), tuple(classes2))
-    cdef int n1 = m1.n, n2 = m2.n
+    cdef domap_t m1, m2
+    cdef array.array _buf1 = _convert(m1, fp1, tuple(data1), tuple(classes1))
+    cdef array.array _buf2 = _convert(m2, fp2, tuple(data2), tuple(classes2))
+    cdef int n1 = m1.map.n, n2 = m2.map.n
+    cdef int ne1 = omap_num_edges(&m1.map), ne2 = omap_num_edges(&m2.map)
     cdef int len1, len2, h, e, i
     cdef array.array key1, key2, ra, rb, seq1, seq2
     cdef array.array work = None
     # an isomorphism is a bijection of the active half-edges preserving the
     # twins, hence the numbers of active edges and half-edges; the invariants
     # of domap_invariants_differ, O(n), are compared before the two searches
-    if m1.ne != m2.ne or m1.na != m2.na:
+    if ne1 != ne2 or _num_active(&m1.map) != _num_active(&m2.map):
         return None
     if m1.nc:
         work = _new(DOMAP_INVARIANTS_WORK_SIZE(n1 if n1 > n2 else n2))
-    if domap_invariants_differ(&m1.c, &m2.c, NULL if work is None else work.data.as_ints):
+    if domap_invariants_differ(m1, m2, NULL if work is None else work.data.as_ints):
         return None
     key1 = _new(DOMAP_KEY_SIZE(n1, m1.nd, m1.nc))
     key2 = _new(DOMAP_KEY_SIZE(n2, m2.nd, m2.nc))
@@ -2017,11 +1999,11 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
         if (len1 != len2
                 or memcmp(seq1.data.as_ints, seq2.data.as_ints, len1 * sizeof(int)) != 0):
             return None
-    elif (m1.ne != m2.ne or len1 != len2
+    elif (ne1 != ne2 or len1 != len2
             or memcmp(key1.data.as_ints, key2.data.as_ints, len1 * sizeof(int)) != 0):
         return None
     r = array.array('i', [-1] * n1)
-    rbinv = [-1] * (2 * m2.ne)
+    rbinv = [-1] * (2 * ne2)
     for h in range(n2):
         if rb.data.as_ints[h] != -1:
             rbinv[rb.data.as_ints[h]] = h
@@ -2029,7 +2011,7 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
         if ra.data.as_ints[h] != -1:
             r[h] = rbinv[ra.data.as_ints[h]]
     if n1 == n2:
-        inactive2 = [e for e in range(n2 // 2) if m2.fp.data.as_ints[2 * e] == -1 and m2.fp.data.as_ints[2 * e + 1] == -1]
+        inactive2 = [e for e in range(n2 // 2) if m2.map.fp[2 * e] == -1 and m2.map.fp[2 * e + 1] == -1]
         i = 0
         for e in range(n1 // 2):
             if r[2 * e] == -1:
@@ -2213,20 +2195,21 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 'all'
     """
     cdef int rule = _check_root_rule(root_rule)
-    cdef _Map m = _prepare(fp, data, classes)
-    cdef array.array key = _new(DOMAP_KEY_SIZE(m.n, m.nd, m.nc))
-    cdef array.array r = _new(m.n)
+    cdef domap_t m
+    cdef array.array buf = _prepare(m, fp, data, classes)
+    cdef array.array key = _new(DOMAP_KEY_SIZE(m.map.n, m.nd, m.nc))
+    cdef array.array r = _new(m.map.n)
     cdef int count, length
     order = 0
     length = _run(m, rule, key, r.data.as_ints, NULL, &count)
     if length == DOMAP_DISCONNECTED:
-        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
+        _search(m, rule, False, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
         if automorphism_count:
-            order = _stabiliser(m)[1] if m.nc else _wreath_order(m)
+            order = _stabiliser(m, buf)[1] if m.nc else _wreath_order(m)
         length = _key_of(m, r, key)
     out = [(<char *> key.data.as_ints)[:length * sizeof(int)]]
     if relabelling:
-        out.append(_complete(r, m.n, m.ne))
+        out.append(_complete(r, m.map.n, omap_num_edges(&m.map)))
     if automorphism_count:
         if order:
             out.append(order)
