@@ -205,6 +205,7 @@ counted by the reference, and gives its results::
 
 from cpython cimport array
 from cpython.number cimport PyNumber_Index
+from cpython.ref cimport PyObject
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
 from cysignals.signals cimport sig_on, sig_off, sig_check, sig_block, sig_unblock
@@ -692,17 +693,17 @@ cdef int _key_of(const domap_struct *m, array.array r, array.array key) except -
     return domap_key(key.data.as_ints, m, a, rinv.data.as_ints, k, names.data.as_ints)
 
 
-cdef class _Automorphisms:
-    r"""
-    The automorphisms collected from the leaves of ``domap_search``: ``ra``
-    is the first leaf reaching the best sequence so far, ``result`` the
-    automorphisms ``g[h] = rb^{-1}[ra[h]]`` over the leaves ``rb`` reaching
-    it, and ``rbinv`` a work array of ``n`` entries.
-    """
-    cdef int n
-    cdef array.array ra
-    cdef array.array rbinv
-    cdef list result
+# State of the leaf callback of ``domap_search`` for ``automorphisms``: ``ra``
+# is the first leaf reaching the best sequence so far, ``result`` the list of
+# the automorphisms ``g[h] = rb^{-1}[ra[h]]`` over the leaves ``rb`` reaching
+# it, and ``rbinv`` a work array of ``n`` entries. ``ra``, ``rbinv`` and the
+# list are owned by the caller of ``domap_search``, which outlives the search;
+# ``result`` is borrowed and the list is emptied in place, never rebound.
+cdef struct _leaf_state:
+    int n
+    int *ra
+    int *rbinv
+    PyObject *result
 
 
 ctypedef int (*_unchecked_leaf_callback)(const int *leaf, int first, void *arg) noexcept
@@ -735,17 +736,18 @@ cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
 
 cdef int _collect_automorphism(const int *leaf, int first, void *arg) except -1:
     r"""
-    Append to the :class:`_Automorphisms` ``arg`` the automorphism of the
-    leaf ``leaf``, the list restarted when ``first``.
+    Append to the list of the ``_leaf_state`` ``arg`` the automorphism of the
+    leaf ``leaf``, the list emptied when ``first``.
     """
-    cdef _Automorphisms s = <_Automorphisms> arg
+    cdef _leaf_state *s = <_leaf_state *> arg
     cdef int n = s.n, h
-    cdef int *ra = s.ra.data.as_ints
-    cdef int *rbinv = s.rbinv.data.as_ints
+    cdef int *ra = s.ra
+    cdef int *rbinv = s.rbinv
+    cdef list result = <list> s.result
     cdef array.array g
     if first:
         memcpy(ra, leaf, n * sizeof(int))
-        s.result = []
+        del result[:]
     for h in range(n):
         if leaf[h] != -1:
             rbinv[leaf[h]] = h
@@ -755,7 +757,7 @@ cdef int _collect_automorphism(const int *leaf, int first, void *arg) except -1:
             g.data.as_ints[h] = h
         else:
             g.data.as_ints[h] = rbinv[ra[h]]
-    s.result.append(g)
+    result.append(g)
     return 0
 
 
@@ -1035,14 +1037,16 @@ cdef list _leaf_automorphisms(const domap_struct *m, int rule, array.array ra):
     the leaves of ``domap_search`` under the rule ``rule``, in their order;
     ``ra`` is a buffer of ``m.map.n`` entries.
     """
-    cdef _Automorphisms s = _Automorphisms.__new__(_Automorphisms)
+    cdef _leaf_state s
+    cdef array.array rbinv = _new(m.map.n)
+    cdef list result = []
     s.n = m.map.n
-    s.ra = ra
-    s.rbinv = _new(m.map.n)
-    s.result = []
+    s.ra = ra.data.as_ints
+    s.rbinv = rbinv.data.as_ints
+    s.result = <PyObject *> result
     _search(m, rule, True, _new(DOMAP_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), NULL, _automorphism_leaf,
-            <void *> s)
-    return s.result
+            &s)
+    return result
 
 
 cdef list _connected_generators(const domap_struct *m, array.array ra, array.array roots, int count):
