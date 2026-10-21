@@ -62,6 +62,7 @@
  * any later version.
  */
 #include "isomorphism.h"
+#include "perm.h"
 
 #include <string.h>
 
@@ -327,39 +328,6 @@ iso_invariants_differ(int n1, const int *fp1, const int *data1,
 }
 
 /*
- * Write into id the index of the cycle of p (n ints, -1 on the inactive
- * half-edges) of each active half-edge, -1 on the inactive ones, and into
- * size the length of that cycle (not written on the inactive half-edges).
- */
-static void
-cycles(int n, const int *p, int *id, int *size)
-{
-    int h, x, len, c = 0;
-
-    for (h = 0; h < n; h++)
-        id[h] = -1;
-    for (h = 0; h < n; h++)
-    {
-        if (p[h] == -1 || id[h] != -1)
-            continue;
-        len = 0;
-        x = h;
-        do
-        {
-            id[x] = c;
-            len++;
-            x = p[x];
-        } while (x != h);
-        do
-        {
-            size[x] = len;
-            x = p[x];
-        } while (x != h);
-        c++;
-    }
-}
-
-/*
  * The entry j of the invariant of the active half-edge h (see
  * isomorphism.h), shifted into 0, ..., n - 1: the degrees minus 1, and loop
  * and monogon as 0 or 1. vid and fid are the indices of the vertices and of
@@ -617,8 +585,8 @@ root_classes(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
         t = fp[h ^ 1] != -1 ? h ^ 1 : h;
         aux[fp[t]] = h;
     }
-    cycles(n, aux, vid, vdeg);
-    cycles(n, fp, fid, fdeg);
+    _perm_dense_cycles(vid, vdeg, aux, n);
+    _perm_dense_cycles(fid, fdeg, fp, n);
 
     for (h = 0; h < n; h++)
         if (fp[h] != -1)
@@ -1174,33 +1142,6 @@ debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
 #endif
 
 /*
- * The representative of the orbit of h in the union-find parent, its
- * smallest half-edge, with path halving.
- */
-static inline int
-orbit_find(int *parent, int h)
-{
-    while (parent[h] != h)
-    {
-        parent[h] = parent[parent[h]];
-        h = parent[h];
-    }
-    return h;
-}
-
-/* Merge the orbits of a and b, the larger representative under the smaller. */
-static inline void
-orbit_union(int *parent, int a, int b)
-{
-    a = orbit_find(parent, a);
-    b = orbit_find(parent, b);
-    if (a < b)
-        parent[b] = a;
-    else if (b < a)
-        parent[a] = b;
-}
-
-/*
  * The state of iso_canonical while it tries the roots after the first one:
  * the buffers, the best key so far and the candidate key (swapped when a
  * root beats the best one), the length of the keys, the best root and its
@@ -1237,11 +1178,11 @@ canonical_root(struct canonical_state *s, int root)
     int n = s->n, k, cmp, h;
     int *r = s->r, *rinv = s->rinv, *tmp;
 
-    if (s->merged && orbit_find(s->parent, root) < root)
+    if (s->merged && _perm_orbits_find(s->parent, root) < root)
     {
 #ifdef ISO_DEBUG
-        cmp = orbit_find(s->parent, root)
-            == orbit_find(s->parent, s->best_root) ? 0 : 1;
+        cmp = _perm_orbits_find(s->parent, root)
+            == _perm_orbits_find(s->parent, s->best_root) ? 0 : 1;
         debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp,
                    s->best, s->cur, s->len, s->names, s->scratch);
 #endif
@@ -1284,14 +1225,14 @@ canonical_root(struct canonical_state *s, int root)
             s->merged = 1;
         }
 #ifdef ISO_DEBUG
-        ISO_CHECK(orbit_find(s->parent, root)
-                  != orbit_find(s->parent, s->best_root));
+        ISO_CHECK(_perm_orbits_find(s->parent, root)
+                  != _perm_orbits_find(s->parent, s->best_root));
         debug_automorphism(n, s->fp, s->nd, s->data, s->nc, s->classes,
                            s->rbest, rinv, s->scratch);
 #endif
         for (h = 0; h < n; h++)
             if (s->fp[h] != -1)
-                orbit_union(s->parent, h, rinv[s->rbest[h]]);
+                _perm_orbits_union(s->parent, h, rinv[s->rbest[h]]);
     }
     /* past n / 2 labels, a sequential clear (all bytes 0xff, the int
      * -1) is cheaper than the scattered writes of reset_local */
@@ -1438,7 +1379,7 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
     }
     else
     {
-        rep = orbit_find(parent, s.best_root);
+        rep = _perm_orbits_find(parent, s.best_root);
 #ifdef ISO_DEBUG
         ISO_CHECK(rep == s.best_root);
 #endif
@@ -1447,7 +1388,8 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
         {
             for (root = rep; root < n; root++)
             {
-                if (fp[root] != -1 && orbit_find(parent, root) == rep)
+                if (fp[root] != -1
+                    && _perm_orbits_find(parent, root) == rep)
                 {
                     if (roots != NULL)
                         roots[count] = root;
@@ -1461,7 +1403,7 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
             for (i = lo; i < hi; i++)
             {
                 root = order[i];
-                if (orbit_find(parent, root) == rep)
+                if (_perm_orbits_find(parent, root) == rep)
                 {
                     if (roots != NULL)
                         roots[count] = root;

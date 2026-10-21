@@ -1,3 +1,5 @@
+# distutils: sources = combisurf/src/perm.c
+# distutils: include_dirs = combisurf/src
 r"""
 Partial permutations on `\{0, 1, ..., n-1\}`.
 
@@ -41,6 +43,7 @@ from sage.misc.prandom import shuffle, randint
 from sage.arith.functions import lcm
 
 from combisurf.misc cimport str_to_int
+from combisurf.perm cimport _perm_check, _perm_id, _perm_dense_cycles
 
 
 def argmin(l):
@@ -148,6 +151,8 @@ def perm_check(l, int n=-1, involution=None):
 
         sage: perm_check(array('i', [1,0,-1,-1,-1]), 2)
         True
+        sage: perm_check(array('i', [-1, 0]))
+        True
 
     Bad permutations::
 
@@ -173,13 +178,9 @@ def perm_check(l, int n=-1, involution=None):
         if len(l) < n:
             return False
 
-    seen = [False] * n
-    for i in range(n):
-        if l[i] == -1:
-            continue
-        if l[i] < 0 or l[i] >= n or seen[l[i]]:
-            return False
-        seen[l[i]] = True
+    cdef array.array seen = array.clone(l, max(n, 0), False)
+    if _perm_check((<array.array> l).data.as_ints, n, seen.data.as_ints) < 0:
+        return False
 
     if involution is not None:
         for i in range(n):
@@ -220,7 +221,11 @@ def perm_id(int n):
         sage: perm_id(4)
         array('i', [0, 1, 2, 3])
     """
-    return array.array('i', range(n))
+    if n <= 0:
+        return array.array('i')
+    cdef array.array res = array.clone(array.array('i'), n, False)
+    _perm_id(res.data.as_ints, n)
+    return res
 
 
 def perm_init(data, int n=-1, edge_like=False, partial=False):
@@ -758,20 +763,9 @@ def perm_dense_cycles(array.array p, int n=-1):
     elif n < 0 or n > len(p):
         raise ValueError(f"n (={n}) must be between 0 and len(p) (={len(p)})")
 
-    cdef array.array res = array.array('i', [-1] * n)
-    cdef int * pp = p.data.as_ints
-    cdef int * rr = res.data.as_ints
-    cdef int i, j, k = 0
-    for i in range(n):
-        if pp[i] == -1 or rr[i] != -1:
-            continue
-        j = i
-        while rr[j] == -1:
-            rr[j] = k
-            j = pp[j]
-            if j < 0 or j >= n:
-                raise ValueError(f"p does not map [0, {n}) to itself")
-        k += 1
+    cdef array.array res = array.clone(p, n, False)
+    if _perm_dense_cycles(res.data.as_ints, NULL, p.data.as_ints, n) < 0:
+        raise ValueError(f"p does not map [0, {n}) to itself")
     return res
 
 
@@ -942,28 +936,27 @@ def perm_cycles_lengths(array.array p, int n=-1):
         array('i', [2, -1, 2])
         sage: perm_cycles_lengths(array('i', [2,0,1,-1,-1]), n=3)
         array('i', [3, 3, 3])
+
+    TESTS::
+
+        sage: perm_cycles_lengths(array('i', [3,1,2,0]), 2)
+        Traceback (most recent call last):
+        ...
+        ValueError: p does not map [0, 2) to itself
+        sage: perm_cycles_lengths(array('i', [1,-1]))
+        Traceback (most recent call last):
+        ...
+        ValueError: p does not map [0, 2) to itself
     """
     if n == -1:
         n = len(p)
     elif n < 0 or n > len(p):
         raise ValueError
 
-    cdef array.array lengths = array.array('i', [-1] * n)
-    cdef int i, j, m
-
-    for i in range(n):
-        if lengths.data.as_ints[i] != -1 or p.data.as_ints[i] == -1:
-            continue
-        j = i
-        m = 0
-        while lengths.data.as_ints[j] == -1:
-            lengths.data.as_ints[j] = 0
-            j = p.data.as_ints[j]
-            m += 1
-        while lengths.data.as_ints[j] == 0:
-            lengths.data.as_ints[j] = m
-            j = p[j]
-
+    cdef array.array lengths = array.clone(p, n, False)
+    cdef array.array ids = array.clone(p, n, False)
+    if _perm_dense_cycles(ids.data.as_ints, lengths.data.as_ints, p.data.as_ints, n) < 0:
+        raise ValueError(f"p does not map [0, {n}) to itself")
     return lengths
 
 

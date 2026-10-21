@@ -1,4 +1,4 @@
-# distutils: sources = combisurf/src/isomorphism.c
+# distutils: sources = combisurf/src/isomorphism.c combisurf/src/perm.c
 # distutils: include_dirs = combisurf/src
 r"""
 Isomorphisms, automorphisms and canonical labels of maps
@@ -208,6 +208,7 @@ from cpython.number cimport PyNumber_Index
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
 from cysignals.signals cimport sig_on, sig_off, sig_check, sig_block, sig_unblock
+from combisurf.perm cimport _perm_check, _perm_id, _perm_orbits_find, _perm_orbits_union
 from math import factorial
 from numbers import Integral
 
@@ -560,7 +561,7 @@ cdef _Map _convert(fp, tuple data, tuple classes):
     large for the buffers of the C code.
     """
     cdef _Map m = _Map.__new__(_Map)
-    cdef int n, h, x, j, off, i
+    cdef int n, h, j, off, i
     cdef int *f
     cdef int *dec
     cdef int *a
@@ -577,20 +578,13 @@ cdef _Map _convert(fp, tuple data, tuple classes):
     m.nc = len(classes)
     f = m.fp.data.as_ints
 
-    # a map from the active half-edges to themselves that is one-to-one is
-    # a permutation of them
     seen = _new(n)
-    for h in range(n):
-        seen.data.as_ints[h] = 0
+    if _perm_check(f, n, seen.data.as_ints) != 1:
+        raise ValueError("fp must be a permutation of its active half-edges")
     m.na = 0
     for h in range(n):
-        x = f[h]
-        if x == -1:
-            continue
-        if x < 0 or x >= n or f[x] == -1 or seen.data.as_ints[x]:
-            raise ValueError("fp must be a permutation of its active half-edges")
-        seen.data.as_ints[x] = 1
-        m.na += 1
+        if f[h] != -1:
+            m.na += 1
     m.ne = iso_num_edges(n, f)
 
     m.dec = _new((m.nd + m.nc) * n)
@@ -1058,17 +1052,6 @@ cdef array.array _automorphism_from(_Map m, array.array ra, int root, array.arra
     return g
 
 
-cdef inline int _find(int *parent, int x):
-    r"""
-    Return the representative of ``x`` in the union-find ``parent``, with
-    path halving.
-    """
-    while parent[x] != x:
-        parent[x] = parent[parent[x]]
-        x = parent[x]
-    return x
-
-
 cdef list _leaf_automorphisms(_Map m, int rule, array.array ra):
     r"""
     Return the list of the automorphisms of the disconnected map ``m``, from
@@ -1093,7 +1076,7 @@ cdef list _connected_generators(_Map m, array.array ra, array.array roots, int c
     ``b_j`` is built only when ``b_j`` is outside the orbit of ``b_0`` under
     the generators kept (a union-find over the half-edges).
     """
-    cdef int n = m.n, j, h, x, y, b0
+    cdef int n = m.n, j, h, b0
     cdef array.array parent, rb, rbinv, queue, g
     cdef int *p
     cdef int *r
@@ -1112,23 +1095,18 @@ cdef list _connected_generators(_Map m, array.array ra, array.array roots, int c
     for j in range(1, count):
         # the orbit of b0 under the generators kept is its class in the
         # union-find; an automorphism is determined by the image of b0
-        if _find(p, r[j]) == _find(p, b0):
+        if _perm_orbits_find(p, r[j]) == _perm_orbits_find(p, b0):
             continue
         g = _automorphism_from(m, ra, r[j], rb, rbinv, queue)
         for h in range(n):
-            x = _find(p, h)
-            y = _find(p, g.data.as_ints[h])
-            if x != y:
-                p[x] = y
+            _perm_orbits_union(p, h, g.data.as_ints[h])
         gens.append(g)
     return gens
 
 
 cdef array.array _identity(int n):
     cdef array.array g = _new(n)
-    cdef int h
-    for h in range(n):
-        g.data.as_ints[h] = h
+    _perm_id(g.data.as_ints, n)
     return g
 
 
@@ -1645,7 +1623,7 @@ cdef tuple _stabiliser(_Map m):
             for q in range(nl):
                 sig_check()
                 x = lab[off[b] + labels[loff[t] + q]]
-                if x == bi or _find(p, x) == _find(p, bi):
+                if x == bi or _perm_orbits_find(p, x) == _perm_orbits_find(p, bi):
                     continue
                 s.target.data.as_ints[i] = b
                 s.choice.data.as_ints[i] = q
@@ -1667,8 +1645,8 @@ cdef tuple _stabiliser(_Map m):
                     g = s.leaf(i)
                     gens.append(g)
                     for h in range(n):
-                        x = _find(p, h)
-                        y = _find(p, g.data.as_ints[h])
+                        x = _perm_orbits_find(p, h)
+                        y = _perm_orbits_find(p, g.data.as_ints[h])
                         if x != y:
                             p[x] = y
                             sz[y] += sz[x]
@@ -1678,7 +1656,7 @@ cdef tuple _stabiliser(_Map m):
         s.undo(0)
         for b in range(i):
             used[b] = 0
-        order *= sz[_find(p, bi)]
+        order *= sz[_perm_orbits_find(p, bi)]
     return gens, order
 
 
