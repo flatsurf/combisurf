@@ -69,6 +69,35 @@
 #ifndef COMBISURF_OMAP_H
 #define COMBISURF_OMAP_H
 
+#define OMAP_INLINE static inline
+
+/* Types *********************************************************************/
+
+/* A map: its face permutation fp on n half-edges. */
+typedef struct
+{
+    int *fp;
+    int n;
+}
+omap_struct;
+
+typedef omap_struct omap_t[1];
+
+/* A decorated map: nd data arrays of n ints one after the other from data,
+   nc class arrays of n ints one after the other from classes. map comes first
+   so that a pointer to a domap_struct is also one to an omap_struct. */
+typedef struct
+{
+    omap_struct map;
+    int nd;
+    const int *data;
+    int nc;
+    const int *classes;
+}
+domap_struct;
+
+typedef domap_struct domap_t[1];
+
 /* Return value of domap_canonical on a map that is not connected. */
 enum
 {
@@ -112,10 +141,16 @@ typedef enum
 #define DOMAP_WORK_SIZE(n, nd, nc) (9 * (n) + 1 + DOMAP_KEY_SIZE(n, nd, nc))
 
 /* Return the number of active edges of fp. */
-int omap_num_edges(int n, const int *fp);
+int _omap_num_edges(const int *fp, int n);
+
+OMAP_INLINE int
+omap_num_edges(const omap_t m)
+{
+    return _omap_num_edges(m->fp, m->n);
+}
 
 /*
- * Write into r (n ints) the relabelling of fp by the breadth-first walk
+ * Write into r (n ints) the relabelling of m by the breadth-first walk
  * from the active half-edge root, -1 on the half-edges of the edges not
  * reached, and into rinv (n ints) its inverse on the labels used:
  * rinv[i] is the half-edge of label i, or -1 when that half-edge is
@@ -125,50 +160,52 @@ int omap_num_edges(int n, const int *fp);
  * Return the number k of labels used; the map is connected if and only if
  * k is twice its number of active edges.
  */
-int omap_relabelling_from(int n, const int *fp, int root, int *r, int *rinv,
-                          int *queue);
+int _omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root,
+                           int *queue);
+
+OMAP_INLINE int
+omap_relabelling_from(int *r, int *rinv, const omap_t m, int root, int *queue)
+{
+    return _omap_relabelling_from(r, rinv, m->fp, m->n, root, queue);
+}
 
 /*
- * Write into key the key of the relabelling (r, rinv) using k labels, as
- * computed by omap_relabelling_from. key has room for DOMAP_KEY_SIZE(n, nd,
+ * Write into key the key of m under the relabelling (r, rinv) using k labels,
+ * as computed by omap_relabelling_from. key has room for DOMAP_KEY_SIZE(n, nd,
  * nc) ints. names is a work buffer of n ints, all -1 on entry, and all -1
  * again on return.
  *
  * Return the length of the key.
  */
-int domap_key(int n, const int *fp, int nd, const int *data, int nc,
-              const int *classes, const int *r, const int *rinv, int k,
-              int *key, int *names);
+int domap_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
+              int *names);
 
 /* Size of the work buffer of domap_invariants_differ, in ints. */
 #define DOMAP_INVARIANTS_WORK_SIZE(n) (2 * (n) + 1)
 
 /*
- * Return 1 when an invariant of the decorated maps (n1, fp1, data1,
- * classes1) and (n2, fp2, data2, classes2), with nd data arrays and nc class
- * arrays each, differs, so that they are not isomorphic, and 0 otherwise.
- * The two maps must have as many active half-edges. An isomorphism is a
- * bijection of the active half-edges that keeps the data values, and that
- * relabels the values of each class array, sending a class to a class of the
- * same size. Compared, in this order, stopping at the first difference: for
- * each data array a hash of the multiset of its values on the active
- * half-edges (one pass, O(n)), then for each class array the multiset of
- * the sizes of its classes (counted, O(n)). work is a buffer of
- * DOMAP_INVARIANTS_WORK_SIZE(n) ints, n = max(n1, n2), read only when nc > 0
- * (it may be NULL otherwise).
+ * Return 1 when an invariant of the decorated maps m1 and m2 differs, so that
+ * they are not isomorphic, and 0 otherwise. The two maps must have as many
+ * data arrays (m1->nd == m2->nd), as many class arrays (m1->nc == m2->nc)
+ * and as many active half-edges. An isomorphism is a bijection of the active
+ * half-edges that keeps the data values, and that relabels the values of each
+ * class array, sending a class to a class of the same size. Compared, in this
+ * order, stopping at the first difference: for each data array a hash of the
+ * multiset of its values on the active half-edges (one pass, O(n)), then for
+ * each class array the multiset of the sizes of its classes (counted, O(n)).
+ * work is a buffer of
+ * DOMAP_INVARIANTS_WORK_SIZE(n) ints, n = max(m1->map.n, m2->map.n), read
+ * only when m1->nc > 0 (it may be NULL otherwise).
  *
  * The multisets of the face degrees and of the vertex degrees are not
  * compared: walking the cycles of the two maps is one more pass over each
  * map, on top of those the search makes anyway, and it rejects few pairs
  * that the other invariants accept.
  */
-int domap_invariants_differ(int n1, const int *fp1, const int *data1,
-                            const int *classes1, int n2, const int *fp2,
-                            const int *data2, const int *classes2, int nd,
-                            int nc, int *work);
+int domap_invariants_differ(const domap_t m1, const domap_t m2, int *work);
 
 /*
- * Try every active half-edge of fp of the class of the rule as a root (every
+ * Try every active half-edge of m of the class of the rule as a root (every
  * active half-edge under DOMAP_ROOTS_ALL), in increasing order, and write
  * into key (DOMAP_KEY_SIZE(n, nd, nc) ints) the minimal key.
  *
@@ -224,9 +261,8 @@ int domap_invariants_differ(int n1, const int *fp1, const int *data1,
  * active half-edges (a heap sort, O(n log n) per array). They add nd or
  * 2 nd entries.
  */
-int domap_canonical(int n, const int *fp, int nd, const int *data, int nc,
-                    const int *classes, domap_root_rule rule, int *key,
-                    int *relabelling, int *roots, int *nroots, int *work);
+int domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
+                    const domap_t m, domap_root_rule rule, int *work);
 
 /*
  * Maps that may be disconnected: the search over the labellings component
@@ -285,7 +321,7 @@ typedef int (*domap_leaf_callback)(const int *leaf, int first, void *arg);
 
 /*
  * Search the lexicographically minimal sequence of blocks over the
- * labellings of fp component after component, exactly as
+ * labellings of m component after component, exactly as
  * isomorphism_naive._search: from a state (the components labelled so
  * far), the class of the rule is chosen among the active half-edges not
  * labelled yet (by the invariants of the whole map, and by the numbers of
@@ -346,9 +382,8 @@ typedef int (*domap_leaf_callback)(const int *leaf, int first, void *arg);
  * Return 0, or the nonzero value returned by the callback, which stops the
  * search and leaves the outputs undefined.
  */
-int domap_search(int n, const int *fp, int nd, const int *data, int nc,
-                 const int *classes, domap_root_rule rule, int all_leaves,
-                 int *sequence, int *length, int *relabelling,
+int domap_search(int *sequence, int *length, int *relabelling,
+                 const domap_t m, domap_root_rule rule, int all_leaves,
                  domap_leaf_callback callback, void *arg, int *work);
 
 #endif

@@ -83,7 +83,7 @@
 
 /* Check that (r, rinv) is a relabelling of the reached edges by k labels. */
 static void
-debug_relabelling(int n, const int *fp, const int *r, const int *rinv, int k)
+debug_relabelling(const int *fp, int n, const int *r, const int *rinv, int k)
 {
     int h, i;
     OMAP_CHECK(k % 2 == 0 && 0 <= k && k <= n);
@@ -113,7 +113,7 @@ debug_relabelling(int n, const int *fp, const int *r, const int *rinv, int k)
 
 /* Check that names is all -1. */
 static void
-debug_names(int n, const int *names)
+debug_names(const int *names, int n)
 {
     int v;
     for (v = 0; v < n; v++)
@@ -122,7 +122,7 @@ debug_names(int n, const int *names)
 #endif
 
 int
-omap_num_edges(int n, const int *fp)
+_omap_num_edges(const int *fp, int n)
 {
     int e, ne = 0;
     for (e = 0; 2 * e < n; e++)
@@ -132,8 +132,8 @@ omap_num_edges(int n, const int *fp)
 }
 
 int
-omap_relabelling_from(int n, const int *fp, int root, int *r, int *rinv,
-                      int *queue)
+_omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root,
+                       int *queue)
 {
     int head = 0, tail = 0, k = 0;
     int h, x;
@@ -169,21 +169,23 @@ omap_relabelling_from(int n, const int *fp, int root, int *r, int *rinv,
         } while (x != h);
     }
 #ifdef OMAP_DEBUG
-    debug_relabelling(n, fp, r, rinv, k);
+    debug_relabelling(fp, n, r, rinv, k);
 #endif
     return k;
 }
 
 int
-domap_key(int n, const int *fp, int nd, const int *data, int nc,
-          const int *classes, const int *r, const int *rinv, int k, int *key,
+domap_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
           int *names)
 {
+    const int *fp = m->map.fp;
+    int n = m->map.n, nd = m->nd, nc = m->nc;
+    const int *data = m->data, *classes = m->classes;
     int i, j, h, pos, next;
     const int *a;
 
 #ifdef OMAP_DEBUG
-    debug_names(n, names);
+    debug_names(names, n);
 #endif
     for (i = 0; i < k; i++)
     {
@@ -226,7 +228,7 @@ domap_key(int n, const int *fp, int nd, const int *data, int nc,
         }
     }
 #ifdef OMAP_DEBUG
-    debug_names(n, names);
+    debug_names(names, n);
 #endif
     return pos;
 }
@@ -252,7 +254,7 @@ mix_value(int x)
  * branches.
  */
 static unsigned long long
-values_hash(int n, const int *fp, const int *a)
+values_hash(const int *fp, int n, const int *a)
 {
     unsigned long long s = 0;
     int h;
@@ -268,8 +270,8 @@ values_hash(int n, const int *fp, const int *a)
  * (n + 1 ints) are zero on entry and, when they are equal, on return.
  */
 static int
-class_sizes_differ(int n1, const int *fp1, const int *a1, int n2,
-                   const int *fp2, const int *a2, int *sz, int *cnt)
+class_sizes_differ(const int *fp1, int n1, const int *a1, const int *fp2,
+                   int n2, const int *a2, int *sz, int *cnt)
 {
     int h;
 
@@ -303,17 +305,17 @@ class_sizes_differ(int n1, const int *fp1, const int *a1, int n2,
 }
 
 int
-domap_invariants_differ(int n1, const int *fp1, const int *data1,
-                        const int *classes1, int n2, const int *fp2,
-                        const int *data2, const int *classes2, int nd, int nc,
-                        int *work)
+domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
 {
+    const int *fp1 = m1->map.fp, *fp2 = m2->map.fp;
+    int n1 = m1->map.n, n2 = m2->map.n;
+    int nd = m1->nd, nc = m1->nc;
     int n = n1 > n2 ? n1 : n2;
     int j;
 
     for (j = 0; j < nd; j++)
-        if (values_hash(n1, fp1, data1 + (long) j * n1)
-            != values_hash(n2, fp2, data2 + (long) j * n2))
+        if (values_hash(fp1, n1, m1->data + (long) j * n1)
+            != values_hash(fp2, n2, m2->data + (long) j * n2))
             return 1;
     if (nc == 0)
         return 0;
@@ -321,8 +323,8 @@ domap_invariants_differ(int n1, const int *fp1, const int *data1,
         work[j] = 0;
     /* each check leaves the buffers zero when it finds no difference */
     for (j = 0; j < nc; j++)
-        if (class_sizes_differ(n1, fp1, classes1 + (long) j * n1, n2, fp2,
-                               classes2 + (long) j * n2, work, work + n))
+        if (class_sizes_differ(fp1, n1, m1->classes + (long) j * n1, fp2, n2,
+                               m2->classes + (long) j * n2, work, work + n))
             return 1;
     return 0;
 }
@@ -334,8 +336,8 @@ domap_invariants_differ(int n1, const int *fp1, const int *data1,
  * the faces, vdeg and fdeg their degrees.
  */
 static int
-invariant_entry(int j, int h, const int *fp, const int *vid, const int *vdeg,
-                const int *fid, const int *fdeg)
+invariant_entry(const int *fp, const int *vid, const int *vdeg,
+                const int *fid, const int *fdeg, int j, int h)
 {
     int t = fp[h ^ 1] != -1 ? h ^ 1 : h;
     switch (j)
@@ -373,8 +375,8 @@ static inline int
 entry(const struct invariants *iv, int j, int h)
 {
     if (j < iv->base)
-        return invariant_entry(j, h, iv->fp, iv->vid, iv->vdeg, iv->fid,
-                               iv->fdeg);
+        return invariant_entry(iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg,
+                               j, h);
     j -= iv->base;
     if (j >= iv->nd)
     {
@@ -390,7 +392,7 @@ entry(const struct invariants *iv, int j, int h)
  * v[a[.]].
  */
 static void
-sift_down(int *a, int i, int len, const int *v)
+sift_down(int *a, const int *v, int i, int len)
 {
     int c, x = a[i];
     while ((c = 2 * i + 1) < len)
@@ -417,7 +419,7 @@ sift_down(int *a, int i, int len, const int *v)
  * beyond them and runs in O(n log n) whatever the values.
  */
 static void
-data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
+data_ranks(int *rank, const int *fp, int n, const int *a, int *tmp)
 {
     int h, i, x, na = 0, k = 0, lo = 0, hi = 0;
 
@@ -444,13 +446,13 @@ data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
         if (fp[h] != -1)
             tmp[na++] = h;
     for (i = na / 2 - 1; i >= 0; i--)
-        sift_down(tmp, i, na, a);
+        sift_down(tmp, a, i, na);
     for (i = na - 1; i > 0; i--)
     {
         x = tmp[0];
         tmp[0] = tmp[i];
         tmp[i] = x;
-        sift_down(tmp, 0, i, a);
+        sift_down(tmp, a, 0, i);
     }
     for (i = 0; i < na; i++)
     {
@@ -473,10 +475,10 @@ debug_compare_invariants(const struct invariants *iv, const int *data, int h1,
     int j, x, y, side, t1, t2;
     for (j = 0; j < iv->base; j++)
     {
-        x = invariant_entry(j, h1, iv->fp, iv->vid, iv->vdeg, iv->fid,
-                            iv->fdeg);
-        y = invariant_entry(j, h2, iv->fp, iv->vid, iv->vdeg, iv->fid,
-                            iv->fdeg);
+        x = invariant_entry(iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg, j,
+                            h1);
+        y = invariant_entry(iv->fp, iv->vid, iv->vdeg, iv->fid, iv->fdeg, j,
+                            h2);
         if (x != y)
             return x < y ? -1 : 1;
     }
@@ -503,8 +505,8 @@ debug_compare_invariants(const struct invariants *iv, const int *data, int h1,
  * invariants increase from a class to the next.
  */
 static void
-debug_classes(const struct invariants *iv, const int *data, int na,
-              const int *order, const int *pos_cls)
+debug_classes(const struct invariants *iv, const int *data,
+              const int *order, const int *pos_cls, int na)
 {
     int i, cmp;
     OMAP_CHECK(pos_cls[0] == 0);
@@ -542,9 +544,8 @@ debug_classes(const struct invariants *iv, const int *data, int na,
  * the first, O(n) each.
  */
 static int
-root_classes(int n, const int *fp, domap_root_rule rule, int nd,
-             const int *data, int *order, int *cls, int *start, int *tmp,
-             int *ranks)
+root_classes(int *order, int *cls, int *start, int *ranks, const int *fp,
+             int n, const int *data, int nd, domap_root_rule rule, int *tmp)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *aux = tmp + 2 * n, *count = tmp + 3 * n;
     /* the indices of the vertices and of the faces, until the classes are
@@ -574,7 +575,7 @@ root_classes(int n, const int *fp, domap_root_rule rule, int nd,
 
     /* the data numbers first, while aux is free */
     for (j = 0; j < nd; j++)
-        data_ranks(n, fp, data + (long) j * n, ranks + (long) j * n, aux);
+        data_ranks(ranks + (long) j * n, fp, n, data + (long) j * n, aux);
 
     /* the vertex permutation, in aux */
     for (h = 0; h < n; h++)
@@ -643,7 +644,7 @@ root_classes(int n, const int *fp, domap_root_rule rule, int nd,
     }
 #ifdef OMAP_DEBUG
     /* before the classes are written over vid and fid */
-    debug_classes(&iv, data, na, order, aux);
+    debug_classes(&iv, data, order, aux, na);
 #endif
     m = aux[na - 1] + 1;
     for (h = 0; h < n; h++)
@@ -670,8 +671,8 @@ root_classes(int n, const int *fp, domap_root_rule rule, int nd,
  * half-edges kept in stack (n ints) for the writes.
  */
 static inline void
-cycle_degrees(int n, const int *fp, int vertex, int *id, int *deg, int *stack,
-              int *lo, int *hi)
+cycle_degrees(int *id, int *deg, int *lo, int *hi, const int *fp, int n,
+              int vertex, int *stack)
 {
     int h, x, i, len, c = 0;
 
@@ -712,7 +713,7 @@ radix_fits(long long *prod, long long range, long long bound)
     return *prod <= bound;
 }
 
-static int choose_class(domap_root_rule rule, int m, const int *cnt);
+static int choose_class(const int *cnt, int m, domap_root_rule rule);
 
 /*
  * The class of the rule (not DOMAP_ROOTS_ALL) chosen by choose_class among
@@ -738,8 +739,8 @@ static int choose_class(domap_root_rule rule, int m, const int *cnt);
  * 2 nd data entries) and its data ranks first.
  */
 static int
-packed_class(int n, const int *fp, domap_root_rule rule, int nd,
-             const int *data, long long bound, int *out, int *tmp, int *pv,
+packed_class(int *out, const int *fp, int n, const int *data, int nd,
+             domap_root_rule rule, long long bound, int *tmp, int *pv,
              int *aux, int *count)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *vid = tmp + 2 * n, *fid = tmp + 3 * n;
@@ -762,8 +763,8 @@ packed_class(int n, const int *fp, domap_root_rule rule, int nd,
         vdeg[h] = 0;
         fdeg[h] = 0;
     }
-    cycle_degrees(n, fp, 1, edge ? vid : NULL, vdeg, out, &vmin, &vmax);
-    cycle_degrees(n, fp, 0, edge ? fid : NULL, fdeg, out, &fmin, &fmax);
+    cycle_degrees(edge ? vid : NULL, vdeg, &vmin, &vmax, fp, n, 1, out);
+    cycle_degrees(edge ? fid : NULL, fdeg, &fmin, &fmax, fp, n, 0, out);
     /* the degrees are at most n, their ranges fit in int; under the edge
      * rules, the degrees at the twins span the same values, the twins of
      * the active half-edges being the active half-edges */
@@ -819,7 +820,7 @@ packed_class(int n, const int *fp, domap_root_rule rule, int nd,
         pv[h] = v;
         count[v]++;
     }
-    c = choose_class(rule, (int) prod, count);
+    c = choose_class(count, (int) prod, rule);
     k = 0;
     for (h = 0; h < n; h++)
         if (fp[h] != -1 && pv[h] == c)
@@ -835,7 +836,7 @@ packed_class(int n, const int *fp, domap_root_rule rule, int nd,
  * The flag DOMAP_ROOTS_DATA does not change the choice.
  */
 static int
-choose_class(domap_root_rule rule, int m, const int *cnt)
+choose_class(const int *cnt, int m, domap_root_rule rule)
 {
     int c, best = -1;
     int base_rule = rule & ~DOMAP_ROOTS_DATA;
@@ -860,8 +861,8 @@ choose_class(domap_root_rule rule, int m, const int *cnt)
  * buffers of its own.
  */
 static void
-debug_packed_class(int n, const int *fp, domap_root_rule rule, int nd,
-                   const int *data, const int *out, int len)
+debug_packed_class(const int *out, int len, const int *fp, int n,
+                   const int *data, int nd, domap_root_rule rule)
 {
     int *buf = malloc(((size_t) 8 * n + 1 + (size_t) nd * n) * sizeof(int));
     int *order = buf, *cls = buf + n, *start = buf + 2 * n,
@@ -870,11 +871,11 @@ debug_packed_class(int n, const int *fp, domap_root_rule rule, int nd,
     int m, c, i;
 
     OMAP_CHECK(buf != NULL);
-    m = root_classes(n, fp, rule, nd, data, order, cls, start, tmp, ranks);
+    m = root_classes(order, cls, start, ranks, fp, n, data, nd, rule, tmp);
     /* the sizes of the classes, in tmp */
     for (c = 0; c < m; c++)
         tmp[c] = start[c + 1] - start[c];
-    c = choose_class(rule, m, tmp);
+    c = choose_class(tmp, m, rule);
     OMAP_CHECK(len == start[c + 1] - start[c]);
     for (i = 0; i < len; i++)
         OMAP_CHECK(out[i] == order[start[c] + i]);
@@ -906,8 +907,8 @@ debug_packed_class(int n, const int *fp, domap_root_rule rule, int nd,
  * reset_local sets r back to -1.
  */
 static int
-walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
-             const int *best, int *k)
+walk_compare(int *r, int *rinv, int *k, const int *fp, const int *best,
+             int root, int *queue)
 {
     int head = 0, tail = 0, used = 0, p = 0, cmp = 0, step = 1, next = 0;
     int h, x, v, lim;
@@ -978,9 +979,11 @@ walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
  * return -1 or 0 as the comparison. names is all -1 on entry and on return.
  */
 static int
-tail_compare(int n, int nd, const int *data, int nc, const int *classes,
-             const int *rinv, int k, const int *best, int *cur, int *names)
+tail_compare(int *cur, const domap_t m, const int *rinv, const int *best,
+             int k, int *names)
 {
+    int n = m->map.n, nd = m->nd, nc = m->nc;
+    const int *data = m->data, *classes = m->classes;
     int i, j, h, v, pos = k, next, cmp = 0;
     const int *a;
 
@@ -1038,7 +1041,7 @@ tail_compare(int n, int nd, const int *data, int nc, const int *classes,
     return cmp;
 }
 
-static void reset_local(int k, const int *lrinv, int *lr);
+static void reset_local(int *lr, const int *lrinv, int k);
 
 #ifdef OMAP_DEBUG
 /*
@@ -1048,16 +1051,16 @@ static void reset_local(int k, const int *lrinv, int *lr);
  * DOMAP_KEY_SIZE(n, nd, nc) ints.
  */
 static void
-debug_root(int n, const int *fp, int nd, const int *data, int nc,
-           const int *classes, int root, int cmp, const int *best,
-           const int *cur, int len, int *names, int *scratch)
+debug_root(const domap_t m, const int *best, const int *cur, int len,
+           int root, int cmp, int *names, int *scratch)
 {
+    int n = m->map.n;
     int *r2 = scratch, *rinv2 = scratch + n, *queue2 = scratch + 2 * n,
         *key2 = scratch + 3 * n;
     int k2, len2, i, ref = 0;
 
-    k2 = omap_relabelling_from(n, fp, root, r2, rinv2, queue2);
-    len2 = domap_key(n, fp, nd, data, nc, classes, r2, rinv2, k2, key2, names);
+    k2 = _omap_relabelling_from(r2, rinv2, m->map.fp, n, root, queue2);
+    len2 = domap_key(key2, m, r2, rinv2, k2, names);
     OMAP_CHECK(len2 == len);
     for (i = 0; i < len; i++)
     {
@@ -1081,10 +1084,12 @@ debug_root(int n, const int *fp, int nd, const int *data, int nc,
  * bijection of their values. scratch holds 4 n ints.
  */
 static void
-debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
-                   const int *classes, const int *rbest, const int *rinv,
+debug_automorphism(const domap_t m, const int *rbest, const int *rinv,
                    int *scratch)
 {
+    const int *fp = m->map.fp;
+    int n = m->map.n, nd = m->nd, nc = m->nc;
+    const int *data = m->data, *classes = m->classes;
     int *aut = scratch, *seen = scratch + n, *fwd = scratch + 2 * n,
         *bwd = scratch + 3 * n;
     int h, j, v, w;
@@ -1153,8 +1158,8 @@ debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
  */
 struct canonical_state
 {
-    int n, nd, nc, ne, len, best_root, merged;
-    const int *fp, *data, *classes;
+    domap_struct m;
+    int ne, len, best_root, merged;
     int *r, *rinv, *queue, *names, *best, *cur, *rbest, *parent;
 #ifdef OMAP_DEBUG
     int *scratch;
@@ -1176,7 +1181,8 @@ struct canonical_state
 static inline void
 canonical_root(struct canonical_state *s, int root)
 {
-    int n = s->n, k, cmp, h;
+    const int *fp = s->m.map.fp;
+    int n = s->m.map.n, k, cmp, h;
     int *r = s->r, *rinv = s->rinv, *tmp;
 
     if (s->merged && _perm_orbits_find(s->parent, root) < root)
@@ -1184,29 +1190,27 @@ canonical_root(struct canonical_state *s, int root)
 #ifdef OMAP_DEBUG
         cmp = _perm_orbits_find(s->parent, root)
             == _perm_orbits_find(s->parent, s->best_root) ? 0 : 1;
-        debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp,
-                   s->best, s->cur, s->len, s->names, s->scratch);
+        debug_root(&s->m, s->best, s->cur, s->len, root, cmp, s->names,
+                   s->scratch);
 #endif
         return;
     }
 
-    cmp = walk_compare(s->fp, root, r, rinv, s->queue, s->best, &k);
+    cmp = walk_compare(r, rinv, &k, fp, s->best, root, s->queue);
     if (cmp < 0)
     {
-        domap_key(n, s->fp, s->nd, s->data, s->nc, s->classes, r, rinv, k,
-                  s->cur, s->names);
+        domap_key(s->cur, &s->m, r, rinv, k, s->names);
     }
     else if (cmp == 0)
     {
-        cmp = tail_compare(n, s->nd, s->data, s->nc, s->classes, rinv, k,
-                           s->best, s->cur, s->names);
+        cmp = tail_compare(s->cur, &s->m, rinv, s->best, k, s->names);
         if (cmp < 0)
             memcpy(s->cur, s->best, (size_t) k * sizeof(int));
     }
 #ifdef OMAP_DEBUG
     OMAP_CHECK(cmp == 1 || k == 2 * s->ne);
-    debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp, s->best,
-               s->cur, s->len, s->names, s->scratch);
+    debug_root(&s->m, s->best, s->cur, s->len, root, cmp, s->names,
+               s->scratch);
 #endif
     if (cmp < 0)
     {
@@ -1228,11 +1232,10 @@ canonical_root(struct canonical_state *s, int root)
 #ifdef OMAP_DEBUG
         OMAP_CHECK(_perm_orbits_find(s->parent, root)
                    != _perm_orbits_find(s->parent, s->best_root));
-        debug_automorphism(n, s->fp, s->nd, s->data, s->nc, s->classes,
-                           s->rbest, rinv, s->scratch);
+        debug_automorphism(&s->m, s->rbest, rinv, s->scratch);
 #endif
         for (h = 0; h < n; h++)
-            if (s->fp[h] != -1)
+            if (fp[h] != -1)
                 _perm_orbits_union(s->parent, h, rinv[s->rbest[h]]);
     }
     /* past n / 2 labels, a sequential clear (all bytes 0xff, the int
@@ -1240,22 +1243,24 @@ canonical_root(struct canonical_state *s, int root)
     if (2 * k >= n)
         memset(r, -1, (size_t) n * sizeof(int));
     else
-        reset_local(k, rinv, r);
+        reset_local(r, rinv, k);
 #ifdef OMAP_DEBUG
     {
         int i;
         for (i = 0; i < n; i++)
             OMAP_CHECK(r[i] == -1);
-        debug_names(n, s->names);
+        debug_names(s->names, n);
     }
 #endif
 }
 
 int
-domap_canonical(int n, const int *fp, int nd, const int *data, int nc,
-                const int *classes, domap_root_rule rule, int *key,
-                int *relabelling, int *roots, int *nroots, int *work)
+domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
+                const domap_t m, domap_root_rule rule, int *work)
 {
+    const int *fp = m->map.fp;
+    int n = m->map.n, nd = m->nd, nc = m->nc;
+    const int *data = m->data;
     int *r = work;
     int *rinv = work + n;
     int *queue = work + 2 * n;
@@ -1268,9 +1273,9 @@ domap_canonical(int n, const int *fp, int nd, const int *data, int nc,
     int *parent = rbest + n;
     struct canonical_state s;
     int all = (rule & ~DOMAP_ROOTS_DATA) == DOMAP_ROOTS_ALL;
-    int ne, first, root, k, i, c, m, rep, count, lo = 0, hi = 0;
+    int ne, first, root, k, i, c, ncls, rep, count, lo = 0, hi = 0;
 
-    ne = omap_num_edges(n, fp);
+    ne = _omap_num_edges(fp, n);
     for (first = 0; first < n && fp[first] == -1; first++)
         ;
     if (first == n)
@@ -1293,22 +1298,22 @@ domap_canonical(int n, const int *fp, int nd, const int *data, int nc,
          * into start, its counts into rbest and parent, which bounds the
          * product of the ranges by 2 n; the sizes of the classes of
          * root_classes go into r. */
-        hi = packed_class(n, fp, rule, nd, data, 2 * (long long) n, order,
+        hi = packed_class(order, fp, n, data, nd, rule, 2 * (long long) n,
                           work, cls, start, rbest);
         if (hi == 0)
         {
-            m = root_classes(n, fp, rule, nd, data, order, cls, start, work,
-                             cur);
-            for (c = 0; c < m; c++)
+            ncls = root_classes(order, cls, start, cur, fp, n, data, nd, rule,
+                                work);
+            for (c = 0; c < ncls; c++)
                 r[c] = start[c + 1] - start[c];
-            c = choose_class(rule, m, r);
+            c = choose_class(r, ncls, rule);
             lo = start[c];
             hi = start[c + 1];
         }
 #ifdef OMAP_DEBUG
         else
         {
-            debug_packed_class(n, fp, rule, nd, data, order, hi);
+            debug_packed_class(order, hi, fp, n, data, nd, rule);
         }
 #endif
         first = order[lo];
@@ -1319,16 +1324,11 @@ domap_canonical(int n, const int *fp, int nd, const int *data, int nc,
 
     /* the first root, walked in full: connectedness does not depend on the
      * root, so only this walk can fail */
-    k = omap_relabelling_from(n, fp, first, r, rinv, queue);
+    k = _omap_relabelling_from(r, rinv, fp, n, first, queue);
     if (k != 2 * ne)
         return DOMAP_DISCONNECTED;
-    s.n = n;
-    s.nd = nd;
-    s.nc = nc;
+    s.m = *m;
     s.ne = ne;
-    s.fp = fp;
-    s.data = data;
-    s.classes = classes;
     s.r = r;
     s.rinv = rinv;
     s.queue = queue;
@@ -1339,9 +1339,9 @@ domap_canonical(int n, const int *fp, int nd, const int *data, int nc,
     s.parent = parent;
     s.best_root = first;
     s.merged = 0;
-    s.len = domap_key(n, fp, nd, data, nc, classes, r, rinv, k, s.best, names);
+    s.len = domap_key(s.best, m, r, rinv, k, names);
     memcpy(rbest, r, (size_t) n * sizeof(int));
-    reset_local(k, rinv, r);
+    reset_local(r, rinv, k);
 #ifdef OMAP_DEBUG
     s.scratch = malloc(((size_t) 3 * n
                         + (size_t) DOMAP_KEY_SIZE(n, nd, nc)) * sizeof(int));
@@ -1425,7 +1425,7 @@ domap_canonical(int n, const int *fp, int nd, const int *data, int nc,
  * of the component and not n.
  */
 static int
-local_walk(const int *fp, int root, int *lr, int *lrinv, int *queue)
+local_walk(int *lr, int *lrinv, const int *fp, int root, int *queue)
 {
     int head = 0, tail = 0, k = 0;
     int h, x;
@@ -1461,7 +1461,7 @@ local_walk(const int *fp, int root, int *lr, int *lrinv, int *queue)
 
 /* Set lr back to -1 on the component walked by local_walk. */
 static void
-reset_local(int k, const int *lrinv, int *lr)
+reset_local(int *lr, const int *lrinv, int k)
 {
     int i, h;
     /* an even label is always on an active half-edge, the one met in a face */
@@ -1481,10 +1481,12 @@ reset_local(int k, const int *lrinv, int *lr)
  * left as on entry. Return the length of the block.
  */
 static int
-component_block(int n, const int *fp, int nd, const int *data, int nc,
-                const int *classes, const int *lr, const int *lrinv, int k,
-                int *names, int *next, int commit, int *block)
+component_block(int *block, const domap_t m, const int *lr, const int *lrinv,
+                int k, int commit, int *names, int *next)
 {
+    const int *fp = m->map.fp;
+    int n = m->map.n, nd = m->nd, nc = m->nc;
+    const int *data = m->data, *classes = m->classes;
     int i, j, h, pos = 0, count;
     const int *a;
     int *nm;
@@ -1577,14 +1579,12 @@ exceeds_prefix(const int *a, int la, const int *b, int lb)
  * entry and on return.
  */
 static inline int
-root_block(int n, const int *fp, int nd, const int *data, int nc,
-           const int *classes, int root, int *lr, int *lrinv, int *queue,
-           int *names, int *next, int *cand)
+root_block(int *cand, const domap_t m, int root, int *lr, int *lrinv,
+           int *queue, int *names, int *next)
 {
-    int k = local_walk(fp, root, lr, lrinv, queue);
-    int len = component_block(n, fp, nd, data, nc, classes, lr, lrinv, k,
-                              names, next, 0, cand);
-    reset_local(k, lrinv, lr);
+    int k = local_walk(lr, lrinv, m->map.fp, root, queue);
+    int len = component_block(cand, m, lr, lrinv, k, 0, names, next);
+    reset_local(lr, lrinv, k);
     return len;
 }
 
@@ -1594,7 +1594,7 @@ root_block(int n, const int *fp, int nd, const int *data, int nc,
  * component extends the numbering names.
  */
 static int
-block_extends(const int *block, int len, int nd, int nc, const int *next)
+block_extends(const int *block, int len, const int *next, int nd, int nc)
 {
     int k = block[0];
     int na = (len - 1 - k) / (nd + nc);
@@ -1614,11 +1614,12 @@ block_extends(const int *block, int len, int nd, int nc, const int *next)
  * numbered from next[j] on without set; lr is -1 on entry and on return.
  */
 static void
-number_component(int n, const int *fp, int nc, const int *classes, int root,
-                 int *lr, int *lrinv, int *queue, int *names, const int *next,
-                 int set)
+number_component(int *names, const domap_t m, const int *next, int root,
+                 int set, int *lr, int *lrinv, int *queue)
 {
-    int k = local_walk(fp, root, lr, lrinv, queue);
+    int n = m->map.n, nc = m->nc;
+    const int *classes = m->classes;
+    int k = local_walk(lr, lrinv, m->map.fp, root, queue);
     int i, j, h, count;
     const int *a;
     int *nm;
@@ -1639,7 +1640,7 @@ number_component(int n, const int *fp, int nc, const int *classes, int root,
                 nm[a[h]] = -1;
         }
     }
-    reset_local(k, lrinv, lr);
+    reset_local(lr, lrinv, k);
 }
 
 /*
@@ -1654,10 +1655,12 @@ number_component(int n, const int *fp, int nc, const int *classes, int root,
  * entry and on return. Costs three walks of the components.
  */
 static int
-same_extension(int n, const int *fp, int nd, int nc, const int *classes,
-               int root1, int root2, const int *block, int len, int *lr,
-               int *lrinv, int *queue, int *names, const int *next)
+same_extension(const domap_t m, const int *block, int len, const int *next,
+               int root1, int root2, int *lr, int *lrinv, int *queue,
+               int *names)
 {
+    int n = m->map.n, nd = m->nd, nc = m->nc;
+    const int *classes = m->classes;
     int k = block[0];
     int na = (len - 1 - k) / (nd + nc);
     const int *b = block + 1 + k + (long) nd * na;
@@ -1665,9 +1668,8 @@ same_extension(int n, const int *fp, int nd, int nc, const int *classes,
     const int *a;
     const int *nm;
 
-    number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next,
-                     1);
-    i = local_walk(fp, root2, lr, lrinv, queue);
+    number_component(names, m, next, root1, 1, lr, lrinv, queue);
+    i = local_walk(lr, lrinv, m->map.fp, root2, queue);
 #ifdef OMAP_DEBUG
     OMAP_CHECK(i == k);
 #endif
@@ -1687,9 +1689,8 @@ same_extension(int n, const int *fp, int nd, int nc, const int *classes,
             }
         }
     }
-    reset_local(k, lrinv, lr);
-    number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next,
-                     0);
+    reset_local(lr, lrinv, k);
+    number_component(names, m, next, root1, 0, lr, lrinv, queue);
     return same;
 }
 
@@ -1700,11 +1701,13 @@ same_extension(int n, const int *fp, int nd, int nc, const int *classes,
  * per kind of position, so that DOMAP_ROOTS_ALL tests no class per root.
  */
 int
-domap_search(int n, const int *fp, int nd, const int *data, int nc,
-             const int *classes, domap_root_rule rule, int all_leaves,
-             int *sequence, int *length, int *relabelling,
+domap_search(int *sequence, int *length, int *relabelling, const domap_t m,
+             domap_root_rule rule, int all_leaves,
              domap_leaf_callback callback, void *arg, int *work)
 {
+    const int *fp = m->map.fp;
+    int n = m->map.n, nd = m->nd, nc = m->nc;
+    const int *data = m->data, *classes = m->classes;
     long levels = n / 2 + 1;
     int *r = work;
     int *rinv = r + n;
@@ -1728,17 +1731,18 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
     int follow_ties = nc > 0 || all_leaves;
     int cut_ties = nc > 0 && !all_leaves;
     int all = (rule & ~DOMAP_ROOTS_DATA) == DOMAP_ROOTS_ALL;
-    int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, m = 0, target, t;
+    int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, ncls = 0, target, t;
     int root, best_root, blen, len, k, cmp, ret, i, j, h, c, found;
 
-    ne = omap_num_edges(n, fp);
+    ne = _omap_num_edges(fp, n);
     if (!all)
     {
         /* r, rinv, lr and lrinv (4 n) are free until they are cleared below,
          * cand (the numbers of the data values) until the first block;
          * cnt[c] is the number of half-edges of the class c not labelled */
-        m = root_classes(n, fp, rule, nd, data, order, cls, start, work, cand);
-        for (c = 0; c < m; c++)
+        ncls = root_classes(order, cls, start, cand, fp, n, data, nd, rule,
+                            work);
+        for (c = 0; c < ncls; c++)
             cnt[c] = start[c + 1] - start[c];
     }
     for (h = 0; h < n; h++)
@@ -1814,8 +1818,8 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
                 {
                     if (fp[root] == -1 || r[root] != -1)
                         continue;
-                    len = root_block(n, fp, nd, data, nc, classes, root, lr,
-                                     lrinv, queue, names, next, cand);
+                    len = root_block(cand, m, root, lr, lrinv, queue, names,
+                                     next);
                     if (best_root == -1
                         || compare_sequences(cand, len, seq + seqlen,
                                              blen) < 0)
@@ -1828,14 +1832,14 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
             }
             else
             {
-                c = choose_class(rule, m, cnt);
+                c = choose_class(cnt, ncls, rule);
                 for (i = start[c]; i < start[c + 1]; i++)
                 {
                     root = order[i];
                     if (r[root] != -1)
                         continue;
-                    len = root_block(n, fp, nd, data, nc, classes, root, lr,
-                                     lrinv, queue, names, next, cand);
+                    len = root_block(cand, m, root, lr, lrinv, queue, names,
+                                     next);
                     if (best_root == -1
                         || compare_sequences(cand, len, seq + seqlen,
                                              blen) < 0)
@@ -1903,7 +1907,7 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
                  * skipped. */
                 blen = lvl_len[depth];
                 if (cut_ties
-                    && !block_extends(seq + seqlen, blen, nd, nc, next))
+                    && !block_extends(seq + seqlen, blen, next, nd, nc))
                     continue;
                 /* the tied roots after the current one: their block is
                  * the one of the level, already in seq; under a rule, they
@@ -1916,8 +1920,8 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
                     {
                         if (fp[root] == -1 || r[root] != -1)
                             continue;
-                        len = root_block(n, fp, nd, data, nc, classes, root,
-                                         lr, lrinv, queue, names, next, cand);
+                        len = root_block(cand, m, root, lr, lrinv, queue,
+                                         names, next);
                         if (len != blen
                             || compare_sequences(cand, len, seq + seqlen,
                                                  len) != 0)
@@ -1927,15 +1931,14 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
                         {
                             if (fp[t] == -1 || r[t] != -1)
                                 continue;
-                            len = root_block(n, fp, nd, data, nc, classes, t,
-                                             lr, lrinv, queue, names, next,
-                                             cand);
+                            len = root_block(cand, m, t, lr, lrinv, queue,
+                                             names, next);
                             if (len == blen
                                 && compare_sequences(cand, len, seq + seqlen,
                                                      len) == 0
-                                && same_extension(n, fp, nd, nc, classes, t,
-                                                  root, seq + seqlen, blen, lr,
-                                                  lrinv, queue, names, next))
+                                && same_extension(m, seq + seqlen, blen, next,
+                                                  t, root, lr, lrinv, queue,
+                                                  names))
                             {
                                 found = 0;
                                 break;
@@ -1954,8 +1957,8 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
                         root = order[i];
                         if (r[root] != -1)
                             continue;
-                        len = root_block(n, fp, nd, data, nc, classes, root,
-                                         lr, lrinv, queue, names, next, cand);
+                        len = root_block(cand, m, root, lr, lrinv, queue,
+                                         names, next);
                         if (len != blen
                             || compare_sequences(cand, len, seq + seqlen,
                                                  len) != 0)
@@ -1965,16 +1968,14 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
                         {
                             if (r[order[t]] != -1)
                                 continue;
-                            len = root_block(n, fp, nd, data, nc, classes,
-                                             order[t], lr, lrinv, queue, names,
-                                             next, cand);
+                            len = root_block(cand, m, order[t], lr, lrinv,
+                                             queue, names, next);
                             if (len == blen
                                 && compare_sequences(cand, len, seq + seqlen,
                                                      len) == 0
-                                && same_extension(n, fp, nd, nc, classes,
-                                                  order[t], root, seq + seqlen,
-                                                  blen, lr, lrinv, queue,
-                                                  names, next))
+                                && same_extension(m, seq + seqlen, blen, next,
+                                                  order[t], root, lr, lrinv,
+                                                  queue, names))
                             {
                                 found = 0;
                                 break;
@@ -1991,7 +1992,7 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
 
         /* label the component of the root of the level depth */
         root = all ? lvl_root[depth] : order[lvl_root[depth]];
-        k = local_walk(fp, root, lr, lrinv, queue);
+        k = local_walk(lr, lrinv, fp, root, queue);
         for (i = 0; i < k; i += 2)
         {
             h = lrinv[i];
@@ -2000,13 +2001,12 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
             rinv[used + i] = h;
             rinv[used + i + 1] = lrinv[i + 1];
         }
-        component_block(n, fp, nd, data, nc, classes, lr, lrinv, k, names,
-                        next, 1, cand);
+        component_block(cand, m, lr, lrinv, k, 1, names, next);
         if (!all)
             for (i = 0; i < k; i++)
                 if (lrinv[i] != -1)
                     cnt[cls[lrinv[i]]]--;
-        reset_local(k, lrinv, lr);
+        reset_local(lr, lrinv, k);
         used += k;
         seqlen += lvl_len[depth];
         depth++;
@@ -2019,7 +2019,7 @@ domap_search(int n, const int *fp, int nd, const int *data, int nc,
         OMAP_CHECK(r[h] == -1 && lr[h] == -1);
     for (i = 0; i < nc * n; i++)
         OMAP_CHECK(names[i] == -1);
-    for (c = 0; c < m; c++)
+    for (c = 0; c < ncls; c++)
         OMAP_CHECK(cnt[c] == start[c + 1] - start[c]);
 #endif
     *length = bestlen;

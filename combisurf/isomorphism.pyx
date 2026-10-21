@@ -213,13 +213,6 @@ from math import factorial
 from numbers import Integral
 
 
-cdef extern from "omap.h":
-    int DOMAP_INVARIANTS_WORK_SIZE(int n)
-    int domap_invariants_differ(int n1, const int *fp1, const int *data1, const int *classes1,
-                              int n2, const int *fp2, const int *data2, const int *classes2,
-                              int nd, int nc, int *work)
-
-
 cdef array.array _int_array = array.array('i', [])
 
 
@@ -519,7 +512,8 @@ cdef class _Map:
     ``dec`` holds the ``nd`` arrays of ``data`` then the ``nc`` renumbered
     arrays of ``classes``, each of ``n`` entries (``0`` on the inactive
     half-edges). ``ne`` is the number of active edges, ``na`` the number of
-    active half-edges.
+    active half-edges. ``c`` is the same map for the C functions, pointing
+    into ``fp`` and ``dec``, which are never resized after ``_convert``.
     """
     cdef array.array fp
     cdef array.array dec
@@ -528,6 +522,7 @@ cdef class _Map:
     cdef int nc
     cdef int ne
     cdef int na
+    cdef domap_struct c
 
 
 cdef _check_input(fp, data, classes):
@@ -585,7 +580,7 @@ cdef _Map _convert(fp, tuple data, tuple classes):
     for h in range(n):
         if f[h] != -1:
             m.na += 1
-    m.ne = omap_num_edges(n, f)
+    m.ne = _omap_num_edges(f, n)
 
     m.dec = _new((m.nd + m.nc) * n)
     dec = m.dec.data.as_ints
@@ -623,6 +618,12 @@ cdef _Map _convert(fp, tuple data, tuple classes):
                 v = c[h]
                 i = names.setdefault(v, len(names))
                 dec[off + h] = i
+    m.c.map.fp = f
+    m.c.map.n = n
+    m.c.nd = m.nd
+    m.c.data = dec
+    m.c.nc = m.nc
+    m.c.classes = dec + m.nd * n
     return m
 
 
@@ -643,14 +644,12 @@ cdef int _run(_Map m, int rule, array.array key, int *relabelling, int *roots, i
     ``DOMAP_KEY_SIZE`` entries) and return its length, or ``DOMAP_DISCONNECTED``.
     """
     cdef array.array work = _new(DOMAP_WORK_SIZE(m.n, m.nd, m.nc))
-    cdef int *dec = m.dec.data.as_ints
     cdef int length
     # an interrupt leaves domap_canonical by a longjmp back to sig_on: every
     # buffer it writes is owned here or by the caller, and it allocates none
     sig_on()
-    length = domap_canonical(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n,
-                           <domap_root_rule> rule, key.data.as_ints, relabelling, roots, nroots,
-                           work.data.as_ints)
+    length = domap_canonical(key.data.as_ints, relabelling, roots, nroots, &m.c,
+                           <domap_root_rule> rule, work.data.as_ints)
     sig_off()
     return length
 
@@ -680,16 +679,14 @@ cdef int _search(_Map m, int rule, bint all_leaves, array.array sequence, int *r
     propagates.
     """
     cdef array.array work = _new(DOMAP_SEARCH_WORK_SIZE(m.n, m.nd, m.nc))
-    cdef int *dec = m.dec.data.as_ints
     cdef int length
     # as in _run, an interrupt leaves domap_search by a longjmp back to sig_on,
     # which also resets the count of sig_on; an exception of the callback
     # returns from domap_search normally, hence the sig_off in the finally
     sig_on()
     try:
-        domap_search(m.n, m.fp.data.as_ints, m.nd, dec, m.nc, dec + m.nd * m.n, <domap_root_rule> rule,
-                   all_leaves, sequence.data.as_ints, &length, relabelling, callback, arg,
-                   work.data.as_ints)
+        domap_search(sequence.data.as_ints, &length, relabelling, &m.c, <domap_root_rule> rule,
+                   all_leaves, callback, arg, work.data.as_ints)
     finally:
         sig_off()
     return length
@@ -704,7 +701,6 @@ cdef int _key_of(_Map m, array.array r, array.array key) except -1:
     cdef int n = m.n, k = 2 * m.ne, h
     cdef int *f = m.fp.data.as_ints
     cdef int *a = r.data.as_ints
-    cdef int *dec = m.dec.data.as_ints
     cdef array.array rinv = _new(n)
     cdef array.array names = _new(n)
     # the labels of the inactive halves of folded edges keep -1
@@ -714,8 +710,7 @@ cdef int _key_of(_Map m, array.array r, array.array key) except -1:
     for h in range(n):
         if f[h] != -1:
             rinv.data.as_ints[a[h]] = h
-    return domap_key(n, f, m.nd, dec, m.nc, dec + m.nd * n, a, rinv.data.as_ints, k,
-                   key.data.as_ints, names.data.as_ints)
+    return domap_key(key.data.as_ints, &m.c, a, rinv.data.as_ints, k, names.data.as_ints)
 
 
 cdef class _Automorphisms:
@@ -1039,8 +1034,8 @@ cdef array.array _automorphism_from(_Map m, array.array ra, int root, array.arra
     # omap_relabelling_from writes -1 into rbinv at the labels of the
     # inactive halves of folded edges; the automorphism maps those
     # halves too, so the inverse is rebuilt on every labelled half-edge
-    omap_relabelling_from(n, m.fp.data.as_ints, root,
-                         rb.data.as_ints, rbinv.data.as_ints, queue.data.as_ints)
+    omap_relabelling_from(rb.data.as_ints, rbinv.data.as_ints, &m.c.map, root,
+                         queue.data.as_ints)
     for h in range(n):
         if rb.data.as_ints[h] != -1:
             rbinv.data.as_ints[rb.data.as_ints[h]] = h
@@ -1326,8 +1321,8 @@ cdef class _Stabiliser:
         cdef int *perm = self.perm.data.as_ints
         # omap_relabelling_from writes -1 into rbinv at the labels of the
         # inactive halves of folded edges, which are rebuilt from rb
-        omap_relabelling_from(size, self.cfp.data.as_ints + o, self.crainv.data.as_ints[o + l],
-                             rb, rbinv, self.queue.data.as_ints)
+        _omap_relabelling_from(rb, rbinv, self.cfp.data.as_ints + o, size,
+                               self.crainv.data.as_ints[o + l], self.queue.data.as_ints)
         for h in range(size):
             rbinv[rb[h]] = h
         for h in range(size):
@@ -1996,8 +1991,6 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
     cdef int len1, len2, h, e, i
     cdef array.array key1, key2, ra, rb, seq1, seq2
     cdef array.array work = None
-    cdef int *dec1 = m1.dec.data.as_ints
-    cdef int *dec2 = m2.dec.data.as_ints
     # an isomorphism is a bijection of the active half-edges preserving the
     # twins, hence the numbers of active edges and half-edges; the invariants
     # of domap_invariants_differ, O(n), are compared before the two searches
@@ -2005,9 +1998,7 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
         return None
     if m1.nc:
         work = _new(DOMAP_INVARIANTS_WORK_SIZE(n1 if n1 > n2 else n2))
-    if domap_invariants_differ(n1, m1.fp.data.as_ints, dec1, dec1 + m1.nd * n1,
-                             n2, m2.fp.data.as_ints, dec2, dec2 + m2.nd * n2,
-                             m1.nd, m1.nc, NULL if work is None else work.data.as_ints):
+    if domap_invariants_differ(&m1.c, &m2.c, NULL if work is None else work.data.as_ints):
         return None
     key1 = _new(DOMAP_KEY_SIZE(n1, m1.nd, m1.nc))
     key2 = _new(DOMAP_KEY_SIZE(n2, m2.nd, m2.nc))

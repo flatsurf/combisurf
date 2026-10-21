@@ -124,6 +124,19 @@ rng_below(int m)
     return (int) (rng_next() % (uint64_t) m);
 }
 
+/* the decorated map (fp, n) with nd data arrays and nc class arrays, into m */
+static void
+set_map(domap_t m, int *fp, int n, int nd, const int *data, int nc,
+        const int *classes)
+{
+    m->map.fp = fp;
+    m->map.n = n;
+    m->nd = nd;
+    m->data = data;
+    m->nc = nc;
+    m->classes = classes;
+}
+
 /* the relabelling r applied to fp, into out (-1 on the inactive images) */
 static void
 relabel_fp(int n, const int *fp, const int *r, int *out)
@@ -155,14 +168,16 @@ relabel_arrays(int n, int m, const int *a, const int *r, int *out)
  * the inactive edges) and number of automorphisms.
  */
 static void
-check_case(const char *name, int n, const int *fp, int nd, const int *data,
+check_case(const char *name, int n, int *fp, int nd, const int *data,
            int nc, const int *classes, int len, const int *expected_key,
            const int *expected_relabelling, int expected_count)
 {
+    domap_t m;
     int count = -1, i;
     current_case = name;
-    CHECK(domap_canonical(n, fp, nd, data, nc, classes, DOMAP_ROOTS_ALL, key,
-                          relabelling, roots, &count, work) == len);
+    set_map(m, fp, n, nd, data, nc, classes);
+    CHECK(domap_canonical(key, relabelling, roots, &count, m, DOMAP_ROOTS_ALL,
+                          work) == len);
     for (i = 0; i < len; i++)
         CHECK(key[i] == expected_key[i]);
     for (i = 0; i < n; i++)
@@ -171,8 +186,8 @@ check_case(const char *name, int n, const int *fp, int nd, const int *data,
     for (i = 1; i < count; i++)
         CHECK(roots[i - 1] < roots[i]);
     /* the key and the count do not depend on the optional outputs */
-    CHECK(domap_canonical(n, fp, nd, data, nc, classes, DOMAP_ROOTS_ALL, key2,
-                          NULL, NULL, NULL, work) == len);
+    CHECK(domap_canonical(key2, NULL, NULL, NULL, m, DOMAP_ROOTS_ALL, work)
+          == len);
     CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) == 0);
 }
 
@@ -180,33 +195,34 @@ static void
 test_fixed(void)
 {
     /* the faces (0,1,2)(~0,~2,~1) */
-    static const int triangle[] = { 2, 5, 4, 1, 0, 3 };
+    static int triangle[] = { 2, 5, 4, 1, 0, 3 };
     static const int identity6[] = { 0, 1, 2, 3, 4, 5 };
     /* one marked half-edge */
     static const int marked[] = { 0, 0, 1, 0, 0, 0 };
     static const int marked_key[] = { 2, 5, 4, 1, 0, 3, 0, 0, 0, 0, 0, 1 };
     static const int marked_relabelling[] = { 1, 0, 5, 4, 3, 2 };
     /* the faces (0,1,2)(~0,~1,~2), with the two faces marked */
-    static const int two_faces[] = { 2, 3, 4, 5, 0, 1 };
+    static int two_faces[] = { 2, 3, 4, 5, 0, 1 };
     static const int faces[] = { 0, 1, 0, 1, 0, 1 };
     static const int two_faces_key[] = { 2, 3, 4, 5, 0, 1, 0, 1, 0, 1, 0, 1 };
     /* a folded edge: the faces (0,1)(~1) */
-    static const int folded[] = { 2, -1, 0, 3 };
+    static int folded[] = { 2, -1, 0, 3 };
     static const int folded_key[] = { 0, 2, 1, -1 };
     static const int folded_relabelling[] = { 2, 3, 1, 0 };
     /* a label gap: the face (0,2,~2), the edge 1 inactive */
-    static const int gap[] = { 4, -1, -1, -1, 5, 0 };
+    static int gap[] = { 4, -1, -1, -1, 5, 0 };
     static const int gap_key[] = { 1, 2, 0, -1 };
     static const int gap_relabelling[] = { 2, 3, -1, -1, 0, 1 };
     /* a single half-edge */
-    static const int single[] = { 0, -1 };
+    static int single[] = { 0, -1 };
     static const int single_key[] = { 0, -1 };
     static const int single_relabelling[] = { 0, 1 };
     /* no active half-edge */
-    static const int empty[] = { -1, -1 };
+    static int empty[] = { -1, -1 };
     static const int empty_relabelling[] = { -1, -1 };
     /* two components (0)(~0) and (1)(~1) */
-    static const int disconnected[] = { 0, 1, 2, 3 };
+    static int disconnected[] = { 0, 1, 2, 3 };
+    domap_t m;
     int count = -1;
 
     check_case("triangle", 6, triangle, 0, NULL, 0, NULL, 6, triangle,
@@ -229,9 +245,9 @@ test_fixed(void)
                empty_relabelling, 0);
 
     current_case = "disconnected";
-    CHECK(domap_canonical(4, disconnected, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL,
-                          key, relabelling, roots, &count, work)
-          == DOMAP_DISCONNECTED);
+    set_map(m, disconnected, 4, 0, NULL, 0, NULL);
+    CHECK(domap_canonical(key, relabelling, roots, &count, m, DOMAP_ROOTS_ALL,
+                          work) == DOMAP_DISCONNECTED);
     CHECK(count == -1);
 }
 
@@ -311,13 +327,15 @@ count_leaf(const int *leaf, int first, void *arg)
  * relabelling.
  */
 static long
-search(int n, const int *fp, int nd, const int *data, int nc,
-       const int *classes, domap_root_rule rule, int *len, long *calls)
+search(int n, int *fp, int nd, const int *data, int nc, const int *classes,
+       domap_root_rule rule, int *len, long *calls)
 {
     static int first_sequence[SEQUENCE_SIZE];
     static int first_relabelling[MAX_N];
     struct leaves s;
+    domap_t m;
     int len2;
+    set_map(m, fp, n, nd, data, nc, classes);
     s.n = n;
     s.fp = fp;
     s.nd = nd;
@@ -325,14 +343,13 @@ search(int n, const int *fp, int nd, const int *data, int nc,
     s.count = 0;
     s.calls = 0;
     s.stop_after = 0;
-    CHECK(domap_search(n, fp, nd, data, nc, classes, rule, 1, sequence, len,
-                       relabelling, count_leaf, &s, search_work) == 0);
+    CHECK(domap_search(sequence, len, relabelling, m, rule, 1, count_leaf, &s,
+                       search_work) == 0);
     CHECK(s.count >= 1);
     if (calls != NULL)
         *calls = s.calls;
-    CHECK(domap_search(n, fp, nd, data, nc, classes, rule, 0, first_sequence,
-                       &len2, first_relabelling, NULL, NULL,
-                       search_work) == 0);
+    CHECK(domap_search(first_sequence, &len2, first_relabelling, m, rule, 0,
+                       NULL, NULL, search_work) == 0);
     CHECK(len2 == *len);
     CHECK(memcmp(first_sequence, sequence, (size_t) len2 * sizeof(int)) == 0);
     CHECK(memcmp(first_relabelling, relabelling,
@@ -343,14 +360,14 @@ search(int n, const int *fp, int nd, const int *data, int nc,
 static void
 test_search_fixed(void)
 {
-    static const int two_edges[] = { 0, 1, 2, 3 };
+    static int two_edges[] = { 0, 1, 2, 3 };
     static const int two_edges_sequence[] = { 2, 0, 1, 2, 0, 1 };
     static const int shared[] = { 0, 1, 1, 2 };
     static const int shared_sequence[] = { 2, 0, 1, 0, 1, 2, 0, 1, 0, 2 };
     static const int shared_relabelling[] = { 1, 0, 2, 3 };
-    static const int four_edges[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+    static int four_edges[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
     static const int pairs[] = { 0, 1, 0, 1, 2, 3, 2, 3 };
-    static const int triangle_and_folded[] = { 2, 5, 4, 1, 0, 3, 6, -1 };
+    static int triangle_and_folded[] = { 2, 5, 4, 1, 0, 3, 6, -1 };
     static const int triangle_and_folded_relabelling[] =
         { 2, 3, 4, 5, 6, 7, 0, 1 };
     static const int folded_first_sequence[] =
@@ -358,8 +375,9 @@ test_search_fixed(void)
     static const int triangle_first_sequence[] =
         { 6, 2, 5, 4, 1, 0, 3, 2, 0, -1 };
     static const int identity8[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-    static const int empty[] = { -1, -1 };
+    static int empty[] = { -1, -1 };
     struct leaves s;
+    domap_t m;
     int len, i, count;
     long calls;
 
@@ -429,8 +447,8 @@ test_search_fixed(void)
         for (j = 0; j < 8; j++)
             CHECK(relabelling[j] == expected_relabelling[j]);
         current_case = "connected triangle and folded edge, under a rule";
-        CHECK(domap_canonical(8, triangle_and_folded, 0, NULL, 0, NULL,
-                              rules[i], key, relabelling, roots, &count,
+        set_map(m, triangle_and_folded, 8, 0, NULL, 0, NULL);
+        CHECK(domap_canonical(key, relabelling, roots, &count, m, rules[i],
                               work) == DOMAP_DISCONNECTED);
     }
 
@@ -448,9 +466,9 @@ test_search_fixed(void)
     s.count = 0;
     s.calls = 0;
     s.stop_after = 5;
-    CHECK(domap_search(8, four_edges, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL, 1,
-                       sequence, &len, NULL, count_leaf, &s,
-                       search_work) == 7);
+    set_map(m, four_edges, 8, 0, NULL, 0, NULL);
+    CHECK(domap_search(sequence, &len, NULL, m, DOMAP_ROOTS_ALL, 1,
+                       count_leaf, &s, search_work) == 7);
     CHECK(s.calls == 5);
 }
 
@@ -468,6 +486,7 @@ static int
 random_connected(int ne, int folded, int *fp)
 {
     int n = 2 * ne, active[MAX_N], images[MAX_N];
+    domap_t m;
     int attempt, na, i, j, t;
     for (attempt = 0; attempt < 1000; attempt++)
     {
@@ -490,8 +509,9 @@ random_connected(int ne, int folded, int *fp)
             fp[i] = -1;
         for (i = 0; i < na; i++)
             fp[active[i]] = images[i];
-        if (domap_canonical(n, fp, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL, key,
-                            NULL, NULL, NULL, work) != DOMAP_DISCONNECTED)
+        set_map(m, fp, n, 0, NULL, 0, NULL);
+        if (domap_canonical(key, NULL, NULL, NULL, m, DOMAP_ROOTS_ALL, work)
+            != DOMAP_DISCONNECTED)
             return 1;
     }
     return 0;
@@ -528,6 +548,7 @@ test_random(void)
 {
     int fp[MAX_N], fp2[MAX_N], fp3[MAX_N], r[MAX_N];
     int dec[2 * MAX_ARRAYS * MAX_N], dec2[2 * MAX_ARRAYS * MAX_N];
+    domap_t m;
     int trial, ne, n, nd, nc, len, len2, count, count2, i, h;
 
     current_case = "random";
@@ -541,9 +562,9 @@ test_random(void)
         /* few values, so that automorphisms may survive */
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(2);
-        len = domap_canonical(n, fp, nd, dec, nc, dec + nd * n,
-                              DOMAP_ROOTS_ALL, key, relabelling, roots,
-                              &count, work);
+        set_map(m, fp, n, nd, dec, nc, dec + nd * n);
+        len = domap_canonical(key, relabelling, roots, &count, m,
+                              DOMAP_ROOTS_ALL, work);
         CHECK(len >= n);
         CHECK(count >= 1);
         for (i = 0; i < count; i++)
@@ -562,8 +583,8 @@ test_random(void)
         relabel_arrays(n, nd + nc, dec, r, dec2);
         for (i = nd * n; i < (nd + nc) * n; i++)
             dec2[i] = 1 - dec2[i];
-        len2 = domap_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n,
-                               DOMAP_ROOTS_ALL, key2, NULL, NULL, &count2,
+        set_map(m, fp2, n, nd, dec2, nc, dec2 + nd * n);
+        len2 = domap_canonical(key2, NULL, NULL, &count2, m, DOMAP_ROOTS_ALL,
                                work);
         CHECK(len2 == len);
         CHECK(count2 == count);
@@ -576,8 +597,7 @@ test_random(void)
             for (h = 0; fp2[h] == -1; h++)
                 ;
             dec2[h] = 2;
-            len2 = domap_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n,
-                                   DOMAP_ROOTS_ALL, key2, NULL, NULL, NULL,
+            len2 = domap_canonical(key2, NULL, NULL, NULL, m, DOMAP_ROOTS_ALL,
                                    work);
             CHECK(len2 == len);
             CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) != 0);
@@ -713,14 +733,15 @@ ref_class(int n, const int *fp, domap_root_rule rule, int nd, const int *data,
  * its key by domap_key in full, then compared with the best key so far.
  */
 static int
-ref_canonical(int n, const int *fp, int nd, const int *data, int nc,
-              const int *classes, domap_root_rule rule, int *best,
-              int *best_relabelling, int *best_roots, int *nroots)
+ref_canonical(int *best, int *best_relabelling, int *best_roots, int *nroots,
+              const domap_t m, domap_root_rule rule)
 {
     static int r[MAX_N], rinv[MAX_N], queue[MAX_N], names[MAX_N],
         cur[KEY_SIZE];
     static int avail[MAX_N], mask[MAX_N];
-    int ne = omap_num_edges(n, fp), root, k, len = 0, l, count = 0, cmp, i;
+    const int *fp = m->map.fp;
+    int n = m->map.n, nd = m->nd;
+    int ne = omap_num_edges(&m->map), root, k, len = 0, l, count = 0, cmp, i;
 
     for (i = 0; i < n; i++)
     {
@@ -728,15 +749,15 @@ ref_canonical(int n, const int *fp, int nd, const int *data, int nc,
         best_relabelling[i] = -1;
         avail[i] = fp[i] != -1;
     }
-    ref_class(n, fp, rule, nd, data, avail, mask);
+    ref_class(n, fp, rule, nd, m->data, avail, mask);
     for (root = 0; root < n; root++)
     {
         if (!mask[root])
             continue;
-        k = omap_relabelling_from(n, fp, root, r, rinv, queue);
+        k = omap_relabelling_from(r, rinv, &m->map, root, queue);
         if (k != 2 * ne)
             return DOMAP_DISCONNECTED;
-        l = domap_key(n, fp, nd, data, nc, classes, r, rinv, k, cur, names);
+        l = domap_key(cur, m, r, rinv, k, names);
         if (count == 0)
         {
             cmp = -1;
@@ -769,19 +790,20 @@ ref_canonical(int n, const int *fp, int nd, const int *data, int nc,
  * on the rule.
  */
 static void
-check_reference(int n, const int *fp, int nd, const int *data, int nc,
+check_reference(int n, int *fp, int nd, const int *data, int nc,
                 const int *classes)
 {
     static int ref_key[KEY_SIZE], ref_relabelling[MAX_N], ref_roots[MAX_N];
+    domap_t m;
     int len, ref_len, count = -1, ref_count = -1, all_count = -1, i;
 
+    set_map(m, fp, n, nd, data, nc, classes);
     for (i = 0; i < NUM_RULES; i++)
     {
-        ref_len = ref_canonical(n, fp, nd, data, nc, classes, rules[i],
-                                ref_key, ref_relabelling, ref_roots,
-                                &ref_count);
-        len = domap_canonical(n, fp, nd, data, nc, classes, rules[i], key,
-                              relabelling, roots, &count, work);
+        ref_len = ref_canonical(ref_key, ref_relabelling, ref_roots,
+                                &ref_count, m, rules[i]);
+        len = domap_canonical(key, relabelling, roots, &count, m, rules[i],
+                              work);
         CHECK(len == ref_len);
         if (len == DOMAP_DISCONNECTED)
             return;
@@ -896,6 +918,7 @@ test_reference_regular(void)
         { 0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 1, 2, 6, 5, 2, 3, 7, 6, 3, 0, 4,
             7 };
     int fp[MAX_N], fp2[MAX_N], r[MAX_N], zero[MAX_N];
+    domap_t m;
     int trial, n, i, len, count, solid;
 
     for (i = 0; i < MAX_N; i++)
@@ -920,10 +943,11 @@ test_reference_regular(void)
             check_reference(n, fp2, 0, NULL, 0, NULL);
             check_reference(n, fp2, 1, zero, 0, NULL);
             check_reference(n, fp2, 0, NULL, 1, zero);
+            set_map(m, fp2, n, 0, NULL, 0, NULL);
             for (i = 0; i < NUM_RULES; i++)
             {
-                len = domap_canonical(n, fp2, 0, NULL, 0, NULL, rules[i], key,
-                                      relabelling, roots, &count, work);
+                len = domap_canonical(key, relabelling, roots, &count, m,
+                                      rules[i], work);
                 CHECK(len == n && count == (solid == 0 ? 12 : 24));
             }
         }
@@ -1239,6 +1263,7 @@ test_search_random(void)
 {
     int fp[MAX_N], fp2[MAX_N], r[MAX_N], relabelling1[MAX_N];
     int dec[2 * MAX_ARRAYS * MAX_N], dec2[2 * MAX_ARRAYS * MAX_N];
+    domap_t m;
     int trial, n, nd, nc, len, len2, count, i, h, j;
     long leaves, leaves2, all_leaves = 0;
     domap_root_rule rule;
@@ -1275,8 +1300,9 @@ test_search_random(void)
                 CHECK(fp2[h] == sequence[1 + h]);
 
             /* a connected map gives one block: k, then its key */
-            len2 = domap_canonical(n, fp, nd, dec, nc, dec + nd * n, rule, key,
-                                   relabelling, NULL, &count, work);
+            set_map(m, fp, n, nd, dec, nc, dec + nd * n);
+            len2 = domap_canonical(key, relabelling, NULL, &count, m, rule,
+                                   work);
             if (len2 != DOMAP_DISCONNECTED)
             {
                 CHECK(len == 1 + len2 && sequence[0] == n);
@@ -1337,6 +1363,7 @@ test_search_tied(void)
     static const int edge_block_second[] = { 2, 0, 1, 1, 1 };
     int fp[MAX_N], fp2[MAX_N], r[MAX_N], comp[MAX_N], rc[MAX_N], pairs[MAX_N];
     int dec[2 * MAX_N], dec2[2 * MAX_N], cdec[2 * MAX_N], cdec2[2 * MAX_N];
+    domap_t m;
     int trial, k, n, size, nd, nvals, len, len2, i, j, h, c, b, p, q;
     long leaves, leaves2, expected, all_leaves = 0;
 
@@ -1372,8 +1399,9 @@ test_search_tied(void)
     n = isolated_edges(41, pairs, fp, dec);
     for (j = 0; j < NUM_RULES; j++)
     {
-        CHECK(domap_search(n, fp, 0, NULL, 1, dec, rules[j], 0, sequence, &len,
-                           relabelling, NULL, NULL, search_work) == 0);
+        set_map(m, fp, n, 0, NULL, 1, dec);
+        CHECK(domap_search(sequence, &len, relabelling, m, rules[j], 0, NULL,
+                           NULL, search_work) == 0);
         CHECK(len == 5 * 41);
         for (i = 0; i < len; i++)
             CHECK(sequence[i] == (i < 5 * 21
@@ -1476,8 +1504,9 @@ test_search_tied(void)
     }
     for (j = 0; j < NUM_RULES; j++)
     {
-        CHECK(domap_search(n, fp, 0, NULL, 1, dec, rules[j], 0, sequence, &len,
-                           relabelling, NULL, NULL, search_work) == 0);
+        set_map(m, fp, n, 0, NULL, 1, dec);
+        CHECK(domap_search(sequence, &len, relabelling, m, rules[j], 0, NULL,
+                           NULL, search_work) == 0);
         CHECK(len == 100);
         for (i = 0; i < len; i++)
             CHECK(sequence[i] == edge_block[i % 5]);
@@ -1542,14 +1571,30 @@ test_search_tied(void)
  * domap_invariants_differ: the multisets of the data values and the multisets
  * of the sizes of the classes, on the active half-edges only.
  */
+/*
+ * domap_invariants_differ on the maps (fp1, n1) and (fp2, n2), decorated by
+ * nd data arrays and nc class arrays each.
+ */
+static int
+array_invariants_differ(int n1, int *fp1, const int *data1,
+                        const int *classes1, int n2, int *fp2,
+                        const int *data2, const int *classes2, int nd, int nc,
+                        int *inv_work)
+{
+    domap_t m1, m2;
+    set_map(m1, fp1, n1, nd, data1, nc, classes1);
+    set_map(m2, fp2, n2, nd, data2, nc, classes2);
+    return domap_invariants_differ(m1, m2, inv_work);
+}
+
 static void
 test_invariants(void)
 {
     /* three isolated edges, then two edges in labels 0, 1 and 4, 5 */
-    static const int fp6[] = { 0, 1, 2, 3, 4, 5 };
-    static const int fp4[] = { 1, 0, 3, 2 };
-    static const int fp8[] = { 1, 0, -1, -1, 3, 2, -1, -1 };
-    static const int fp_junk[] = { 1, 0, -1, -1 };
+    static int fp6[] = { 0, 1, 2, 3, 4, 5 };
+    static int fp4[] = { 1, 0, 3, 2 };
+    static int fp8[] = { 1, 0, -1, -1, 3, 2, -1, -1 };
+    static int fp_junk[] = { 1, 0, -1, -1 };
     int inv_work[DOMAP_INVARIANTS_WORK_SIZE(8)];
     int d1[12], d2[12], c1[12], c2[12];
     int i;
@@ -1561,11 +1606,11 @@ test_invariants(void)
             data2[] = { 1, 0, 1, 1, 0, 0 };
         static const int classes1[] = { 0, 0, 1, 1, 2, 2 },
             classes2[] = { 5, 3, 3, 0, 0, 5 };
-        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
+        CHECK(array_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
                                       classes2, 1, 1, inv_work) == 0);
-        CHECK(domap_invariants_differ(6, fp6, data2, classes2, 6, fp6, data1,
+        CHECK(array_invariants_differ(6, fp6, data2, classes2, 6, fp6, data1,
                                       classes1, 1, 1, inv_work) == 0);
-        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data1,
+        CHECK(array_invariants_differ(6, fp6, data1, classes1, 6, fp6, data1,
                                       classes1, 1, 1, inv_work) == 0);
     }
 
@@ -1574,9 +1619,9 @@ test_invariants(void)
         static const int data1[] = { 0, 1, 0, 1, 0, 1 },
             data2[] = { 0, 0, 0, 0, 1, 1 };
         static const int classes[] = { 0, 0, 1, 1, 2, 2 };
-        CHECK(domap_invariants_differ(6, fp6, data1, classes, 6, fp6, data2,
+        CHECK(array_invariants_differ(6, fp6, data1, classes, 6, fp6, data2,
                                       classes, 1, 1, inv_work) == 1);
-        CHECK(domap_invariants_differ(6, fp6, data2, classes, 6, fp6, data1,
+        CHECK(array_invariants_differ(6, fp6, data2, classes, 6, fp6, data1,
                                       classes, 1, 1, inv_work) == 1);
         /* one value of the extremes of an int */
         for (i = 0; i < 6; i++)
@@ -1586,9 +1631,9 @@ test_invariants(void)
         }
         d1[0] = INT_MIN;
         d2[0] = INT_MAX;
-        CHECK(domap_invariants_differ(6, fp6, d1, classes, 6, fp6, d2, classes,
+        CHECK(array_invariants_differ(6, fp6, d1, classes, 6, fp6, d2, classes,
                                       1, 1, inv_work) == 1);
-        CHECK(domap_invariants_differ(6, fp6, d1, classes, 6, fp6, d1, classes,
+        CHECK(array_invariants_differ(6, fp6, d1, classes, 6, fp6, d1, classes,
                                       1, 1, inv_work) == 0);
     }
 
@@ -1599,19 +1644,19 @@ test_invariants(void)
         static const int classes1[] = { 0, 0, 1, 1, 2, 2 },
             classes2[] = { 0, 0, 0, 1, 1, 2 };
         static const int classes3[] = { 4, 4, 4, 4, 4, 4 };
-        CHECK(domap_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
+        CHECK(array_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
                                       classes2, 1, 1, inv_work) == 1);
-        CHECK(domap_invariants_differ(6, fp6, data, classes2, 6, fp6, data,
+        CHECK(array_invariants_differ(6, fp6, data, classes2, 6, fp6, data,
                                       classes1, 1, 1, inv_work) == 1);
-        CHECK(domap_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
+        CHECK(array_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
                                       classes3, 1, 1, inv_work) == 1);
-        CHECK(domap_invariants_differ(6, fp6, data, classes3, 6, fp6, data,
+        CHECK(array_invariants_differ(6, fp6, data, classes3, 6, fp6, data,
                                       classes1, 1, 1, inv_work) == 1);
         /* the buffer is left zero after a failure on a previous call: the
          * same inputs give the same verdict again */
-        CHECK(domap_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
+        CHECK(array_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
                                       classes2, 1, 1, inv_work) == 1);
-        CHECK(domap_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
+        CHECK(array_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
                                       classes1, 1, 1, inv_work) == 0);
     }
 
@@ -1620,10 +1665,10 @@ test_invariants(void)
         static const int classes1[] = { 0, 0, 1, 1, 2, 3 },
             classes2[] = { 5, 4, 2, 2, 4, 0 };
         static const int classes3[] = { 0, 0, 1, 2, 2, 3 };
-        CHECK(domap_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL,
+        CHECK(array_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL,
                                       classes2, 0, 1, inv_work) == 0);
         /* the sizes 2, 2, 1, 1 in both */
-        CHECK(domap_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL,
+        CHECK(array_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL,
                                       classes3, 0, 1, inv_work) == 0);
     }
 
@@ -1635,13 +1680,13 @@ test_invariants(void)
         static const int data3[] = { 1, 1, 0, 0, 0, 1, 8, 8, 8, 7, 7, 8 };
         static const int classes1[] = { 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 2, 2 };
         static const int classes2[] = { 2, 2, 2, 0, 0, 0, 4, 4, 3, 3, 3, 3 };
-        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
+        CHECK(array_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
                                       classes1, 2, 2, inv_work) == 0);
-        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data3,
+        CHECK(array_invariants_differ(6, fp6, data1, classes1, 6, fp6, data3,
                                       classes1, 2, 2, inv_work) == 1);
-        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
+        CHECK(array_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
                                       classes2, 2, 2, inv_work) == 1);
-        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
+        CHECK(array_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
                                       classes2, 2, 1, inv_work) == 0);
     }
 
@@ -1655,19 +1700,19 @@ test_invariants(void)
         static const int classes4[] = { 0, 0, 1, 1 };
         static const int classes8[] = { 3, 3, 0, 0, 6, 6, 0, 0 };
         static const int classes8_bad[] = { 1, 1, 0, 0, 1, 2, 0, 0 };
-        CHECK(domap_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8,
+        CHECK(array_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8,
                                       classes8, 1, 1, inv_work) == 0);
-        CHECK(domap_invariants_differ(8, fp8, data8, classes8, 4, fp4, data4,
+        CHECK(array_invariants_differ(8, fp8, data8, classes8, 4, fp4, data4,
                                       classes4, 1, 1, inv_work) == 0);
-        CHECK(domap_invariants_differ(4, fp4, data4, classes4, 8, fp8,
+        CHECK(array_invariants_differ(4, fp4, data4, classes4, 8, fp8,
                                       data8_bad, classes8, 1, 1,
                                       inv_work) == 1);
-        CHECK(domap_invariants_differ(8, fp8, data8_bad, classes8, 4, fp4,
+        CHECK(array_invariants_differ(8, fp8, data8_bad, classes8, 4, fp4,
                                       data4, classes4, 1, 1,
                                       inv_work) == 1);
-        CHECK(domap_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8,
+        CHECK(array_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8,
                                       classes8_bad, 1, 1, inv_work) == 1);
-        CHECK(domap_invariants_differ(8, fp8, data8, classes8_bad, 4, fp4,
+        CHECK(array_invariants_differ(8, fp8, data8, classes8_bad, 4, fp4,
                                       data4, classes4, 1, 1,
                                       inv_work) == 1);
     }
@@ -1681,9 +1726,9 @@ test_invariants(void)
         static const int classes1[] = { 0, 0, 3, 2 },
             classes2[] = { 1, 1, 100000, -4 };
         static const int data3[] = { 5, 6, 100, 200 };
-        CHECK(domap_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk,
+        CHECK(array_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk,
                                       data2, classes2, 1, 1, inv_work) == 0);
-        CHECK(domap_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk,
+        CHECK(array_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk,
                                       data3, classes2, 1, 1, inv_work) == 1);
     }
 
@@ -1692,11 +1737,11 @@ test_invariants(void)
         static const int data1[] = { 0, 1, 0, 1, 0, 1 },
             data2[] = { 1, 0, 1, 1, 0, 0 }, data3[] = { 1, 1, 1, 1, 0, 0 };
         /* nc == 0: work is not read */
-        CHECK(domap_invariants_differ(6, fp6, data1, NULL, 6, fp6, data2, NULL,
+        CHECK(array_invariants_differ(6, fp6, data1, NULL, 6, fp6, data2, NULL,
                                       1, 0, NULL) == 0);
-        CHECK(domap_invariants_differ(6, fp6, data1, NULL, 6, fp6, data3, NULL,
+        CHECK(array_invariants_differ(6, fp6, data1, NULL, 6, fp6, data3, NULL,
                                       1, 0, NULL) == 1);
-        CHECK(domap_invariants_differ(6, fp6, NULL, NULL, 6, fp6, NULL,
+        CHECK(array_invariants_differ(6, fp6, NULL, NULL, 6, fp6, NULL,
                                       NULL, 0, 0, NULL) == 0);
     }
 
@@ -1706,7 +1751,7 @@ test_invariants(void)
     for (i = 0; i < 200; i++)
     {
         int n = 2 * (1 + rng_below(4)), h, g, nvals = 1 + rng_below(3);
-        static const int fp_id[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+        static int fp_id[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
         int r[8], fp_copy[8];
         for (h = 0; h < n; h++)
         {
@@ -1719,12 +1764,12 @@ test_invariants(void)
         relabel_arrays(n, 1, c1, r, c2);
         for (h = 0; h < n; h++)
             c2[h] = nvals - 1 - c2[h];
-        CHECK(domap_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1,
+        CHECK(array_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1,
                                       1, inv_work) == 0);
         /* one data value changed: the multiset changes */
         g = rng_below(n);
         d2[g] = nvals + 5;
-        CHECK(domap_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1,
+        CHECK(array_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1,
                                       1, inv_work) == 1);
     }
 }
