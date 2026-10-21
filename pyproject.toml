@@ -91,8 +91,8 @@ inputs = [
     "combisurf/src/conjugate_tree.h",
     "combisurf/isomorphism.pxd",
     "combisurf/isomorphism.pyx",
-    "combisurf/src/isomorphism.c",
-    "combisurf/src/isomorphism.h",
+    "combisurf/src/omap.c",
+    "combisurf/src/omap.h",
     "combisurf/partial_sums.pxd",
     "combisurf/crossing_arcs.pyx",
 ]
@@ -122,7 +122,7 @@ cmd = "pytest -n auto test/"
 depends-on = ["build"]
 
 # The tests of the C conjugate tree (combisurf/src/conjugate_tree.c) and of
-# the C isomorphism code (combisurf/src/isomorphism.c) as standalone C
+# the C isomorphism code (combisurf/src/omap.c) as standalone C
 # programs: optimized, with the debug checks, and under the address and
 # undefined behaviour sanitizers.
 [tool.pixi.tasks.test-c]

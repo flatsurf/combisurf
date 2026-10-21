@@ -1,5 +1,5 @@
 /*
- * Tests of the canonical keys of combisurf/src/isomorphism.c, in C.
+ * Tests of the canonical keys of combisurf/src/omap.c, in C.
  *
  * Usage: test_isomorphism [seed]
  *
@@ -8,19 +8,19 @@
  * combisurf/isomorphism_naive.py; the random cases, reproducible from the
  * seed (1 by default), check that the key and the number of automorphisms
  * do not change under a random relabelling of the map, for connected maps
- * (iso_canonical) and for disjoint unions (iso_search, where the minimal
+ * (domap_canonical) and for disjoint unions (domap_search, where the minimal
  * sequence of blocks and the number of leaves reaching it are checked).
- * iso_canonical, which rejects a root as soon as its key exceeds the best
+ * domap_canonical, which rejects a root as soon as its key exceeds the best
  * one, is also compared with a reference that walks and keys every root in
  * full, on random maps, on square-tiled surfaces decorated by h % 4 and on
  * relabelled copies of the tetrahedron and of the cube, whose roots all tie.
  * Under the rules restricting the roots, both are compared with a
  * reference of the classes that computes the invariants by walking the
- * cycles and compares every pair of half-edges: iso_canonical tries the
- * roots of the class of the reference, and each block of iso_search starts
+ * cycles and compares every pair of half-edges: domap_canonical tries the
+ * roots of the class of the reference, and each block of domap_search starts
  * at a half-edge of the class of the reference among the half-edges not
  * labelled before; the number of automorphisms does not depend on the
- * rule. The rules run with and without the flag ISO_ROOTS_DATA, whose
+ * rule. The rules run with and without the flag DOMAP_ROOTS_DATA, whose
  * reference invariants read the data values themselves; half of the random
  * cases take their data values among -7, n + 11, INT_MIN and INT_MAX, far
  * from the ranks 0, ..., n - 1 the C code sorts by.
@@ -34,7 +34,7 @@
  * Software Foundation; either version 2 of the License, or (at your option)
  * any later version.
  */
-#include "../../combisurf/src/isomorphism.h"
+#include "../../combisurf/src/omap.h"
 
 #include <limits.h>
 #include <stdint.h>
@@ -64,8 +64,8 @@ static long num_checks = 0;
 /* the largest map of the random cases, in half-edges */
 #define MAX_N 256
 #define MAX_ARRAYS 2
-#define KEY_SIZE ISO_KEY_SIZE(MAX_N, MAX_ARRAYS, MAX_ARRAYS)
-#define WORK_SIZE ISO_WORK_SIZE(MAX_N, MAX_ARRAYS, MAX_ARRAYS)
+#define KEY_SIZE DOMAP_KEY_SIZE(MAX_N, MAX_ARRAYS, MAX_ARRAYS)
+#define WORK_SIZE DOMAP_WORK_SIZE(MAX_N, MAX_ARRAYS, MAX_ARRAYS)
 
 static int key[KEY_SIZE];
 static int key2[KEY_SIZE];
@@ -73,22 +73,23 @@ static int work[WORK_SIZE];
 static int relabelling[MAX_N];
 static int roots[MAX_N];
 
-/* the rules, ISO_ROOTS_ALL first, then the base rules with the flag */
-static const iso_root_rule rules[] = {
-    ISO_ROOTS_ALL, ISO_ROOTS_HALF_EDGE_MAX, ISO_ROOTS_HALF_EDGE_FEWEST,
-    ISO_ROOTS_EDGE_MAX, ISO_ROOTS_EDGE_FEWEST,
-    ISO_ROOTS_HALF_EDGE_MAX | ISO_ROOTS_DATA,
-        ISO_ROOTS_HALF_EDGE_FEWEST | ISO_ROOTS_DATA,
-    ISO_ROOTS_EDGE_MAX | ISO_ROOTS_DATA, ISO_ROOTS_EDGE_FEWEST | ISO_ROOTS_DATA
+/* the rules, DOMAP_ROOTS_ALL first, then the base rules with the flag */
+static const domap_root_rule rules[] = {
+    DOMAP_ROOTS_ALL, DOMAP_ROOTS_HALF_EDGE_MAX, DOMAP_ROOTS_HALF_EDGE_FEWEST,
+    DOMAP_ROOTS_EDGE_MAX, DOMAP_ROOTS_EDGE_FEWEST,
+    DOMAP_ROOTS_HALF_EDGE_MAX | DOMAP_ROOTS_DATA,
+        DOMAP_ROOTS_HALF_EDGE_FEWEST | DOMAP_ROOTS_DATA,
+    DOMAP_ROOTS_EDGE_MAX | DOMAP_ROOTS_DATA,
+    DOMAP_ROOTS_EDGE_FEWEST | DOMAP_ROOTS_DATA
 };
 
 #define NUM_RULES 9
 
 /* the base rule of a rule, without the flag */
 static int
-base_rule(iso_root_rule rule)
+base_rule(domap_root_rule rule)
 {
-    return rule & ~ISO_ROOTS_DATA;
+    return rule & ~DOMAP_ROOTS_DATA;
 }
 
 /*
@@ -150,7 +151,7 @@ relabel_arrays(int n, int m, const int *a, const int *r, int *out)
 /* ------------------------------------------------------------------ */
 
 /*
- * Check iso_canonical on fp against the expected key, relabelling (-1 on
+ * Check domap_canonical on fp against the expected key, relabelling (-1 on
  * the inactive edges) and number of automorphisms.
  */
 static void
@@ -160,8 +161,8 @@ check_case(const char *name, int n, const int *fp, int nd, const int *data,
 {
     int count = -1, i;
     current_case = name;
-    CHECK(iso_canonical(n, fp, nd, data, nc, classes, ISO_ROOTS_ALL, key,
-                        relabelling, roots, &count, work) == len);
+    CHECK(domap_canonical(n, fp, nd, data, nc, classes, DOMAP_ROOTS_ALL, key,
+                          relabelling, roots, &count, work) == len);
     for (i = 0; i < len; i++)
         CHECK(key[i] == expected_key[i]);
     for (i = 0; i < n; i++)
@@ -170,8 +171,8 @@ check_case(const char *name, int n, const int *fp, int nd, const int *data,
     for (i = 1; i < count; i++)
         CHECK(roots[i - 1] < roots[i]);
     /* the key and the count do not depend on the optional outputs */
-    CHECK(iso_canonical(n, fp, nd, data, nc, classes, ISO_ROOTS_ALL, key2,
-                        NULL, NULL, NULL, work) == len);
+    CHECK(domap_canonical(n, fp, nd, data, nc, classes, DOMAP_ROOTS_ALL, key2,
+                          NULL, NULL, NULL, work) == len);
     CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) == 0);
 }
 
@@ -228,8 +229,9 @@ test_fixed(void)
                empty_relabelling, 0);
 
     current_case = "disconnected";
-    CHECK(iso_canonical(4, disconnected, 0, NULL, 0, NULL, ISO_ROOTS_ALL, key,
-                        relabelling, roots, &count, work) == ISO_DISCONNECTED);
+    CHECK(domap_canonical(4, disconnected, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL,
+                          key, relabelling, roots, &count, work)
+          == DOMAP_DISCONNECTED);
     CHECK(count == -1);
 }
 
@@ -237,8 +239,8 @@ test_fixed(void)
 /* search over the components                                          */
 /* ------------------------------------------------------------------ */
 
-#define SEQUENCE_SIZE ISO_SEQUENCE_SIZE(MAX_N, MAX_ARRAYS, MAX_ARRAYS)
-#define SEARCH_WORK_SIZE ISO_SEARCH_WORK_SIZE(MAX_N, MAX_ARRAYS, MAX_ARRAYS)
+#define SEQUENCE_SIZE DOMAP_SEQUENCE_SIZE(MAX_N, MAX_ARRAYS, MAX_ARRAYS)
+#define SEARCH_WORK_SIZE DOMAP_SEARCH_WORK_SIZE(MAX_N, MAX_ARRAYS, MAX_ARRAYS)
 
 static int sequence[SEQUENCE_SIZE];
 static int sequence2[SEQUENCE_SIZE];
@@ -302,7 +304,7 @@ count_leaf(const int *leaf, int first, void *arg)
 }
 
 /*
- * Run iso_search on fp with all leaves, into sequence and relabelling;
+ * Run domap_search on fp with all leaves, into sequence and relabelling;
  * store its length into *len and return the number of leaves reaching the
  * minimal sequence. The search without all leaves, which backjumps from
  * the leaves equal to the best one, must give the same sequence and
@@ -310,7 +312,7 @@ count_leaf(const int *leaf, int first, void *arg)
  */
 static long
 search(int n, const int *fp, int nd, const int *data, int nc,
-       const int *classes, iso_root_rule rule, int *len, long *calls)
+       const int *classes, domap_root_rule rule, int *len, long *calls)
 {
     static int first_sequence[SEQUENCE_SIZE];
     static int first_relabelling[MAX_N];
@@ -323,13 +325,14 @@ search(int n, const int *fp, int nd, const int *data, int nc,
     s.count = 0;
     s.calls = 0;
     s.stop_after = 0;
-    CHECK(iso_search(n, fp, nd, data, nc, classes, rule, 1, sequence, len,
-                     relabelling, count_leaf, &s, search_work) == 0);
+    CHECK(domap_search(n, fp, nd, data, nc, classes, rule, 1, sequence, len,
+                       relabelling, count_leaf, &s, search_work) == 0);
     CHECK(s.count >= 1);
     if (calls != NULL)
         *calls = s.calls;
-    CHECK(iso_search(n, fp, nd, data, nc, classes, rule, 0, first_sequence,
-                     &len2, first_relabelling, NULL, NULL, search_work) == 0);
+    CHECK(domap_search(n, fp, nd, data, nc, classes, rule, 0, first_sequence,
+                       &len2, first_relabelling, NULL, NULL,
+                       search_work) == 0);
     CHECK(len2 == *len);
     CHECK(memcmp(first_sequence, sequence, (size_t) len2 * sizeof(int)) == 0);
     CHECK(memcmp(first_relabelling, relabelling,
@@ -361,7 +364,7 @@ test_search_fixed(void)
     long calls;
 
     current_case = "search, two edges";
-    CHECK(search(4, two_edges, 0, NULL, 0, NULL, ISO_ROOTS_ALL, &len,
+    CHECK(search(4, two_edges, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL, &len,
                  NULL) == 8);
     CHECK(len == 6);
     for (i = 0; i < len; i++)
@@ -372,8 +375,8 @@ test_search_fixed(void)
     current_case = "search, two edges, shared classes";
     /* the first leaf, from the roots 0 then 2, is replaced by the one from
      * the roots 1 then 2, followed by the one from 2 then 1 */
-    CHECK(search(4, two_edges, 0, NULL, 1, shared, ISO_ROOTS_ALL, &len, &calls)
-          == 2);
+    CHECK(search(4, two_edges, 0, NULL, 1, shared, DOMAP_ROOTS_ALL, &len,
+                 &calls) == 2);
     CHECK(calls == 3);
     CHECK(len == 10);
     for (i = 0; i < len; i++)
@@ -382,18 +385,18 @@ test_search_fixed(void)
         CHECK(relabelling[i] == shared_relabelling[i]);
 
     current_case = "search, four edges";
-    CHECK(search(8, four_edges, 0, NULL, 0, NULL, ISO_ROOTS_ALL, &len,
+    CHECK(search(8, four_edges, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL, &len,
                  NULL) == 384);
     CHECK(len == 12);
-    CHECK(search(8, four_edges, 0, NULL, 1, pairs, ISO_ROOTS_ALL, &len, NULL)
+    CHECK(search(8, four_edges, 0, NULL, 1, pairs, DOMAP_ROOTS_ALL, &len, NULL)
           == 32);
     /* the same classes kept exactly */
-    CHECK(search(8, four_edges, 1, pairs, 0, NULL, ISO_ROOTS_ALL, &len, NULL)
+    CHECK(search(8, four_edges, 1, pairs, 0, NULL, DOMAP_ROOTS_ALL, &len, NULL)
           == 4);
 
     current_case = "search, triangle and folded edge";
-    CHECK(search(8, triangle_and_folded, 0, NULL, 0, NULL, ISO_ROOTS_ALL, &len,
-                 NULL) == 6);
+    CHECK(search(8, triangle_and_folded, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL,
+                 &len, NULL) == 6);
     CHECK(len == 3 + 7);
     for (i = 0; i < 8; i++)
         CHECK(relabelling[i] == triangle_and_folded_relabelling[i]);
@@ -407,8 +410,8 @@ test_search_fixed(void)
         const int *expected_sequence, *expected_relabelling;
         int j;
         current_case = "search, triangle and folded edge, under a rule";
-        if (base_rule(rules[i]) == ISO_ROOTS_HALF_EDGE_FEWEST
-            || base_rule(rules[i]) == ISO_ROOTS_EDGE_FEWEST)
+        if (base_rule(rules[i]) == DOMAP_ROOTS_HALF_EDGE_FEWEST
+            || base_rule(rules[i]) == DOMAP_ROOTS_EDGE_FEWEST)
         {
             expected_sequence = folded_first_sequence;
             expected_relabelling = triangle_and_folded_relabelling;
@@ -426,13 +429,14 @@ test_search_fixed(void)
         for (j = 0; j < 8; j++)
             CHECK(relabelling[j] == expected_relabelling[j]);
         current_case = "connected triangle and folded edge, under a rule";
-        CHECK(iso_canonical(8, triangle_and_folded, 0, NULL, 0, NULL, rules[i],
-                            key, relabelling, roots, &count,
-                            work) == ISO_DISCONNECTED);
+        CHECK(domap_canonical(8, triangle_and_folded, 0, NULL, 0, NULL,
+                              rules[i], key, relabelling, roots, &count,
+                              work) == DOMAP_DISCONNECTED);
     }
 
     current_case = "search, no active half-edge";
-    CHECK(search(2, empty, 0, NULL, 0, NULL, ISO_ROOTS_ALL, &len, NULL) == 1);
+    CHECK(search(2, empty, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL, &len, NULL)
+          == 1);
     CHECK(len == 0);
     CHECK(relabelling[0] == -1 && relabelling[1] == -1);
 
@@ -444,8 +448,9 @@ test_search_fixed(void)
     s.count = 0;
     s.calls = 0;
     s.stop_after = 5;
-    CHECK(iso_search(8, four_edges, 0, NULL, 0, NULL, ISO_ROOTS_ALL, 1,
-                     sequence, &len, NULL, count_leaf, &s, search_work) == 7);
+    CHECK(domap_search(8, four_edges, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL, 1,
+                       sequence, &len, NULL, count_leaf, &s,
+                       search_work) == 7);
     CHECK(s.calls == 5);
 }
 
@@ -485,8 +490,8 @@ random_connected(int ne, int folded, int *fp)
             fp[i] = -1;
         for (i = 0; i < na; i++)
             fp[active[i]] = images[i];
-        if (iso_canonical(n, fp, 0, NULL, 0, NULL, ISO_ROOTS_ALL, key, NULL,
-                          NULL, NULL, work) != ISO_DISCONNECTED)
+        if (domap_canonical(n, fp, 0, NULL, 0, NULL, DOMAP_ROOTS_ALL, key,
+                            NULL, NULL, NULL, work) != DOMAP_DISCONNECTED)
             return 1;
     }
     return 0;
@@ -536,8 +541,9 @@ test_random(void)
         /* few values, so that automorphisms may survive */
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(2);
-        len = iso_canonical(n, fp, nd, dec, nc, dec + nd * n, ISO_ROOTS_ALL,
-                            key, relabelling, roots, &count, work);
+        len = domap_canonical(n, fp, nd, dec, nc, dec + nd * n,
+                              DOMAP_ROOTS_ALL, key, relabelling, roots,
+                              &count, work);
         CHECK(len >= n);
         CHECK(count >= 1);
         for (i = 0; i < count; i++)
@@ -556,8 +562,9 @@ test_random(void)
         relabel_arrays(n, nd + nc, dec, r, dec2);
         for (i = nd * n; i < (nd + nc) * n; i++)
             dec2[i] = 1 - dec2[i];
-        len2 = iso_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n,
-                             ISO_ROOTS_ALL, key2, NULL, NULL, &count2, work);
+        len2 = domap_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n,
+                               DOMAP_ROOTS_ALL, key2, NULL, NULL, &count2,
+                               work);
         CHECK(len2 == len);
         CHECK(count2 == count);
         CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) == 0);
@@ -569,8 +576,9 @@ test_random(void)
             for (h = 0; fp2[h] == -1; h++)
                 ;
             dec2[h] = 2;
-            len2 = iso_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n,
-                                 ISO_ROOTS_ALL, key2, NULL, NULL, NULL, work);
+            len2 = domap_canonical(n, fp2, nd, dec2, nc, dec2 + nd * n,
+                                   DOMAP_ROOTS_ALL, key2, NULL, NULL, NULL,
+                                   work);
             CHECK(len2 == len);
             CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) != 0);
         }
@@ -578,7 +586,7 @@ test_random(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* iso_canonical against every root walked and keyed in full           */
+/* domap_canonical against every root walked and keyed in full           */
 /* ------------------------------------------------------------------ */
 
 /*
@@ -617,18 +625,18 @@ ref_cycle(const int *fp, const int *finv, int vertex, int h, int g, int *meets)
 #define INV_SIZE (6 + 2 * MAX_ARRAYS)
 
 /*
- * Under ISO_ROOTS_DATA, the base entries are followed by the nd data values
+ * Under DOMAP_ROOTS_DATA, the base entries are followed by the nd data values
  * at h, then under the edge rules by those at t, in the entries 6 on.
  */
 static void
-ref_invariant(const int *fp, const int *finv, iso_root_rule rule, int n,
+ref_invariant(const int *fp, const int *finv, domap_root_rule rule, int n,
               int nd, const int *data, int h, int *inv)
 {
     int t = ref_twin(fp, h), loop, monogon, i, base = base_rule(rule);
-    int edge = base == ISO_ROOTS_EDGE_MAX || base == ISO_ROOTS_EDGE_FEWEST;
+    int edge = base == DOMAP_ROOTS_EDGE_MAX || base == DOMAP_ROOTS_EDGE_FEWEST;
     for (i = 0; i < INV_SIZE; i++)
         inv[i] = 0;
-    if (base == ISO_ROOTS_ALL)
+    if (base == DOMAP_ROOTS_ALL)
         return;
     inv[0] = ref_cycle(fp, finv, 1, h, t, &loop);
     inv[1] = ref_cycle(fp, finv, 0, h, t, &monogon);
@@ -639,7 +647,7 @@ ref_invariant(const int *fp, const int *finv, iso_root_rule rule, int n,
         inv[4] = loop;
         inv[5] = monogon;
     }
-    if (rule & ISO_ROOTS_DATA)
+    if (rule & DOMAP_ROOTS_DATA)
     {
         for (i = 0; i < nd; i++)
         {
@@ -657,13 +665,13 @@ ref_invariant(const int *fp, const int *finv, iso_root_rule rule, int n,
  * pair of half-edges is compared, O(n^2) invariants.
  */
 static void
-ref_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
+ref_class(int n, const int *fp, domap_root_rule rule, int nd, const int *data,
           const int *avail, int *mask)
 {
     static int inv[MAX_N][INV_SIZE], finv[MAX_N];
     int h, g, cnt, best = -1, best_cnt = 0, cmp;
-    int fewest = base_rule(rule) == ISO_ROOTS_HALF_EDGE_FEWEST
-        || base_rule(rule) == ISO_ROOTS_EDGE_FEWEST;
+    int fewest = base_rule(rule) == DOMAP_ROOTS_HALF_EDGE_FEWEST
+        || base_rule(rule) == DOMAP_ROOTS_EDGE_FEWEST;
 
     for (h = 0; h < n; h++)
         if (fp[h] != -1)
@@ -700,19 +708,19 @@ ref_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
 }
 
 /*
- * The reference of iso_canonical: every active half-edge of the class of the
- * rule (ref_class) as a root, its relabelling by iso_relabelling_from and
- * its key by iso_key in full, then compared with the best key so far.
+ * The reference of domap_canonical: every active half-edge of the class of the
+ * rule (ref_class) as a root, its relabelling by omap_relabelling_from and
+ * its key by domap_key in full, then compared with the best key so far.
  */
 static int
 ref_canonical(int n, const int *fp, int nd, const int *data, int nc,
-              const int *classes, iso_root_rule rule, int *best,
+              const int *classes, domap_root_rule rule, int *best,
               int *best_relabelling, int *best_roots, int *nroots)
 {
     static int r[MAX_N], rinv[MAX_N], queue[MAX_N], names[MAX_N],
         cur[KEY_SIZE];
     static int avail[MAX_N], mask[MAX_N];
-    int ne = iso_num_edges(n, fp), root, k, len = 0, l, count = 0, cmp, i;
+    int ne = omap_num_edges(n, fp), root, k, len = 0, l, count = 0, cmp, i;
 
     for (i = 0; i < n; i++)
     {
@@ -725,10 +733,10 @@ ref_canonical(int n, const int *fp, int nd, const int *data, int nc,
     {
         if (!mask[root])
             continue;
-        k = iso_relabelling_from(n, fp, root, r, rinv, queue);
+        k = omap_relabelling_from(n, fp, root, r, rinv, queue);
         if (k != 2 * ne)
-            return ISO_DISCONNECTED;
-        l = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, cur, names);
+            return DOMAP_DISCONNECTED;
+        l = domap_key(n, fp, nd, data, nc, classes, r, rinv, k, cur, names);
         if (count == 0)
         {
             cmp = -1;
@@ -756,7 +764,7 @@ ref_canonical(int n, const int *fp, int nd, const int *data, int nc,
 }
 
 /*
- * Check iso_canonical against ref_canonical on fp under every rule. The
+ * Check domap_canonical against ref_canonical on fp under every rule. The
  * number of roots of minimal key, the order of the group, does not depend
  * on the rule.
  */
@@ -772,10 +780,10 @@ check_reference(int n, const int *fp, int nd, const int *data, int nc,
         ref_len = ref_canonical(n, fp, nd, data, nc, classes, rules[i],
                                 ref_key, ref_relabelling, ref_roots,
                                 &ref_count);
-        len = iso_canonical(n, fp, nd, data, nc, classes, rules[i], key,
-                            relabelling, roots, &count, work);
+        len = domap_canonical(n, fp, nd, data, nc, classes, rules[i], key,
+                              relabelling, roots, &count, work);
         CHECK(len == ref_len);
-        if (len == ISO_DISCONNECTED)
+        if (len == DOMAP_DISCONNECTED)
             return;
         CHECK(count == ref_count);
         CHECK(memcmp(key, ref_key, (size_t) len * sizeof(int)) == 0);
@@ -914,8 +922,8 @@ test_reference_regular(void)
             check_reference(n, fp2, 0, NULL, 1, zero);
             for (i = 0; i < NUM_RULES; i++)
             {
-                len = iso_canonical(n, fp2, 0, NULL, 0, NULL, rules[i], key,
-                                    relabelling, roots, &count, work);
+                len = domap_canonical(n, fp2, 0, NULL, 0, NULL, rules[i], key,
+                                      relabelling, roots, &count, work);
                 CHECK(len == n && count == (solid == 0 ? 12 : 24));
             }
         }
@@ -1025,25 +1033,25 @@ test_reference(void)
 }
 
 /*
- * Whether iso_canonical takes its counting path under rule (not
- * ISO_ROOTS_ALL) rather than the sort of all the classes: the product of
+ * Whether domap_canonical takes its counting path under rule (not
+ * DOMAP_ROOTS_ALL) rather than the sort of all the classes: the product of
  * the ranges (max - min + 1 over the active half-edges) of the entries of
  * the reference invariant, loop and monogon counting 2 each, is at most
- * 2 n, and 2 nd <= n + 1. This mirrors the bound of isomorphism.c, so that
+ * 2 n, and 2 nd <= n + 1. This mirrors the bound of omap.c, so that
  * the cases below are known to cover both paths.
  */
 static int
-counting_path(int n, const int *fp, iso_root_rule rule, int nd,
+counting_path(int n, const int *fp, domap_root_rule rule, int nd,
               const int *data)
 {
     static int inv[MAX_N][INV_SIZE], finv[MAX_N];
     int h, i, lo, hi, first = 1, base = base_rule(rule);
-    int edge = base == ISO_ROOTS_EDGE_MAX || base == ISO_ROOTS_EDGE_FEWEST;
+    int edge = base == DOMAP_ROOTS_EDGE_MAX || base == DOMAP_ROOTS_EDGE_FEWEST;
     int entries =
-        (edge ? 6 : 2) + ((rule & ISO_ROOTS_DATA) ? (edge ? 2 : 1) * nd : 0);
+        (edge ? 6 : 2) + ((rule & DOMAP_ROOTS_DATA) ? (edge ? 2 : 1) * nd : 0);
     long long prod = 1;
 
-    if ((rule & ISO_ROOTS_DATA) && 2 * nd > n + 1)
+    if ((rule & DOMAP_ROOTS_DATA) && 2 * nd > n + 1)
         return 0;
     for (h = 0; h < n; h++)
         if (fp[h] != -1)
@@ -1098,14 +1106,14 @@ polygon(int k, int *fp)
 }
 
 /*
- * iso_canonical against the reference under every rule, on inputs that take
+ * domap_canonical against the reference under every rule, on inputs that take
  * its counting path and inputs that take the sort of all the classes:
  * relabelled polygons (one degree each for the vertices and the faces)
  * with data of two values, random maps with data of two values, of values
  * spread over n + 1 (wide ranges) or of the values far apart of
  * spread_values, and random maps without data, whose degrees spread over
  * more values as the maps grow. The cases run until each rule other than
- * ISO_ROOTS_ALL has taken each path at least 20 times.
+ * DOMAP_ROOTS_ALL has taken each path at least 20 times.
  */
 static void
 test_reference_paths(void)
@@ -1198,7 +1206,8 @@ random_union(int *fp)
  */
 static void
 check_block_roots(int n, const int *fp, int nd, const int *data, int narrays,
-                  iso_root_rule rule, const int *rel, const int *seq, int len)
+                  domap_root_rule rule, const int *rel, const int *seq,
+                  int len)
 {
     static int avail[MAX_N], mask[MAX_N];
     int pos = 0, first = 0, k, na, root, h;
@@ -1232,7 +1241,7 @@ test_search_random(void)
     int dec[2 * MAX_ARRAYS * MAX_N], dec2[2 * MAX_ARRAYS * MAX_N];
     int trial, n, nd, nc, len, len2, count, i, h, j;
     long leaves, leaves2, all_leaves = 0;
-    iso_root_rule rule;
+    domap_root_rule rule;
 
     current_case = "search, random unions";
     for (trial = 0; trial < 300; trial++)
@@ -1266,9 +1275,9 @@ test_search_random(void)
                 CHECK(fp2[h] == sequence[1 + h]);
 
             /* a connected map gives one block: k, then its key */
-            len2 = iso_canonical(n, fp, nd, dec, nc, dec + nd * n, rule, key,
-                                 relabelling, NULL, &count, work);
-            if (len2 != ISO_DISCONNECTED)
+            len2 = domap_canonical(n, fp, nd, dec, nc, dec + nd * n, rule, key,
+                                   relabelling, NULL, &count, work);
+            if (len2 != DOMAP_DISCONNECTED)
             {
                 CHECK(len == 1 + len2 && sequence[0] == n);
                 CHECK(memcmp(sequence + 1, key,
@@ -1363,8 +1372,8 @@ test_search_tied(void)
     n = isolated_edges(41, pairs, fp, dec);
     for (j = 0; j < NUM_RULES; j++)
     {
-        CHECK(iso_search(n, fp, 0, NULL, 1, dec, rules[j], 0, sequence, &len,
-                         relabelling, NULL, NULL, search_work) == 0);
+        CHECK(domap_search(n, fp, 0, NULL, 1, dec, rules[j], 0, sequence, &len,
+                           relabelling, NULL, NULL, search_work) == 0);
         CHECK(len == 5 * 41);
         for (i = 0; i < len; i++)
             CHECK(sequence[i] == (i < 5 * 21
@@ -1467,8 +1476,8 @@ test_search_tied(void)
     }
     for (j = 0; j < NUM_RULES; j++)
     {
-        CHECK(iso_search(n, fp, 0, NULL, 1, dec, rules[j], 0, sequence, &len,
-                         relabelling, NULL, NULL, search_work) == 0);
+        CHECK(domap_search(n, fp, 0, NULL, 1, dec, rules[j], 0, sequence, &len,
+                           relabelling, NULL, NULL, search_work) == 0);
         CHECK(len == 100);
         for (i = 0; i < len; i++)
             CHECK(sequence[i] == edge_block[i % 5]);
@@ -1530,7 +1539,7 @@ test_search_tied(void)
 }
 
 /*
- * iso_invariants_differ: the multisets of the data values and the multisets
+ * domap_invariants_differ: the multisets of the data values and the multisets
  * of the sizes of the classes, on the active half-edges only.
  */
 static void
@@ -1541,7 +1550,7 @@ test_invariants(void)
     static const int fp4[] = { 1, 0, 3, 2 };
     static const int fp8[] = { 1, 0, -1, -1, 3, 2, -1, -1 };
     static const int fp_junk[] = { 1, 0, -1, -1 };
-    int inv_work[ISO_INVARIANTS_WORK_SIZE(8)];
+    int inv_work[DOMAP_INVARIANTS_WORK_SIZE(8)];
     int d1[12], d2[12], c1[12], c2[12];
     int i;
 
@@ -1552,12 +1561,12 @@ test_invariants(void)
             data2[] = { 1, 0, 1, 1, 0, 0 };
         static const int classes1[] = { 0, 0, 1, 1, 2, 2 },
             classes2[] = { 5, 3, 3, 0, 0, 5 };
-        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
-                                    classes2, 1, 1, inv_work) == 0);
-        CHECK(iso_invariants_differ(6, fp6, data2, classes2, 6, fp6, data1,
-                                    classes1, 1, 1, inv_work) == 0);
-        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data1,
-                                    classes1, 1, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
+                                      classes2, 1, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, data2, classes2, 6, fp6, data1,
+                                      classes1, 1, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data1,
+                                      classes1, 1, 1, inv_work) == 0);
     }
 
     current_case = "invariants, data multisets differ";
@@ -1565,10 +1574,10 @@ test_invariants(void)
         static const int data1[] = { 0, 1, 0, 1, 0, 1 },
             data2[] = { 0, 0, 0, 0, 1, 1 };
         static const int classes[] = { 0, 0, 1, 1, 2, 2 };
-        CHECK(iso_invariants_differ(6, fp6, data1, classes, 6, fp6, data2,
-                                    classes, 1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(6, fp6, data2, classes, 6, fp6, data1,
-                                    classes, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data1, classes, 6, fp6, data2,
+                                      classes, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data2, classes, 6, fp6, data1,
+                                      classes, 1, 1, inv_work) == 1);
         /* one value of the extremes of an int */
         for (i = 0; i < 6; i++)
         {
@@ -1577,10 +1586,10 @@ test_invariants(void)
         }
         d1[0] = INT_MIN;
         d2[0] = INT_MAX;
-        CHECK(iso_invariants_differ(6, fp6, d1, classes, 6, fp6, d2, classes,
-                                    1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(6, fp6, d1, classes, 6, fp6, d1, classes,
-                                    1, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, d1, classes, 6, fp6, d2, classes,
+                                      1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, d1, classes, 6, fp6, d1, classes,
+                                      1, 1, inv_work) == 0);
     }
 
     current_case = "invariants, class-size multisets differ";
@@ -1590,20 +1599,20 @@ test_invariants(void)
         static const int classes1[] = { 0, 0, 1, 1, 2, 2 },
             classes2[] = { 0, 0, 0, 1, 1, 2 };
         static const int classes3[] = { 4, 4, 4, 4, 4, 4 };
-        CHECK(iso_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
-                                    classes2, 1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(6, fp6, data, classes2, 6, fp6, data,
-                                    classes1, 1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
-                                    classes3, 1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(6, fp6, data, classes3, 6, fp6, data,
-                                    classes1, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
+                                      classes2, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data, classes2, 6, fp6, data,
+                                      classes1, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
+                                      classes3, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data, classes3, 6, fp6, data,
+                                      classes1, 1, 1, inv_work) == 1);
         /* the buffer is left zero after a failure on a previous call: the
          * same inputs give the same verdict again */
-        CHECK(iso_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
-                                    classes2, 1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
-                                    classes1, 1, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
+                                      classes2, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data, classes1, 6, fp6, data,
+                                      classes1, 1, 1, inv_work) == 0);
     }
 
     current_case = "invariants, class values renamed";
@@ -1611,11 +1620,11 @@ test_invariants(void)
         static const int classes1[] = { 0, 0, 1, 1, 2, 3 },
             classes2[] = { 5, 4, 2, 2, 4, 0 };
         static const int classes3[] = { 0, 0, 1, 2, 2, 3 };
-        CHECK(iso_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL,
-                                    classes2, 0, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL,
+                                      classes2, 0, 1, inv_work) == 0);
         /* the sizes 2, 2, 1, 1 in both */
-        CHECK(iso_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL,
-                                    classes3, 0, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, NULL, classes1, 6, fp6, NULL,
+                                      classes3, 0, 1, inv_work) == 0);
     }
 
     current_case = "invariants, several arrays";
@@ -1626,14 +1635,14 @@ test_invariants(void)
         static const int data3[] = { 1, 1, 0, 0, 0, 1, 8, 8, 8, 7, 7, 8 };
         static const int classes1[] = { 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 2, 2 };
         static const int classes2[] = { 2, 2, 2, 0, 0, 0, 4, 4, 3, 3, 3, 3 };
-        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
-                                    classes1, 2, 2, inv_work) == 0);
-        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data3,
-                                    classes1, 2, 2, inv_work) == 1);
-        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
-                                    classes2, 2, 2, inv_work) == 1);
-        CHECK(iso_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
-                                    classes2, 2, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
+                                      classes1, 2, 2, inv_work) == 0);
+        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data3,
+                                      classes1, 2, 2, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
+                                      classes2, 2, 2, inv_work) == 1);
+        CHECK(domap_invariants_differ(6, fp6, data1, classes1, 6, fp6, data2,
+                                      classes2, 2, 1, inv_work) == 0);
     }
 
     current_case = "invariants, different label lengths";
@@ -1646,18 +1655,21 @@ test_invariants(void)
         static const int classes4[] = { 0, 0, 1, 1 };
         static const int classes8[] = { 3, 3, 0, 0, 6, 6, 0, 0 };
         static const int classes8_bad[] = { 1, 1, 0, 0, 1, 2, 0, 0 };
-        CHECK(iso_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8,
-                                    classes8, 1, 1, inv_work) == 0);
-        CHECK(iso_invariants_differ(8, fp8, data8, classes8, 4, fp4, data4,
-                                    classes4, 1, 1, inv_work) == 0);
-        CHECK(iso_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8_bad,
-                                    classes8, 1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(8, fp8, data8_bad, classes8, 4, fp4, data4,
-                                    classes4, 1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8,
-                                    classes8_bad, 1, 1, inv_work) == 1);
-        CHECK(iso_invariants_differ(8, fp8, data8, classes8_bad, 4, fp4, data4,
-                                    classes4, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8,
+                                      classes8, 1, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(8, fp8, data8, classes8, 4, fp4, data4,
+                                      classes4, 1, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(4, fp4, data4, classes4, 8, fp8,
+                                      data8_bad, classes8, 1, 1,
+                                      inv_work) == 1);
+        CHECK(domap_invariants_differ(8, fp8, data8_bad, classes8, 4, fp4,
+                                      data4, classes4, 1, 1,
+                                      inv_work) == 1);
+        CHECK(domap_invariants_differ(4, fp4, data4, classes4, 8, fp8, data8,
+                                      classes8_bad, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(8, fp8, data8, classes8_bad, 4, fp4,
+                                      data4, classes4, 1, 1,
+                                      inv_work) == 1);
     }
 
     current_case = "invariants, inactive half-edges";
@@ -1669,10 +1681,10 @@ test_invariants(void)
         static const int classes1[] = { 0, 0, 3, 2 },
             classes2[] = { 1, 1, 100000, -4 };
         static const int data3[] = { 5, 6, 100, 200 };
-        CHECK(iso_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk,
-                                    data2, classes2, 1, 1, inv_work) == 0);
-        CHECK(iso_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk,
-                                    data3, classes2, 1, 1, inv_work) == 1);
+        CHECK(domap_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk,
+                                      data2, classes2, 1, 1, inv_work) == 0);
+        CHECK(domap_invariants_differ(4, fp_junk, data1, classes1, 4, fp_junk,
+                                      data3, classes2, 1, 1, inv_work) == 1);
     }
 
     current_case = "invariants, no class array";
@@ -1680,12 +1692,12 @@ test_invariants(void)
         static const int data1[] = { 0, 1, 0, 1, 0, 1 },
             data2[] = { 1, 0, 1, 1, 0, 0 }, data3[] = { 1, 1, 1, 1, 0, 0 };
         /* nc == 0: work is not read */
-        CHECK(iso_invariants_differ(6, fp6, data1, NULL, 6, fp6, data2, NULL,
-                                    1, 0, NULL) == 0);
-        CHECK(iso_invariants_differ(6, fp6, data1, NULL, 6, fp6, data3, NULL,
-                                    1, 0, NULL) == 1);
-        CHECK(iso_invariants_differ(6, fp6, NULL, NULL, 6, fp6, NULL, NULL, 0,
-                                    0, NULL) == 0);
+        CHECK(domap_invariants_differ(6, fp6, data1, NULL, 6, fp6, data2, NULL,
+                                      1, 0, NULL) == 0);
+        CHECK(domap_invariants_differ(6, fp6, data1, NULL, 6, fp6, data3, NULL,
+                                      1, 0, NULL) == 1);
+        CHECK(domap_invariants_differ(6, fp6, NULL, NULL, 6, fp6, NULL,
+                                      NULL, 0, 0, NULL) == 0);
     }
 
     /* random: renamed and moved values of a relabelled copy never differ,
@@ -1707,13 +1719,13 @@ test_invariants(void)
         relabel_arrays(n, 1, c1, r, c2);
         for (h = 0; h < n; h++)
             c2[h] = nvals - 1 - c2[h];
-        CHECK(iso_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1, 1,
-                                    inv_work) == 0);
+        CHECK(domap_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1,
+                                      1, inv_work) == 0);
         /* one data value changed: the multiset changes */
         g = rng_below(n);
         d2[g] = nvals + 5;
-        CHECK(iso_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1, 1,
-                                    inv_work) == 1);
+        CHECK(domap_invariants_differ(n, fp_id, d1, c1, n, fp_copy, d2, c2, 1,
+                                      1, inv_work) == 1);
     }
 }
 

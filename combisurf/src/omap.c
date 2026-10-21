@@ -1,8 +1,8 @@
 /*
  * Canonical keys, canonical labellings and automorphisms of maps. See
- * isomorphism.h for the conventions and the sizes of the buffers.
+ * omap.h for the conventions and the sizes of the buffers.
  *
- * On a connected map (iso_canonical), every active half-edge is tried as a
+ * On a connected map (domap_canonical), every active half-edge is tried as a
  * root. The first root is walked and keyed in full; for the others, the
  * walk is compared with the best key so far as it goes and stops at the
  * first entry larger, so that a rejected root costs the labels it gave
@@ -14,7 +14,7 @@
  * whose roots all tie (a regular map) costs O(n log2 |Aut|) instead of
  * O(n^2) for n half-edges.
  *
- * On any map (iso_search), the search goes component after component. Its
+ * On any map (domap_search), the search goes component after component. Its
  * memory does not grow with the depth beyond a few ints per level: the
  * state of a level is its root, its first label, the position and length
  * of its block in the current sequence and the counts of class values
@@ -23,11 +23,11 @@
  * a block equal to the one of the level, which is still in the sequence.
  * With classes and without all_leaves, a tied root found so is skipped when
  * an earlier tied root of the level extends the numbering of the class
- * values alike (see iso_search in isomorphism.h); the earlier roots are found
+ * values alike (see domap_search in omap.h); the earlier roots are found
  * again by the same scan, from the start of the class, so that this needs
  * no memory either.
  *
- * Under a rule other than ISO_ROOTS_ALL, iso_canonical needs the chosen
+ * Under a rule other than DOMAP_ROOTS_ALL, domap_canonical needs the chosen
  * class only, in increasing order. packed_class packs the entries of the
  * invariant of each active half-edge, shifted by their minimum, into one
  * int in mixed radix over their ranges, whose order is the lexicographic
@@ -35,21 +35,21 @@
  * it counts the half-edges per packed value, chooses the class from these
  * counts and collects its half-edges by one scan, in O(n (1 + nd)) with
  * one cycle walk for the vertices and one for the faces. Otherwise, and
- * always in iso_search, which needs every class, the classes are computed
+ * always in domap_search, which needs every class, the classes are computed
  * by root_classes: a radix sort of the active half-edges by invariant,
- * O(n) per entry. Under ISO_ROOTS_DATA, whose invariants end with data
+ * O(n) per entry. Under DOMAP_ROOTS_DATA, whose invariants end with data
  * values, arbitrary ints, root_classes first replaces each data array by
  * order-preserving numbers of 0, ..., n - 1 (O(n) when its values span
  * fewer than n values, O(n log n) otherwise), so that every entry of the
  * radix sort lies in 0, ..., n - 1. The flag is masked wherever the base
- * rule is tested. iso_canonical then tries the half-edges of the chosen
- * class only. iso_search keeps the number of half-edges not
+ * rule is tested. domap_canonical then tries the half-edges of the chosen
+ * class only. domap_search keeps the number of half-edges not
  * labelled yet in each class, updated as components are labelled and
  * undone, and chooses the class at each step from these numbers (O(number
  * of classes)); its scans run over the half-edges of that class. Under
- * ISO_ROOTS_ALL the loops over the roots are those without classes.
+ * DOMAP_ROOTS_ALL the loops over the roots are those without classes.
  *
- * With ISO_DEBUG defined, the relabellings and keys are checked as they are
+ * With OMAP_DEBUG defined, the relabellings and keys are checked as they are
  * computed, and a failed check aborts with a message.
  *
  * This file is part of combisurf.
@@ -61,21 +61,21 @@
  * Software Foundation; either version 2 of the License, or (at your option)
  * any later version.
  */
-#include "isomorphism.h"
+#include "omap.h"
 #include "perm.h"
 
 #include <string.h>
 
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ISO_CHECK(cond)                                                     \
+#define OMAP_CHECK(cond)                                                    \
     do                                                                      \
     {                                                                       \
         if (!(cond))                                                        \
         {                                                                   \
-            fprintf(stderr, "isomorphism.c:%d: check failed: %s\n",         \
+            fprintf(stderr, "omap.c:%d: check failed: %s\n",                \
                     __LINE__, #cond);                                       \
             abort();                                                        \
         }                                                                   \
@@ -86,27 +86,27 @@ static void
 debug_relabelling(int n, const int *fp, const int *r, const int *rinv, int k)
 {
     int h, i;
-    ISO_CHECK(k % 2 == 0 && 0 <= k && k <= n);
+    OMAP_CHECK(k % 2 == 0 && 0 <= k && k <= n);
     for (h = 0; h < n; h++)
     {
-        ISO_CHECK(-1 <= r[h] && r[h] < k);
-        ISO_CHECK((r[h] == -1) == (r[h ^ 1] == -1));
+        OMAP_CHECK(-1 <= r[h] && r[h] < k);
+        OMAP_CHECK((r[h] == -1) == (r[h ^ 1] == -1));
         if (r[h] != -1)
-            ISO_CHECK(r[h ^ 1] == (r[h] ^ 1));
+            OMAP_CHECK(r[h ^ 1] == (r[h] ^ 1));
         if (r[h] != -1 && fp[h] != -1)
-            ISO_CHECK(r[fp[h]] != -1);
+            OMAP_CHECK(r[fp[h]] != -1);
     }
     for (i = 0; i < k; i++)
     {
         if (rinv[i] == -1)
         {
-            ISO_CHECK(i % 2 == 1 && rinv[i ^ 1] != -1
-                      && fp[rinv[i ^ 1] ^ 1] == -1);
+            OMAP_CHECK(i % 2 == 1 && rinv[i ^ 1] != -1
+                       && fp[rinv[i ^ 1] ^ 1] == -1);
         }
         else
         {
-            ISO_CHECK(0 <= rinv[i] && rinv[i] < n && fp[rinv[i]] != -1
-                      && r[rinv[i]] == i);
+            OMAP_CHECK(0 <= rinv[i] && rinv[i] < n && fp[rinv[i]] != -1
+                       && r[rinv[i]] == i);
         }
     }
 }
@@ -117,12 +117,12 @@ debug_names(int n, const int *names)
 {
     int v;
     for (v = 0; v < n; v++)
-        ISO_CHECK(names[v] == -1);
+        OMAP_CHECK(names[v] == -1);
 }
 #endif
 
 int
-iso_num_edges(int n, const int *fp)
+omap_num_edges(int n, const int *fp)
 {
     int e, ne = 0;
     for (e = 0; 2 * e < n; e++)
@@ -132,8 +132,8 @@ iso_num_edges(int n, const int *fp)
 }
 
 int
-iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv,
-                     int *queue)
+omap_relabelling_from(int n, const int *fp, int root, int *r, int *rinv,
+                      int *queue)
 {
     int head = 0, tail = 0, k = 0;
     int h, x;
@@ -168,21 +168,21 @@ iso_relabelling_from(int n, const int *fp, int root, int *r, int *rinv,
             x = fp[x];
         } while (x != h);
     }
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     debug_relabelling(n, fp, r, rinv, k);
 #endif
     return k;
 }
 
 int
-iso_key(int n, const int *fp, int nd, const int *data, int nc,
-        const int *classes, const int *r, const int *rinv, int k, int *key,
-        int *names)
+domap_key(int n, const int *fp, int nd, const int *data, int nc,
+          const int *classes, const int *r, const int *rinv, int k, int *key,
+          int *names)
 {
     int i, j, h, pos, next;
     const int *a;
 
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     debug_names(n, names);
 #endif
     for (i = 0; i < k; i++)
@@ -210,8 +210,8 @@ iso_key(int n, const int *fp, int nd, const int *data, int nc,
             h = rinv[i];
             if (h != -1)
             {
-#ifdef ISO_DEBUG
-                ISO_CHECK(0 <= a[h] && a[h] < n);
+#ifdef OMAP_DEBUG
+                OMAP_CHECK(0 <= a[h] && a[h] < n);
 #endif
                 if (names[a[h]] == -1)
                     names[a[h]] = next++;
@@ -225,7 +225,7 @@ iso_key(int n, const int *fp, int nd, const int *data, int nc,
                 names[a[h]] = -1;
         }
     }
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     debug_names(n, names);
 #endif
     return pos;
@@ -303,10 +303,10 @@ class_sizes_differ(int n1, const int *fp1, const int *a1, int n2,
 }
 
 int
-iso_invariants_differ(int n1, const int *fp1, const int *data1,
-                      const int *classes1, int n2, const int *fp2,
-                      const int *data2, const int *classes2, int nd, int nc,
-                      int *work)
+domap_invariants_differ(int n1, const int *fp1, const int *data1,
+                        const int *classes1, int n2, const int *fp2,
+                        const int *data2, const int *classes2, int nd, int nc,
+                        int *work)
 {
     int n = n1 > n2 ? n1 : n2;
     int j;
@@ -329,7 +329,7 @@ iso_invariants_differ(int n1, const int *fp1, const int *data1,
 
 /*
  * The entry j of the invariant of the active half-edge h (see
- * isomorphism.h), shifted into 0, ..., n - 1: the degrees minus 1, and loop
+ * omap.h), shifted into 0, ..., n - 1: the degrees minus 1, and loop
  * and monogon as 0 or 1. vid and fid are the indices of the vertices and of
  * the faces, vdeg and fdeg their degrees.
  */
@@ -356,9 +356,9 @@ invariant_entry(int j, int h, const int *fp, const int *vid, const int *vdeg,
 }
 
 /*
- * The entries of the invariants of a rule other than ISO_ROOTS_ALL, each in
+ * The entries of the invariants of a rule other than DOMAP_ROOTS_ALL, each in
  * 0, ..., n - 1: the base entries of invariant_entry, then, under
- * ISO_ROOTS_DATA, the order-preserving numbers of data_ranks for the data
+ * DOMAP_ROOTS_DATA, the order-preserving numbers of data_ranks for the data
  * values at h (nd entries), and under the edge rules those at the twin t (nd
  * more). rank holds the nd arrays of numbers, nd being 0 without the flag.
  */
@@ -460,7 +460,7 @@ data_ranks(int n, const int *fp, const int *a, int *rank, int *tmp)
     }
 }
 
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
 /*
  * Compare the invariants of the active half-edges h1 and h2 computed
  * directly, from the degrees and the data values themselves rather than
@@ -507,24 +507,24 @@ debug_classes(const struct invariants *iv, const int *data, int na,
               const int *order, const int *pos_cls)
 {
     int i, cmp;
-    ISO_CHECK(pos_cls[0] == 0);
+    OMAP_CHECK(pos_cls[0] == 0);
     for (i = 1; i < na; i++)
     {
         cmp = debug_compare_invariants(iv, data, order[i - 1], order[i]);
         if (pos_cls[i] == pos_cls[i - 1])
         {
-            ISO_CHECK(cmp == 0 && order[i - 1] < order[i]);
+            OMAP_CHECK(cmp == 0 && order[i - 1] < order[i]);
         }
         else
         {
-            ISO_CHECK(pos_cls[i] == pos_cls[i - 1] + 1 && cmp < 0);
+            OMAP_CHECK(pos_cls[i] == pos_cls[i - 1] + 1 && cmp < 0);
         }
     }
 }
 #endif
 
 /*
- * The classes of the rule (not ISO_ROOTS_ALL) on the active half-edges of
+ * The classes of the rule (not DOMAP_ROOTS_ALL) on the active half-edges of
  * fp, from the invariants of the whole map. Write into order the active
  * half-edges sorted by invariant, the half-edges of equal invariant in
  * increasing order, into cls (n ints) the class of each half-edge, -1 on the
@@ -532,32 +532,33 @@ debug_classes(const struct invariants *iv, const int *data, int na,
  * of invariant, and into start the start of each class in order, followed
  * by the number of active half-edges (the class c is order[start[c]],
  * ..., order[start[c + 1] - 1]). order holds n ints, start n + 1 and tmp
- * 4 n. Under ISO_ROOTS_DATA, the nd data arrays (nd n ints) are read and
+ * 4 n. Under DOMAP_ROOTS_DATA, the nd data arrays (nd n ints) are read and
  * ranks (nd n ints) receives their numbers of data_ranks. Return the number
  * of classes.
  *
  * The sort is a least significant digit radix sort: one stable counting
  * sort per entry of the invariant (2 or 6 of them, plus nd or 2 nd data
- * entries under ISO_ROOTS_DATA, each in 0, ..., n - 1), from the last to
+ * entries under DOMAP_ROOTS_DATA, each in 0, ..., n - 1), from the last to
  * the first, O(n) each.
  */
 static int
-root_classes(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
-             int *order, int *cls, int *start, int *tmp, int *ranks)
+root_classes(int n, const int *fp, domap_root_rule rule, int nd,
+             const int *data, int *order, int *cls, int *start, int *tmp,
+             int *ranks)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *aux = tmp + 2 * n, *count = tmp + 3 * n;
     /* the indices of the vertices and of the faces, until the classes are
      * written over them */
     int *vid = cls, *fid = start;
-    int base_rule = rule & ~ISO_ROOTS_DATA;
-    int edge = base_rule == ISO_ROOTS_EDGE_MAX
-        || base_rule == ISO_ROOTS_EDGE_FEWEST;
+    int base_rule = rule & ~DOMAP_ROOTS_DATA;
+    int edge = base_rule == DOMAP_ROOTS_EDGE_MAX
+        || base_rule == DOMAP_ROOTS_EDGE_FEWEST;
     struct invariants iv;
     int entries;
     int h, t, i, j, v, sum, na = 0, m;
     int *src = order, *dst = aux, *swap;
 
-    if (!(rule & ISO_ROOTS_DATA))
+    if (!(rule & DOMAP_ROOTS_DATA))
         nd = 0;
     iv.fp = fp;
     iv.vid = vid;
@@ -640,7 +641,7 @@ root_classes(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
             }
         }
     }
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     /* before the classes are written over vid and fid */
     debug_classes(&iv, data, na, order, aux);
 #endif
@@ -711,10 +712,10 @@ radix_fits(long long *prod, long long range, long long bound)
     return *prod <= bound;
 }
 
-static int choose_class(iso_root_rule rule, int m, const int *cnt);
+static int choose_class(domap_root_rule rule, int m, const int *cnt);
 
 /*
- * The class of the rule (not ISO_ROOTS_ALL) chosen by choose_class among
+ * The class of the rule (not DOMAP_ROOTS_ALL) chosen by choose_class among
  * the classes of root_classes, without sorting: every entry of the
  * invariant is shifted by its minimum over the active half-edges (the
  * degrees, the data values; loop and monogon are 0 or 1) and the entries
@@ -737,21 +738,21 @@ static int choose_class(iso_root_rule rule, int m, const int *cnt);
  * 2 nd data entries) and its data ranks first.
  */
 static int
-packed_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
-             long long bound, int *out, int *tmp, int *pv, int *aux,
-             int *count)
+packed_class(int n, const int *fp, domap_root_rule rule, int nd,
+             const int *data, long long bound, int *out, int *tmp, int *pv,
+             int *aux, int *count)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *vid = tmp + 2 * n, *fid = tmp + 3 * n;
     int *dmin = aux, *drange = aux + nd;
-    int base_rule = rule & ~ISO_ROOTS_DATA;
-    int edge = base_rule == ISO_ROOTS_EDGE_MAX
-        || base_rule == ISO_ROOTS_EDGE_FEWEST;
+    int base_rule = rule & ~DOMAP_ROOTS_DATA;
+    int edge = base_rule == DOMAP_ROOTS_EDGE_MAX
+        || base_rule == DOMAP_ROOTS_EDGE_FEWEST;
     int h, t, j, c, v, k, vmin = 0, vmax = 0, fmin = 0,
         fmax = 0, lo, hi, rv, rf;
     long long prod = 1;
     const int *a;
 
-    if (!(rule & ISO_ROOTS_DATA))
+    if (!(rule & DOMAP_ROOTS_DATA))
         nd = 0;
     if (2 * (long) nd > (long) n + 1)
         return 0;
@@ -831,16 +832,16 @@ packed_class(int n, const int *fp, iso_root_rule rule, int nd, const int *data,
  * number of half-edges of the class c that may be roots (at least one class
  * has one): under *_MAX the largest class of positive count, under *_FEWEST
  * the class of smallest positive count, ties broken by the largest class.
- * The flag ISO_ROOTS_DATA does not change the choice.
+ * The flag DOMAP_ROOTS_DATA does not change the choice.
  */
 static int
-choose_class(iso_root_rule rule, int m, const int *cnt)
+choose_class(domap_root_rule rule, int m, const int *cnt)
 {
     int c, best = -1;
-    int base_rule = rule & ~ISO_ROOTS_DATA;
+    int base_rule = rule & ~DOMAP_ROOTS_DATA;
 
-    if (base_rule == ISO_ROOTS_HALF_EDGE_MAX
-        || base_rule == ISO_ROOTS_EDGE_MAX)
+    if (base_rule == DOMAP_ROOTS_HALF_EDGE_MAX
+        || base_rule == DOMAP_ROOTS_EDGE_MAX)
     {
         for (c = m - 1; cnt[c] == 0; c--)
             ;
@@ -852,14 +853,14 @@ choose_class(iso_root_rule rule, int m, const int *cnt)
     return best;
 }
 
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
 /*
  * Check the class of packed_class, the half-edges out[0:len], against the
  * class chosen among the classes of root_classes on the same input, in
  * buffers of its own.
  */
 static void
-debug_packed_class(int n, const int *fp, iso_root_rule rule, int nd,
+debug_packed_class(int n, const int *fp, domap_root_rule rule, int nd,
                    const int *data, const int *out, int len)
 {
     int *buf = malloc(((size_t) 8 * n + 1 + (size_t) nd * n) * sizeof(int));
@@ -868,21 +869,21 @@ debug_packed_class(int n, const int *fp, iso_root_rule rule, int nd,
     int *ranks = buf + 7 * n + 1;
     int m, c, i;
 
-    ISO_CHECK(buf != NULL);
+    OMAP_CHECK(buf != NULL);
     m = root_classes(n, fp, rule, nd, data, order, cls, start, tmp, ranks);
     /* the sizes of the classes, in tmp */
     for (c = 0; c < m; c++)
         tmp[c] = start[c + 1] - start[c];
     c = choose_class(rule, m, tmp);
-    ISO_CHECK(len == start[c + 1] - start[c]);
+    OMAP_CHECK(len == start[c + 1] - start[c]);
     for (i = 0; i < len; i++)
-        ISO_CHECK(out[i] == order[start[c] + i]);
+        OMAP_CHECK(out[i] == order[start[c] + i]);
     free(buf);
 }
 #endif
 
 /*
- * The walk of iso_relabelling_from from root, on r all -1 on entry, with the
+ * The walk of omap_relabelling_from from root, on r all -1 on entry, with the
  * face permutation part of its key compared with best as it is built. The
  * entry i of that part is r[fp[rinv[i]]], or -1 at an inactive label. The
  * entries below the label of the next half-edge of the queue are final: an
@@ -947,8 +948,8 @@ walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
         {
             x = rinv[p];
             v = x == -1 ? -1 : r[fp[x]];
-#ifdef ISO_DEBUG
-            ISO_CHECK(v != -1 || x == -1);
+#ifdef OMAP_DEBUG
+            OMAP_CHECK(v != -1 || x == -1);
 #endif
             if (v != best[p])
             {
@@ -962,8 +963,8 @@ walk_compare(const int *fp, int root, int *r, int *rinv, int *queue,
             }
         }
     }
-#ifdef ISO_DEBUG
-    ISO_CHECK(cmp != 0 || p == used);
+#ifdef OMAP_DEBUG
+    OMAP_CHECK(cmp != 0 || p == used);
 #endif
     *k = used;
     return cmp;
@@ -1039,12 +1040,12 @@ tail_compare(int n, int nd, const int *data, int nc, const int *classes,
 
 static void reset_local(int k, const int *lrinv, int *lr);
 
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
 /*
  * Check the outcome cmp of the root against the key computed in full by
- * iso_relabelling_from and iso_key (len ints): it compares with best as
+ * omap_relabelling_from and domap_key (len ints): it compares with best as
  * cmp says, and equals cur when cmp < 0. scratch holds 3 n +
- * ISO_KEY_SIZE(n, nd, nc) ints.
+ * DOMAP_KEY_SIZE(n, nd, nc) ints.
  */
 static void
 debug_root(int n, const int *fp, int nd, const int *data, int nc,
@@ -1055,9 +1056,9 @@ debug_root(int n, const int *fp, int nd, const int *data, int nc,
         *key2 = scratch + 3 * n;
     int k2, len2, i, ref = 0;
 
-    k2 = iso_relabelling_from(n, fp, root, r2, rinv2, queue2);
-    len2 = iso_key(n, fp, nd, data, nc, classes, r2, rinv2, k2, key2, names);
-    ISO_CHECK(len2 == len);
+    k2 = omap_relabelling_from(n, fp, root, r2, rinv2, queue2);
+    len2 = domap_key(n, fp, nd, data, nc, classes, r2, rinv2, k2, key2, names);
+    OMAP_CHECK(len2 == len);
     for (i = 0; i < len; i++)
     {
         if (key2[i] != best[i])
@@ -1066,10 +1067,10 @@ debug_root(int n, const int *fp, int nd, const int *data, int nc,
             break;
         }
     }
-    ISO_CHECK(ref == cmp);
+    OMAP_CHECK(ref == cmp);
     if (cmp < 0)
         for (i = 0; i < len; i++)
-            ISO_CHECK(cur[i] == key2[i]);
+            OMAP_CHECK(cur[i] == key2[i]);
 }
 
 /*
@@ -1095,28 +1096,28 @@ debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
     {
         if (fp[h] == -1)
             continue;
-        ISO_CHECK(0 <= rbest[h] && rbest[h] < n);
+        OMAP_CHECK(0 <= rbest[h] && rbest[h] < n);
         aut[h] = rinv[rbest[h]];
-        ISO_CHECK(0 <= aut[h] && aut[h] < n && fp[aut[h]] != -1
-                  && !seen[aut[h]]);
+        OMAP_CHECK(0 <= aut[h] && aut[h] < n && fp[aut[h]] != -1
+                   && !seen[aut[h]]);
         seen[aut[h]] = 1;
     }
     for (h = 0; h < n; h++)
     {
         if (fp[h] == -1)
             continue;
-        ISO_CHECK(aut[fp[h]] == fp[aut[h]]);
+        OMAP_CHECK(aut[fp[h]] == fp[aut[h]]);
         if (fp[h ^ 1] != -1)
-            ISO_CHECK(aut[h ^ 1] == (aut[h] ^ 1));
+            OMAP_CHECK(aut[h ^ 1] == (aut[h] ^ 1));
         else
-            ISO_CHECK(fp[aut[h] ^ 1] == -1);
+            OMAP_CHECK(fp[aut[h] ^ 1] == -1);
     }
     for (j = 0; j < nd; j++)
     {
         a = data + (long) j * n;
         for (h = 0; h < n; h++)
             if (fp[h] != -1)
-                ISO_CHECK(a[aut[h]] == a[h]);
+                OMAP_CHECK(a[aut[h]] == a[h]);
     }
     for (j = 0; j < nc; j++)
     {
@@ -1132,8 +1133,8 @@ debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
                 continue;
             v = a[h];
             w = a[aut[h]];
-            ISO_CHECK((fwd[v] == -1 && bwd[w] == -1)
-                      || (fwd[v] == w && bwd[w] == v));
+            OMAP_CHECK((fwd[v] == -1 && bwd[w] == -1)
+                       || (fwd[v] == w && bwd[w] == v));
             fwd[v] = w;
             bwd[w] = v;
         }
@@ -1142,7 +1143,7 @@ debug_automorphism(int n, const int *fp, int nd, const int *data, int nc,
 #endif
 
 /*
- * The state of iso_canonical while it tries the roots after the first one:
+ * The state of domap_canonical while it tries the roots after the first one:
  * the buffers, the best key so far and the candidate key (swapped when a
  * root beats the best one), the length of the keys, the best root and its
  * relabelling, and the parents of the union-find of the orbits of the
@@ -1155,7 +1156,7 @@ struct canonical_state
     int n, nd, nc, ne, len, best_root, merged;
     const int *fp, *data, *classes;
     int *r, *rinv, *queue, *names, *best, *cur, *rbest, *parent;
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     int *scratch;
 #endif
 };
@@ -1180,7 +1181,7 @@ canonical_root(struct canonical_state *s, int root)
 
     if (s->merged && _perm_orbits_find(s->parent, root) < root)
     {
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
         cmp = _perm_orbits_find(s->parent, root)
             == _perm_orbits_find(s->parent, s->best_root) ? 0 : 1;
         debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp,
@@ -1192,8 +1193,8 @@ canonical_root(struct canonical_state *s, int root)
     cmp = walk_compare(s->fp, root, r, rinv, s->queue, s->best, &k);
     if (cmp < 0)
     {
-        iso_key(n, s->fp, s->nd, s->data, s->nc, s->classes, r, rinv, k,
-                s->cur, s->names);
+        domap_key(n, s->fp, s->nd, s->data, s->nc, s->classes, r, rinv, k,
+                  s->cur, s->names);
     }
     else if (cmp == 0)
     {
@@ -1202,8 +1203,8 @@ canonical_root(struct canonical_state *s, int root)
         if (cmp < 0)
             memcpy(s->cur, s->best, (size_t) k * sizeof(int));
     }
-#ifdef ISO_DEBUG
-    ISO_CHECK(cmp == 1 || k == 2 * s->ne);
+#ifdef OMAP_DEBUG
+    OMAP_CHECK(cmp == 1 || k == 2 * s->ne);
     debug_root(n, s->fp, s->nd, s->data, s->nc, s->classes, root, cmp, s->best,
                s->cur, s->len, s->names, s->scratch);
 #endif
@@ -1224,9 +1225,9 @@ canonical_root(struct canonical_state *s, int root)
                 s->parent[h] = h;
             s->merged = 1;
         }
-#ifdef ISO_DEBUG
-        ISO_CHECK(_perm_orbits_find(s->parent, root)
-                  != _perm_orbits_find(s->parent, s->best_root));
+#ifdef OMAP_DEBUG
+        OMAP_CHECK(_perm_orbits_find(s->parent, root)
+                   != _perm_orbits_find(s->parent, s->best_root));
         debug_automorphism(n, s->fp, s->nd, s->data, s->nc, s->classes,
                            s->rbest, rinv, s->scratch);
 #endif
@@ -1240,36 +1241,36 @@ canonical_root(struct canonical_state *s, int root)
         memset(r, -1, (size_t) n * sizeof(int));
     else
         reset_local(k, rinv, r);
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     {
         int i;
         for (i = 0; i < n; i++)
-            ISO_CHECK(r[i] == -1);
+            OMAP_CHECK(r[i] == -1);
         debug_names(n, s->names);
     }
 #endif
 }
 
 int
-iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
-              const int *classes, iso_root_rule rule, int *key,
-              int *relabelling, int *roots, int *nroots, int *work)
+domap_canonical(int n, const int *fp, int nd, const int *data, int nc,
+                const int *classes, domap_root_rule rule, int *key,
+                int *relabelling, int *roots, int *nroots, int *work)
 {
     int *r = work;
     int *rinv = work + n;
     int *queue = work + 2 * n;
     int *names = work + 3 * n;
     int *cur = work + 4 * n;
-    int *order = cur + ISO_KEY_SIZE(n, nd, nc);
+    int *order = cur + DOMAP_KEY_SIZE(n, nd, nc);
     int *cls = order + n;
     int *start = cls + n;
     int *rbest = start + n + 1;
     int *parent = rbest + n;
     struct canonical_state s;
-    int all = (rule & ~ISO_ROOTS_DATA) == ISO_ROOTS_ALL;
+    int all = (rule & ~DOMAP_ROOTS_DATA) == DOMAP_ROOTS_ALL;
     int ne, first, root, k, i, c, m, rep, count, lo = 0, hi = 0;
 
-    ne = iso_num_edges(n, fp);
+    ne = omap_num_edges(n, fp);
     for (first = 0; first < n && fp[first] == -1; first++)
         ;
     if (first == n)
@@ -1304,7 +1305,7 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
             lo = start[c];
             hi = start[c + 1];
         }
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
         else
         {
             debug_packed_class(n, fp, rule, nd, data, order, hi);
@@ -1318,9 +1319,9 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
 
     /* the first root, walked in full: connectedness does not depend on the
      * root, so only this walk can fail */
-    k = iso_relabelling_from(n, fp, first, r, rinv, queue);
+    k = omap_relabelling_from(n, fp, first, r, rinv, queue);
     if (k != 2 * ne)
-        return ISO_DISCONNECTED;
+        return DOMAP_DISCONNECTED;
     s.n = n;
     s.nd = nd;
     s.nc = nc;
@@ -1338,18 +1339,18 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
     s.parent = parent;
     s.best_root = first;
     s.merged = 0;
-    s.len = iso_key(n, fp, nd, data, nc, classes, r, rinv, k, s.best, names);
+    s.len = domap_key(n, fp, nd, data, nc, classes, r, rinv, k, s.best, names);
     memcpy(rbest, r, (size_t) n * sizeof(int));
     reset_local(k, rinv, r);
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     s.scratch = malloc(((size_t) 3 * n
-                        + (size_t) ISO_KEY_SIZE(n, nd, nc)) * sizeof(int));
-    ISO_CHECK(s.scratch != NULL);
+                        + (size_t) DOMAP_KEY_SIZE(n, nd, nc)) * sizeof(int));
+    OMAP_CHECK(s.scratch != NULL);
 #endif
 
     /* the other roots: r is -1 on entry of each, and only the labels a root
      * gave are reset after it. The loop is chosen once per call, so that
-     * ISO_ROOTS_ALL tests no class per root. */
+     * DOMAP_ROOTS_ALL tests no class per root. */
     if (all)
     {
         for (root = first + 1; root < n; root++)
@@ -1361,7 +1362,7 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
         for (i = lo + 1; i < hi; i++)
             canonical_root(&s, order[i]);
     }
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     free(s.scratch);
 #endif
     if (s.best != key)
@@ -1380,8 +1381,8 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
     else
     {
         rep = _perm_orbits_find(parent, s.best_root);
-#ifdef ISO_DEBUG
-        ISO_CHECK(rep == s.best_root);
+#ifdef OMAP_DEBUG
+        OMAP_CHECK(rep == s.best_root);
 #endif
         count = 0;
         if (all)
@@ -1418,7 +1419,7 @@ iso_canonical(int n, const int *fp, int nd, const int *data, int nc,
 }
 
 /*
- * The breadth-first walk of iso_relabelling_from restricted to the
+ * The breadth-first walk of omap_relabelling_from restricted to the
  * component of root: lr must be -1 on the half-edges of that component and
  * is left set there (reset_local undoes it), so that a walk costs the size
  * of the component and not n.
@@ -1514,8 +1515,8 @@ component_block(int n, const int *fp, int nd, const int *data, int nc,
             h = lrinv[i];
             if (h != -1)
             {
-#ifdef ISO_DEBUG
-                ISO_CHECK(0 <= a[h] && a[h] < n);
+#ifdef OMAP_DEBUG
+                OMAP_CHECK(0 <= a[h] && a[h] < n);
 #endif
                 if (nm[a[h]] == -1)
                     nm[a[h]] = count++;
@@ -1667,8 +1668,8 @@ same_extension(int n, const int *fp, int nd, int nc, const int *classes,
     number_component(n, fp, nc, classes, root1, lr, lrinv, queue, names, next,
                      1);
     i = local_walk(fp, root2, lr, lrinv, queue);
-#ifdef ISO_DEBUG
-    ISO_CHECK(i == k);
+#ifdef OMAP_DEBUG
+    OMAP_CHECK(i == k);
 #endif
     for (j = 0; j < nc && same; j++, b += na)
     {
@@ -1694,15 +1695,15 @@ same_extension(int n, const int *fp, int nd, int nc, const int *classes,
 
 /*
  * The levels of the search store the position of their root in the scan of
- * the roots: the half-edge itself under ISO_ROOTS_ALL, its index in order
+ * the roots: the half-edge itself under DOMAP_ROOTS_ALL, its index in order
  * (see root_classes) under the other rules. The scans are written twice, once
- * per kind of position, so that ISO_ROOTS_ALL tests no class per root.
+ * per kind of position, so that DOMAP_ROOTS_ALL tests no class per root.
  */
 int
-iso_search(int n, const int *fp, int nd, const int *data, int nc,
-           const int *classes, iso_root_rule rule, int all_leaves,
-           int *sequence, int *length, int *relabelling,
-           iso_leaf_callback callback, void *arg, int *work)
+domap_search(int n, const int *fp, int nd, const int *data, int nc,
+             const int *classes, domap_root_rule rule, int all_leaves,
+             int *sequence, int *length, int *relabelling,
+             domap_leaf_callback callback, void *arg, int *work)
 {
     long levels = n / 2 + 1;
     int *r = work;
@@ -1719,18 +1720,18 @@ iso_search(int n, const int *fp, int nd, const int *data, int nc,
     int *lvl_next = lvl_best + levels;
     int *next = lvl_next + (long) nc * levels;
     int *seq = next + nc;
-    int *cand = seq + ISO_SEQUENCE_SIZE(n, nd, nc);
-    int *order = cand + ISO_KEY_SIZE(n, nd, nc) + 1;
+    int *cand = seq + DOMAP_SEQUENCE_SIZE(n, nd, nc);
+    int *order = cand + DOMAP_KEY_SIZE(n, nd, nc) + 1;
     int *cls = order + n;
     int *start = cls + n;
     int *cnt = start + n + 1;
     int follow_ties = nc > 0 || all_leaves;
     int cut_ties = nc > 0 && !all_leaves;
-    int all = (rule & ~ISO_ROOTS_DATA) == ISO_ROOTS_ALL;
+    int all = (rule & ~DOMAP_ROOTS_DATA) == DOMAP_ROOTS_ALL;
     int ne, depth = 0, used = 0, seqlen = 0, bestlen = -1, m = 0, target, t;
     int root, best_root, blen, len, k, cmp, ret, i, j, h, c, found;
 
-    ne = iso_num_edges(n, fp);
+    ne = omap_num_edges(n, fp);
     if (!all)
     {
         /* r, rinv, lr and lrinv (4 n) are free until they are cleared below,
@@ -1793,8 +1794,8 @@ iso_search(int n, const int *fp, int nd, const int *data, int nc,
                  * with the same sequences, none smaller than the best. */
                 for (t = 0; t < depth && lvl_root[t] == lvl_best[t]; t++)
                     ;
-#ifdef ISO_DEBUG
-                ISO_CHECK(t < depth && lvl_root[t] > lvl_best[t]);
+#ifdef OMAP_DEBUG
+                OMAP_CHECK(t < depth && lvl_root[t] > lvl_best[t]);
 #endif
                 target = t;
             }
@@ -1845,8 +1846,8 @@ iso_search(int n, const int *fp, int nd, const int *data, int nc,
                     }
                 }
             }
-#ifdef ISO_DEBUG
-            ISO_CHECK(best_root != -1 && depth < levels);
+#ifdef OMAP_DEBUG
+            OMAP_CHECK(best_root != -1 && depth < levels);
 #endif
             lvl_root[depth] = best_root;
             lvl_used[depth] = used;
@@ -2011,15 +2012,15 @@ iso_search(int n, const int *fp, int nd, const int *data, int nc,
         depth++;
     }
 
-#ifdef ISO_DEBUG
+#ifdef OMAP_DEBUG
     /* every level undone */
-    ISO_CHECK(bestlen >= 0 && used == 0 && seqlen == 0);
+    OMAP_CHECK(bestlen >= 0 && used == 0 && seqlen == 0);
     for (h = 0; h < n; h++)
-        ISO_CHECK(r[h] == -1 && lr[h] == -1);
+        OMAP_CHECK(r[h] == -1 && lr[h] == -1);
     for (i = 0; i < nc * n; i++)
-        ISO_CHECK(names[i] == -1);
+        OMAP_CHECK(names[i] == -1);
     for (c = 0; c < m; c++)
-        ISO_CHECK(cnt[c] == start[c + 1] - start[c]);
+        OMAP_CHECK(cnt[c] == start[c + 1] - start[c]);
 #endif
     *length = bestlen;
     return 0;
