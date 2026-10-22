@@ -329,8 +329,11 @@ def _check_sizes(n, nd, nc):
     half-edges decorated by ``nd`` arrays of ``data`` and ``nc`` arrays of
     ``classes`` has more entries than a C ``int`` counts.
 
-    The sizes are those of ``combisurf/src/omap.h``, computed here in
-    Python integers.
+    The sizes are those of the size macros of the C code
+    (``DOMAP_ISO_KEY_SIZE``, ``DOMAP_CANONICAL_WORK_SIZE``,
+    ``DOMAP_ISO_SEQUENCE_SIZE``, ``DOMAP_ISO_SEARCH_WORK_SIZE``,
+    ``DOMAP_INVARIANTS_WORK_SIZE`` and ``DOMAP_STABILISER_WORK_SIZE``,
+    documented in ``doc/c/omap.rst``), computed here in Python integers.
 
     TESTS::
 
@@ -695,8 +698,8 @@ cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
       content is ignored
 
     - ``fp`` -- the face permutation, ``-1`` on the inactive half-edges: an
-      array of typecode ``'i'``, a list, or any iterable that
-      ``array.array('i', fp)`` accepts
+      array of typecode ``'i'``, a list, or any object that has a length
+      (``len(fp)``) and that ``array.array('i', fp)`` accepts
 
     - ``data`` -- a tuple of ``nd`` arrays of ``n = len(fp)`` integers each,
       indexed by half-edges
@@ -819,11 +822,21 @@ cdef array.array _prepare(domap_struct *m, fp, data, classes):
     the decorations in C ``int``, which the caller keeps alive as long as it
     uses ``m``.
 
-    It raises the exceptions of ``_check_decorated_oriented_map`` (a length
-    of ``fp`` or of a decoration, ``data`` or ``classes`` not a tuple), then
-    those of ``_convert`` (``fp`` not a permutation of its active
-    half-edges, a value of ``data`` not an integer or outside the range of a
-    C ``int``, a map too large for the C code).
+    With ``n = len(fp)``, raise first the exceptions of
+    ``_check_decorated_oriented_map``, in this order:
+    ``ValueError("fp must have even length")``, ``TypeError("data must be a
+    tuple")``, ``ValueError("data arrays must have length n")``,
+    ``TypeError("classes must be a tuple")`` and ``ValueError("classes
+    arrays must have length n")``. Then those of ``_convert``:
+    ``ValueError("fp must be a permutation of its active half-edges")`` if
+    ``fp`` is not one, ``ValueError("fp has inconsistent length")`` if
+    iterating ``fp`` does not give ``len(fp)`` values, ``TypeError`` if a
+    value of ``data`` on an active half-edge is not an integer,
+    ``OverflowError`` if such a value is outside the range of a C ``int``,
+    and ``OverflowError("map too large: n half-edges with nd arrays of data
+    and nc of classes")`` if a buffer of the C code for this map has more
+    entries than a C ``int`` counts; the conversion of ``fp`` by
+    ``array.array`` raises its own ``TypeError`` or ``OverflowError``.
     """
     _check_decorated_oriented_map(fp, data, classes)
     # _check_decorated_oriented_map accepts any instance of tuple, _convert
@@ -840,9 +853,9 @@ cdef int _run(const domap_struct *m, int rule, array.array key, int *relabelling
 
     - ``m`` -- a decorated map of ``n = m.map.n`` half-edges
 
-    - ``rule`` -- a valid rule of the roots (``0`` to ``4`` or ``9`` to
-      ``12``, as returned by ``_check_root_rule``); another value is read
-      by the C code as an unknown rule
+    - ``rule`` -- a rule of the roots (``0`` to ``4`` or ``9`` to ``12``,
+      as returned by ``_check_root_rule``), which must be valid; another
+      value is not checked
 
     - ``key`` -- an array of typecode ``'i'`` of at least
       ``DOMAP_ISO_KEY_SIZE(n, m.nd, m.nc)`` entries, owned by the caller

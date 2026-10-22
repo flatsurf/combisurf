@@ -553,9 +553,10 @@ static void
 test_random(void)
 {
     int fp[MAX_N], fp2[MAX_N], fp3[MAX_N], r[MAX_N];
+    int rinv[MAX_N], r2[MAX_N], rinv2[MAX_N], queue[MAX_N];
     int dec[2 * MAX_ARRAYS * MAX_N], dec2[2 * MAX_ARRAYS * MAX_N];
     domap_t m;
-    int trial, ne, n, nd, nc, len, len2, count, count2, i, h;
+    int trial, ne, n, nd, nc, len, len2, count, count2, i, h, k, k2;
 
     current_case = "random";
     for (trial = 0; trial < 300; trial++)
@@ -575,6 +576,23 @@ test_random(void)
         CHECK(count >= 1);
         for (i = 0; i < count; i++)
             CHECK(fp[roots[i]] != -1 && (i == 0 || roots[i - 1] < roots[i]));
+
+        /* the omap_* functions read a decorated map through the cast of its
+         * pointer, map being the first member of domap_struct */
+        CHECK(omap_num_edges((const omap_struct *) m)
+              == _omap_num_edges(m->map.fp, m->map.n));
+        for (h = 0; h < n; h++)
+        {
+            if (fp[h] == -1)
+                continue;
+            k = omap_relabelling_from(r, rinv, (const omap_struct *) m, h,
+                                      queue);
+            k2 = _omap_relabelling_from(r2, rinv2, m->map.fp, m->map.n, h,
+                                        queue);
+            CHECK(k == k2 && k == n);
+            CHECK(memcmp(r, r2, (size_t) n * sizeof(int)) == 0);
+            CHECK(memcmp(rinv, rinv2, (size_t) k * sizeof(int)) == 0);
+        }
 
         /* the canonical relabelling sends fp to the face permutation of the
          * key */
@@ -1576,10 +1594,6 @@ test_search_tied(void)
 }
 
 /*
- * domap_invariants_differ: the multisets of the data values and the multisets
- * of the sizes of the classes, on the active half-edges only.
- */
-/*
  * domap_invariants_differ on the maps (fp1, n1) and (fp2, n2), decorated by
  * nd data arrays and nc class arrays each.
  */
@@ -1595,6 +1609,10 @@ array_invariants_differ(int n1, int *fp1, const int *data1,
     return domap_invariants_differ(m1, m2, inv_work);
 }
 
+/*
+ * domap_invariants_differ: the multisets of the data values and the multisets
+ * of the sizes of the classes, on the active half-edges only.
+ */
 static void
 test_invariants(void)
 {

@@ -1,64 +1,6 @@
 /*
- * Canonical keys, canonical labellings and automorphisms of maps given by
- * their face permutation, possibly decorated by integer arrays on the
- * half-edges.
- *
- * This file is part of combisurf. It is plain C99 and does not depend on
- * Python, so that it can be tested from standalone C programs. The Cython
- * module combisurf/isomorphism.pyx wraps it; the pure Python module
- * combisurf/isomorphism_naive.py is its reference.
- *
- * Conventions. A map on n half-edges (n even) is given by its face
- * permutation fp, an array of n ints with -1 on the inactive half-edges.
- * The twin of the half-edge h is h ^ 1. An edge is active when at least one
- * of its half-edges is; a folded edge has one active half-edge. fp must be
- * a permutation of the active half-edges; the functions below do not check
- * it (the Cython layer does).
- *
- * Decorations are given as one array of nd * n ints for the arrays kept
- * exactly ("data", the array i at data + i * n) and one array of nc * n
- * ints for the arrays kept up to a relabelling of their values ("classes",
- * the array i at classes + i * n). The values on the inactive half-edges
- * are never read. The values of a class array must lie in 0, ..., n - 1
- * (renumber them before the call, for instance by first appearance).
- *
- * The relabelling from a root is the breadth-first walk of
- * isomorphism_naive.relabelling_from: the half-edges are taken from a
- * queue that initially holds the root; the face of the half-edge taken is
- * walked, each half-edge met on an edge without label gets the next even
- * label and its twin the next odd one, and the twin is pushed when active.
- *
- * The key of a relabelling using k labels, na of which are on active
- * half-edges, is made of k + (nd + nc) * na ints: the face permutation in
- * the new labels (-1 at the labels of inactive half-edges), then each data
- * array read in the order of the new labels of the active half-edges, then
- * each class array read in the same order and renumbered 0, 1, 2, ... by
- * first appearance. Keys are compared as sequences of signed ints.
- *
- * The roots tried by domap_canonical and domap_iso_search are restricted by
- * a rule (domap_iso_root_rule), as the keyword root_rule of
- * isomorphism_naive. For an active half-edge h, vdeg(h) and fdeg(h) are the
- * degrees of its vertex and of its face, and its twin t is h ^ 1, or h
- * itself on a folded edge; the vertex permutation is vp[fp[t]] = h. A rule
- * gives each active half-edge an invariant: the pair (vdeg(h), fdeg(h))
- * under the half-edge rules, the tuple (vdeg(h), fdeg(h), vdeg(t), fdeg(t),
- * loop, monogon) under the edge rules, loop (monogon) being 1 when h and t
- * are at the same vertex (in the same face) and 0 otherwise. The half-edges
- * of equal invariant form a class, and only the half-edges of one class are
- * tried: under *_MAX the class of the largest invariant (tuples compared
- * lexicographically), under *_FEWEST the class with the fewest half-edges,
- * ties broken by the largest invariant. The invariants are computed once per
- * call on the whole map. The base rules read fp alone. The flag
- * DOMAP_ISO_ROOTS_DATA, combined with a rule other than DOMAP_ISO_ROOTS_ALL
- * by |, appends to the invariant the values of the data arrays (signed ints,
- * never the class arrays, whose values are renumbered and so not invariant):
- * data_0[h], ..., data_{nd-1}[h] under the half-edge rules, followed by
- * data_0[t], ..., data_{nd-1}[t] under the edge rules; with nd = 0 it
- * changes nothing. Under DOMAP_ISO_ROOTS_ALL every active half-edge is a
- * root.
- *
- * No function allocates memory: every buffer is handed in by the caller,
- * with the sizes documented below.
+ * Canonical keys, labellings and automorphisms of decorated maps.
+ * Documented in doc/c/omap.rst.
  *
  *       Copyright (C) 2026 Vincent Delecroix
  *
@@ -84,9 +26,7 @@ omap_struct;
 
 typedef omap_struct omap_t[1];
 
-/* A decorated map: nd data arrays of n ints one after the other from data,
-   nc class arrays of n ints one after the other from classes. map comes first
-   so that a pointer to a domap_struct is also one to an omap_struct. */
+/* A map with nd data and nc class arrays; casts to an omap_struct *. */
 typedef struct
 {
     omap_struct map;
@@ -105,13 +45,7 @@ enum
     DOMAP_ISO_DISCONNECTED = -1
 };
 
-/*
- * The rules restricting the roots, with the values of the constants
- * ROOTS_ALL, ..., ROOTS_EDGE_FEWEST and ROOTS_DATA of isomorphism_naive:
- * a base rule (0 to 4), possibly combined with the flag DOMAP_ISO_ROOTS_DATA
- * by |. The functions below read the base rule as
- * rule & ~DOMAP_ISO_ROOTS_DATA.
- */
+/* The rules restricting the roots: a base rule, possibly with the flag. */
 typedef enum
 {
     DOMAP_ISO_ROOTS_ALL = 0,
@@ -122,24 +56,12 @@ typedef enum
     DOMAP_ISO_ROOTS_DATA = 8
 } domap_iso_root_rule;
 
-/*
- * Upper bound on the length of a key, in ints: n for the face permutation
- * and n for each decoration array.
- */
+/* Connected maps ************************************************************/
+
+/* Upper bound on the length of a key, in ints. */
 #define DOMAP_ISO_KEY_SIZE(n, nd, nc) ((n) * (1 + (nd) + (nc)))
 
-/*
- * Size of the work buffer of domap_canonical, in ints: the relabelling, its
- * inverse, the queue and the numbering of the class values (4 n), a
- * candidate key (DOMAP_ISO_KEY_SIZE), under a rule other than
- * DOMAP_ISO_ROOTS_ALL the active half-edges sorted by invariant, the class
- * of each half-edge and the start of each class in that order (3 n + 1),
- * then the relabelling of the best root and the parents of the union-find of
- * the orbits of the automorphisms found (2 n). Under DOMAP_ISO_ROOTS_DATA
- * the order-preserving numbers of the data values (nd n) live in the
- * candidate key, which is not used before the classes are computed, so that
- * the flag needs no more room.
- */
+/* Size of the work buffer of domap_canonical, in ints. */
 #define DOMAP_CANONICAL_WORK_SIZE(n, nd, nc) \
     (9 * (n) + 1 + DOMAP_ISO_KEY_SIZE(n, nd, nc))
 
@@ -152,17 +74,7 @@ omap_num_edges(const omap_t m)
     return _omap_num_edges(m->fp, m->n);
 }
 
-/*
- * Write into r (n ints) the relabelling of m by the breadth-first walk
- * from the active half-edge root, -1 on the half-edges of the edges not
- * reached, and into rinv (n ints) its inverse on the labels used:
- * rinv[i] is the half-edge of label i, or -1 when that half-edge is
- * inactive (the twin of a folded edge); the entries of rinv past the
- * labels used are not written. queue is a work buffer of n ints.
- *
- * Return the number k of labels used; the map is connected if and only if
- * k is twice its number of active edges.
- */
+/* Relabel m from root into r and rinv; return the number of labels used. */
 int _omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root,
                            int *queue);
 
@@ -172,243 +84,46 @@ omap_relabelling_from(int *r, int *rinv, const omap_t m, int root, int *queue)
     return _omap_relabelling_from(r, rinv, m->fp, m->n, root, queue);
 }
 
-/*
- * Write into key the key of m under the relabelling (r, rinv) using k labels,
- * as computed by omap_relabelling_from. key has room for
- * DOMAP_ISO_KEY_SIZE(n, nd, nc) ints. names is a work buffer of n ints, all
- * -1 on entry, and all -1 again on return.
- *
- * Return the length of the key.
- */
+/* Write the key of m under the relabelling (r, rinv); return its length. */
 int domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv,
                   int k, int *names);
 
 /* Size of the work buffer of domap_invariants_differ, in ints. */
 #define DOMAP_INVARIANTS_WORK_SIZE(n) (2 * (n) + 1)
 
-/*
- * Return 1 when an invariant of the decorated maps m1 and m2 differs, so that
- * they are not isomorphic, and 0 otherwise. The two maps must have as many
- * data arrays (m1->nd == m2->nd), as many class arrays (m1->nc == m2->nc)
- * and as many active half-edges. An isomorphism is a bijection of the active
- * half-edges that keeps the data values, and that relabels the values of each
- * class array, sending a class to a class of the same size. Compared, in this
- * order, stopping at the first difference: for each data array a hash of the
- * multiset of its values on the active half-edges (one pass, O(n)), then for
- * each class array the multiset of the sizes of its classes (counted, O(n)).
- * work is a buffer of
- * DOMAP_INVARIANTS_WORK_SIZE(n) ints, n = max(m1->map.n, m2->map.n), read
- * only when m1->nc > 0 (it may be NULL otherwise).
- *
- * The multisets of the face degrees and of the vertex degrees are not
- * compared: walking the cycles of the two maps is one more pass over each
- * map, on top of those the search makes anyway, and it rejects few pairs
- * that the other invariants accept.
- */
+/* Return 1 when an invariant of m1 and m2 differs, 0 otherwise. */
 int domap_invariants_differ(const domap_t m1, const domap_t m2, int *work);
 
-/*
- * Try every active half-edge of m of the class of the rule as a root (every
- * active half-edge under DOMAP_ISO_ROOTS_ALL), in increasing order, and write
- * into key (DOMAP_ISO_KEY_SIZE(n, nd, nc) ints) the minimal key.
- *
- * When relabelling is not NULL (n ints), write there the relabelling from
- * the first root of minimal key (-1 on the half-edges of the inactive
- * edges). When roots is not NULL (n ints), write there the roots of
- * minimal key in increasing order. When nroots is not NULL, store there
- * their number, which is the number of automorphisms of the decorated map
- * under every rule (0 when the map has no active half-edge): an
- * automorphism of a connected map is determined by the image of one
- * half-edge and preserves the invariants, so the roots of minimal key form
- * one orbit of the group. work is a buffer of
- * DOMAP_CANONICAL_WORK_SIZE(n, nd, nc) ints.
- *
- * Return the length of the key (0 when the map has no active half-edge),
- * or DOMAP_ISO_DISCONNECTED when the walk from the first active half-edge
- * does not reach every active edge; nothing is written into the output
- * buffers in that case.
- *
- * The first root is walked and keyed in full. Every other root is walked
- * with its key compared with the best one as the entries of its face
- * permutation part become final (those below the label of the next
- * half-edge to walk), in passes of doubling length: the root is rejected
- * at the first entry larger than the one of the best key, which costs
- * about twice the labels it needed to differ, not n. At the first entry
- * smaller, it becomes the best root and is walked and keyed in full. When
- * the face permutation parts are equal, the data then the class parts are
- * compared as they are built, with the same rejection. A root that ties
- * with or beats the best one costs O(n (1 + nd + nc)).
- *
- * A root that ties with the best one gives an automorphism of the decorated
- * map, which sends the best root to it; the orbits of the group generated
- * by the automorphisms found are kept in a union-find over the half-edges
- * (O(n) to initialise), represented by their smallest half-edge. Every
- * half-edge of an orbit has the same key, so a root whose representative is
- * smaller than itself has the key of an earlier root and is skipped at the
- * cost of one find: either that key was rejected, or the root is in the
- * orbit of the best root. A tie is thus only met outside the orbit of the
- * best root and strictly enlarges the group found: there are at most
- * log2 |Aut| of them, each costing O(n (1 + nd + nc)) for the key and the
- * automorphism. A map whose roots all tie (a regular map) costs
- * O(n log2 |Aut| (1 + nd + nc)) for them instead of O(n^2 (1 + nd + nc)).
- * The roots of minimal key are the orbit of the best root, written by a
- * final scan. Under a rule other than DOMAP_ISO_ROOTS_ALL, the class costs
- * O(n) more. The entries of the invariant, shifted by their minimum, are
- * packed into one int in mixed radix over their ranges; when the product of
- * the ranges is at most 2 n, the half-edges are counted per packed value and
- * the class is collected by one scan, in O(n (1 + nd)). Otherwise the
- * half-edges are sorted by invariant by counting sorts on its 2 or 6
- * entries. Under DOMAP_ISO_ROOTS_DATA each data array is then first replaced
- * by order-preserving numbers of 0, ..., n - 1: the values minus their
- * minimum when they span fewer than n values (O(n)), else their ranks among
- * the active half-edges (a heap sort, O(n log n) per array). They add nd or
- * 2 nd entries.
- */
+/* Write the minimal key of m over its roots; return its length, or
+   DOMAP_ISO_DISCONNECTED. */
 int domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
                     const domap_t m, domap_iso_root_rule rule, int *work);
 
-/*
- * Maps that may be disconnected: the search over the labellings component
- * after component of isomorphism_naive._search.
- *
- * The block of a component labelled from a root is made of k (its number of
- * labels), its face permutation in its local labels 0, ..., k - 1 (-1 at
- * the labels of inactive half-edges), each data array read in the order of
- * the local labels of its active half-edges, then each class array read in
- * the same order and renumbered by first appearance, continuing the
- * numbering of the components labelled before. A sequence of blocks is
- * stored flat, the blocks one after the other; since equal k and equal face
- * permutations give blocks of equal lengths, the lexicographic order of the
- * flat sequences of ints is the order of the sequences of blocks.
- *
- * A sequence of blocks has at most ne + 2 * ne + (nd + nc) * na ints (one k
- * per component, at most ne components) for ne active edges and na active
- * half-edges, hence at most DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc) ints.
- */
+/* Maps that may be disconnected *********************************************/
+
+/* Upper bound on the length of a sequence of blocks, in ints. */
 #define DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc) \
     (DOMAP_ISO_KEY_SIZE(n, nd, nc) + (n) / 2)
 
-/*
- * Size of the work buffer of domap_iso_search, in ints: the global and local
- * relabellings with their inverses and the queue (5 n), the numberings of
- * the class values (nc n), the state of each of the at most n / 2 + 1
- * levels of the search (its root, the root of the best leaf at that level,
- * its first label, the position and the length of its block, and the counts
- * of class values before it: (5 + nc) (n / 2 + 1)), the counts of class
- * values (nc), the current sequence (DOMAP_ISO_SEQUENCE_SIZE), one candidate
- * block (DOMAP_ISO_KEY_SIZE + 1), and for the rules other than
- * DOMAP_ISO_ROOTS_ALL the active half-edges sorted by invariant, the class
- * of each half-edge, the start of each class in that order and the number of
- * half-edges not labelled yet in each class (4 n + 1). Under
- * DOMAP_ISO_ROOTS_DATA the order-preserving numbers of the data values
- * (nd n) live in the candidate block, which is not used before the classes
- * are computed, so that the flag needs no more room.
- *
- * These sizes are computed in int and overflow for about
- * 2^31 / (14 + 2 nd + 3.5 nc) half-edges; the caller checks them first.
- */
+/* Size of the work buffer of domap_iso_search, in ints. */
 #define DOMAP_ISO_SEARCH_WORK_SIZE(n, nd, nc)                               \
     ((5 + (nc)) * (n) + (5 + (nc)) * ((n) / 2 + 1) + (nc)                   \
      + DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc) + DOMAP_ISO_KEY_SIZE(n, nd, nc)   \
      + 1 + 4 * (n) + 1)
 
-/*
- * Callback of domap_iso_search, called on a leaf: leaf is the relabelling of
- * the leaf (n ints, -1 on the half-edges of the inactive edges), valid
- * during the call only. first is 1 when the leaf is smaller than every leaf
- * reported before, which the caller discards, and 0 when it is equal to
- * the last leaf reported with first = 1. A nonzero return value stops the
- * search, which returns it; the Cython layer returns -1 with a Python
- * exception set.
- */
+/* Callback of domap_iso_search, called on a leaf. */
 typedef int (*domap_iso_leaf_callback)(const int *leaf, int first, void *arg);
 
-/*
- * Search the lexicographically minimal sequence of blocks over the
- * labellings of m component after component, exactly as
- * isomorphism_naive._search: from a state (the components labelled so
- * far), the class of the rule is chosen among the active half-edges not
- * labelled yet (by the invariants of the whole map, and by the numbers of
- * half-edges not labelled yet in each class under *_FEWEST), the
- * half-edges of that class not labelled yet are tried as roots (every
- * active half-edge not labelled yet under DOMAP_ISO_ROOTS_ALL), in increasing
- * order, and only the roots of minimal block are followed,
- * depth first in increasing root order; the component gets the labels
- * following those used. When several roots tie, every one of them is
- * followed if all_leaves is nonzero; otherwise only the first one if
- * nc == 0, and the first one of each extension of the numbering of the
- * class values if nc > 0. The extension of a tied root is, per class array,
- * the values its component numbers first, in the order of their numbers.
- * Two tied roots of equal extensions put the same values at the same local
- * labels, so that exchanging their components (or relabelling the
- * component from one root to the other when it is the same one), the
- * identity elsewhere, is an automorphism fixing the components labelled
- * before; the subtree of the later root is the image of the one of the
- * earlier root, searched first. A later tied root is compared with the
- * earlier ones of equal block by three walks of their components, and the
- * first match stops the comparison; when the block of the level numbers no
- * new value, every extension is empty and no further tied root is tried. A
- * state whose sequence exceeds the prefix of the best sequence found is
- * cut.
- *
- * When all_leaves is 0, a leaf equal to the best one gives a backjump: the
- * map from the best leaf to it is an automorphism (of the classes up to a
- * relabelling of their values) fixing the components of the levels where
- * the two leaves have the same roots, so the subtree of its root at the
- * first level where they differ is the image of the one of the best leaf,
- * already searched, and the search returns at once to that level and its
- * next tied root. With the cut of equal extensions, k tied copies of a
- * component cost one path per distinct extension at each level: one path
- * for k isolated edges with one class value, whose automorphisms are
- * 2^k k!, and two for b + 1 edges with the value 0 beside b with the value
- * 1. Tied roots of different extensions are all followed, and their
- * subtrees may part only deep, so that the search stays exponential in the
- * worst case, as for a graph on the class values given by its edges as
- * isolated edges. With all_leaves nonzero neither of these cuts applies:
- * every leaf reaching the minimum is reported, as many as the
- * automorphisms.
- *
- * Any map is accepted, connected or not; a connected map gives a single
- * block, which is its key preceded by k. The empty map gives the empty
- * sequence and one leaf.
- *
- * The minimal sequence is written into sequence
- * (DOMAP_ISO_SEQUENCE_SIZE(n, nd, nc) ints) and its length into *length.
- * When relabelling is not NULL (n ints), the relabelling of the first leaf
- * reaching the minimal sequence is written there (-1 on the half-edges of
- * the inactive edges). When callback is not NULL, it is called with arg on
- * every leaf that is smaller than the best one so far (first = 1) and, when
- * all_leaves is nonzero, on every leaf equal to the best one so far
- * (first = 0). The leaves reported since the last call with first = 1 are
- * then the leaves reaching the minimal sequence, in the order of the
- * search. work is a buffer of DOMAP_ISO_SEARCH_WORK_SIZE(n, nd, nc) ints.
- *
- * Return 0, or the nonzero value returned by the callback, which stops the
- * search and leaves the outputs undefined.
- */
+/* Write the minimal sequence of blocks of m; return 0, or the nonzero value
+   of the callback. */
 int domap_iso_search(int *sequence, int *length, int *relabelling,
                      const domap_t m, domap_iso_root_rule rule,
                      int all_leaves, domap_iso_leaf_callback callback,
                      void *arg, int *work);
 
-/*
- * Maps that may be disconnected, with classes: the automorphisms of fp and
- * data that preserve the partitions of the half-edges by the values of each
- * class array.
- *
- * The components of the map, grouped into kinds of isomorphic components
- * (fp and data alone), are laid out by domap_wreath_struct; the arrays it
- * points into are owned by the caller. The levels are the ncomp components,
- * kinds in order, copies in order. Per level j: kind[j] its kind and off[j]
- * the offset of its half-edges in lab, by canonical label (lab[off[j] + i]
- * is its half-edge of label i). Per kind t: its copies are the levels
- * start[t], ..., start[t + 1] - 1; its first copy as a map of its own has
- * the face permutation cfp, the canonical relabelling cra (local index to
- * label) and its inverse crainv, all of csize[t] entries at the offset
- * coff[t]; the labels of its roots of minimal key are labels[loff[t]], ...,
- * labels[loff[t + 1] - 1], in increasing order. The isomorphism from a copy
- * to another sends the half-edge of label i to the one of label i.
- */
+/* Maps with classes *********************************************************/
+
+/* The components of a map, grouped into kinds of isomorphic components. */
 typedef struct
 {
     int ncomp;
@@ -428,82 +143,15 @@ domap_wreath_struct;
 
 typedef domap_wreath_struct domap_wreath_t[1];
 
-/*
- * Callback of domap_stabiliser, called on each generator: g is the
- * generator (n ints, g[h] the image of h), valid during the call only. A
- * nonzero return value stops the search, which returns it; the Cython
- * layer returns -1 with a Python exception set.
- */
+/* Callback of domap_stabiliser, called on each generator. */
 typedef int (*domap_stabiliser_callback)(const int *g, void *arg);
 
-/*
- * Size of the work buffer of domap_stabiliser, in ints, for at most n / 2
- * components of at most n half-edges each: the forward and backward maps of
- * the values of each class array and the trail of the entries set (3 nc n),
- * the arrays of the levels used, target, choice, mark and dead
- * (5 (n / 2)), the buffers of the size of the largest component rb, rbinv,
- * queue, perm and ident (5 n), the parents and the sizes of the union-find
- * of the orbits (2 n), and the generator being built (n).
- *
- * This size is computed in int; the caller checks it first.
- */
+/* Size of the work buffer of domap_stabiliser, in ints. */
 #define DOMAP_STABILISER_WORK_SIZE(n, nc) \
     (3 * (nc) * (n) + 5 * ((n) / 2) + 8 * (n))
 
-/*
- * Compute the group H of the automorphisms of the map m, laid out by w,
- * that preserve the partitions defined by its class arrays.
- *
- * H is the stabiliser of these partitions in the group G of m with its data
- * alone, a product over the kinds of wreath products, computed by a
- * subgroup search of Sims. The base is b_0, ..., b_{ncomp-1}, the half-edge
- * of canonical label 0 of each level (lab[off[i]]); the pointwise
- * stabiliser of b_0, ..., b_{i-1} in G fixes their components and permutes
- * the others as the wreath products do, so the orbit of b_i in it is made
- * of the half-edges whose label is one of labels[loff[t]], ...,
- * labels[loff[t + 1] - 1] in the copies of the kind t of b_i at the levels
- * >= i. The levels are processed from the last to the first: each point x
- * of that orbit outside the orbit of b_i under the generators found so far
- * (a union-find over the half-edges) is tried by a depth-first search for
- * an element of H, the identity on the levels < i, sending b_i to x, which
- * maps the following levels one after the other to unused copies of their
- * kinds and rejects a step whose values contradict the bijections of values
- * built so far. The first element found is a generator. The generators
- * found at the levels >= i generate the stabiliser of b_0, ..., b_{i-1} in
- * H, so the order of H is the product over the levels of the size of the
- * orbit of b_i right after its level. A level that is the only copy of its
- * kind and has a single root label has an orbit of size 1 and is skipped.
- *
- * Two placements of a level adding no entry to the bijections of values,
- * onto the copies b1 and b2 (or twice onto one copy), put equal values at
- * the labels they match: the automorphism of the copy relating their labels
- * is an isomorphism from b1 to b2 carrying the values, and exchanging b1
- * and b2 through it, the identity on the levels placed before, is an
- * element of H that sends a completion of either placement onto one of the
- * other. After one of them failed, the others are skipped, at the levels
- * of the depth-first search and among the candidates x, which are then
- * outside the orbit of b_i exactly when the earlier one is. On tied copies
- * whose values are all mapped after the first levels, each level then
- * descends into at most one failed subtree per entry, and the search takes
- * a time polynomial in the number of components. It stays exponential in
- * the worst case, when the placements map new values and the values of
- * classes reject them only deep in the search, as on a graph on the class
- * values given by its edges as isolated edges.
- *
- * Write into orbits (w->ncomp ints) the size of the orbit of b_i right
- * after its level i (1 at a skipped level), so that the order of H is their
- * product: it can exceed every C integer type (k isolated edges of equal
- * values have 2^k k! automorphisms), and the caller multiplies the sizes in
- * its own integers. When callback is not NULL, call it with arg on each
- * generator, from the last level to the first and, at a level, in the order
- * of the candidates x: there are up to n - 1 generators of n ints each,
- * which no buffer of the caller holds. The generators are the identity on
- * the half-edges of the inactive edges. work is a buffer of
- * DOMAP_STABILISER_WORK_SIZE(n, nc) ints.
- *
- * Return 0, or the nonzero value returned by the callback, which stops the
- * search and leaves orbits undefined.
- */
+/* Write the orbit sizes of the stabiliser of the classes; return 0, or the
+   nonzero value of the callback. */
 int domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
                      domap_stabiliser_callback callback, void *arg, int *work);
 

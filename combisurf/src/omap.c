@@ -305,6 +305,13 @@ class_sizes_differ(const int *fp1, int n1, const int *a1, const int *fp2,
     return 0;
 }
 
+/*
+ * Compare a hash of the multiset of the values of each data array, then the
+ * multiset of the class sizes of each class array, O(n) each, stopping at
+ * the first difference. The degrees of the cells are not compared: one more
+ * pass over each map, for few pairs rejected.
+ * See doc/c/omap_algorithms.rst, section "Invariants of two maps".
+ */
 int
 domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
 {
@@ -1257,6 +1264,14 @@ canonical_root(struct canonical_state *s, int root)
 #endif
 }
 
+/*
+ * Search the minimal key over the roots of the class of the rule. A root is
+ * rejected at the first entry of its key larger than the best one, in walks
+ * of doubling length; a tie gives an automorphism, whose orbits skip the
+ * later roots of a known key, so that there are at most log2 |Aut| ties at
+ * O(n (1 + nd + nc)) each.
+ * See doc/c/omap_algorithms.rst, section "Canonical key of a connected map".
+ */
 int
 domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
                 const domap_t m, domap_iso_root_rule rule, int *work)
@@ -1699,6 +1714,14 @@ same_extension(const domap_t m, const int *block, int len, const int *next,
 }
 
 /*
+ * Search the minimal sequence of blocks depth first, one component per level,
+ * following only the roots of minimal block, and cut a state whose sequence
+ * exceeds the prefix of the best one. Without all_leaves, a tied root of the
+ * same extension of the class values as an earlier one is skipped, and a leaf
+ * equal to the best one backjumps to the first level where they differ; the
+ * search stays exponential in the worst case.
+ * See doc/c/omap_algorithms.rst, section "Search over the components".
+ *
  * The levels of the search store the position of their root in the scan of
  * the roots: the half-edge itself under DOMAP_ISO_ROOTS_ALL, its index in
  * order (see root_classes) under the other rules. The scans are written
@@ -2277,6 +2300,14 @@ debug_generator(const domap_t m, const int *g)
 }
 #endif
 
+/*
+ * Sims' subgroup search over the base of the canonical labels 0 of the
+ * levels, from the last level to the first: each point of the orbit of b_i
+ * outside the orbit of the generators found so far is reached by a depth
+ * first search, which skips the placements adding no entry to the bijections
+ * of values once one of them failed. Exponential in the worst case.
+ * See doc/c/omap_algorithms.rst, section "Stabiliser of the classes".
+ */
 int
 domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
                  domap_stabiliser_callback callback, void *arg, int *work)
