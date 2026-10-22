@@ -51,8 +51,8 @@ search stays exponential in the worst case, where it is a search for the
 automorphisms of a structure on the class values: on a graph given by
 its edges as isolated edges (the two values of an edge being its
 endpoints), it is a backtrack search for the automorphisms of the graph,
-which takes over 20 seconds on a random cubic graph with 40 vertices or
-on the `8 \times 8` grid, whose keys take a fraction of a second. The search
+which can take far longer than the search of the canonical key, as on a
+random cubic graph or a grid. The search
 of the canonical key itself, when there are ``classes``, follows among
 the roots tied in a component the first one of each way of extending the
 numbering of the class values, since two tied roots extending it alike
@@ -76,7 +76,7 @@ The searches can be interrupted: Ctrl-C raises a ``KeyboardInterrupt``,
 and the ``alarm`` of ``cysignals`` an ``AlarmInterrupt``, in the C
 searches as in the search of the automorphism group of a disconnected
 map. On the `8 \times 8` grid given by its edges as isolated edges, whose
-automorphism count takes over 20 seconds::
+automorphism count takes far longer than the alarm::
 
     sage: from cysignals.alarm import alarm
     sage: from combisurf.isomorphism import canonical_key
@@ -233,14 +233,25 @@ ROOTS_DATA = 8
 
 cdef int _check_root_rule(root_rule) except -1:
     r"""
-    Return ``root_rule`` as a C ``int`` after checking that it is one of the
-    integers ``ROOTS_ALL``, ..., ``ROOTS_EDGE_FEWEST``, or one of the last
-    four combined with ``ROOTS_DATA`` by ``|`` (9 to 12), with the message
-    of ``isomorphism_naive._check_root_rule``.
+    Return ``root_rule`` as a C ``int`` after checking that it is a valid
+    rule of the roots.
+
+    The valid rules are the integers ``0`` to ``4`` (:data:`ROOTS_ALL`,
+    :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`,
+    :data:`ROOTS_EDGE_MAX`, :data:`ROOTS_EDGE_FEWEST`) and ``9`` to ``12``
+    (the last four combined with :data:`ROOTS_DATA` by ``|``), given as a
+    Python ``int`` or as any other instance of :class:`numbers.Integral`
+    except ``bool``. Any other value raises ``ValueError("root_rule must be
+    one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX,
+    ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12
+    (the last four | ROOTS_DATA), got X")``, with ``X`` the ``repr`` of
+    ``root_rule``.
 
     A Python ``int`` is checked first, without the lookup of
     :class:`numbers.Integral`: :func:`canonical_key` may be called millions
     of times in an exploration.
+
+    The examples are those of :func:`check_root_rule`, which calls it.
     """
     if type(root_rule) is int:
         if 0 <= root_rule <= 4 or 9 <= root_rule <= 12:
@@ -251,6 +262,65 @@ cdef int _check_root_rule(root_rule) except -1:
     raise ValueError("root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, "
                      "ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 "
                      "(the last four | ROOTS_DATA), got {!r}".format(root_rule))
+
+
+def check_root_rule(root_rule):
+    r"""
+    Return ``root_rule`` as a Python ``int`` after checking that it is a
+    valid rule of the roots.
+
+    INPUT:
+
+    - ``root_rule`` -- an object
+
+    OUTPUT: ``root_rule`` as a Python ``int`` if it is one of the integers
+    :data:`ROOTS_ALL`, :data:`ROOTS_HALF_EDGE_MAX`,
+    :data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and
+    :data:`ROOTS_EDGE_FEWEST` (``0`` to ``4``), or one of the last four
+    combined with :data:`ROOTS_DATA` by ``|`` (``9`` to ``12``); any
+    integer type is accepted except ``bool``. Any other value raises a
+    ``ValueError``.
+
+    EXAMPLES::
+
+        sage: from combisurf.isomorphism import check_root_rule, ROOTS_ALL, ROOTS_EDGE_FEWEST, ROOTS_HALF_EDGE_MAX, ROOTS_DATA
+        sage: check_root_rule(ROOTS_EDGE_FEWEST)
+        4
+        sage: type(check_root_rule(3)), check_root_rule(3)
+        (<class 'int'>, 3)
+        sage: type(check_root_rule(int(3))), check_root_rule(int(3))
+        (<class 'int'>, 3)
+        sage: type(check_root_rule(ROOTS_HALF_EDGE_MAX | ROOTS_DATA)), check_root_rule(ROOTS_HALF_EDGE_MAX | ROOTS_DATA)
+        (<class 'int'>, 9)
+
+    TESTS::
+
+        sage: check_root_rule(5)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 5
+        sage: check_root_rule(ROOTS_ALL | ROOTS_DATA)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 8
+        sage: check_root_rule(13)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 13
+        sage: check_root_rule("all")
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 'all'
+        sage: check_root_rule(1.0r)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 1.0
+        sage: check_root_rule(True)
+        Traceback (most recent call last):
+        ...
+        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got True
+    """
+    return _check_root_rule(root_rule)
 
 
 def _check_sizes(n, nd, nc):
@@ -286,15 +356,23 @@ def _check_sizes(n, nd, nc):
 
 
 cdef inline array.array _new(Py_ssize_t size):
+    r"""
+    Return a new array of typecode ``'i'`` with ``size`` entries, left
+    uninitialised.
+
+    The array is cloned from an empty module-level array of typecode
+    ``'i'``, which skips the parsing of the typecode of ``array.array``; the
+    caller writes every entry it reads.
+    """
     return array.clone(_int_array, size, False)
 
 
-ctypedef fused _sequence:
+ctypedef fused list_or_tuple:
     list
     tuple
 
 
-cdef bint _ints_from(_sequence s, const int *f, int *out, int n, bint edges) except -1:
+cdef bint _ints_from(list_or_tuple s, const int *f, int *out, int n, bint edges) except -1:
     r"""
     Write the values of ``s`` as C ``int`` into ``out``, of ``n`` entries,
     and return whether every value converted is an integer (a Python ``int``
@@ -310,9 +388,11 @@ cdef bint _ints_from(_sequence s, const int *f, int *out, int n, bint edges) exc
 
     A value of exact type ``int`` is converted directly, any other one by
     ``PyNumber_Index`` (``operator.index``), so that ``float`` is refused
-    and the integers of Sage are accepted. On a value that is not an
-    integer or is out of range, the generic path of the caller raises the
-    exception.
+    and the integers of Sage are accepted. The ``TypeError`` or
+    ``OverflowError`` of a value that is not an integer or is out of range
+    is caught and turned into the return value ``False``: the caller then
+    converts ``s`` by a slower path that raises its own exception. ``s``
+    is read only; ``out`` is owned by the caller.
     """
     cdef int h, e
     cdef object v
@@ -497,10 +577,39 @@ cdef inline int _num_active(const omap_struct *m):
     return k
 
 
-cdef _check_input(fp, data, classes):
+cdef _check_decorated_oriented_map(fp, data, classes):
     r"""
-    Check the lengths of ``fp`` and of the arrays of ``data`` and
-    ``classes``, with the messages of ``isomorphism_naive._check_input``.
+    Check the shape of the map of face permutation ``fp`` decorated by
+    ``data`` and ``classes``: the length of ``fp`` and the types and lengths
+    of the decorations.
+
+    INPUT:
+
+    - ``fp`` -- a sequence with a length (the face permutation)
+
+    - ``data``, ``classes`` -- the decorations, each expected to be an
+      instance of ``tuple`` of sequences of length ``len(fp)``
+
+    OUTPUT: ``None``. With ``n = len(fp)``, the checks, in this order, and
+    the exceptions they raise:
+
+    - ``n`` is even, else ``ValueError("fp must have even length")``;
+    - ``data`` is an instance of ``tuple``, else ``TypeError("data must be
+      a tuple")``;
+    - every array of ``data`` has length ``n``, else ``ValueError("data
+      arrays must have length n")``;
+    - ``classes`` is an instance of ``tuple``, else ``TypeError("classes
+      must be a tuple")``;
+    - every array of ``classes`` has length ``n``, else
+      ``ValueError("classes arrays must have length n")``.
+
+    The values are not read: that ``fp`` is a permutation of its active
+    half-edges and that the values of ``data`` are in the range of a C
+    ``int`` are checked by ``_convert``, when the map is converted for the
+    C code.
+
+    The examples are those of :func:`check_decorated_oriented_map`, which
+    calls it.
     """
     n = len(fp)
     if n % 2:
@@ -517,23 +626,108 @@ cdef _check_input(fp, data, classes):
             raise ValueError("classes arrays must have length {}".format(n))
 
 
+def check_decorated_oriented_map(fp, data, classes):
+    r"""
+    Check the length of the face permutation ``fp`` and the types and
+    lengths of the decorations ``data`` and ``classes``.
+
+    The values are not read: a face permutation that is not a permutation
+    of its active half-edges, or a value of ``data`` outside the range of a
+    C ``int``, passes this check. The public functions of this module, such
+    as :func:`canonical_labelling`, raise those errors when they convert the
+    map for the C code.
+
+    INPUT:
+
+    - ``fp`` -- a face permutation (a sequence of even length)
+
+    - ``data`` -- a tuple of arrays of length ``len(fp)``
+
+    - ``classes`` -- a tuple of arrays of length ``len(fp)``
+
+    OUTPUT: ``None``, or a ``ValueError`` or ``TypeError`` on the first
+    check that fails.
+
+    EXAMPLES::
+
+        sage: from combisurf.isomorphism import check_decorated_oriented_map
+        sage: check_decorated_oriented_map([2, 5, 4, 1, 0, 3], ([0] * 6,), ([1, 2, 1, 2, 1, 2],))
+
+    TESTS::
+
+        sage: check_decorated_oriented_map([0, -1, 2], (), ())
+        Traceback (most recent call last):
+        ...
+        ValueError: fp must have even length
+        sage: check_decorated_oriented_map([0, -1], [[0, 0]], ())
+        Traceback (most recent call last):
+        ...
+        TypeError: data must be a tuple
+        sage: check_decorated_oriented_map([0, -1], ([0],), ())
+        Traceback (most recent call last):
+        ...
+        ValueError: data arrays must have length 2
+        sage: check_decorated_oriented_map([0, -1], (), [[0, 0]])
+        Traceback (most recent call last):
+        ...
+        TypeError: classes must be a tuple
+        sage: check_decorated_oriented_map([0, -1], (), ([0, 0, 0],))
+        Traceback (most recent call last):
+        ...
+        ValueError: classes arrays must have length 2
+
+    A face permutation that is not a permutation passes::
+
+        sage: check_decorated_oriented_map([1, 1], (), ())
+    """
+    _check_decorated_oriented_map(fp, data, classes)
+
+
 cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
     r"""
     Fill ``m`` with the map of face permutation ``fp`` decorated by
-    ``data`` and ``classes`` (whose lengths are checked already) and return
-    the array that owns the buffers ``m`` points into.
+    ``data`` and ``classes`` and return the array that owns the buffers
+    ``m`` points into.
 
-    The array holds ``(1 + nd + nc) * n`` entries: a copy of ``fp``, the
-    ``nd`` arrays of ``data`` then the ``nc`` renumbered arrays of
-    ``classes``, each of ``n`` entries (``0`` on the inactive half-edges).
-    ``fp`` is copied so that the buffers stay valid if the caller resizes
-    its own array. The array is never resized, and ``m`` is valid as long
-    as it is alive.
+    INPUT:
 
-    Raise ``ValueError`` if ``fp`` is not a permutation of its active
-    half-edges and ``OverflowError`` if a value of ``data`` on an active
-    half-edge is outside the range of a C ``int`` or if the map is too
-    large for the buffers of the C code.
+    - ``m`` -- the decorated map to fill, owned by the caller; its previous
+      content is ignored
+
+    - ``fp`` -- the face permutation, ``-1`` on the inactive half-edges: an
+      array of typecode ``'i'``, a list, or any iterable that
+      ``array.array('i', fp)`` accepts
+
+    - ``data`` -- a tuple of ``nd`` arrays of ``n = len(fp)`` integers each,
+      indexed by half-edges
+
+    - ``classes`` -- a tuple of ``nc`` arrays of ``n`` hashable values
+      each, indexed by half-edges
+
+    The lengths are not checked here: ``n`` must be even and every array of
+    ``data`` and ``classes`` must have ``n`` entries, as
+    ``_check_decorated_oriented_map`` checks; a shorter array raises an
+    ``IndexError`` or is read out of bounds.
+
+    OUTPUT: an array of typecode ``'i'`` of ``(1 + nd + nc) * n`` entries:
+    a copy of ``fp``, the ``nd`` arrays of ``data``, then the ``nc`` arrays
+    of ``classes`` renumbered ``0, 1, 2, ...`` by first appearance in
+    half-edge order, each of ``n`` entries with ``0`` on the inactive
+    half-edges. ``m.map.fp``, ``m.data`` and ``m.classes`` point into it and
+    ``m.map.n``, ``m.nd`` and ``m.nc`` are set. ``fp`` is copied so that the
+    buffers stay valid if the caller resizes its own array. The array is
+    never resized, and ``m`` is valid as long as it is alive: the caller
+    keeps a reference to it.
+
+    Raise ``ValueError("fp must be a permutation of its active
+    half-edges")`` if ``fp`` is not one, ``ValueError("fp has inconsistent
+    length")`` if iterating ``fp`` does not give ``len(fp)`` values,
+    ``TypeError`` if a value of ``data`` on an active half-edge is not an
+    integer, ``OverflowError`` if such a value is outside the range of a C
+    ``int``, and ``OverflowError("map too large: n half-edges with nd
+    arrays of data and nc of classes")`` if a buffer of the C code for this
+    map has more entries than a C ``int`` counts. The conversion of ``fp``
+    by ``array.array`` raises its own ``TypeError`` or ``OverflowError``.
     """
     cdef int n, h, j, off, i, nd = len(data), nc = len(classes)
     cdef int *f
@@ -610,19 +804,67 @@ cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
 
 cdef array.array _prepare(domap_struct *m, fp, data, classes):
     r"""
-    Check the input as ``isomorphism_naive._check_input`` does, fill ``m``
-    from it and return the array that owns its buffers (see ``_convert``).
+    Check and convert the map of face permutation ``fp`` decorated by
+    ``data`` and ``classes`` into ``m``, and return the array that owns the
+    buffers ``m`` points into.
+
+    INPUT:
+
+    - ``m`` -- the decorated map to fill, owned by the caller
+
+    - ``fp``, ``data``, ``classes`` -- a face permutation and its
+      decorations, as taken by the public functions of this module
+
+    OUTPUT: the array of typecode ``'i'`` holding the face permutation and
+    the decorations in C ``int``, which the caller keeps alive as long as it
+    uses ``m``.
+
+    It raises the exceptions of ``_check_decorated_oriented_map`` (a length
+    of ``fp`` or of a decoration, ``data`` or ``classes`` not a tuple), then
+    those of ``_convert`` (``fp`` not a permutation of its active
+    half-edges, a value of ``data`` not an integer or outside the range of a
+    C ``int``, a map too large for the C code).
     """
-    _check_input(fp, data, classes)
-    # _check_input accepts any instance of tuple, _convert only the exact type
+    _check_decorated_oriented_map(fp, data, classes)
+    # _check_decorated_oriented_map accepts any instance of tuple, _convert
+    # only the exact type
     return _convert(m, fp, tuple(data), tuple(classes))
 
 
 cdef int _run(const domap_struct *m, int rule, array.array key, int *relabelling, int *roots, int *nroots) except? -2:
     r"""
-    Run ``domap_canonical`` on ``m`` under the rule ``rule`` (checked by
-    ``_check_root_rule``): write the minimal key into ``key`` (of
-    ``DOMAP_ISO_KEY_SIZE`` entries) and return its length, or ``DOMAP_ISO_DISCONNECTED``.
+    Compute the minimal key of the connected map ``m`` over the roots of the
+    rule ``rule``, by the C function ``domap_canonical``.
+
+    INPUT:
+
+    - ``m`` -- a decorated map of ``n = m.map.n`` half-edges
+
+    - ``rule`` -- a valid rule of the roots (``0`` to ``4`` or ``9`` to
+      ``12``, as returned by ``_check_root_rule``); another value is read
+      by the C code as an unknown rule
+
+    - ``key`` -- an array of typecode ``'i'`` of at least
+      ``DOMAP_ISO_KEY_SIZE(n, m.nd, m.nc)`` entries, owned by the caller
+
+    - ``relabelling`` -- ``NULL`` or a buffer of ``n`` ints owned by the
+      caller
+
+    - ``roots`` -- ``NULL`` or a buffer of ``n`` ints owned by the caller
+
+    - ``nroots`` -- ``NULL`` or a pointer to an ``int`` of the caller
+
+    OUTPUT: the length of the minimal key, written into ``key`` (``0`` when
+    ``m`` has no active half-edge), or ``DOMAP_ISO_DISCONNECTED`` when
+    ``m`` is not connected, in which case no buffer is written. On a
+    connected map, ``relabelling`` receives the relabelling from the first
+    root of minimal key (``-1`` on the half-edges of the inactive edges),
+    ``roots`` the roots of minimal key in increasing order and ``*nroots``
+    their number, which is the number of automorphisms of ``m``.
+
+    The work buffer of the C code is allocated here. Ctrl-C and the
+    ``alarm`` of ``cysignals`` interrupt the C code and raise their
+    exception (``KeyboardInterrupt``, ``AlarmInterrupt``).
     """
     cdef array.array work = _new(DOMAP_CANONICAL_WORK_SIZE(m.map.n, m.nd, m.nc))
     cdef int length
@@ -630,16 +872,33 @@ cdef int _run(const domap_struct *m, int rule, array.array key, int *relabelling
     # buffer it writes is owned here or by the caller, and it allocates none
     sig_on()
     length = domap_canonical(key.data.as_ints, relabelling, roots, nroots, m,
-                           <domap_iso_root_rule> rule, work.data.as_ints)
+                             <domap_iso_root_rule> rule, work.data.as_ints)
     sig_off()
     return length
 
 
-cdef array.array _complete(array.array r, int n, int ne):
+cdef array.array _complete_relabelling(array.array r, int n, int ne):
     r"""
-    Complete in place the relabelling ``r`` (``-1`` on the half-edges of the
-    inactive edges) by the labels ``2*ne, 2*ne + 1, ...`` given to the
-    inactive edges in increasing order, as ``isomorphism_naive._complete``.
+    Complete in place the relabelling ``r`` of a map with ``ne`` active
+    edges into a permutation, by labelling its inactive edges in increasing
+    order.
+
+    INPUT:
+
+    - ``r`` -- an array of typecode ``'i'`` of at least ``n`` entries: a
+      relabelling that gives the labels ``0, ..., 2*ne - 1`` to the
+      half-edges of the active edges and ``-1`` to both half-edges of each
+      inactive edge; not checked
+
+    - ``n`` -- the number of half-edges, even
+
+    - ``ne`` -- the number of active edges
+
+    OUTPUT: ``r`` itself, where the edges ``e`` with ``r[2*e] == -1``, in
+    increasing order, get the labels ``2*ne, 2*ne + 1``, then ``2*ne + 2,
+    2*ne + 3``, and so on.
+
+    The examples are those of :func:`complete_relabelling`, which calls it.
     """
     cdef int e, k = 2 * ne
     cdef int *a = r.data.as_ints
@@ -651,23 +910,109 @@ cdef array.array _complete(array.array r, int n, int ne):
     return r
 
 
+def complete_relabelling(array.array r not None, int ne):
+    r"""
+    Complete in place the relabelling ``r`` of a map with ``ne`` active
+    edges into a permutation, by labelling its inactive edges in increasing
+    order.
+
+    INPUT:
+
+    - ``r`` -- an array of typecode ``'i'`` of even length: a relabelling
+      that gives the labels ``0, ..., 2*ne - 1`` to the half-edges of the
+      active edges and ``-1`` to both half-edges of each inactive edge (not
+      checked)
+
+    - ``ne`` -- the number of active edges
+
+    OUTPUT: ``r`` itself, where the edges ``e`` with ``r[2*e] == -1``, in
+    increasing order, get the labels ``2*ne, 2*ne + 1``, then ``2*ne + 2,
+    2*ne + 3``, and so on.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from combisurf.isomorphism import complete_relabelling
+        sage: r = array('i', [2, 3, -1, -1, 0, 1])
+        sage: complete_relabelling(r, 2)
+        array('i', [2, 3, 4, 5, 0, 1])
+        sage: complete_relabelling(r, 2) is r
+        True
+
+    TESTS::
+
+        sage: complete_relabelling(array('l', [2, 3, -1, -1, 0, 1]), 2)
+        Traceback (most recent call last):
+        ...
+        TypeError: r must be an array of typecode 'i'
+        sage: complete_relabelling(None, 2)
+        Traceback (most recent call last):
+        ...
+        TypeError: Argument 'r' has incorrect type (expected array.array, got NoneType)
+    """
+    if r.ob_descr.typecode != b'i':
+        raise TypeError("r must be an array of typecode 'i'")
+    return _complete_relabelling(r, len(r), ne)
+
+
 cdef int _search(const domap_struct *m, int rule, bint all_leaves, array.array sequence, int *relabelling,
                  domap_iso_leaf_callback callback, void *arg) except -1:
     r"""
-    Run ``domap_iso_search`` on ``m`` under the rule ``rule``: write the minimal
-    sequence of blocks into ``sequence`` (of ``DOMAP_ISO_SEQUENCE_SIZE`` entries)
-    and return its length. A Python exception raised by ``callback``
-    propagates.
+    Search the minimal sequence of blocks of the map ``m``, connected or
+    not, over its labellings component after component, by the C function
+    ``domap_iso_search``.
+
+    The block of a component labelled from a root is its number of labels,
+    its face permutation in these local labels, then its decorations read
+    in the same order (the values of ``classes`` renumbered by first
+    appearance, continuing the numbering of the components labelled
+    before). At each step the roots of the rule ``rule`` among the
+    half-edges not labelled yet are tried, and only those of minimal block
+    are followed, depth first.
+
+    INPUT:
+
+    - ``m`` -- a decorated map of ``n = m.map.n`` half-edges
+
+    - ``rule`` -- a valid rule of the roots, as returned by
+      ``_check_root_rule``
+
+    - ``all_leaves`` -- whether to follow every tied root, so that
+      ``callback`` sees every leaf reaching the minimum (one per
+      automorphism); otherwise tied roots exchanged by an automorphism are
+      skipped
+
+    - ``sequence`` -- an array of typecode ``'i'`` of at least
+      ``DOMAP_ISO_SEQUENCE_SIZE(n, m.nd, m.nc)`` entries, owned by the
+      caller
+
+    - ``relabelling`` -- ``NULL`` or a buffer of ``n`` ints owned by the
+      caller, which receives the relabelling of the first leaf reaching the
+      minimal sequence (``-1`` on the half-edges of the inactive edges)
+
+    - ``callback``, ``arg`` -- ``NULL``, or a function called with ``arg``
+      on every leaf smaller than the best one so far (with ``first`` set)
+      and, with ``all_leaves``, on every leaf equal to it (with ``first``
+      unset); the leaf buffer is valid during the call only
+
+    OUTPUT: the length of the minimal sequence, written into ``sequence``.
+
+    A Python exception raised by ``callback`` (its return value ``-1``)
+    stops the search and propagates; the outputs are then undefined. The
+    work buffer of the C code is allocated here. Ctrl-C and the ``alarm``
+    of ``cysignals`` interrupt the search and raise their exception.
     """
     cdef array.array work = _new(DOMAP_ISO_SEARCH_WORK_SIZE(m.map.n, m.nd, m.nc))
     cdef int length
-    # as in _run, an interrupt leaves domap_iso_search by a longjmp back to sig_on,
-    # which also resets the count of sig_on; an exception of the callback
-    # returns from domap_iso_search normally, hence the sig_off in the finally
+    # an interrupt leaves domap_iso_search by a longjmp back to sig_on: every
+    # buffer it writes is owned here or by the caller, and it allocates none;
+    # the longjmp also resets the count of sig_on. An exception of the
+    # callback returns from domap_iso_search normally, hence the sig_off in
+    # the finally
     sig_on()
     try:
         domap_iso_search(sequence.data.as_ints, &length, relabelling, m, <domap_iso_root_rule> rule,
-                       all_leaves, callback, arg, work.data.as_ints)
+                         all_leaves, callback, arg, work.data.as_ints)
     finally:
         sig_off()
     return length
@@ -675,9 +1020,28 @@ cdef int _search(const domap_struct *m, int rule, bint all_leaves, array.array s
 
 cdef int _key_of(const domap_struct *m, array.array r, array.array key) except -1:
     r"""
-    Write into ``key`` (of ``DOMAP_ISO_KEY_SIZE`` entries) the key of the
-    relabelling ``r`` of ``m`` by the ``2*ne`` labels of its active edges
-    (``-1`` on the half-edges of the inactive edges) and return its length.
+    Write into ``key`` the key of the relabelling ``r`` of ``m`` and return
+    its length.
+
+    INPUT:
+
+    - ``m`` -- a decorated map of ``n = m.map.n`` half-edges and ``ne``
+      active edges
+
+    - ``r`` -- an array of typecode ``'i'`` of ``n`` entries giving the
+      labels ``0, ..., 2*ne - 1`` to the half-edges of the active edges and
+      ``-1`` to those of the inactive edges, such as the relabelling of a
+      leaf of ``domap_iso_search``; read only
+
+    - ``key`` -- an array of typecode ``'i'`` of at least
+      ``DOMAP_ISO_KEY_SIZE(n, m.nd, m.nc)`` entries, owned by the caller
+
+    OUTPUT: the length of the key, ``2*ne + (m.nd + m.nc) * na`` for ``na``
+    active half-edges: the face permutation in the new labels (``-1`` at
+    the labels of the inactive halves of folded edges), then each array of
+    ``data``, then each array of ``classes`` renumbered by first
+    appearance, read in the order of the new labels of the active
+    half-edges.
     """
     cdef int n = m.map.n, k = 2 * omap_num_edges(&m.map), h
     cdef const int *f = m.map.fp
@@ -712,8 +1076,15 @@ ctypedef int (*_unchecked_leaf_callback)(const int *leaf, int first, void *arg) 
 
 cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
     r"""
-    Leaf callback of ``domap_iso_search`` for :func:`automorphisms`: append the
-    automorphism of the leaf to the list, restarted at a smaller leaf.
+    Append the automorphism of the leaf ``leaf`` to the list of the
+    ``_leaf_state`` ``arg``, emptied first when ``first`` is set: the leaf
+    callback of ``domap_iso_search`` for :func:`automorphisms`.
+
+    The automorphism is ``g[h] = leaf^{-1}[ra[h]]``, with ``ra`` the first
+    leaf reaching the best sequence so far (stored into the state when
+    ``first`` is set), and ``g[h] = h`` on the half-edges of the inactive
+    edges. Return ``0``, or ``-1`` with a Python exception set (a failed
+    allocation), which stops the search.
 
     The callback runs inside the ``sig_on`` of ``_search``, where an
     interrupt jumps out at once, and a jump out of the Python code of
@@ -738,7 +1109,24 @@ cdef int _automorphism_leaf(const int *leaf, int first, void *arg) except -1:
 cdef int _collect_automorphism(const int *leaf, int first, void *arg) except -1:
     r"""
     Append to the list of the ``_leaf_state`` ``arg`` the automorphism of the
-    leaf ``leaf``, the list emptied when ``first``.
+    leaf ``leaf``, the list emptied first when ``first`` is set.
+
+    INPUT:
+
+    - ``leaf`` -- the relabelling of a leaf (``s.n`` ints, ``-1`` on the
+      half-edges of the inactive edges), read during the call only
+
+    - ``first`` -- whether the leaf is smaller than every leaf before; it
+      is then copied into ``s.ra`` and the list is emptied in place
+
+    - ``arg`` -- a pointer to the ``_leaf_state`` ``s``, whose buffers
+      ``ra`` and ``rbinv`` of ``s.n`` ints and list are owned by the caller
+      of the search
+
+    OUTPUT: ``0``, after appending to the list the new array ``g`` of
+    typecode ``'i'`` with ``g[h] = leaf^{-1}[ra[h]]``, and ``g[h] = h``
+    where ``ra[h] == -1``; ``rbinv`` is overwritten with the inverse of
+    ``leaf``. A failed allocation raises ``MemoryError``.
     """
     cdef _leaf_state *s = <_leaf_state *> arg
     cdef int n = s.n, h
@@ -893,14 +1281,36 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
     cdef array.array r = _new(m.map.n)
     if _run(m, rule, key, r.data.as_ints, NULL, NULL) == DOMAP_ISO_DISCONNECTED:
         _search(m, rule, False, _new(DOMAP_ISO_SEQUENCE_SIZE(m.map.n, m.nd, m.nc)), r.data.as_ints, NULL, NULL)
-    return _complete(r, m.map.n, omap_num_edges(&m.map))
+    return _complete_relabelling(r, m.map.n, omap_num_edges(&m.map))
 
 
 cdef tuple _form(const domap_struct *m, array.array key, array.array r, tuple data):
     r"""
-    Return the canonical form of ``m`` from its minimal key and the
-    relabelling ``r`` that reaches it; the values of ``data`` are read from
-    the original arrays, as in ``isomorphism_naive._key``.
+    Return the canonical form of ``m`` from its minimal key ``key`` and the
+    relabelling ``r`` that reaches it.
+
+    INPUT:
+
+    - ``m`` -- a decorated map of ``n = m.map.n`` half-edges, ``ne`` active
+      edges and ``na`` active half-edges
+
+    - ``key`` -- the minimal key of ``m``, an array of typecode ``'i'``:
+      the face permutation in the canonical labels (``2*ne`` entries), the
+      ``m.nd`` arrays of ``data`` then the ``m.nc`` renumbered arrays of
+      ``classes`` (``na`` entries each); read only
+
+    - ``r`` -- the canonical relabelling, an array of typecode ``'i'`` of
+      ``n`` entries (``-1`` on the half-edges of the inactive edges); read
+      only
+
+    - ``data`` -- the arrays of ``data`` as given by the caller
+
+    OUTPUT: the tuple ``(fp_c, d_1, ..., d_nd, c_1, ..., c_nc)`` of tuples
+    returned by :func:`canonical_form`. ``fp_c`` and the ``c_i`` are read
+    from ``key``; each ``d_i`` is read from the original array of ``data``
+    at the half-edges in the order of their canonical labels, so that its
+    values keep their Python type (an integer of Sage stays one) instead of
+    the C ``int`` of the key.
     """
     cdef int k = 2 * omap_num_edges(&m.map)
     cdef int na = _num_active(&m.map)
@@ -1010,9 +1420,27 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | R
 cdef array.array _automorphism_from(const domap_struct *m, array.array ra, int root, array.array rb,
                                     array.array rbinv, array.array queue):
     r"""
-    Return the automorphism sending the half-edge of label ``i`` from the
-    relabelling ``ra`` to the half-edge of label ``i`` from ``root``;
-    ``rb``, ``rbinv`` and ``queue`` are buffers of ``m.map.n`` entries.
+    Return the automorphism of the connected map ``m`` sending the half-edge
+    of label ``i`` in the relabelling ``ra`` to the half-edge of label ``i``
+    in the relabelling from ``root``.
+
+    INPUT:
+
+    - ``m`` -- a connected decorated map of ``n = m.map.n`` half-edges
+
+    - ``ra`` -- the relabelling from a root of minimal key, an array of
+      typecode ``'i'`` of ``n`` entries (``-1`` on the half-edges of the
+      inactive edges); read only
+
+    - ``root`` -- an active half-edge whose relabelling gives the same key
+      as ``ra``; not checked
+
+    - ``rb``, ``rbinv``, ``queue`` -- work arrays of typecode ``'i'`` of
+      ``n`` entries each, owned by the caller and overwritten
+
+    OUTPUT: a new array ``g`` of typecode ``'i'`` of ``n`` entries,
+    ``g[h] = rb^{-1}[ra[h]]`` with ``rb`` the relabelling from ``root``,
+    and ``g[h] = h`` on the half-edges of the inactive edges.
     """
     cdef int n = m.map.n, h
     cdef array.array g = _new(n)
@@ -1020,7 +1448,7 @@ cdef array.array _automorphism_from(const domap_struct *m, array.array ra, int r
     # inactive halves of folded edges; the automorphism maps those
     # halves too, so the inverse is rebuilt on every labelled half-edge
     omap_relabelling_from(rb.data.as_ints, rbinv.data.as_ints, &m.map, root,
-                         queue.data.as_ints)
+                          queue.data.as_ints)
     for h in range(n):
         if rb.data.as_ints[h] != -1:
             rbinv.data.as_ints[rb.data.as_ints[h]] = h
@@ -1034,9 +1462,27 @@ cdef array.array _automorphism_from(const domap_struct *m, array.array ra, int r
 
 cdef list _leaf_automorphisms(const domap_struct *m, int rule, array.array ra):
     r"""
-    Return the list of the automorphisms of the disconnected map ``m``, from
-    the leaves of ``domap_iso_search`` under the rule ``rule``, in their order;
-    ``ra`` is a buffer of ``m.map.n`` entries.
+    Return the list of the automorphisms of the map ``m``, connected or not,
+    from the leaves of the search of ``_search`` under the rule ``rule``.
+
+    Every tied root is followed, so the leaves reaching the minimal
+    sequence of blocks are as many as the automorphisms; with ``ra`` the
+    first of them, the leaf ``rb`` gives the automorphism ``g[h] =
+    rb^{-1}[ra[h]]`` (``g[h] = h`` on the half-edges of the inactive edges).
+
+    INPUT:
+
+    - ``m`` -- a decorated map of ``n = m.map.n`` half-edges
+
+    - ``rule`` -- a valid rule of the roots, as returned by
+      ``_check_root_rule``
+
+    - ``ra`` -- a work array of typecode ``'i'`` of ``n`` entries, owned by
+      the caller and overwritten with the first leaf
+
+    OUTPUT: a list of new arrays of typecode ``'i'``, the automorphisms in
+    the order of their leaves, the identity first. Ctrl-C and the ``alarm``
+    of ``cysignals`` interrupt the search and raise their exception.
     """
     cdef _leaf_state s
     cdef array.array rbinv = _new(m.map.n)
@@ -1053,10 +1499,30 @@ cdef list _leaf_automorphisms(const domap_struct *m, int rule, array.array ra):
 cdef list _connected_generators(const domap_struct *m, array.array ra, array.array roots, int count):
     r"""
     Return the generators of the automorphism group of the connected map
-    ``m`` from its ``count`` roots of minimal key ``roots`` and the
-    relabelling ``ra`` from the first of them: the automorphism of root
-    ``b_j`` is built only when ``b_j`` is outside the orbit of ``b_0`` under
-    the generators kept (a union-find over the half-edges).
+    ``m`` from its roots of minimal key.
+
+    The automorphism of the root ``b_j`` sends the half-edge of label ``i``
+    from ``b_0`` to the one of label ``i`` from ``b_j``; the roots are
+    scanned in increasing order, and the automorphism of ``b_j`` is built
+    and kept only when ``b_j`` is outside the orbit of ``b_0`` under the
+    generators kept (a union-find over the half-edges). An automorphism of a
+    connected map is determined by the image of ``b_0``, so the generators
+    kept generate the group.
+
+    INPUT:
+
+    - ``m`` -- a connected decorated map of ``n = m.map.n`` half-edges
+
+    - ``ra`` -- the relabelling from the first root ``b_0``, an array of
+      typecode ``'i'`` of ``n`` entries; read only
+
+    - ``roots`` -- the roots of minimal key ``b_0 < b_1 < ...`` in its first
+      ``count`` entries, an array of typecode ``'i'``; read only
+
+    - ``count`` -- the number of roots of minimal key
+
+    OUTPUT: a list of new arrays of typecode ``'i'`` of ``n`` entries, empty
+    when ``count <= 1``.
     """
     cdef int n = m.map.n, j, h, b0
     cdef array.array parent, rb, rbinv, queue, g
@@ -1087,6 +1553,10 @@ cdef list _connected_generators(const domap_struct *m, array.array ra, array.arr
 
 
 cdef array.array _identity(int n):
+    r"""
+    Return the identity permutation of ``range(n)`` as a new array of
+    typecode ``'i'``.
+    """
     cdef array.array g = _new(n)
     _perm_id(g.data.as_ints, n)
     return g
@@ -1126,6 +1596,13 @@ cdef list _wreath(const domap_struct *m, bint lift, bint labels=False):
 
     The group is the product over the kinds of the wreath product of the
     group of a copy by the symmetric group on the copies.
+
+    Each component is labelled under :data:`ROOTS_ALL` by ``_run``, so the
+    structure does not depend on the rule of the caller. A component found
+    disconnected raises ``RuntimeError("a component of a map is not
+    connected")``, which signals a bug: the components are the connected
+    components of ``m``. Ctrl-C and the ``alarm`` of ``cysignals``
+    interrupt the C code and raise their exception.
     """
     cdef int n = m.map.n, c, h, x, y, i, j, size, cnt, length, top
     cdef int ncomp = 0
@@ -1204,9 +1681,23 @@ cdef list _wreath(const domap_struct *m, bint lift, bint labels=False):
 
 cdef int _place(array.array g, tuple a, tuple b) except -1:
     r"""
-    Write into ``g`` the isomorphism from the copy ``a`` to the copy ``b``
-    (see ``_wreath``): the half-edge of label ``i`` in ``a`` goes to the
-    one of label ``i`` in ``b``.
+    Write into ``g`` the isomorphism from the component ``a`` to the
+    isomorphic component ``b``, which sends the half-edge of canonical label
+    ``i`` in ``a`` to the one of canonical label ``i`` in ``b``.
+
+    INPUT:
+
+    - ``g`` -- an array of typecode ``'i'`` indexed by the half-edges of
+      the map, owned by the caller; only its entries at the half-edges of
+      ``a`` are written
+
+    - ``a``, ``b`` -- two isomorphic components, each a pair ``(halves,
+      r)`` of arrays of typecode ``'i'`` of the same size: ``halves`` the
+      half-edges of the component in increasing order and ``r`` its
+      canonical relabelling as a map of its own (``r[i]`` the label of
+      ``halves[i]``), as listed by ``_wreath``
+
+    OUTPUT: ``0``; the input is not checked.
     """
     cdef array.array ha = a[0], ra = a[1], hb = b[0], rb = b[1]
     cdef int size = len(ha), i
@@ -1221,10 +1712,26 @@ cdef int _place(array.array g, tuple a, tuple b) except -1:
 cdef list _wreath_generators(const domap_struct *m):
     r"""
     Return the generators of the automorphism group of the disconnected map
-    ``m`` without arrays of ``classes``: for each kind of isomorphic
-    components (see ``_wreath``), the generators of the group of its first
-    copy, then the transposition of its first two copies when it has at
-    least two, then the cycle of its copies when it has at least three.
+    ``m`` with its arrays of ``data`` alone, its arrays of ``classes`` being
+    ignored.
+
+    The group is the product, over the kinds of isomorphic components, of
+    the wreath product `\mathrm{Aut}(C) \wr S_k` of the group of a copy
+    `C` by the symmetric group on its `k` copies. The kinds are ordered by
+    the smallest half-edge of their first copy, the copies of a kind
+    likewise. For each kind the generators are those of the group of its
+    first copy (identity elsewhere), then the transposition of its first
+    two copies when `k \geq 2`, then the cycle of its copies when `k \geq
+    3`; a copy goes to another by the isomorphism sending the half-edge of
+    canonical label ``i`` to the one of label ``i``, the identity on the
+    other components.
+
+    OUTPUT: a list of new arrays of typecode ``'i'`` of ``m.map.n`` entries,
+    the identity on the half-edges of the inactive edges.
+
+    .. SEEALSO::
+
+        ``_wreath``, which computes the kinds and their copies.
     """
     cdef array.array g
     cdef int t, k
@@ -1247,9 +1754,20 @@ cdef list _wreath_generators(const domap_struct *m):
 
 cdef _wreath_order(const domap_struct *m):
     r"""
-    Return the number of automorphisms of the disconnected map ``m`` without
-    arrays of ``classes``, as a Python integer: the product over the kinds
-    of `|Aut(C)|^k k!` (see ``_wreath``).
+    Return the number of automorphisms of the disconnected map ``m`` with
+    its arrays of ``data`` alone, its arrays of ``classes`` being ignored,
+    as a Python integer.
+
+    The group is the product, over the kinds of `k` isomorphic components
+    `C`, of the wreath products `\mathrm{Aut}(C) \wr S_k`, so its order is
+    the product of `|\mathrm{Aut}(C)|^k k!` over the kinds; it is computed
+    from the order of the group of one copy of each kind, without listing
+    the automorphisms, and may exceed every C integer type.
+
+    .. SEEALSO::
+
+        ``_wreath``, which computes the kinds and the orders of their
+        groups.
     """
     order = 1
     for copies, _aut, count, _local, _roots in _wreath(m, False):
@@ -1272,15 +1790,24 @@ ctypedef int (*_unchecked_generator_callback)(const int *g, void *arg) noexcept
 
 cdef int _stabiliser_generator(const int *g, void *arg) except -1:
     r"""
-    Generator callback of ``domap_stabiliser`` for
-    :func:`automorphism_generators`: append a copy of the generator to the
-    list.
+    Append a copy of the generator ``g`` to the list of the
+    ``_generator_state`` ``arg``: the generator callback of
+    ``domap_stabiliser`` for :func:`automorphism_generators`.
 
-    The callback runs inside the ``sig_on`` of ``_stabiliser``, and is
-    called as ``_automorphism_leaf`` calls ``_collect_automorphism``, for
-    the same reasons: ``sig_block`` delays an interrupt to the
-    ``sig_unblock``, reached when ``_collect_generator`` has returned and
-    released its references, and the call goes through a pointer without
+    ``g`` holds ``n`` ints (``g[h]`` the image of ``h``, with ``n`` the
+    field of the state) and is valid during the call only, hence the copy.
+    Return ``0``, or ``-1`` with a Python exception set (a failed
+    allocation), which stops the search.
+
+    The callback runs inside the ``sig_on`` of ``_stabiliser``, where an
+    interrupt jumps out at once, and a jump out of the Python code of
+    ``_collect_generator`` (an allocation, a list append) could leave the
+    interpreter in an inconsistent state. ``sig_block`` delays the interrupt
+    to the ``sig_unblock``, reached when ``_collect_generator`` has returned
+    and released its references, so that the jump skips no reference count.
+    A ``sig_check`` in the callback, with no ``sig_on`` on this path, would
+    instead leave the search uninterruptible between two generators, which
+    can be the whole search. The call goes through a pointer without
     exception check, so that the ``sig_unblock`` also runs when
     ``_collect_generator`` raises; its ``-1``, with the exception set, is
     then returned to ``domap_stabiliser``.
@@ -1296,6 +1823,18 @@ cdef int _collect_generator(const int *g, void *arg) except -1:
     r"""
     Append to the list of the ``_generator_state`` ``arg`` a copy of the
     generator ``g``.
+
+    INPUT:
+
+    - ``g`` -- a permutation of the half-edges (``s.n`` ints, ``g[h]`` the
+      image of ``h``), read during the call only
+
+    - ``arg`` -- a pointer to the ``_generator_state`` ``s``, whose list is
+      owned by the caller of the search and appended in place
+
+    OUTPUT: ``0``, after appending a new array of typecode ``'i'`` holding
+    the ``s.n`` entries of ``g``. A failed allocation raises
+    ``MemoryError``.
     """
     cdef _generator_state *s = <_generator_state *> arg
     cdef array.array c = _new(s.n)
@@ -1311,10 +1850,28 @@ cdef tuple _stabiliser(const domap_struct *m, bint generators):
     disconnected map ``m`` that preserve the partitions defined by its
     arrays of ``classes``.
 
-    The group is computed by ``domap_stabiliser`` (see
-    ``combisurf/src/omap.h``) on the components of ``m`` laid out from
-    ``_wreath``: the order is the product of the sizes of the orbits it
-    returns, one per component.
+    The group `H` is the subgroup, preserving the partitions, of the group
+    of ``m`` with its arrays of ``data`` alone, a product over the kinds of
+    isomorphic components of wreath products. The components are laid out
+    for the C function ``domap_stabiliser`` (their kinds, their half-edges
+    by canonical label, the face permutation, canonical relabelling and
+    labels of the roots of minimal key of the first copy of each kind), in
+    arrays owned here and kept unresized while the C code reads them.
+    ``domap_stabiliser`` runs a subgroup search of Sims with one base point
+    per component, the half-edge of canonical label ``0``, and writes the
+    size of the orbit of each base point under the stabiliser of the
+    previous ones in `H`: the order of `H` is their product, computed in
+    Python integers since it may exceed every C integer type. With
+    ``generators``, each generator found is copied into the list by the
+    callback ``_stabiliser_generator``.
+
+    OUTPUT: a pair ``(gens, order)``: ``gens`` a list of new arrays of
+    typecode ``'i'`` of ``m.map.n`` entries, the identity on the half-edges
+    of the inactive edges, and ``order`` a Python integer.
+
+    The work buffer of the C code is allocated here. Ctrl-C and the
+    ``alarm`` of ``cysignals`` interrupt the search and raise their
+    exception.
     """
     cdef int n = m.map.n, size, i
     cdef array.array halves_c, r
@@ -1706,8 +2263,8 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
         True
     """
     cdef int rule = _check_root_rule(root_rule)
-    _check_input(fp1, data1, classes1)
-    _check_input(fp2, data2, classes2)
+    _check_decorated_oriented_map(fp1, data1, classes1)
+    _check_decorated_oriented_map(fp2, data2, classes2)
     if len(data1) != len(data2):
         raise ValueError("data1 and data2 must have the same number of arrays")
     if len(classes1) != len(classes2):
@@ -1956,7 +2513,7 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
         length = _key_of(m, r, key)
     out = [(<char *> key.data.as_ints)[:length * sizeof(int)]]
     if relabelling:
-        out.append(_complete(r, m.map.n, omap_num_edges(&m.map)))
+        out.append(_complete_relabelling(r, m.map.n, omap_num_edges(&m.map)))
     if automorphism_count:
         if order:
             out.append(order)

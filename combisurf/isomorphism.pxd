@@ -42,10 +42,10 @@ cdef extern from "omap.h":
     int domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k, int *names)
     int domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
     int domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
-                      const domap_t m, domap_iso_root_rule rule, int *work)
+                        const domap_t m, domap_iso_root_rule rule, int *work)
     int domap_iso_search(int *sequence, int *length, int *relabelling,
-                       const domap_t m, domap_iso_root_rule rule, int all_leaves,
-                       domap_iso_leaf_callback callback, void *arg, int *work) except -1
+                         const domap_t m, domap_iso_root_rule rule, int all_leaves,
+                         domap_iso_leaf_callback callback, void *arg, int *work) except -1
 
     ctypedef struct domap_wreath_struct:
         int ncomp
