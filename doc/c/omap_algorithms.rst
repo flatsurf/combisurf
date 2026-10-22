@@ -194,10 +194,10 @@ Skipped placements
 ^^^^^^^^^^^^^^^^^^
 
 Two placements of a level adding no entry to the bijections of values, onto
-the copies :math:`b_1` and :math:`b_2` (or twice onto one copy), put equal
+the copies :math:`c_1` and :math:`c_2` (or twice onto one copy), put equal
 values at the labels they match: the automorphism of the copy relating their
-labels is an isomorphism from :math:`b_1` to :math:`b_2` carrying the values,
-and exchanging :math:`b_1` and :math:`b_2` through it, the identity on the
+labels is an isomorphism from :math:`c_1` to :math:`c_2` carrying the values,
+and exchanging :math:`c_1` and :math:`c_2` through it, the identity on the
 levels placed before, is an element of :math:`H` that sends a completion of
 either placement onto one of the other. After one of them failed, the others
 are skipped, at the levels of the depth-first search and among the

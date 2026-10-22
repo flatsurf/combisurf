@@ -11,8 +11,11 @@ tested from standalone C programs and compiled into each Cython extension
 that uses it. No function allocates memory: every buffer is handed in by the
 caller, with the size given in its entry below.
 
-Each function comes in two forms: ``_perm_func`` takes the array and its
-length, and ``perm_func``, an inline wrapper, takes a :c:type:`perm_t`.
+The functions on a whole permutation come in two forms: ``_perm_func`` takes
+the array and its length, and ``perm_func``, an inline wrapper, takes a
+:c:type:`perm_t`. The functions on orbits, :c:func:`_perm_orbits_find` and
+:c:func:`_perm_orbits_union`, act on a union-find array and have only the
+first form.
 
 .. c:macro:: PERM_INLINE
 

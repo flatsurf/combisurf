@@ -184,8 +184,8 @@ Types
 
    .. c:enumerator:: DOMAP_ISO_ROOTS_HALF_EDGE_FEWEST = 2
 
-      The smallest class of the half-edge invariant, ties broken by the
-      largest invariant.
+      The class with the fewest half-edges under the half-edge invariant,
+      ties broken by the largest invariant.
 
    .. c:enumerator:: DOMAP_ISO_ROOTS_EDGE_MAX = 3
 
@@ -193,8 +193,8 @@ Types
 
    .. c:enumerator:: DOMAP_ISO_ROOTS_EDGE_FEWEST = 4
 
-      The smallest class of the edge invariant, ties broken by the largest
-      invariant.
+      The class with the fewest half-edges under the edge invariant, ties
+      broken by the largest invariant.
 
    .. c:enumerator:: DOMAP_ISO_ROOTS_DATA = 8
 
@@ -399,8 +399,10 @@ preceded by ``k``.
    labelled yet under :c:enumerator:`DOMAP_ISO_ROOTS_ALL`), and the
    component gets the labels following those used. When several roots give
    the minimal block, every one of them is followed if ``all_leaves`` is
-   nonzero, and only those that are not the image of an earlier one by an
-   automorphism otherwise. The search and its cuts are in
+   nonzero; otherwise only the first one if ``nc == 0``, and the first one of
+   each extension of the numbering of the class values if ``nc > 0``. Tied
+   roots of different extensions are all followed, even when their subtrees
+   are images of each other. The search and its cuts are in
    :ref:`omap-algorithms-iso-search`.
 
    Any map is accepted, connected or not. The empty map gives the empty
@@ -544,10 +546,11 @@ class array.
    the sizes in its own integers.
 
    When ``callback`` is not ``NULL``, call it with ``arg`` on each generator,
-   from the last level to the first and, at a level, in the order of the
-   candidates: there are up to ``n - 1`` generators of ``n`` ints each, which
-   no buffer of the caller holds. The generators are the identity on the
-   half-edges of the inactive edges.
+   from the last level to the first and, at a level ``i``, in the order of
+   the candidates :math:`x`, the points tried as images of :math:`b_i`
+   (:ref:`omap-algorithms-stabiliser`): there are up to ``n - 1`` generators
+   of ``n`` ints each, which no buffer of the caller holds. The generators
+   are the identity on the half-edges of the inactive edges.
 
    ``work`` is a buffer of ``DOMAP_STABILISER_WORK_SIZE(n, nc)`` ints.
 

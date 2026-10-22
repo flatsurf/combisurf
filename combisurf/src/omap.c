@@ -2303,9 +2303,10 @@ debug_generator(const domap_t m, const int *g)
 /*
  * Sims' subgroup search over the base of the canonical labels 0 of the
  * levels, from the last level to the first: each point of the orbit of b_i
- * outside the orbit of the generators found so far is reached by a depth
- * first search, which skips the placements adding no entry to the bijections
- * of values once one of them failed. Exponential in the worst case.
+ * outside the orbit of the generators found so far is tried by a depth first
+ * search for an element sending b_i to it, which skips the placements adding
+ * no entry to the bijections of values once one of them failed. Exponential
+ * in the worst case.
  * See doc/c/omap_algorithms.rst, section "Stabiliser of the classes".
  */
 int
