@@ -27,6 +27,24 @@ uf_find_halving(int *parent, int h)
     return h;
 }
 
+/* The root of the tree of h, every element of its path set to the root. */
+MISC_INLINE int
+uf_find_compression(int *parent, int h)
+{
+    int root = h;
+    int next;
+
+    while (parent[root] != root)
+        root = parent[root];
+    while (parent[h] != root && h != root)
+    {
+        next = parent[h];
+        parent[h] = root;
+        h = next;
+    }
+    return root;
+}
+
 /* Merge the trees of the roots a and b, the larger under the smaller. */
 MISC_INLINE void
 uf_link(int *parent, int a, int b)

@@ -1,5 +1,6 @@
 cdef extern from "misc.h":
     int uf_find_halving(int *parent, int h)
+    int uf_find_compression(int *parent, int h)
     void uf_link(int *parent, int a, int b)
 
 

@@ -26,7 +26,10 @@
  * from the ranks 0, ..., n - 1 the C code sorts by. domap_stabiliser is
  * checked on isolated edges decorated by one class array: the order of the
  * group and the number of generators, each generator being an automorphism
- * carrying the class values by a bijection.
+ * carrying the class values by a bijection. On random merges of roots, both
+ * union-find lookups return the root of a plain walk, the compression sets
+ * every element of the old path to the root, and the root of a merge is the
+ * smaller of the two roots.
  *
  * This file is part of combisurf.
  *
@@ -38,6 +41,7 @@
  * any later version.
  */
 #include "../../combisurf/src/omap.h"
+#include "../../combisurf/src/misc.h"
 
 #include <limits.h>
 #include <stdint.h>
@@ -193,6 +197,67 @@ check_case(const char *name, int n, int *fp, int nd, const int *data,
     CHECK(domap_canonical(key2, NULL, NULL, NULL, m, DOMAP_ISO_ROOTS_ALL, work)
           == len);
     CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) == 0);
+}
+
+/* the root of h by a plain walk */
+static int
+plain_root(const int *parent, int h)
+{
+    while (parent[h] != h)
+        h = parent[h];
+    return h;
+}
+
+static void
+test_union_find(void)
+{
+    static const int sizes[] = { 1, 2, 5, 17, 64, MAX_N };
+    static int par_half[MAX_N];
+    static int par_comp[MAX_N];
+    static int copy[MAX_N];
+    int s, n, i, step, h, a, b, ra, rb, root, x;
+    int path[MAX_N];
+    int len;
+
+    current_case = "union-find";
+    for (s = 0; s < 6; s++)
+    {
+        n = sizes[s];
+        for (i = 0; i < n; i++)
+            par_half[i] = par_comp[i] = i;
+        for (step = 0; step < 4 * n; step++)
+        {
+            /* the same merge in both forests, the roots by a plain walk */
+            a = rng_below(n);
+            b = rng_below(n);
+            ra = plain_root(par_half, a);
+            rb = plain_root(par_half, b);
+            CHECK(plain_root(par_comp, a) == ra);
+            CHECK(plain_root(par_comp, b) == rb);
+            uf_link(par_half, ra, rb);
+            uf_link(par_comp, ra, rb);
+            root = ra < rb ? ra : rb;
+            CHECK(plain_root(par_half, a) == root);
+            CHECK(plain_root(par_half, b) == root);
+            CHECK(plain_root(par_comp, a) == root);
+            CHECK(plain_root(par_comp, b) == root);
+
+            h = rng_below(n);
+            memcpy(copy, par_half, (size_t) n * sizeof(int));
+            root = plain_root(copy, h);
+            CHECK(uf_find_halving(par_half, h) == root);
+            len = 0;
+            for (x = h; ; x = par_comp[x])
+            {
+                path[len++] = x;
+                if (par_comp[x] == x)
+                    break;
+            }
+            CHECK(uf_find_compression(par_comp, h) == root);
+            for (i = 0; i < len; i++)
+                CHECK(par_comp[path[i]] == root);
+        }
+    }
 }
 
 static void
@@ -1965,6 +2030,7 @@ int
 main(int argc, char **argv)
 {
     rng_state = argc > 1 ? strtoull(argv[1], NULL, 10) : 1;
+    test_union_find();
     test_fixed();
     test_random();
     test_reference();
