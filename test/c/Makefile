@@ -22,6 +22,7 @@ OMAP_HDR = ../../combisurf/src/omap.h
 OMAP_TEST = test_omap.c
 PERM_SRC = ../../combisurf/src/perm.c
 PERM_HDR = ../../combisurf/src/perm.h
+MISC_HDR = ../../combisurf/src/misc.h
 FLAGS = -std=c99 -Wall -Wextra -Werror
 DEBUG_FLAGS = -DCT_DEBUG -DOMAP_DEBUG
 ASAN_FLAGS = -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all
@@ -46,16 +47,16 @@ $(BUILD)/test-asan: $(CT_TEST) $(CT_SRC) $(CT_HDR) | $(BUILD)
 $(BUILD)/test-valgrind: $(CT_TEST) $(CT_SRC) $(CT_HDR) | $(BUILD)
 	$(CC) $(FLAGS) -O0 -g -o $@ $(CT_TEST) $(CT_SRC)
 
-$(BUILD)/omap-check: $(OMAP_TEST) $(OMAP_SRC) $(OMAP_HDR) $(PERM_SRC) $(PERM_HDR) | $(BUILD)
+$(BUILD)/omap-check: $(OMAP_TEST) $(OMAP_SRC) $(OMAP_HDR) $(PERM_SRC) $(PERM_HDR) $(MISC_HDR) | $(BUILD)
 	$(CC) $(FLAGS) -O2 -o $@ $(OMAP_TEST) $(OMAP_SRC) $(PERM_SRC)
 
-$(BUILD)/omap-debug: $(OMAP_TEST) $(OMAP_SRC) $(OMAP_HDR) $(PERM_SRC) $(PERM_HDR) | $(BUILD)
+$(BUILD)/omap-debug: $(OMAP_TEST) $(OMAP_SRC) $(OMAP_HDR) $(PERM_SRC) $(PERM_HDR) $(MISC_HDR) | $(BUILD)
 	$(CC) $(FLAGS) -O0 -g $(DEBUG_FLAGS) -o $@ $(OMAP_TEST) $(OMAP_SRC) $(PERM_SRC)
 
-$(BUILD)/omap-asan: $(OMAP_TEST) $(OMAP_SRC) $(OMAP_HDR) $(PERM_SRC) $(PERM_HDR) | $(BUILD)
+$(BUILD)/omap-asan: $(OMAP_TEST) $(OMAP_SRC) $(OMAP_HDR) $(PERM_SRC) $(PERM_HDR) $(MISC_HDR) | $(BUILD)
 	$(CC) $(FLAGS) $(ASAN_FLAGS) $(DEBUG_FLAGS) -o $@ $(OMAP_TEST) $(OMAP_SRC) $(PERM_SRC)
 
-$(BUILD)/omap-valgrind: $(OMAP_TEST) $(OMAP_SRC) $(OMAP_HDR) $(PERM_SRC) $(PERM_HDR) | $(BUILD)
+$(BUILD)/omap-valgrind: $(OMAP_TEST) $(OMAP_SRC) $(OMAP_HDR) $(PERM_SRC) $(PERM_HDR) $(MISC_HDR) | $(BUILD)
 	$(CC) $(FLAGS) -O0 -g -o $@ $(OMAP_TEST) $(OMAP_SRC) $(PERM_SRC)
 
 check: $(BUILD)/test-check $(BUILD)/omap-check

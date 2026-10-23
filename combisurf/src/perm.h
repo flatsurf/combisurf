@@ -58,30 +58,4 @@ perm_dense_cycles(int *id, int *size, const perm_t p)
     return _perm_dense_cycles(id, size, p->p, p->n);
 }
 
-/* Orbits ********************************************************************/
-
-/* The representative of the orbit of h, with path halving. */
-PERM_INLINE int
-_perm_orbits_find(int *parent, int h)
-{
-    while (parent[h] != h)
-    {
-        parent[h] = parent[parent[h]];
-        h = parent[h];
-    }
-    return h;
-}
-
-/* Merge the orbits of a and b, the larger representative under the smaller. */
-PERM_INLINE void
-_perm_orbits_union(int *parent, int a, int b)
-{
-    a = _perm_orbits_find(parent, a);
-    b = _perm_orbits_find(parent, b);
-    if (a < b)
-        parent[b] = a;
-    else if (b < a)
-        parent[a] = b;
-}
-
 #endif

@@ -63,6 +63,7 @@
  * any later version.
  */
 #include "omap.h"
+#include "misc.h"
 #include "perm.h"
 
 #include <string.h>
@@ -123,17 +124,17 @@ debug_names(const int *names, int n)
 #endif
 
 int
-_omap_num_edges(const int *fp, int n)
+_omap_num_edges(const int *p, int n)
 {
     int e, ne = 0;
     for (e = 0; 2 * e < n; e++)
-        if (fp[2 * e] != -1 || fp[2 * e + 1] != -1)
+        if (p[2 * e] != -1 || p[2 * e + 1] != -1)
             ne++;
     return ne;
 }
 
 int
-_omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root,
+_omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root,
                        int *queue)
 {
     int head = 0, tail = 0, k = 0;
@@ -153,7 +154,7 @@ _omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root,
                 r[x] = k;
                 r[x ^ 1] = k + 1;
                 rinv[k] = x;
-                if (fp[x ^ 1] != -1)
+                if (p[x ^ 1] != -1)
                 {
                     rinv[k + 1] = x ^ 1;
                     /* one push per edge, when it gets its labels, and the
@@ -166,11 +167,11 @@ _omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root,
                 }
                 k += 2;
             }
-            x = fp[x];
+            x = p[x];
         } while (x != h);
     }
 #ifdef OMAP_DEBUG
-    debug_relabelling(fp, n, r, rinv, k);
+    debug_relabelling(p, n, r, rinv, k);
 #endif
     return k;
 }
@@ -1195,11 +1196,11 @@ canonical_root(struct canonical_state *s, int root)
     int n = s->m.map.n, k, cmp, h;
     int *r = s->r, *rinv = s->rinv, *tmp;
 
-    if (s->merged && _perm_orbits_find(s->parent, root) < root)
+    if (s->merged && uf_find_halving(s->parent, root) < root)
     {
 #ifdef OMAP_DEBUG
-        cmp = _perm_orbits_find(s->parent, root)
-            == _perm_orbits_find(s->parent, s->best_root) ? 0 : 1;
+        cmp = uf_find_halving(s->parent, root)
+            == uf_find_halving(s->parent, s->best_root) ? 0 : 1;
         debug_root(&s->m, s->best, s->cur, s->len, root, cmp, s->names,
                    s->scratch);
 #endif
@@ -1240,13 +1241,14 @@ canonical_root(struct canonical_state *s, int root)
             s->merged = 1;
         }
 #ifdef OMAP_DEBUG
-        OMAP_CHECK(_perm_orbits_find(s->parent, root)
-                   != _perm_orbits_find(s->parent, s->best_root));
+        OMAP_CHECK(uf_find_halving(s->parent, root)
+                   != uf_find_halving(s->parent, s->best_root));
         debug_automorphism(&s->m, s->rbest, rinv, s->scratch);
 #endif
         for (h = 0; h < n; h++)
             if (fp[h] != -1)
-                _perm_orbits_union(s->parent, h, rinv[s->rbest[h]]);
+                uf_link(s->parent, uf_find_halving(s->parent, h),
+                        uf_find_halving(s->parent, rinv[s->rbest[h]]));
     }
     /* past n / 2 labels, a sequential clear (all bytes 0xff, the int
      * -1) is cheaper than the scattered writes of reset_local */
@@ -1399,7 +1401,7 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
     }
     else
     {
-        rep = _perm_orbits_find(parent, s.best_root);
+        rep = uf_find_halving(parent, s.best_root);
 #ifdef OMAP_DEBUG
         OMAP_CHECK(rep == s.best_root);
 #endif
@@ -1409,7 +1411,7 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
             for (root = rep; root < n; root++)
             {
                 if (fp[root] != -1
-                    && _perm_orbits_find(parent, root) == rep)
+                    && uf_find_halving(parent, root) == rep)
                 {
                     if (roots != NULL)
                         roots[count] = root;
@@ -1423,7 +1425,7 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
             for (i = lo; i < hi; i++)
             {
                 root = order[i];
-                if (_perm_orbits_find(parent, root) == rep)
+                if (uf_find_halving(parent, root) == rep)
                 {
                     if (roots != NULL)
                         roots[count] = root;
@@ -2381,7 +2383,7 @@ domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
             {
                 x = lab[off[b] + labels[loff[t] + q]];
                 if (x == bi
-                    || _perm_orbits_find(p, x) == _perm_orbits_find(p, bi))
+                    || uf_find_halving(p, x) == uf_find_halving(p, bi))
                     continue;
                 s.target[i] = b;
                 s.choice[i] = q;
@@ -2413,8 +2415,8 @@ domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
                         return ret;
                     for (h = 0; h < n; h++)
                     {
-                        x = _perm_orbits_find(p, h);
-                        y = _perm_orbits_find(p, g[h]);
+                        x = uf_find_halving(p, h);
+                        y = uf_find_halving(p, g[h]);
                         if (x != y)
                         {
                             p[x] = y;
@@ -2430,7 +2432,7 @@ domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
         undo(&s, 0);
         for (b = 0; b < i; b++)
             s.used[b] = 0;
-        orbits[i] = sz[_perm_orbits_find(p, bi)];
+        orbits[i] = sz[uf_find_halving(p, bi)];
     }
     return 0;
 }

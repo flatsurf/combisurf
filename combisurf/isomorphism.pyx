@@ -209,7 +209,7 @@ from cpython.ref cimport PyObject
 from libc.limits cimport INT_MAX
 from libc.string cimport memcpy, memcmp
 from cysignals.signals cimport sig_on, sig_off, sig_block, sig_unblock
-from combisurf.perm cimport _perm_check, _perm_id, _perm_orbits_find, _perm_orbits_union
+from combisurf.perm cimport _perm_check, _perm_id
 from math import factorial
 from numbers import Integral
 
@@ -1556,11 +1556,12 @@ cdef list _connected_generators(const domap_struct *m, array.array ra, array.arr
     for j in range(1, count):
         # the orbit of b0 under the generators kept is its class in the
         # union-find; an automorphism is determined by the image of b0
-        if _perm_orbits_find(p, r[j]) == _perm_orbits_find(p, b0):
+        if uf_find_halving(p, r[j]) == uf_find_halving(p, b0):
             continue
         g = _automorphism_from(m, ra, r[j], rb, rbinv, queue)
         for h in range(n):
-            _perm_orbits_union(p, h, g.data.as_ints[h])
+            uf_link(p, uf_find_halving(p, h),
+                    uf_find_halving(p, g.data.as_ints[h]))
         gens.append(g)
     return gens
 

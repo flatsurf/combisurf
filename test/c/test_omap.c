@@ -4,9 +4,9 @@
  * Usage: test_omap [seed]
  *
  * Exits 0 and prints one summary line when every case passes; otherwise
- * prints the failing case and exits 1. The fixed cases are the examples of
- * combisurf/isomorphism_naive.py; the random cases, reproducible from the
- * seed (1 by default), check that the key and the number of automorphisms
+ * prints the failing case and exits 1. The fixed cases are small maps with
+ * known keys, relabellings and sequences; the random cases, reproducible from
+ * the seed (1 by default), check that the key and the number of automorphisms
  * do not change under a random relabelling of the map, for connected maps
  * (domap_canonical) and for disjoint unions (domap_iso_search, where the
  * minimal sequence of blocks and the number of leaves reaching it are
@@ -425,7 +425,7 @@ test_search_fixed(void)
     for (i = 0; i < 8; i++)
         CHECK(relabelling[i] == triangle_and_folded_relabelling[i]);
 
-    /* the outputs of isomorphism_naive: the class changes from the first
+    /* the expected outputs: the class changes from the first
      * step to the second, the folded edge (its own class) then the
      * triangle under *_FEWEST, the triangle (vertices of degree 2, faces of
      * degree 3) then the folded edge under *_MAX */

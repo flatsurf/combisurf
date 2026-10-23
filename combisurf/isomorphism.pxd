@@ -1,3 +1,8 @@
+cdef extern from "misc.h":
+    int uf_find_halving(int *parent, int h)
+    void uf_link(int *parent, int a, int b)
+
+
 cdef extern from "omap.h":
     enum:
         DOMAP_ISO_DISCONNECTED
@@ -28,16 +33,16 @@ cdef extern from "omap.h":
 
     ctypedef struct domap_struct:
         omap_struct map
-        int nd
         const int *data
-        int nc
         const int *classes
+        int nd
+        int nc
 
     ctypedef domap_struct domap_t[1]
 
-    int _omap_num_edges(const int *fp, int n)
+    int _omap_num_edges(const int *p, int n)
     int omap_num_edges(const omap_t m)
-    int _omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root, int *queue)
+    int _omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root, int *queue)
     int omap_relabelling_from(int *r, int *rinv, const omap_t m, int root, int *queue)
     int domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k, int *names)
     int domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
@@ -48,7 +53,6 @@ cdef extern from "omap.h":
                          domap_iso_leaf_callback callback, void *arg, int *work) except -1
 
     ctypedef struct domap_wreath_struct:
-        int ncomp
         const int *kind
         const int *off
         const int *lab
@@ -60,6 +64,7 @@ cdef extern from "omap.h":
         const int *crainv
         const int *loff
         const int *labels
+        int ncomp
 
     ctypedef domap_wreath_struct domap_wreath_t[1]
 

@@ -30,10 +30,10 @@ typedef omap_struct omap_t[1];
 typedef struct
 {
     omap_struct map;
-    int nd;
     const int *data;
-    int nc;
     const int *classes;
+    int nd;
+    int nc;
 }
 domap_struct;
 
@@ -65,8 +65,8 @@ typedef enum
 #define DOMAP_CANONICAL_WORK_SIZE(n, nd, nc) \
     (9 * (n) + 1 + DOMAP_ISO_KEY_SIZE(n, nd, nc))
 
-/* Return the number of active edges of fp. */
-int _omap_num_edges(const int *fp, int n);
+/* Return the number of active edges of p, the vertex or face permutation. */
+int _omap_num_edges(const int *p, int n);
 
 OMAP_INLINE int
 omap_num_edges(const omap_t m)
@@ -74,8 +74,9 @@ omap_num_edges(const omap_t m)
     return _omap_num_edges(m->fp, m->n);
 }
 
-/* Relabel m from root into r and rinv; return the number of labels used. */
-int _omap_relabelling_from(int *r, int *rinv, const int *fp, int n, int root,
+/* Relabel m from root into r and rinv, walking the cycles of p, the vertex or
+   face permutation; return the number of labels used. */
+int _omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root,
                            int *queue);
 
 OMAP_INLINE int
@@ -126,7 +127,6 @@ int domap_iso_search(int *sequence, int *length, int *relabelling,
 /* The components of a map, grouped into kinds of isomorphic components. */
 typedef struct
 {
-    int ncomp;
     const int *kind;
     const int *off;
     const int *lab;
@@ -138,6 +138,7 @@ typedef struct
     const int *crainv;
     const int *loff;
     const int *labels;
+    int ncomp;
 }
 domap_wreath_struct;
 
