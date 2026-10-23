@@ -29,7 +29,10 @@
  * carrying the class values by a bijection. On random merges of roots, both
  * union-find lookups return the root of a plain walk, the compression sets
  * every element of the old path to the root, and the root of a merge is the
- * smaller of the two roots.
+ * smaller of the two roots. The vertex permutation of every map of the tests
+ * inverts the face permutation through the twins, and the navigation
+ * functions give the values of OrientedMap on two fixed maps, -1 on an
+ * invalid half-edge.
  *
  * This file is part of combisurf.
  *
@@ -132,11 +135,28 @@ rng_below(int m)
     return (int) (rng_next() % (uint64_t) m);
 }
 
-/* the decorated map (fp, n) with nd data arrays and nc class arrays, into m */
+/*
+ * The decorated map (fp, n) with nd data arrays and nc class arrays, into m;
+ * its vertex permutation is computed into vp (n ints) and checked.
+ */
 static void
-set_map(domap_t m, int *fp, int n, int nd, const int *data, int nc,
+set_map(domap_t m, int *fp, int *vp, int n, int nd, const int *data, int nc,
         const int *classes)
 {
+    int h;
+
+    _omap_vp_from_fp(vp, fp, n);
+    for (h = 0; h < n; h++)
+    {
+        if (fp[h] == -1)
+            CHECK(vp[h] == -1);
+        else
+        {
+            CHECK(0 <= vp[h] && vp[h] < n);
+            CHECK(fp[fp[vp[h] ^ 1] != -1 ? vp[h] ^ 1 : vp[h]] == h);
+        }
+    }
+    m->map.vp = vp;
     m->map.fp = fp;
     m->map.n = n;
     m->nd = nd;
@@ -181,9 +201,10 @@ check_case(const char *name, int n, int *fp, int nd, const int *data,
            const int *expected_relabelling, int expected_count)
 {
     domap_t m;
+    int vp[MAX_N];
     int count = -1, i;
     current_case = name;
-    set_map(m, fp, n, nd, data, nc, classes);
+    set_map(m, fp, vp, n, nd, data, nc, classes);
     CHECK(domap_canonical(key, relabelling, roots, &count, m,
                           DOMAP_ISO_ROOTS_ALL, work) == len);
     for (i = 0; i < len; i++)
@@ -260,6 +281,79 @@ test_union_find(void)
     }
 }
 
+/*
+ * The four navigation functions at h against expected: (next at vertex,
+ * previous at vertex, next in face, previous in face).
+ */
+static void
+check_navigation(const omap_t m, int h, const int *expected)
+{
+    CHECK(omap_next_at_vertex(m, h) == expected[0]);
+    CHECK(omap_previous_at_vertex(m, h) == expected[1]);
+    CHECK(omap_next_in_face(m, h) == expected[2]);
+    CHECK(omap_previous_in_face(m, h) == expected[3]);
+}
+
+/*
+ * The vertex permutation of _omap_vp_from_fp and the navigation functions
+ * on two maps, with the values of OrientedMap: the map of 24 half-edges of
+ * the doctest of OrientedMap.next_at_vertex, and a map with folded edges.
+ */
+static void
+test_navigation(void)
+{
+    static int fp24[] = { 20, 22, 17, 15, 13, 11, 9, 23, 7, 10, 6, 12, 5, 14,
+        4, 16, 3, 18, 2, 0, 19, 1, 21, 8 };
+    static const int vp24[] = { 18, 20, 19, 17, 15, 13, 11, 9, 22, 7, 8, 4,
+        10, 5, 12, 2, 14, 3, 16, 21, 1, 23, 0, 6 };
+    static const int at0[] = { 18, 22, 20, 19 }, at5[] = { 13, 13, 11, 12 },
+        at9[] = { 7, 7, 10, 6 };
+    static int fp6[] = { 2, 0, 1, -1, 4, -1 };
+    static const int vp6[] = { 0, 2, 1, -1, 4, -1 };
+    static const int at2[] = { 1, 1, 1, 0 }, at4[] = { 4, 4, 4, 4 },
+        invalid[] = { -1, -1, -1, -1 };
+    int vp[24];
+    omap_t m;
+    int h;
+
+    current_case = "navigation, 24 half-edges";
+    _omap_vp_from_fp(vp, fp24, 24);
+    for (h = 0; h < 24; h++)
+        CHECK(vp[h] == vp24[h]);
+    m->vp = vp;
+    m->fp = fp24;
+    m->n = 24;
+    check_navigation(m, 0, at0);
+    check_navigation(m, 5, at5);
+    check_navigation(m, 9, at9);
+    for (h = 0; h < 24; h++)
+    {
+        CHECK(omap_previous_at_vertex(m, omap_next_at_vertex(m, h)) == h);
+        CHECK(omap_previous_in_face(m, omap_next_in_face(m, h)) == h);
+    }
+
+    current_case = "navigation, folded edges";
+    _omap_vp_from_fp(vp, fp6, 6);
+    for (h = 0; h < 6; h++)
+        CHECK(vp[h] == vp6[h]);
+    m->vp = vp;
+    m->fp = fp6;
+    m->n = 6;
+    check_navigation(m, 2, at2);
+    check_navigation(m, 4, at4);
+    check_navigation(m, -1, invalid);
+    check_navigation(m, 6, invalid);
+    check_navigation(m, 3, invalid);
+    check_navigation(m, 5, invalid);
+    for (h = 0; h < 6; h++)
+    {
+        if (fp6[h] == -1)
+            continue;
+        CHECK(omap_previous_at_vertex(m, omap_next_at_vertex(m, h)) == h);
+        CHECK(omap_previous_in_face(m, omap_next_in_face(m, h)) == h);
+    }
+}
+
 static void
 test_fixed(void)
 {
@@ -292,6 +386,7 @@ test_fixed(void)
     /* two components (0)(~0) and (1)(~1) */
     static int disconnected[] = { 0, 1, 2, 3 };
     domap_t m;
+    int vp[MAX_N];
     int count = -1;
 
     check_case("triangle", 6, triangle, 0, NULL, 0, NULL, 6, triangle,
@@ -314,7 +409,7 @@ test_fixed(void)
                empty_relabelling, 0);
 
     current_case = "disconnected";
-    set_map(m, disconnected, 4, 0, NULL, 0, NULL);
+    set_map(m, disconnected, vp, 4, 0, NULL, 0, NULL);
     CHECK(domap_canonical(key, relabelling, roots, &count, m,
                           DOMAP_ISO_ROOTS_ALL,
                           work) == DOMAP_ISO_DISCONNECTED);
@@ -404,9 +499,10 @@ search(int n, int *fp, int nd, const int *data, int nc, const int *classes,
     static int first_sequence[SEQUENCE_SIZE];
     static int first_relabelling[MAX_N];
     struct leaves s;
+    static int vp[MAX_N];
     domap_t m;
     int len2;
-    set_map(m, fp, n, nd, data, nc, classes);
+    set_map(m, fp, vp, n, nd, data, nc, classes);
     s.n = n;
     s.fp = fp;
     s.nd = nd;
@@ -449,6 +545,7 @@ test_search_fixed(void)
     static int empty[] = { -1, -1 };
     struct leaves s;
     domap_t m;
+    int vp[MAX_N];
     int len, i, count;
     long calls;
 
@@ -518,7 +615,7 @@ test_search_fixed(void)
         for (j = 0; j < 8; j++)
             CHECK(relabelling[j] == expected_relabelling[j]);
         current_case = "connected triangle and folded edge, under a rule";
-        set_map(m, triangle_and_folded, 8, 0, NULL, 0, NULL);
+        set_map(m, triangle_and_folded, vp, 8, 0, NULL, 0, NULL);
         CHECK(domap_canonical(key, relabelling, roots, &count, m, rules[i],
                               work) == DOMAP_ISO_DISCONNECTED);
     }
@@ -537,7 +634,7 @@ test_search_fixed(void)
     s.count = 0;
     s.calls = 0;
     s.stop_after = 5;
-    set_map(m, four_edges, 8, 0, NULL, 0, NULL);
+    set_map(m, four_edges, vp, 8, 0, NULL, 0, NULL);
     CHECK(domap_iso_search(sequence, &len, NULL, m, DOMAP_ISO_ROOTS_ALL, 1,
                            count_leaf, &s, search_work) == 7);
     CHECK(s.calls == 5);
@@ -556,7 +653,7 @@ test_search_fixed(void)
 static int
 random_connected(int ne, int folded, int *fp)
 {
-    int n = 2 * ne, active[MAX_N], images[MAX_N];
+    int n = 2 * ne, active[MAX_N], images[MAX_N], vp[MAX_N];
     domap_t m;
     int attempt, na, i, j, t;
     for (attempt = 0; attempt < 1000; attempt++)
@@ -580,7 +677,7 @@ random_connected(int ne, int folded, int *fp)
             fp[i] = -1;
         for (i = 0; i < na; i++)
             fp[active[i]] = images[i];
-        set_map(m, fp, n, 0, NULL, 0, NULL);
+        set_map(m, fp, vp, n, 0, NULL, 0, NULL);
         if (domap_canonical(key, NULL, NULL, NULL, m, DOMAP_ISO_ROOTS_ALL,
                             work) != DOMAP_ISO_DISCONNECTED)
             return 1;
@@ -620,6 +717,7 @@ test_random(void)
     int fp[MAX_N], fp2[MAX_N], fp3[MAX_N], r[MAX_N];
     int rinv[MAX_N], r2[MAX_N], rinv2[MAX_N], queue[MAX_N];
     int dec[2 * MAX_ARRAYS * MAX_N], dec2[2 * MAX_ARRAYS * MAX_N];
+    int vp[MAX_N], vp2[MAX_N];
     domap_t m;
     int trial, ne, n, nd, nc, len, len2, count, count2, i, h, k, k2;
 
@@ -634,7 +732,7 @@ test_random(void)
         /* few values, so that automorphisms may survive */
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(2);
-        set_map(m, fp, n, nd, dec, nc, dec + nd * n);
+        set_map(m, fp, vp, n, nd, dec, nc, dec + nd * n);
         len = domap_canonical(key, relabelling, roots, &count, m,
                               DOMAP_ISO_ROOTS_ALL, work);
         CHECK(len >= n);
@@ -672,7 +770,7 @@ test_random(void)
         relabel_arrays(n, nd + nc, dec, r, dec2);
         for (i = nd * n; i < (nd + nc) * n; i++)
             dec2[i] = 1 - dec2[i];
-        set_map(m, fp2, n, nd, dec2, nc, dec2 + nd * n);
+        set_map(m, fp2, vp2, n, nd, dec2, nc, dec2 + nd * n);
         len2 = domap_canonical(key2, NULL, NULL, &count2, m,
                                DOMAP_ISO_ROOTS_ALL, work);
         CHECK(len2 == len);
@@ -884,10 +982,11 @@ check_reference(int n, int *fp, int nd, const int *data, int nc,
                 const int *classes)
 {
     static int ref_key[KEY_SIZE], ref_relabelling[MAX_N], ref_roots[MAX_N];
+    static int vp[MAX_N];
     domap_t m;
     int len, ref_len, count = -1, ref_count = -1, all_count = -1, i;
 
-    set_map(m, fp, n, nd, data, nc, classes);
+    set_map(m, fp, vp, n, nd, data, nc, classes);
     for (i = 0; i < NUM_RULES; i++)
     {
         ref_len = ref_canonical(ref_key, ref_relabelling, ref_roots,
@@ -1007,7 +1106,7 @@ test_reference_regular(void)
     static const int cube[] =
         { 0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 1, 2, 6, 5, 2, 3, 7, 6, 3, 0, 4,
             7 };
-    int fp[MAX_N], fp2[MAX_N], r[MAX_N], zero[MAX_N];
+    int fp[MAX_N], fp2[MAX_N], r[MAX_N], zero[MAX_N], vp[MAX_N];
     domap_t m;
     int trial, n, i, len, count, solid;
 
@@ -1033,7 +1132,7 @@ test_reference_regular(void)
             check_reference(n, fp2, 0, NULL, 0, NULL);
             check_reference(n, fp2, 1, zero, 0, NULL);
             check_reference(n, fp2, 0, NULL, 1, zero);
-            set_map(m, fp2, n, 0, NULL, 0, NULL);
+            set_map(m, fp2, vp, n, 0, NULL, 0, NULL);
             for (i = 0; i < NUM_RULES; i++)
             {
                 len = domap_canonical(key, relabelling, roots, &count, m,
@@ -1352,7 +1451,7 @@ check_block_roots(int n, const int *fp, int nd, const int *data, int narrays,
 static void
 test_search_random(void)
 {
-    int fp[MAX_N], fp2[MAX_N], r[MAX_N], relabelling1[MAX_N];
+    int fp[MAX_N], fp2[MAX_N], r[MAX_N], relabelling1[MAX_N], vp[MAX_N];
     int dec[2 * MAX_ARRAYS * MAX_N], dec2[2 * MAX_ARRAYS * MAX_N];
     domap_t m;
     int trial, n, nd, nc, len, len2, count, i, h, j;
@@ -1391,7 +1490,7 @@ test_search_random(void)
                 CHECK(fp2[h] == sequence[1 + h]);
 
             /* a connected map gives one block: k, then its key */
-            set_map(m, fp, n, nd, dec, nc, dec + nd * n);
+            set_map(m, fp, vp, n, nd, dec, nc, dec + nd * n);
             len2 = domap_canonical(key, relabelling, NULL, &count, m, rule,
                                    work);
             if (len2 != DOMAP_ISO_DISCONNECTED)
@@ -1454,6 +1553,7 @@ test_search_tied(void)
     static const int edge_block_second[] = { 2, 0, 1, 1, 1 };
     int fp[MAX_N], fp2[MAX_N], r[MAX_N], comp[MAX_N], rc[MAX_N], pairs[MAX_N];
     int dec[2 * MAX_N], dec2[2 * MAX_N], cdec[2 * MAX_N], cdec2[2 * MAX_N];
+    int vp[MAX_N];
     domap_t m;
     int trial, k, n, size, nd, nvals, len, len2, i, j, h, c, b, p, q;
     long leaves, leaves2, expected, all_leaves = 0;
@@ -1490,7 +1590,7 @@ test_search_tied(void)
     n = isolated_edges(41, pairs, fp, dec);
     for (j = 0; j < NUM_RULES; j++)
     {
-        set_map(m, fp, n, 0, NULL, 1, dec);
+        set_map(m, fp, vp, n, 0, NULL, 1, dec);
         CHECK(domap_iso_search(sequence, &len, relabelling, m, rules[j], 0,
                                NULL, NULL, search_work) == 0);
         CHECK(len == 5 * 41);
@@ -1595,7 +1695,7 @@ test_search_tied(void)
     }
     for (j = 0; j < NUM_RULES; j++)
     {
-        set_map(m, fp, n, 0, NULL, 1, dec);
+        set_map(m, fp, vp, n, 0, NULL, 1, dec);
         CHECK(domap_iso_search(sequence, &len, relabelling, m, rules[j], 0,
                                NULL, NULL, search_work) == 0);
         CHECK(len == 100);
@@ -1668,9 +1768,10 @@ array_invariants_differ(int n1, int *fp1, const int *data1,
                         const int *data2, const int *classes2, int nd, int nc,
                         int *inv_work)
 {
+    static int vp1[MAX_N], vp2[MAX_N];
     domap_t m1, m2;
-    set_map(m1, fp1, n1, nd, data1, nc, classes1);
-    set_map(m2, fp2, n2, nd, data2, nc, classes2);
+    set_map(m1, fp1, vp1, n1, nd, data1, nc, classes1);
+    set_map(m2, fp2, vp2, n2, nd, data2, nc, classes2);
     return domap_invariants_differ(m1, m2, inv_work);
 }
 
@@ -1684,7 +1785,7 @@ test_invariants(void)
     /* three isolated edges, then two edges in labels 0, 1 and 4, 5 */
     static int fp6[] = { 0, 1, 2, 3, 4, 5 };
     static int fp4[] = { 1, 0, 3, 2 };
-    static int fp8[] = { 1, 0, -1, -1, 3, 2, -1, -1 };
+    static int fp8[] = { 1, 0, -1, -1, 5, 4, -1, -1 };
     static int fp_junk[] = { 1, 0, -1, -1 };
     int inv_work[DOMAP_INVARIANTS_WORK_SIZE(8)];
     int d1[12], d2[12], c1[12], c2[12];
@@ -1936,8 +2037,8 @@ check_isolated_edges(int n, const int *c, long long order, int ngens)
     static const int coff[] = { 0 }, csize[] = { 2 }, labels[] = { 0, 1 };
     static const int loff[] = { 0, 2 };
     static int work[DOMAP_STABILISER_WORK_SIZE(STAB_MAX_N, 1)];
-    int fp[STAB_MAX_N], kind[STAB_MAX_N / 2], off[STAB_MAX_N / 2],
-        lab[STAB_MAX_N], orbits[STAB_MAX_N / 2], start[2];
+    int fp[STAB_MAX_N], vp[STAB_MAX_N], kind[STAB_MAX_N / 2],
+        off[STAB_MAX_N / 2], lab[STAB_MAX_N], orbits[STAB_MAX_N / 2], start[2];
     int k = n / 2, h, j;
     long long product = 1;
     struct generators s;
@@ -1957,7 +2058,7 @@ check_isolated_edges(int n, const int *c, long long order, int ngens)
     }
     start[0] = 0;
     start[1] = k;
-    set_map(m, fp, n, 0, NULL, 1, c);
+    set_map(m, fp, vp, n, 0, NULL, 1, c);
     w->ncomp = k;
     w->kind = kind;
     w->off = off;
@@ -2031,6 +2132,7 @@ main(int argc, char **argv)
 {
     rng_state = argc > 1 ? strtoull(argv[1], NULL, 10) : 1;
     test_union_find();
+    test_navigation();
     test_fixed();
     test_random();
     test_reference();

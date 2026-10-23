@@ -712,11 +712,13 @@ cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
     ``_check_decorated_oriented_map`` checks; a shorter array raises an
     ``IndexError`` or is read out of bounds.
 
-    OUTPUT: an array of typecode ``'i'`` of ``(1 + nd + nc) * n`` entries:
-    a copy of ``fp``, the ``nd`` arrays of ``data``, then the ``nc`` arrays
-    of ``classes`` renumbered ``0, 1, 2, ...`` by first appearance in
-    half-edge order, each of ``n`` entries with ``0`` on the inactive
-    half-edges. ``m.map.fp``, ``m.data`` and ``m.classes`` point into it and
+    OUTPUT: an array of typecode ``'i'`` of ``(2 + nd + nc) * n`` entries:
+    a copy of ``fp``, the vertex permutation computed from it by the C
+    function ``_omap_vp_from_fp`` (``-1`` on the inactive half-edges), the
+    ``nd`` arrays of ``data``, then the ``nc`` arrays of ``classes``
+    renumbered ``0, 1, 2, ...`` by first appearance in half-edge order, each
+    of ``n`` entries with ``0`` on the inactive half-edges. ``m.map.fp``,
+    ``m.map.vp``, ``m.data`` and ``m.classes`` point into it and
     ``m.map.n``, ``m.nd`` and ``m.nc`` are set. ``fp`` is copied so that the
     buffers stay valid if the caller resizes its own array. The array is
     never resized, and ``m`` is valid as long as it is alive: the caller
@@ -744,7 +746,7 @@ cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
     if size * (16 + 4 * (len(data) + len(classes))) + 64 > INT_MAX:
         _check_sizes(size, len(data), len(classes))
     n = <int> size
-    buf = _new((1 + nd + nc) * size)
+    buf = _new((2 + nd + nc) * size)
     f = buf.data.as_ints
     if type(fp) is array.array and (<array.array> fp).ob_descr.typecode == b'i':
         memcpy(f, (<array.array> fp).data.as_ints, n * sizeof(int))
@@ -760,8 +762,9 @@ cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
     seen = _new(n)
     if _perm_check(f, n, seen.data.as_ints) != 1:
         raise ValueError("fp must be a permutation of its active half-edges")
+    _omap_vp_from_fp(f + n, f, n)
 
-    dec = f + n
+    dec = f + 2 * n
     for j in range(nd):
         d = data[j]
         off = j * n
@@ -796,6 +799,7 @@ cdef array.array _convert(domap_struct *m, fp, tuple data, tuple classes):
                 v = c[h]
                 i = names.setdefault(v, len(names))
                 dec[off + h] = i
+    m.map.vp = f + n
     m.map.fp = f
     m.map.n = n
     m.nd = nd
@@ -818,9 +822,9 @@ cdef array.array _prepare(domap_struct *m, fp, data, classes):
     - ``fp``, ``data``, ``classes`` -- a face permutation and its
       decorations, as taken by the public functions of this module
 
-    OUTPUT: the array of typecode ``'i'`` holding the face permutation and
-    the decorations in C ``int``, which the caller keeps alive as long as it
-    uses ``m``.
+    OUTPUT: the array of typecode ``'i'`` holding the face permutation, the
+    vertex permutation and the decorations in C ``int``, which the caller
+    keeps alive as long as it uses ``m``.
 
     With ``n = len(fp)``, raise first the exceptions of
     ``_check_decorated_oriented_map``, in this order:

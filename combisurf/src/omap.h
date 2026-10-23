@@ -16,9 +16,10 @@
 
 /* Types *********************************************************************/
 
-/* A map: its face permutation fp on n half-edges. */
+/* A map: its vertex permutation vp and face permutation fp on n half-edges. */
 typedef struct
 {
+    int *vp;
     int *fp;
     int n;
 }
@@ -65,6 +66,9 @@ typedef enum
 #define DOMAP_CANONICAL_WORK_SIZE(n, nd, nc) \
     (9 * (n) + 1 + DOMAP_ISO_KEY_SIZE(n, nd, nc))
 
+/* Write into vp the vertex permutation of the map of face permutation fp. */
+void _omap_vp_from_fp(int *vp, const int *fp, int n);
+
 /* Return the number of active edges of p, the vertex or face permutation. */
 int _omap_num_edges(const int *p, int n);
 
@@ -72,6 +76,45 @@ OMAP_INLINE int
 omap_num_edges(const omap_t m)
 {
     return _omap_num_edges(m->fp, m->n);
+}
+
+/* Return the half-edge after h around its vertex, or -1 on an invalid h. */
+OMAP_INLINE int
+omap_next_at_vertex(const omap_t m, int h)
+{
+    if (h < 0 || h >= m->n || m->fp[h] == -1)
+        return -1;
+    return m->vp[h];
+}
+
+/* Return the half-edge before h around its vertex, or -1 on an invalid h. */
+OMAP_INLINE int
+omap_previous_at_vertex(const omap_t m, int h)
+{
+    if (h < 0 || h >= m->n || m->fp[h] == -1)
+        return -1;
+    return m->fp[m->fp[h ^ 1] != -1 ? h ^ 1 : h];
+}
+
+/* Return the half-edge after h in its face, or -1 on an invalid h. */
+OMAP_INLINE int
+omap_next_in_face(const omap_t m, int h)
+{
+    if (h < 0 || h >= m->n || m->fp[h] == -1)
+        return -1;
+    return m->fp[h];
+}
+
+/* Return the half-edge before h in its face, or -1 on an invalid h. */
+OMAP_INLINE int
+omap_previous_in_face(const omap_t m, int h)
+{
+    int x;
+
+    if (h < 0 || h >= m->n || m->fp[h] == -1)
+        return -1;
+    x = m->vp[h];
+    return m->fp[x ^ 1] != -1 ? x ^ 1 : x;
 }
 
 /* Relabel m from root into r and rinv, walking the cycles of p, the vertex or

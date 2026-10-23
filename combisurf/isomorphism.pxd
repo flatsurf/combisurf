@@ -27,6 +27,7 @@ cdef extern from "omap.h":
     int DOMAP_INVARIANTS_WORK_SIZE(int n)
 
     ctypedef struct omap_struct:
+        int *vp
         int *fp
         int n
 
@@ -41,6 +42,7 @@ cdef extern from "omap.h":
 
     ctypedef domap_struct domap_t[1]
 
+    void _omap_vp_from_fp(int *vp, const int *fp, int n)
     int _omap_num_edges(const int *p, int n)
     int omap_num_edges(const omap_t m)
     int _omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root, int *queue)

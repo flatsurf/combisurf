@@ -123,6 +123,26 @@ debug_names(const int *names, int n)
 }
 #endif
 
+/*
+ * The inverse of the vertex permutation is h -> fp[t], t the twin of h (h
+ * itself on a folded edge): vp[fp[t]] = h, one write per active h.
+ */
+void
+_omap_vp_from_fp(int *vp, const int *fp, int n)
+{
+    int h, t;
+
+    for (h = 0; h < n; h++)
+        vp[h] = -1;
+    for (h = 0; h < n; h++)
+    {
+        if (fp[h] == -1)
+            continue;
+        t = fp[h ^ 1] != -1 ? h ^ 1 : h;
+        vp[fp[t]] = h;
+    }
+}
+
 int
 _omap_num_edges(const int *p, int n)
 {
@@ -554,9 +574,9 @@ debug_classes(const struct invariants *iv, const int *data,
  * to the first, O(n) each.
  */
 static int
-root_classes(int *order, int *cls, int *start, int *ranks, const int *fp,
-             int n, const int *data, int nd, domap_iso_root_rule rule,
-             int *tmp)
+root_classes(int *order, int *cls, int *start, int *ranks, const int *vp,
+             const int *fp, int n, const int *data, int nd,
+             domap_iso_root_rule rule, int *tmp)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *aux = tmp + 2 * n, *count = tmp + 3 * n;
     /* the indices of the vertices and of the faces, until the classes are
@@ -588,17 +608,7 @@ root_classes(int *order, int *cls, int *start, int *ranks, const int *fp,
     for (j = 0; j < nd; j++)
         data_ranks(ranks + (long) j * n, fp, n, data + (long) j * n, aux);
 
-    /* the vertex permutation, in aux */
-    for (h = 0; h < n; h++)
-        aux[h] = -1;
-    for (h = 0; h < n; h++)
-    {
-        if (fp[h] == -1)
-            continue;
-        t = fp[h ^ 1] != -1 ? h ^ 1 : h;
-        aux[fp[t]] = h;
-    }
-    _perm_dense_cycles(vid, vdeg, aux, n);
+    _perm_dense_cycles(vid, vdeg, vp, n);
     _perm_dense_cycles(fid, fdeg, fp, n);
 
     for (h = 0; h < n; h++)
@@ -672,18 +682,16 @@ root_classes(int *order, int *cls, int *start, int *ranks, const int *fp,
 
 /*
  * Write into deg (n ints, 0 on entry) the length of the cycle of each active
- * half-edge in the vertex permutation (vertex nonzero) or in fp, and when id
- * is not NULL the index of that cycle into id (neither written on the
- * inactive half-edges); store the smallest and the largest length into *lo
- * and *hi (fp has an active half-edge). The vertex permutation is not
- * stored: x -> fp[t], t the twin of x (x itself on a folded edge), is its
- * inverse, whose cycles are the same, computed on the fly: storing it would
- * write n more ints. Each cycle is walked once, its
- * half-edges kept in stack (n ints) for the writes.
+ * half-edge in vp (vertex nonzero) or in fp, and when id is not NULL the
+ * index of that cycle into id (neither written on the inactive half-edges);
+ * store the smallest and the largest length into *lo and *hi (fp has an
+ * active half-edge). The cycles are indexed in the order of their smallest
+ * half-edge. Each cycle is walked once, its half-edges kept in stack (n
+ * ints) for the writes.
  */
 static inline void
-cycle_degrees(int *id, int *deg, int *lo, int *hi, const int *fp, int n,
-              int vertex, int *stack)
+cycle_degrees(int *id, int *deg, int *lo, int *hi, const int *vp,
+              const int *fp, int n, int vertex, int *stack)
 {
     int h, x, i, len, c = 0;
 
@@ -696,7 +704,7 @@ cycle_degrees(int *id, int *deg, int *lo, int *hi, const int *fp, int n,
         do
         {
             stack[len++] = x;
-            x = vertex ? fp[fp[x ^ 1] != -1 ? x ^ 1 : x] : fp[x];
+            x = vertex ? vp[x] : fp[x];
         } while (x != h);
         for (i = 0; i < len; i++)
             deg[stack[i]] = len;
@@ -750,9 +758,9 @@ static int choose_class(const int *cnt, int m, domap_iso_root_rule rule);
  * 2 nd data entries) and its data ranks first.
  */
 static int
-packed_class(int *out, const int *fp, int n, const int *data, int nd,
-             domap_iso_root_rule rule, long long bound, int *tmp, int *pv,
-             int *aux, int *count)
+packed_class(int *out, const int *vp, const int *fp, int n, const int *data,
+             int nd, domap_iso_root_rule rule, long long bound, int *tmp,
+             int *pv, int *aux, int *count)
 {
     int *vdeg = tmp, *fdeg = tmp + n, *vid = tmp + 2 * n, *fid = tmp + 3 * n;
     int *dmin = aux, *drange = aux + nd;
@@ -774,8 +782,8 @@ packed_class(int *out, const int *fp, int n, const int *data, int nd,
         vdeg[h] = 0;
         fdeg[h] = 0;
     }
-    cycle_degrees(edge ? vid : NULL, vdeg, &vmin, &vmax, fp, n, 1, out);
-    cycle_degrees(edge ? fid : NULL, fdeg, &fmin, &fmax, fp, n, 0, out);
+    cycle_degrees(edge ? vid : NULL, vdeg, &vmin, &vmax, vp, fp, n, 1, out);
+    cycle_degrees(edge ? fid : NULL, fdeg, &fmin, &fmax, vp, fp, n, 0, out);
     /* the degrees are at most n, their ranges fit in int; under the edge
      * rules, the degrees at the twins span the same values, the twins of
      * the active half-edges being the active half-edges */
@@ -872,8 +880,8 @@ choose_class(const int *cnt, int m, domap_iso_root_rule rule)
  * buffers of its own.
  */
 static void
-debug_packed_class(const int *out, int len, const int *fp, int n,
-                   const int *data, int nd, domap_iso_root_rule rule)
+debug_packed_class(const int *out, int len, const int *vp, const int *fp,
+                   int n, const int *data, int nd, domap_iso_root_rule rule)
 {
     int *buf = malloc(((size_t) 8 * n + 1 + (size_t) nd * n) * sizeof(int));
     int *order = buf, *cls = buf + n, *start = buf + 2 * n,
@@ -882,7 +890,8 @@ debug_packed_class(const int *out, int len, const int *fp, int n,
     int m, c, i;
 
     OMAP_CHECK(buf != NULL);
-    m = root_classes(order, cls, start, ranks, fp, n, data, nd, rule, tmp);
+    m = root_classes(order, cls, start, ranks, vp, fp, n, data, nd, rule,
+                     tmp);
     /* the sizes of the classes, in tmp */
     for (c = 0; c < m; c++)
         tmp[c] = start[c + 1] - start[c];
@@ -1318,12 +1327,12 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
          * into start, its counts into rbest and parent, which bounds the
          * product of the ranges by 2 n; the sizes of the classes of
          * root_classes go into r. */
-        hi = packed_class(order, fp, n, data, nd, rule, 2 * (long long) n,
-                          work, cls, start, rbest);
+        hi = packed_class(order, m->map.vp, fp, n, data, nd, rule,
+                          2 * (long long) n, work, cls, start, rbest);
         if (hi == 0)
         {
-            ncls = root_classes(order, cls, start, cur, fp, n, data, nd, rule,
-                                work);
+            ncls = root_classes(order, cls, start, cur, m->map.vp, fp, n,
+                                data, nd, rule, work);
             for (c = 0; c < ncls; c++)
                 r[c] = start[c + 1] - start[c];
             c = choose_class(r, ncls, rule);
@@ -1333,7 +1342,7 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
 #ifdef OMAP_DEBUG
         else
         {
-            debug_packed_class(order, hi, fp, n, data, nd, rule);
+            debug_packed_class(order, hi, m->map.vp, fp, n, data, nd, rule);
         }
 #endif
         first = order[lo];
@@ -1770,8 +1779,8 @@ domap_iso_search(int *sequence, int *length, int *relabelling,
         /* r, rinv, lr and lrinv (4 n) are free until they are cleared below,
          * cand (the numbers of the data values) until the first block;
          * cnt[c] is the number of half-edges of the class c not labelled */
-        ncls = root_classes(order, cls, start, cand, fp, n, data, nd, rule,
-                            work);
+        ncls = root_classes(order, cls, start, cand, m->map.vp, fp, n, data,
+                            nd, rule, work);
         for (c = 0; c < ncls; c++)
             cnt[c] = start[c + 1] - start[c];
     }
