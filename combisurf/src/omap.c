@@ -1,6 +1,6 @@
 /*
  * Canonical keys, canonical labellings and automorphisms of maps. See
- * omap.h for the conventions and the sizes of the buffers.
+ * doc/c/omap.rst for the conventions and the sizes of the buffers.
  *
  * On a connected map (domap_canonical), every active half-edge is tried as a
  * root. The first root is walked and keyed in full; for the others, the
@@ -23,9 +23,9 @@
  * a block equal to the one of the level, which is still in the sequence.
  * With classes and without all_leaves, a tied root found so is skipped when
  * an earlier tied root of the level extends the numbering of the class
- * values alike (see domap_iso_search in omap.h); the earlier roots are
- * found again by the same scan, from the start of the class, so that this
- * needs no memory either.
+ * values alike (see "Extensions of tied roots" in doc/c/omap_algorithms.rst);
+ * the earlier roots are found again by the same scan, from the start of the
+ * class, so that this needs no memory either.
  *
  * Under a rule other than DOMAP_ISO_ROOTS_ALL, domap_canonical needs the
  * chosen class only, in increasing order. packed_class packs the entries of
@@ -338,10 +338,10 @@ domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
 }
 
 /*
- * The entry j of the invariant of the active half-edge h (see
- * omap.h), shifted into 0, ..., n - 1: the degrees minus 1, and loop
- * and monogon as 0 or 1. vid and fid are the indices of the vertices and of
- * the faces, vdeg and fdeg their degrees.
+ * The entry j of the invariant of the active half-edge h (see the rules of
+ * the roots in doc/c/omap.rst), shifted into 0, ..., n - 1: the degrees
+ * minus 1, and loop and monogon as 0 or 1. vid and fid are the indices of
+ * the vertices and of the faces, vdeg and fdeg their degrees.
  */
 static int
 invariant_entry(const int *fp, const int *vid, const int *vdeg,

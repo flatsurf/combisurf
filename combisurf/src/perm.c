@@ -1,6 +1,6 @@
 /*
- * Partial permutations of {0, ..., n - 1}. See perm.h for the conventions
- * and the sizes of the buffers.
+ * Partial permutations of {0, ..., n - 1}. See doc/c/perm.rst for the
+ * conventions and the sizes of the buffers.
  *
  * This file is part of combisurf.
  *
