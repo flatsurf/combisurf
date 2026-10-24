@@ -32,7 +32,10 @@
  * smaller of the two roots. The vertex permutation of every map of the tests
  * inverts the face permutation through the twins, and the navigation
  * functions give the values of OrientedMap on two fixed maps, -1 on an
- * invalid half-edge.
+ * invalid half-edge. Each allocating form (perm_check, omap_relabelling_from,
+ * domap_iso_key, domap_invariants_differ, domap_canonical, domap_iso_search,
+ * domap_stabiliser) gives the result of its raw form, including on the
+ * zero-size inputs.
  *
  * This file is part of combisurf.
  *
@@ -44,6 +47,7 @@
  * any later version.
  */
 #include "../../combisurf/src/omap.h"
+#include "../../combisurf/src/perm.h"
 #include "../../combisurf/src/misc.h"
 
 #include <limits.h>
@@ -202,7 +206,10 @@ check_case(const char *name, int n, int *fp, int nd, const int *data,
 {
     domap_t m;
     int vp[MAX_N];
-    int count = -1, i;
+    int count = -1, count3, i;
+    static int key3[KEY_SIZE];
+    static int relabelling3[MAX_N];
+    static int roots3[MAX_N];
     current_case = name;
     set_map(m, fp, vp, n, nd, data, nc, classes);
     CHECK(_domap_canonical(key, relabelling, roots, &count, m,
@@ -214,6 +221,14 @@ check_case(const char *name, int n, int *fp, int nd, const int *data,
     CHECK(count == expected_count);
     for (i = 1; i < count; i++)
         CHECK(roots[i - 1] < roots[i]);
+    /* the allocating form gives the same outputs */
+    count3 = -1;
+    CHECK(domap_canonical(key3, relabelling3, roots3, &count3, m,
+                          DOMAP_ISO_ROOTS_ALL) == len);
+    CHECK(memcmp(key, key3, (size_t) len * sizeof(int)) == 0);
+    CHECK(memcmp(relabelling, relabelling3, (size_t) n * sizeof(int)) == 0);
+    CHECK(count3 == count);
+    CHECK(memcmp(roots, roots3, (size_t) count * sizeof(int)) == 0);
     /* the key and the count do not depend on the optional outputs */
     CHECK(_domap_canonical(key2, NULL, NULL, NULL, m,
                            DOMAP_ISO_ROOTS_ALL, work) == len);
@@ -498,6 +513,8 @@ search(int n, int *fp, int nd, const int *data, int nc, const int *classes,
 {
     static int first_sequence[SEQUENCE_SIZE];
     static int first_relabelling[MAX_N];
+    static int public_sequence[SEQUENCE_SIZE];
+    static int public_relabelling[MAX_N];
     struct leaves s;
     static int vp[MAX_N];
     domap_t m;
@@ -520,6 +537,13 @@ search(int n, int *fp, int nd, const int *data, int nc, const int *classes,
     CHECK(len2 == *len);
     CHECK(memcmp(first_sequence, sequence, (size_t) len2 * sizeof(int)) == 0);
     CHECK(memcmp(first_relabelling, relabelling,
+                 (size_t) n * sizeof(int)) == 0);
+    /* the allocating form gives the same sequence and relabelling */
+    CHECK(domap_iso_search(public_sequence, &len2, public_relabelling, m, rule,
+                           0, NULL, NULL) == 0);
+    CHECK(len2 == *len);
+    CHECK(memcmp(public_sequence, sequence, (size_t) len2 * sizeof(int)) == 0);
+    CHECK(memcmp(public_relabelling, relabelling,
                  (size_t) n * sizeof(int)) == 0);
     return s.count;
 }
@@ -719,6 +743,7 @@ test_random(void)
     int dec[2 * MAX_ARRAYS * MAX_N], dec2[2 * MAX_ARRAYS * MAX_N];
     int vp[MAX_N], vp2[MAX_N];
     domap_t m;
+    perm_t pm;
     int trial, ne, n, nd, nc, len, len2, count, count2, i, h, k, k2;
 
     current_case = "random";
@@ -733,6 +758,10 @@ test_random(void)
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(2);
         set_map(m, fp, vp, n, nd, dec, nc, dec + nd * n);
+        pm->p = fp;
+        pm->n = n;
+        CHECK(perm_check(pm) == _perm_check(fp, n, queue));
+        CHECK(perm_check(pm) == 1);
         len = _domap_canonical(key, relabelling, roots, &count, m,
                                DOMAP_ISO_ROOTS_ALL, work);
         CHECK(len >= n);
@@ -748,8 +777,7 @@ test_random(void)
         {
             if (fp[h] == -1)
                 continue;
-            k = omap_relabelling_from(r, rinv, (const omap_struct *) m, h,
-                                      queue);
+            k = omap_relabelling_from(r, rinv, (const omap_struct *) m, h);
             k2 = _omap_relabelling_from(r2, rinv2, m->map.fp, m->map.n, h,
                                         queue);
             CHECK(k == k2 && k == n);
@@ -793,7 +821,7 @@ test_random(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* _domap_canonical against every root walked and keyed in full           */
+/* _domap_canonical against every root walked and keyed in full          */
 /* ------------------------------------------------------------------ */
 
 /*
@@ -917,7 +945,7 @@ ref_class(int n, const int *fp, domap_iso_root_rule rule, int nd,
 
 /*
  * The reference of _domap_canonical: every active half-edge of the class of
- * the rule (ref_class) as a root, its relabelling by omap_relabelling_from
+ * the rule (ref_class) as a root, its relabelling by _omap_relabelling_from
  * and its key by _domap_iso_key in full, then compared with the best key so
  * far.
  */
@@ -926,7 +954,7 @@ ref_canonical(int *best, int *best_relabelling, int *best_roots, int *nroots,
               const domap_t m, domap_iso_root_rule rule)
 {
     static int r[MAX_N], rinv[MAX_N], queue[MAX_N], names[MAX_N],
-        cur[KEY_SIZE];
+        cur[KEY_SIZE], cur2[KEY_SIZE];
     static int avail[MAX_N], mask[MAX_N];
     const int *fp = m->map.fp;
     int n = m->map.n, nd = m->nd;
@@ -943,10 +971,12 @@ ref_canonical(int *best, int *best_relabelling, int *best_roots, int *nroots,
     {
         if (!mask[root])
             continue;
-        k = omap_relabelling_from(r, rinv, &m->map, root, queue);
+        k = _omap_relabelling_from(r, rinv, fp, n, root, queue);
         if (k != 2 * ne)
             return DOMAP_ISO_DISCONNECTED;
         l = _domap_iso_key(cur, m, r, rinv, k, names);
+        CHECK(domap_iso_key(cur2, m, r, rinv, k) == l);
+        CHECK(memcmp(cur, cur2, (size_t) l * sizeof(int)) == 0);
         if (count == 0)
         {
             cmp = -1;
@@ -1771,9 +1801,12 @@ array_invariants_differ(int n1, int *fp1, const int *data1,
 {
     static int vp1[MAX_N], vp2[MAX_N];
     domap_t m1, m2;
+    int d;
     set_map(m1, fp1, vp1, n1, nd, data1, nc, classes1);
     set_map(m2, fp2, vp2, n2, nd, data2, nc, classes2);
-    return _domap_invariants_differ(m1, m2, inv_work);
+    d = _domap_invariants_differ(m1, m2, inv_work);
+    CHECK(domap_invariants_differ(m1, m2) == d);
+    return d;
 }
 
 /*
@@ -2039,7 +2072,8 @@ check_isolated_edges(int n, const int *c, long long order, int ngens)
     static const int loff[] = { 0, 2 };
     static int work[DOMAP_STABILISER_WORK_SIZE(STAB_MAX_N, 1)];
     int fp[STAB_MAX_N], vp[STAB_MAX_N], kind[STAB_MAX_N / 2],
-        off[STAB_MAX_N / 2], lab[STAB_MAX_N], orbits[STAB_MAX_N / 2], start[2];
+        off[STAB_MAX_N / 2], lab[STAB_MAX_N], orbits[STAB_MAX_N / 2],
+        orbits2[STAB_MAX_N / 2], start[2];
     int k = n / 2, h, j;
     long long product = 1;
     struct generators s;
@@ -2093,6 +2127,13 @@ check_isolated_edges(int n, const int *c, long long order, int ngens)
         product *= orbits[j];
     CHECK(product == order);
 
+    /* the allocating form: the same orbits, and the same generators */
+    CHECK(domap_stabiliser(orbits2, m, w, NULL, NULL) == 0);
+    CHECK(memcmp(orbits, orbits2, (size_t) k * sizeof(int)) == 0);
+    s.count = 0;
+    CHECK(domap_stabiliser(orbits2, m, w, check_generator, &s) == 0);
+    CHECK(s.count == ngens);
+
     /* a nonzero value of the callback stops the search at once */
     if (ngens > 0)
     {
@@ -2128,12 +2169,56 @@ test_stabiliser(void)
     check_isolated_edges(28, c4, 1857945600LL, 18);
 }
 
+/* the allocating forms on zero-size buffers, with hard-coded inputs */
+static void
+test_public_empty(void)
+{
+    static int p1[] = { 1, 0, 3, 2 }, p2[] = { -1 }, p3[] = { -1, 3, -1, 1 };
+    static int p4[] = { -1, 0 }, p5[] = { 2, 0 }, p6[] = { 1, 0, 1 };
+    static int dummy[1] = { -1 };
+    static int vp[1];
+    int count = -1;
+    perm_t p;
+    domap_t m;
+
+    current_case = "allocating forms, zero sizes";
+    p->p = p1;
+    p->n = 4;
+    CHECK(perm_check(p) == 1);
+    p->p = p2;
+    p->n = 1;
+    CHECK(perm_check(p) == 1);
+    p->p = p3;
+    p->n = 4;
+    CHECK(perm_check(p) == 1);
+    p->p = p4;
+    p->n = 2;
+    CHECK(perm_check(p) == 0);
+    p->p = p5;
+    p->n = 2;
+    CHECK(perm_check(p) == -1);
+    p->p = p6;
+    p->n = 3;
+    CHECK(perm_check(p) == -1);
+    p->p = dummy;
+    p->n = 0;
+    CHECK(perm_check(p) == 1);
+
+    set_map(m, dummy, vp, 0, 0, NULL, 1, dummy);
+    CHECK(domap_iso_key(key, m, dummy, dummy, 0) == 0);
+    CHECK(domap_invariants_differ(m, m) == 0);
+    CHECK(domap_canonical(key, relabelling, roots, &count, m,
+                          DOMAP_ISO_ROOTS_ALL) == 0);
+    CHECK(count == 0);
+}
+
 int
 main(int argc, char **argv)
 {
     rng_state = argc > 1 ? strtoull(argv[1], NULL, 10) : 1;
     test_union_find();
     test_navigation();
+    test_public_empty();
     test_fixed();
     test_random();
     test_reference();

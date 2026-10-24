@@ -197,6 +197,18 @@ _omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root,
 }
 
 int
+omap_relabelling_from(int *r, int *rinv, const omap_t m, int root)
+{
+    /* allocates the queue of the raw form */
+    int *queue = combisurf_malloc(
+        (size_t) OMAP_RELABELLING_WORK_SIZE(m->n) * sizeof(int));
+    int k = _omap_relabelling_from(r, rinv, m->fp, m->n, root, queue);
+
+    free(queue);
+    return k;
+}
+
+int
 _domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
                int *names)
 {
@@ -253,6 +265,22 @@ _domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
     debug_names(names, n);
 #endif
     return pos;
+}
+
+int
+domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k)
+{
+    /* allocates names, which the raw form needs filled with -1 */
+    int n = m->map.n;
+    int *names = combisurf_malloc((size_t) DOMAP_ISO_KEY_WORK_SIZE(n)
+                                  * sizeof(int));
+    int i, ret;
+
+    for (i = 0; i < n; i++)
+        names[i] = -1;
+    ret = _domap_iso_key(key, m, r, rinv, k, names);
+    free(names);
+    return ret;
 }
 
 /* A bijective mixing of the 32 bits of x into 64 bits (multiplications by
@@ -356,6 +384,22 @@ _domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
                                m2->classes + (long) j * n2, work, work + n))
             return 1;
     return 0;
+}
+
+int
+domap_invariants_differ(const domap_t m1, const domap_t m2)
+{
+    int n = m1->map.n > m2->map.n ? m1->map.n : m2->map.n;
+    int *work = NULL;
+    int ret;
+
+    /* the raw form reads its work buffer only with classes */
+    if (m1->nc > 0)
+        work = combisurf_malloc((size_t) DOMAP_INVARIANTS_WORK_SIZE(n)
+                                * sizeof(int));
+    ret = _domap_invariants_differ(m1, m2, work);
+    free(work);
+    return ret;
 }
 
 /*
@@ -1448,6 +1492,20 @@ _domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
     return s.len;
 }
 
+int
+domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
+                const domap_t m, domap_iso_root_rule rule)
+{
+    /* allocates the work buffer of the raw form */
+    int *work = combisurf_malloc(
+        (size_t) DOMAP_CANONICAL_WORK_SIZE(m->map.n, m->nd, m->nc)
+        * sizeof(int));
+    int ret = _domap_canonical(key, relabelling, roots, nroots, m, rule, work);
+
+    free(work);
+    return ret;
+}
+
 /*
  * The breadth-first walk of omap_relabelling_from restricted to the
  * component of root: lr must be -1 on the half-edges of that component and
@@ -2065,6 +2123,22 @@ _domap_iso_search(int *sequence, int *length, int *relabelling,
     return 0;
 }
 
+int
+domap_iso_search(int *sequence, int *length, int *relabelling,
+                 const domap_t m, domap_iso_root_rule rule, int all_leaves,
+                 domap_iso_leaf_callback callback, void *arg)
+{
+    /* allocates the work buffer of the raw form */
+    int *work = combisurf_malloc(
+        (size_t) DOMAP_ISO_SEARCH_WORK_SIZE(m->map.n, m->nd, m->nc)
+        * sizeof(int));
+    int ret = _domap_iso_search(sequence, length, relabelling, m, rule,
+                                all_leaves, callback, arg, work);
+
+    free(work);
+    return ret;
+}
+
 /*
  * The state of _domap_stabiliser: the map, its layout, the maps of values fw
  * and bw of each class array (-1 where unset, the array q at the offset
@@ -2444,4 +2518,17 @@ _domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
         orbits[i] = sz[uf_find_halving(p, bi)];
     }
     return 0;
+}
+
+int
+domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
+                 domap_stabiliser_callback callback, void *arg)
+{
+    /* allocates the work buffer of the raw form */
+    int *work = combisurf_malloc(
+        (size_t) DOMAP_STABILISER_WORK_SIZE(m->map.n, m->nc) * sizeof(int));
+    int ret = _domap_stabiliser(orbits, m, w, callback, arg, work);
+
+    free(work);
+    return ret;
 }

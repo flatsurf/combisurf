@@ -1461,11 +1461,11 @@ cdef array.array _automorphism_from(const domap_struct *m, array.array ra, int r
     """
     cdef int n = m.map.n, h
     cdef array.array g = _new(n)
-    # omap_relabelling_from writes -1 into rbinv at the labels of the
+    # _omap_relabelling_from writes -1 into rbinv at the labels of the
     # inactive halves of folded edges; the automorphism maps those
     # halves too, so the inverse is rebuilt on every labelled half-edge
-    omap_relabelling_from(rb.data.as_ints, rbinv.data.as_ints, &m.map, root,
-                          queue.data.as_ints)
+    _omap_relabelling_from(rb.data.as_ints, rbinv.data.as_ints, m.map.fp,
+                           m.map.n, root, queue.data.as_ints)
     for h in range(n):
         if rb.data.as_ints[h] != -1:
             rbinv.data.as_ints[rb.data.as_ints[h]] = h

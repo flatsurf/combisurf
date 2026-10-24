@@ -1,5 +1,5 @@
 /*
- * Small inline helpers of the C code: union-find.
+ * Small inline helpers of the C code: memory, union-find.
  *
  *       Copyright (C) 2026 Vincent Delecroix
  *
@@ -11,7 +11,23 @@
 #ifndef COMBISURF_MISC_H
 #define COMBISURF_MISC_H
 
+#include <stddef.h>
+#include <stdlib.h>
+
 #define MISC_INLINE static inline
+
+/* Memory ********************************************************************/
+
+/* Allocate size bytes, at least one, and abort() if the allocation fails. */
+MISC_INLINE void *
+combisurf_malloc(size_t size)
+{
+    void *ptr = malloc(size ? size : 1);
+
+    if (ptr == NULL)
+        abort();
+    return ptr;
+}
 
 /* Union-find ****************************************************************/
 

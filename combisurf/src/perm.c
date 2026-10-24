@@ -12,6 +12,7 @@
  * any later version.
  */
 #include "perm.h"
+#include "misc.h"
 
 #include <stddef.h>
 
@@ -35,6 +36,17 @@ _perm_check(const int *p, int n, int *seen)
     for (h = 0; h < n; h++)
         if (p[h] != -1 && p[p[h]] == -1)
             res = 0;
+    return res;
+}
+
+int
+perm_check(const perm_t p)
+{
+    int *seen = combisurf_malloc((size_t) PERM_CHECK_WORK_SIZE(p->n)
+                                 * sizeof(int));
+    int res = _perm_check(p->p, p->n, seen);
+
+    free(seen);
     return res;
 }
 

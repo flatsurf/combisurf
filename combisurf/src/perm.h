@@ -28,15 +28,13 @@ typedef perm_struct perm_t[1];
 
 /* Checks ********************************************************************/
 
+/* Size of the work buffer of _perm_check, in ints. */
+#define PERM_CHECK_WORK_SIZE(n) (n)
+
 /* 1 for a permutation of its active points, 0 if one is sent to an inactive
    point, -1 if not injective or out of range; seen has n ints. */
 int _perm_check(const int *p, int n, int *seen);
-
-PERM_INLINE int
-perm_check(const perm_t p, int *seen)
-{
-    return _perm_check(p->p, p->n, seen);
-}
+int perm_check(const perm_t p);
 
 /* Cycles ********************************************************************/
 

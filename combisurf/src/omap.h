@@ -117,31 +117,37 @@ omap_previous_in_face(const omap_t m, int h)
     return m->fp[x ^ 1] != -1 ? x ^ 1 : x;
 }
 
+/* Size of the work buffer of _omap_relabelling_from, in ints. */
+#define OMAP_RELABELLING_WORK_SIZE(n) (n)
+
 /* Relabel m from root into r and rinv, walking the cycles of p, the vertex or
    face permutation; return the number of labels used. */
 int _omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root,
                            int *queue);
+int omap_relabelling_from(int *r, int *rinv, const omap_t m, int root);
 
-OMAP_INLINE int
-omap_relabelling_from(int *r, int *rinv, const omap_t m, int root, int *queue)
-{
-    return _omap_relabelling_from(r, rinv, m->fp, m->n, root, queue);
-}
+/* Size of the work buffer of _domap_iso_key, in ints. */
+#define DOMAP_ISO_KEY_WORK_SIZE(n) (n)
 
 /* Write the key of m under the relabelling (r, rinv); return its length. */
 int _domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv,
                    int k, int *names);
+int domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv,
+                  int k);
 
 /* Size of the work buffer of _domap_invariants_differ, in ints. */
 #define DOMAP_INVARIANTS_WORK_SIZE(n) (2 * (n) + 1)
 
 /* Return 1 when an invariant of m1 and m2 differs, 0 otherwise. */
 int _domap_invariants_differ(const domap_t m1, const domap_t m2, int *work);
+int domap_invariants_differ(const domap_t m1, const domap_t m2);
 
 /* Write the minimal key of m over its roots; return its length, or
    DOMAP_ISO_DISCONNECTED. */
 int _domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
                      const domap_t m, domap_iso_root_rule rule, int *work);
+int domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
+                    const domap_t m, domap_iso_root_rule rule);
 
 /* Maps that may be disconnected *********************************************/
 
@@ -164,6 +170,10 @@ int _domap_iso_search(int *sequence, int *length, int *relabelling,
                       const domap_t m, domap_iso_root_rule rule,
                       int all_leaves, domap_iso_leaf_callback callback,
                       void *arg, int *work);
+int domap_iso_search(int *sequence, int *length, int *relabelling,
+                     const domap_t m, domap_iso_root_rule rule,
+                     int all_leaves, domap_iso_leaf_callback callback,
+                     void *arg);
 
 /* Maps with classes *********************************************************/
 
@@ -199,5 +209,7 @@ typedef int (*domap_stabiliser_callback)(const int *g, void *arg);
 int _domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
                       domap_stabiliser_callback callback, void *arg,
                       int *work);
+int domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
+                     domap_stabiliser_callback callback, void *arg);
 
 #endif

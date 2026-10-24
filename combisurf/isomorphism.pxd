@@ -46,7 +46,6 @@ cdef extern from "omap.h":
     int _omap_num_edges(const int *p, int n)
     int omap_num_edges(const omap_t m)
     int _omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root, int *queue)
-    int omap_relabelling_from(int *r, int *rinv, const omap_t m, int root, int *queue)
     int _domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k, int *names)
     int _domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
     int _domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
