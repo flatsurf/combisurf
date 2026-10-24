@@ -8,22 +8,22 @@
  * known keys, relabellings and sequences; the random cases, reproducible from
  * the seed (1 by default), check that the key and the number of automorphisms
  * do not change under a random relabelling of the map, for connected maps
- * (domap_canonical) and for disjoint unions (domap_iso_search, where the
+ * (_domap_canonical) and for disjoint unions (_domap_iso_search, where the
  * minimal sequence of blocks and the number of leaves reaching it are
- * checked). domap_canonical, which rejects a root as soon as its key exceeds
+ * checked). _domap_canonical, which rejects a root as soon as its key exceeds
  * the best one, is also compared with a reference that walks and keys every
  * root in full, on random maps, on square-tiled surfaces decorated by h % 4
  * and on relabelled copies of the tetrahedron and of the cube, whose roots
  * all tie. Under the rules restricting the roots, both are compared with a
  * reference of the classes that computes the invariants by walking the
- * cycles and compares every pair of half-edges: domap_canonical tries the
- * roots of the class of the reference, and each block of domap_iso_search
+ * cycles and compares every pair of half-edges: _domap_canonical tries the
+ * roots of the class of the reference, and each block of _domap_iso_search
  * starts at a half-edge of the class of the reference among the half-edges
  * not labelled before; the number of automorphisms does not depend on the
  * rule. The rules run with and without the flag DOMAP_ISO_ROOTS_DATA, whose
  * reference invariants read the data values themselves; half of the random
  * cases take their data values among -7, n + 11, INT_MIN and INT_MAX, far
- * from the ranks 0, ..., n - 1 the C code sorts by. domap_stabiliser is
+ * from the ranks 0, ..., n - 1 the C code sorts by. _domap_stabiliser is
  * checked on isolated edges decorated by one class array: the order of the
  * group and the number of generators, each generator being an automorphism
  * carrying the class values by a bijection. On random merges of roots, both
@@ -192,7 +192,7 @@ relabel_arrays(int n, int m, const int *a, const int *r, int *out)
 /* ------------------------------------------------------------------ */
 
 /*
- * Check domap_canonical on fp against the expected key, relabelling (-1 on
+ * Check _domap_canonical on fp against the expected key, relabelling (-1 on
  * the inactive edges) and number of automorphisms.
  */
 static void
@@ -205,8 +205,8 @@ check_case(const char *name, int n, int *fp, int nd, const int *data,
     int count = -1, i;
     current_case = name;
     set_map(m, fp, vp, n, nd, data, nc, classes);
-    CHECK(domap_canonical(key, relabelling, roots, &count, m,
-                          DOMAP_ISO_ROOTS_ALL, work) == len);
+    CHECK(_domap_canonical(key, relabelling, roots, &count, m,
+                           DOMAP_ISO_ROOTS_ALL, work) == len);
     for (i = 0; i < len; i++)
         CHECK(key[i] == expected_key[i]);
     for (i = 0; i < n; i++)
@@ -215,8 +215,8 @@ check_case(const char *name, int n, int *fp, int nd, const int *data,
     for (i = 1; i < count; i++)
         CHECK(roots[i - 1] < roots[i]);
     /* the key and the count do not depend on the optional outputs */
-    CHECK(domap_canonical(key2, NULL, NULL, NULL, m, DOMAP_ISO_ROOTS_ALL, work)
-          == len);
+    CHECK(_domap_canonical(key2, NULL, NULL, NULL, m,
+                           DOMAP_ISO_ROOTS_ALL, work) == len);
     CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) == 0);
 }
 
@@ -410,9 +410,9 @@ test_fixed(void)
 
     current_case = "disconnected";
     set_map(m, disconnected, vp, 4, 0, NULL, 0, NULL);
-    CHECK(domap_canonical(key, relabelling, roots, &count, m,
-                          DOMAP_ISO_ROOTS_ALL,
-                          work) == DOMAP_ISO_DISCONNECTED);
+    CHECK(_domap_canonical(key, relabelling, roots, &count, m,
+                           DOMAP_ISO_ROOTS_ALL,
+                           work) == DOMAP_ISO_DISCONNECTED);
     CHECK(count == -1);
 }
 
@@ -486,7 +486,7 @@ count_leaf(const int *leaf, int first, void *arg)
 }
 
 /*
- * Run domap_iso_search on fp with all leaves, into sequence and relabelling;
+ * Run _domap_iso_search on fp with all leaves, into sequence and relabelling;
  * store its length into *len and return the number of leaves reaching the
  * minimal sequence. The search without all leaves, which backjumps from
  * the leaves equal to the best one, must give the same sequence and
@@ -510,13 +510,13 @@ search(int n, int *fp, int nd, const int *data, int nc, const int *classes,
     s.count = 0;
     s.calls = 0;
     s.stop_after = 0;
-    CHECK(domap_iso_search(sequence, len, relabelling, m, rule, 1, count_leaf,
-                           &s, search_work) == 0);
+    CHECK(_domap_iso_search(sequence, len, relabelling, m, rule, 1, count_leaf,
+                            &s, search_work) == 0);
     CHECK(s.count >= 1);
     if (calls != NULL)
         *calls = s.calls;
-    CHECK(domap_iso_search(first_sequence, &len2, first_relabelling, m, rule,
-                           0, NULL, NULL, search_work) == 0);
+    CHECK(_domap_iso_search(first_sequence, &len2, first_relabelling, m, rule,
+                            0, NULL, NULL, search_work) == 0);
     CHECK(len2 == *len);
     CHECK(memcmp(first_sequence, sequence, (size_t) len2 * sizeof(int)) == 0);
     CHECK(memcmp(first_relabelling, relabelling,
@@ -616,8 +616,8 @@ test_search_fixed(void)
             CHECK(relabelling[j] == expected_relabelling[j]);
         current_case = "connected triangle and folded edge, under a rule";
         set_map(m, triangle_and_folded, vp, 8, 0, NULL, 0, NULL);
-        CHECK(domap_canonical(key, relabelling, roots, &count, m, rules[i],
-                              work) == DOMAP_ISO_DISCONNECTED);
+        CHECK(_domap_canonical(key, relabelling, roots, &count, m, rules[i],
+                               work) == DOMAP_ISO_DISCONNECTED);
     }
 
     current_case = "search, no active half-edge";
@@ -635,8 +635,8 @@ test_search_fixed(void)
     s.calls = 0;
     s.stop_after = 5;
     set_map(m, four_edges, vp, 8, 0, NULL, 0, NULL);
-    CHECK(domap_iso_search(sequence, &len, NULL, m, DOMAP_ISO_ROOTS_ALL, 1,
-                           count_leaf, &s, search_work) == 7);
+    CHECK(_domap_iso_search(sequence, &len, NULL, m, DOMAP_ISO_ROOTS_ALL, 1,
+                            count_leaf, &s, search_work) == 7);
     CHECK(s.calls == 5);
 }
 
@@ -678,8 +678,8 @@ random_connected(int ne, int folded, int *fp)
         for (i = 0; i < na; i++)
             fp[active[i]] = images[i];
         set_map(m, fp, vp, n, 0, NULL, 0, NULL);
-        if (domap_canonical(key, NULL, NULL, NULL, m, DOMAP_ISO_ROOTS_ALL,
-                            work) != DOMAP_ISO_DISCONNECTED)
+        if (_domap_canonical(key, NULL, NULL, NULL, m, DOMAP_ISO_ROOTS_ALL,
+                             work) != DOMAP_ISO_DISCONNECTED)
             return 1;
     }
     return 0;
@@ -733,8 +733,8 @@ test_random(void)
         for (i = 0; i < (nd + nc) * n; i++)
             dec[i] = rng_below(2);
         set_map(m, fp, vp, n, nd, dec, nc, dec + nd * n);
-        len = domap_canonical(key, relabelling, roots, &count, m,
-                              DOMAP_ISO_ROOTS_ALL, work);
+        len = _domap_canonical(key, relabelling, roots, &count, m,
+                               DOMAP_ISO_ROOTS_ALL, work);
         CHECK(len >= n);
         CHECK(count >= 1);
         for (i = 0; i < count; i++)
@@ -771,8 +771,8 @@ test_random(void)
         for (i = nd * n; i < (nd + nc) * n; i++)
             dec2[i] = 1 - dec2[i];
         set_map(m, fp2, vp2, n, nd, dec2, nc, dec2 + nd * n);
-        len2 = domap_canonical(key2, NULL, NULL, &count2, m,
-                               DOMAP_ISO_ROOTS_ALL, work);
+        len2 = _domap_canonical(key2, NULL, NULL, &count2, m,
+                                DOMAP_ISO_ROOTS_ALL, work);
         CHECK(len2 == len);
         CHECK(count2 == count);
         CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) == 0);
@@ -784,8 +784,8 @@ test_random(void)
             for (h = 0; fp2[h] == -1; h++)
                 ;
             dec2[h] = 2;
-            len2 = domap_canonical(key2, NULL, NULL, NULL, m,
-                                   DOMAP_ISO_ROOTS_ALL, work);
+            len2 = _domap_canonical(key2, NULL, NULL, NULL, m,
+                                    DOMAP_ISO_ROOTS_ALL, work);
             CHECK(len2 == len);
             CHECK(memcmp(key, key2, (size_t) len * sizeof(int)) != 0);
         }
@@ -793,7 +793,7 @@ test_random(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* domap_canonical against every root walked and keyed in full           */
+/* _domap_canonical against every root walked and keyed in full           */
 /* ------------------------------------------------------------------ */
 
 /*
@@ -916,9 +916,10 @@ ref_class(int n, const int *fp, domap_iso_root_rule rule, int nd,
 }
 
 /*
- * The reference of domap_canonical: every active half-edge of the class of the
- * rule (ref_class) as a root, its relabelling by omap_relabelling_from and
- * its key by domap_iso_key in full, then compared with the best key so far.
+ * The reference of _domap_canonical: every active half-edge of the class of
+ * the rule (ref_class) as a root, its relabelling by omap_relabelling_from
+ * and its key by _domap_iso_key in full, then compared with the best key so
+ * far.
  */
 static int
 ref_canonical(int *best, int *best_relabelling, int *best_roots, int *nroots,
@@ -945,7 +946,7 @@ ref_canonical(int *best, int *best_relabelling, int *best_roots, int *nroots,
         k = omap_relabelling_from(r, rinv, &m->map, root, queue);
         if (k != 2 * ne)
             return DOMAP_ISO_DISCONNECTED;
-        l = domap_iso_key(cur, m, r, rinv, k, names);
+        l = _domap_iso_key(cur, m, r, rinv, k, names);
         if (count == 0)
         {
             cmp = -1;
@@ -973,7 +974,7 @@ ref_canonical(int *best, int *best_relabelling, int *best_roots, int *nroots,
 }
 
 /*
- * Check domap_canonical against ref_canonical on fp under every rule. The
+ * Check _domap_canonical against ref_canonical on fp under every rule. The
  * number of roots of minimal key, the order of the group, does not depend
  * on the rule.
  */
@@ -991,8 +992,8 @@ check_reference(int n, int *fp, int nd, const int *data, int nc,
     {
         ref_len = ref_canonical(ref_key, ref_relabelling, ref_roots,
                                 &ref_count, m, rules[i]);
-        len = domap_canonical(key, relabelling, roots, &count, m, rules[i],
-                              work);
+        len = _domap_canonical(key, relabelling, roots, &count, m, rules[i],
+                               work);
         CHECK(len == ref_len);
         if (len == DOMAP_ISO_DISCONNECTED)
             return;
@@ -1135,8 +1136,8 @@ test_reference_regular(void)
             set_map(m, fp2, vp, n, 0, NULL, 0, NULL);
             for (i = 0; i < NUM_RULES; i++)
             {
-                len = domap_canonical(key, relabelling, roots, &count, m,
-                                      rules[i], work);
+                len = _domap_canonical(key, relabelling, roots, &count, m,
+                                       rules[i], work);
                 CHECK(len == n && count == (solid == 0 ? 12 : 24));
             }
         }
@@ -1246,7 +1247,7 @@ test_reference(void)
 }
 
 /*
- * Whether domap_canonical takes its counting path under rule (not
+ * Whether _domap_canonical takes its counting path under rule (not
  * DOMAP_ISO_ROOTS_ALL) rather than the sort of all the classes: the product
  * of the ranges (max - min + 1 over the active half-edges) of the entries of
  * the reference invariant, loop and monogon counting 2 each, is at most
@@ -1320,7 +1321,7 @@ polygon(int k, int *fp)
 }
 
 /*
- * domap_canonical against the reference under every rule, on inputs that take
+ * _domap_canonical against the reference under every rule, on inputs that take
  * its counting path and inputs that take the sort of all the classes:
  * relabelled polygons (one degree each for the vertices and the faces)
  * with data of two values, random maps with data of two values, of values
@@ -1491,8 +1492,8 @@ test_search_random(void)
 
             /* a connected map gives one block: k, then its key */
             set_map(m, fp, vp, n, nd, dec, nc, dec + nd * n);
-            len2 = domap_canonical(key, relabelling, NULL, &count, m, rule,
-                                   work);
+            len2 = _domap_canonical(key, relabelling, NULL, &count, m, rule,
+                                    work);
             if (len2 != DOMAP_ISO_DISCONNECTED)
             {
                 CHECK(len == 1 + len2 && sequence[0] == n);
@@ -1591,8 +1592,8 @@ test_search_tied(void)
     for (j = 0; j < NUM_RULES; j++)
     {
         set_map(m, fp, vp, n, 0, NULL, 1, dec);
-        CHECK(domap_iso_search(sequence, &len, relabelling, m, rules[j], 0,
-                               NULL, NULL, search_work) == 0);
+        CHECK(_domap_iso_search(sequence, &len, relabelling, m, rules[j], 0,
+                                NULL, NULL, search_work) == 0);
         CHECK(len == 5 * 41);
         for (i = 0; i < len; i++)
             CHECK(sequence[i] == (i < 5 * 21
@@ -1696,8 +1697,8 @@ test_search_tied(void)
     for (j = 0; j < NUM_RULES; j++)
     {
         set_map(m, fp, vp, n, 0, NULL, 1, dec);
-        CHECK(domap_iso_search(sequence, &len, relabelling, m, rules[j], 0,
-                               NULL, NULL, search_work) == 0);
+        CHECK(_domap_iso_search(sequence, &len, relabelling, m, rules[j], 0,
+                                NULL, NULL, search_work) == 0);
         CHECK(len == 100);
         for (i = 0; i < len; i++)
             CHECK(sequence[i] == edge_block[i % 5]);
@@ -1759,7 +1760,7 @@ test_search_tied(void)
 }
 
 /*
- * domap_invariants_differ on the maps (fp1, n1) and (fp2, n2), decorated by
+ * _domap_invariants_differ on the maps (fp1, n1) and (fp2, n2), decorated by
  * nd data arrays and nc class arrays each.
  */
 static int
@@ -1772,11 +1773,11 @@ array_invariants_differ(int n1, int *fp1, const int *data1,
     domap_t m1, m2;
     set_map(m1, fp1, vp1, n1, nd, data1, nc, classes1);
     set_map(m2, fp2, vp2, n2, nd, data2, nc, classes2);
-    return domap_invariants_differ(m1, m2, inv_work);
+    return _domap_invariants_differ(m1, m2, inv_work);
 }
 
 /*
- * domap_invariants_differ: the multisets of the data values and the multisets
+ * _domap_invariants_differ: the multisets of the data values and the multisets
  * of the sizes of the classes, on the active half-edges only.
  */
 static void
@@ -2027,7 +2028,7 @@ check_generator(const int *g, void *arg)
  * permutation cfp = {0, 1}, the canonical relabelling cra = {0, 1} and the
  * two labels of roots {0, 1} (the layout of the isolated edges in
  * combisurf/isomorphism.pyx), and k copies, the edge e at the offset 2 e of
- * lab with lab[2 e + i] = 2 e + i. Run domap_stabiliser and check the
+ * lab with lab[2 e + i] = 2 e + i. Run _domap_stabiliser and check the
  * product of the orbit sizes and the number of generators.
  */
 static void
@@ -2077,7 +2078,7 @@ check_isolated_edges(int n, const int *c, long long order, int ngens)
     s.classes = c;
     s.count = 0;
     s.stop = 0;
-    CHECK(domap_stabiliser(orbits, m, w, check_generator, &s, work) == 0);
+    CHECK(_domap_stabiliser(orbits, m, w, check_generator, &s, work) == 0);
     for (j = 0; j < k; j++)
     {
         CHECK(orbits[j] >= 1);
@@ -2087,7 +2088,7 @@ check_isolated_edges(int n, const int *c, long long order, int ngens)
     CHECK(s.count == ngens);
 
     /* without callback: the same orbits */
-    CHECK(domap_stabiliser(orbits, m, w, NULL, NULL, work) == 0);
+    CHECK(_domap_stabiliser(orbits, m, w, NULL, NULL, work) == 0);
     for (j = 0, product = 1; j < k; j++)
         product *= orbits[j];
     CHECK(product == order);
@@ -2097,7 +2098,7 @@ check_isolated_edges(int n, const int *c, long long order, int ngens)
     {
         s.count = 0;
         s.stop = 5;
-        CHECK(domap_stabiliser(orbits, m, w, check_generator, &s, work) == 5);
+        CHECK(_domap_stabiliser(orbits, m, w, check_generator, &s, work) == 5);
         CHECK(s.count == 1);
     }
 }

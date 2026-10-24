@@ -2,7 +2,7 @@
  * Canonical keys, canonical labellings and automorphisms of maps. See
  * doc/c/omap.rst for the conventions and the sizes of the buffers.
  *
- * On a connected map (domap_canonical), every active half-edge is tried as a
+ * On a connected map (_domap_canonical), every active half-edge is tried as a
  * root. The first root is walked and keyed in full; for the others, the
  * walk is compared with the best key so far as it goes and stops at the
  * first entry larger, so that a rejected root costs the labels it gave
@@ -14,7 +14,7 @@
  * whose roots all tie (a regular map) costs O(n log2 |Aut|) instead of
  * O(n^2) for n half-edges.
  *
- * On any map (domap_iso_search), the search goes component after component.
+ * On any map (_domap_iso_search), the search goes component after component.
  * Its memory does not grow with the depth beyond a few ints per level: the
  * state of a level is its root, its first label, the position and length
  * of its block in the current sequence and the counts of class values
@@ -27,7 +27,7 @@
  * the earlier roots are found again by the same scan, from the start of the
  * class, so that this needs no memory either.
  *
- * Under a rule other than DOMAP_ISO_ROOTS_ALL, domap_canonical needs the
+ * Under a rule other than DOMAP_ISO_ROOTS_ALL, _domap_canonical needs the
  * chosen class only, in increasing order. packed_class packs the entries of
  * the invariant of each active half-edge, shifted by their minimum, into
  * one int in mixed radix over their ranges, whose order is the
@@ -35,15 +35,15 @@
  * at most 2 n, it counts the half-edges per packed value, chooses the class
  * from these counts and collects its half-edges by one scan, in
  * O(n (1 + nd)) with one cycle walk for the vertices and one for the faces.
- * Otherwise, and always in domap_iso_search, which needs every class, the
+ * Otherwise, and always in _domap_iso_search, which needs every class, the
  * classes are computed by root_classes: a radix sort of the active
  * half-edges by invariant, O(n) per entry. Under DOMAP_ISO_ROOTS_DATA,
  * whose invariants end with data values, arbitrary ints, root_classes first
  * replaces each data array by order-preserving numbers of 0, ..., n - 1
  * (O(n) when its values span fewer than n values, O(n log n) otherwise), so
  * that every entry of the radix sort lies in 0, ..., n - 1. The flag is
- * masked wherever the base rule is tested. domap_canonical then tries the
- * half-edges of the chosen class only. domap_iso_search keeps the number of
+ * masked wherever the base rule is tested. _domap_canonical then tries the
+ * half-edges of the chosen class only. _domap_iso_search keeps the number of
  * half-edges not labelled yet in each class, updated as components are
  * labelled and undone, and chooses the class at each step from these
  * numbers (O(number of classes)); its scans run over the half-edges of that
@@ -197,8 +197,8 @@ _omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root,
 }
 
 int
-domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
-              int *names)
+_domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k,
+               int *names)
 {
     const int *fp = m->map.fp;
     int n = m->map.n, nd = m->nd, nc = m->nc;
@@ -334,7 +334,7 @@ class_sizes_differ(const int *fp1, int n1, const int *a1, const int *fp2,
  * See doc/c/omap_algorithms.rst, section "Invariants of two maps".
  */
 int
-domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
+_domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
 {
     const int *fp1 = m1->map.fp, *fp2 = m2->map.fp;
     int n1 = m1->map.n, n2 = m2->map.n;
@@ -1066,8 +1066,8 @@ static void reset_local(int *lr, const int *lrinv, int k);
 #ifdef OMAP_DEBUG
 /*
  * Check the outcome cmp of the root against the key computed in full by
- * omap_relabelling_from and domap_iso_key (len ints): it compares with best as
- * cmp says, and equals cur when cmp < 0. scratch holds 3 n +
+ * omap_relabelling_from and _domap_iso_key (len ints): it compares with
+ * best as cmp says, and equals cur when cmp < 0. scratch holds 3 n +
  * DOMAP_ISO_KEY_SIZE(n, nd, nc) ints.
  */
 static void
@@ -1080,7 +1080,7 @@ debug_root(const domap_t m, const int *best, const int *cur, int len,
     int k2, len2, i, ref = 0;
 
     k2 = _omap_relabelling_from(r2, rinv2, m->map.fp, n, root, queue2);
-    len2 = domap_iso_key(key2, m, r2, rinv2, k2, names);
+    len2 = _domap_iso_key(key2, m, r2, rinv2, k2, names);
     OMAP_CHECK(len2 == len);
     for (i = 0; i < len; i++)
     {
@@ -1168,7 +1168,7 @@ debug_automorphism(const domap_t m, const int *rbest, const int *rinv,
 #endif
 
 /*
- * The state of domap_canonical while it tries the roots after the first one:
+ * The state of _domap_canonical while it tries the roots after the first one:
  * the buffers, the best key so far and the candidate key (swapped when a
  * root beats the best one), the length of the keys, the best root and its
  * relabelling, and the parents of the union-find of the orbits of the
@@ -1219,7 +1219,7 @@ canonical_root(struct canonical_state *s, int root)
     cmp = walk_compare(r, rinv, &k, fp, s->best, root, s->queue);
     if (cmp < 0)
     {
-        domap_iso_key(s->cur, &s->m, r, rinv, k, s->names);
+        _domap_iso_key(s->cur, &s->m, r, rinv, k, s->names);
     }
     else if (cmp == 0)
     {
@@ -1284,8 +1284,8 @@ canonical_root(struct canonical_state *s, int root)
  * See doc/c/omap_algorithms.rst, section "Canonical key of a connected map".
  */
 int
-domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
-                const domap_t m, domap_iso_root_rule rule, int *work)
+_domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
+                 const domap_t m, domap_iso_root_rule rule, int *work)
 {
     const int *fp = m->map.fp;
     int n = m->map.n, nd = m->nd, nc = m->nc;
@@ -1368,7 +1368,7 @@ domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
     s.parent = parent;
     s.best_root = first;
     s.merged = 0;
-    s.len = domap_iso_key(s.best, m, r, rinv, k, names);
+    s.len = _domap_iso_key(s.best, m, r, rinv, k, names);
     memcpy(rbest, r, (size_t) n * sizeof(int));
     reset_local(r, rinv, k);
 #ifdef OMAP_DEBUG
@@ -1740,9 +1740,9 @@ same_extension(const domap_t m, const int *block, int len, const int *next,
  * class per root.
  */
 int
-domap_iso_search(int *sequence, int *length, int *relabelling,
-                 const domap_t m, domap_iso_root_rule rule, int all_leaves,
-                 domap_iso_leaf_callback callback, void *arg, int *work)
+_domap_iso_search(int *sequence, int *length, int *relabelling,
+                  const domap_t m, domap_iso_root_rule rule, int all_leaves,
+                  domap_iso_leaf_callback callback, void *arg, int *work)
 {
     const int *fp = m->map.fp;
     int n = m->map.n, nd = m->nd, nc = m->nc;
@@ -2066,7 +2066,7 @@ domap_iso_search(int *sequence, int *length, int *relabelling,
 }
 
 /*
- * The state of domap_stabiliser: the map, its layout, the maps of values fw
+ * The state of _domap_stabiliser: the map, its layout, the maps of values fw
  * and bw of each class array (-1 where unset, the array q at the offset
  * q * n), the trail of the entries of fw set, in order, and its length
  * ntrail, the copies already images (used), and per level its image target,
@@ -2321,8 +2321,8 @@ debug_generator(const domap_t m, const int *g)
  * See doc/c/omap_algorithms.rst, section "Stabiliser of the classes".
  */
 int
-domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
-                 domap_stabiliser_callback callback, void *arg, int *work)
+_domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
+                  domap_stabiliser_callback callback, void *arg, int *work)
 {
     int n = m->map.n, nc = m->nc, ncomp = w->ncomp;
     int levels = n / 2;

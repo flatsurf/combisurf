@@ -21,7 +21,7 @@ cdef extern from "omap.h":
     int DOMAP_ISO_SEARCH_WORK_SIZE(int n, int nd, int nc)
 
     # the callbacks written in Cython return -1 with a Python exception set,
-    # which stops the search and is returned by domap_iso_search
+    # which stops the search and is returned by _domap_iso_search
     ctypedef int (*domap_iso_leaf_callback)(const int *leaf, int first, void *arg) except -1
 
     int DOMAP_INVARIANTS_WORK_SIZE(int n)
@@ -47,13 +47,13 @@ cdef extern from "omap.h":
     int omap_num_edges(const omap_t m)
     int _omap_relabelling_from(int *r, int *rinv, const int *p, int n, int root, int *queue)
     int omap_relabelling_from(int *r, int *rinv, const omap_t m, int root, int *queue)
-    int domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k, int *names)
-    int domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
-    int domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
-                        const domap_t m, domap_iso_root_rule rule, int *work)
-    int domap_iso_search(int *sequence, int *length, int *relabelling,
-                         const domap_t m, domap_iso_root_rule rule, int all_leaves,
-                         domap_iso_leaf_callback callback, void *arg, int *work) except -1
+    int _domap_iso_key(int *key, const domap_t m, const int *r, const int *rinv, int k, int *names)
+    int _domap_invariants_differ(const domap_t m1, const domap_t m2, int *work)
+    int _domap_canonical(int *key, int *relabelling, int *roots, int *nroots,
+                         const domap_t m, domap_iso_root_rule rule, int *work)
+    int _domap_iso_search(int *sequence, int *length, int *relabelling,
+                          const domap_t m, domap_iso_root_rule rule, int all_leaves,
+                          domap_iso_leaf_callback callback, void *arg, int *work) except -1
 
     ctypedef struct domap_wreath_struct:
         const int *kind
@@ -72,9 +72,9 @@ cdef extern from "omap.h":
     ctypedef domap_wreath_struct domap_wreath_t[1]
 
     # as domap_iso_leaf_callback: -1 with a Python exception set stops the
-    # search and is returned by domap_stabiliser
+    # search and is returned by _domap_stabiliser
     ctypedef int (*domap_stabiliser_callback)(const int *g, void *arg) except -1
 
     int DOMAP_STABILISER_WORK_SIZE(int n, int nc)
-    int domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
-                         domap_stabiliser_callback callback, void *arg, int *work) except -1
+    int _domap_stabiliser(int *orbits, const domap_t m, const domap_wreath_t w,
+                          domap_stabiliser_callback callback, void *arg, int *work) except -1
