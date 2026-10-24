@@ -58,6 +58,9 @@ Types
 
 .. c:type:: omap_struct omap_t[1]
 
+   An :c:struct:`omap_struct` as an array of one element, so that an
+   ``omap_t`` declared on the stack is passed by pointer.
+
 .. c:struct:: domap_struct
 
    An oriented map decorated by ``nd`` data arrays and ``nc`` class arrays.
@@ -87,6 +90,9 @@ Types
       The number of class arrays.
 
 .. c:type:: domap_struct domap_t[1]
+
+   A :c:struct:`domap_struct` as an array of one element, so that a
+   ``domap_t`` declared on the stack is passed by pointer.
 
 Basic functions
 ---------------
@@ -310,9 +316,12 @@ Connected maps
    form one orbit of the group.
 
    Return the length of the key (0 when the map has no active half-edge), or
-   :c:enumerator:`DOMAP_ISO_DISCONNECTED` when the walk from the first active
-   half-edge does not reach every active edge; nothing is written into the
-   output buffers in that case.
+   :c:enumerator:`DOMAP_ISO_DISCONNECTED` when the walk from the first root
+   tried does not reach every active edge; nothing is written into the output
+   buffers in that case. The first root tried is the smallest active
+   half-edge under :c:enumerator:`DOMAP_ISO_ROOTS_ALL`, and the smallest
+   half-edge of the class of the rule under the other rules; connectedness
+   does not depend on the root, so that this walk alone decides it.
 
    In the raw form, ``work`` is a buffer of
    ``DOMAP_CANONICAL_WORK_SIZE(n, nd, nc)`` ints.

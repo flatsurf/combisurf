@@ -1,5 +1,6 @@
 /*
- * Small inline helpers of the C code: memory, union-find.
+ * Small inline helpers of the C code: memory, union-find. Documented in
+ * doc/c/misc.rst.
  *
  *       Copyright (C) 2026 Vincent Delecroix
  *

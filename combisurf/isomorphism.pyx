@@ -5,32 +5,38 @@ Isomorphisms, automorphisms and canonical labels of maps
 
 This module computes canonical labellings, canonical forms, automorphism
 groups and isomorphisms of maps given by their face permutation, possibly
-decorated by integer values on half-edges. It computes what
-:mod:`combisurf.isomorphism_naive` computes, which is its reference: the
-functions of the same names take the same arguments and return the same
-values (the same canonical labelling, the same canonical form, the
-automorphisms in the same order, the same isomorphism), except
-:func:`automorphism_generators` on a disconnected map, whose generators
-come from the structure of the group and differ from those of the
-reference while generating the same group. They raise the same
-exceptions on malformed input, with one addition: a face permutation that
-is not a permutation of its active half-edges raises a ``ValueError``,
-since the C code would read out of bounds on it (the reference loops
-forever or raises an ``IndexError`` there). The conventions (face permutations with
-``-1`` on inactive half-edges, the decorations ``data`` kept exactly and
-``classes`` kept up to a relabelling of their values, the breadth-first
-walk and the key of a root) are described in
-:mod:`combisurf.isomorphism_naive`. The methods of
+decorated by integer values on half-edges. The methods of
 :class:`~combisurf.oriented_map.OrientedMap` (such as
 :meth:`~combisurf.oriented_map.OrientedMap.canonical_labelling`) call this
 module.
+
+A map on `n` half-edges is given by its face permutation ``fp``, a list
+or ``array('i')`` of length `n` (even) with ``-1`` on the inactive
+half-edges; the twin of the half-edge ``h`` is ``h ^ 1``, and a folded
+edge, whose twin is inactive, is a fixed point of ``fp``. ``fp`` must be
+a permutation of its active half-edges: otherwise a ``ValueError`` is
+raised, since the C code would read out of bounds on it; other malformed
+input raises a ``TypeError`` or a ``ValueError``. A map may be decorated
+by two tuples of arrays indexed by the half-edges: the values of
+``data`` are kept exactly by an isomorphism, while those of ``classes``
+are kept up to a relabelling of their values, so that only the partition
+of the half-edges by the values of each array matters. The canonical
+labelling of a decorated map is a relabelling of its half-edges, and its
+canonical form is the map read in these labels: the face permutation and
+the decorations in the canonical labels, the values of ``classes``
+renumbered by first appearance. Two decorated maps are isomorphic if and
+only if their canonical forms under the same rule are equal. On a
+connected map, the canonical labelling is the relabelling by the
+breadth-first walk from a root (:ref:`omap-relabelling`) that gives the
+minimal key (:ref:`omap-keys`), the first such root in increasing order.
 
 On a connected map, every active half-edge of the class of the rule (see
 below) is tried as a root: the relabelling from it and its key are
 computed in C (``combisurf/src/omap.c``) and the minimal key is
 kept, which costs `O(n^2)` for `n` half-edges. A disconnected map is
-searched in C as well, component after component, by the search of
-:mod:`combisurf.isomorphism_naive` over the sequences of blocks. Without
+searched in C as well, component after component, for the
+lexicographically minimal sequence of blocks, one block per component
+(:ref:`omap-blocks`). Without
 ``classes``, the automorphism group of a disconnected map
 is a product of wreath products `\mathrm{Aut}(C) \wr S_k` over the kinds
 of `k` isomorphic components `C`: :func:`automorphism_generators` and the
@@ -95,37 +101,41 @@ on inactive half-edges are ignored and never converted). The values of
 ``classes`` are renumbered before the conversion, so they may be any
 hashable values.
 
-Besides the functions of :mod:`combisurf.isomorphism_naive`,
-:func:`canonical_key` returns the canonical form flattened as bytes, a
-compact hashable key for the exploration of large collections of maps up
-to isomorphism, and on request the canonical labelling and the number of
-automorphisms.
+Beside :func:`canonical_labelling`, :func:`canonical_form`,
+:func:`automorphisms`, :func:`automorphism_generators` and
+:func:`isomorphism`, :func:`canonical_key` returns the canonical form
+flattened as bytes, a compact hashable key for the exploration of large
+collections of maps up to isomorphism, and on request the canonical
+labelling and the number of automorphisms.
 
 The public functions take the keyword ``root_rule``, one of the integers
 :data:`ROOTS_ALL`, :data:`ROOTS_HALF_EDGE_MAX`,
 :data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and
-:data:`ROOTS_EDGE_FEWEST`, equal to the constants of the same names of
-:mod:`combisurf.isomorphism_naive`, which defines the rules: the
-half-edges tried as roots. The default is ``ROOTS_HALF_EDGE_FEWEST |
-ROOTS_DATA`` (the integer ``10``): decorations narrow the roots tried, and
-on an undecorated map it is :data:`ROOTS_HALF_EDGE_FEWEST`, which tries
-fewer roots: against
+:data:`ROOTS_EDGE_FEWEST`: the rule of the half-edges tried as roots.
+Under :data:`ROOTS_ALL` every active half-edge is tried; under the other
+rules each active half-edge gets an invariant (the degrees of its vertex
+and of its face, and under the edge rules those of its twin as well), the
+half-edges of equal invariant form a class, and only the half-edges of
+one class are tried: the class of the largest invariant under ``*_MAX``,
+the one with the fewest half-edges under ``*_FEWEST``, ties broken by the
+largest invariant (:ref:`omap-root-rules`). The default is
+``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA`` (the integer ``10``): decorations
+narrow the roots tried, and on an undecorated map it is
+:data:`ROOTS_HALF_EDGE_FEWEST`, which tries fewer roots: against
 :data:`ROOTS_ALL`, this pays on maps with many tied roots, at the price of
 the invariants computed to choose the roots, which costs on maps where few
-roots tie anyway. The
-flag :data:`ROOTS_DATA`, combined by ``|`` with one of the four rules
-other than :data:`ROOTS_ALL`, appends the values of ``data`` to the
-invariants, as in :mod:`combisurf.isomorphism_naive`, so that fewer roots
-are tried on a decorated map; the C code sorts each data array once per
-call to rank its values, `O(n \log n)`. Any other value, a string or
-``ROOTS_ALL | ROOTS_DATA`` included, raises a
-``ValueError``. The C code computes the invariants of the half-edges once
-per call and tries only the roots of the class of the rule, on a
-disconnected map the class chosen at each step among the half-edges not
-labelled yet, as the reference does. The automorphism group does not
-depend on the rule: on a disconnected map, :func:`automorphism_generators`
-and the count of :func:`canonical_key` come from the structure of the
-group above under every rule.
+roots tie anyway. The flag :data:`ROOTS_DATA`, combined by ``|`` with one
+of the four rules other than :data:`ROOTS_ALL`, appends the values of
+``data`` to the invariants, so that fewer roots are tried on a decorated
+map; the C code sorts each data array once per call to rank its values,
+`O(n \log n)`. Any other value, a string or ``ROOTS_ALL | ROOTS_DATA``
+included, raises a ``ValueError``. The C code computes the invariants of
+the half-edges once per call and tries only the roots of the class of the
+rule, on a disconnected map the class chosen at each step among the
+half-edges not labelled yet. The automorphism group does not depend on the
+rule: on a disconnected map, :func:`automorphism_generators` and the count
+of :func:`canonical_key` come from the structure of the group above under
+every rule.
 
 EXAMPLES::
 
@@ -140,7 +150,8 @@ EXAMPLES::
     sage: canonical_key(fp) == canonical_key([4, 3, 0, 5, 2, 1])
     True
 
-The results agree with the reference implementation::
+The results agree with those of :mod:`combisurf.isomorphism_naive`, a pure
+Python implementation they are compared with::
 
     sage: from combisurf import isomorphism_naive
     sage: fp = [2, 3, 4, 5, 0, 1]
@@ -148,8 +159,8 @@ The results agree with the reference implementation::
     sage: automorphisms(fp, classes=(c,)) == isomorphism_naive.automorphisms(fp, classes=(c,))
     True
 
-Under every rule, the results are those of the reference for that rule,
-computed in C::
+Under every rule, the results, computed in C, agree with those of
+``isomorphism_naive`` under the same rule::
 
     sage: from combisurf.isomorphism import canonical_form, ROOTS_ALL, ROOTS_HALF_EDGE_FEWEST, ROOTS_HALF_EDGE_MAX
     sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]
@@ -165,8 +176,9 @@ computed in C::
     True
 
 With the faces of the triangle decorated by ``0`` and ``1``, the rule
-``ROOTS_HALF_EDGE_MAX | ROOTS_DATA`` tries three roots instead of six, as
-counted by the reference, and gives its results::
+``ROOTS_HALF_EDGE_MAX | ROOTS_DATA`` tries three roots instead of six, counted
+by the private helpers of ``isomorphism_naive``, and its results agree
+with those of ``isomorphism_naive``::
 
     sage: from combisurf.isomorphism import ROOTS_DATA
     sage: d = [0, 1, 0, 1, 0, 1, 0, 0]
@@ -1172,8 +1184,13 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
     Return the canonical labelling of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
 
-    The result is the one of
-    :func:`combisurf.isomorphism_naive.canonical_labelling`.
+    On a connected map, the canonical labelling is the relabelling by the
+    breadth-first walk (:ref:`omap-relabelling`) from the first root, in
+    increasing order among the roots of the rule, whose key is minimal
+    (:ref:`omap-keys`). On a disconnected map, it is the labelling of the
+    first leaf of the search, component after component, that reaches the
+    minimal sequence of blocks (:ref:`omap-blocks`). The inactive edges then
+    get the labels left, in increasing order.
 
     INPUT:
 
@@ -1192,7 +1209,7 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
       :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`,
       :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`, or one of the
       last four combined with :data:`ROOTS_DATA` by ``|``: the half-edges
-      tried as roots (see :mod:`combisurf.isomorphism_naive`); any other
+      tried as roots (see :ref:`omap-root-rules`); any other
       value raises a ``ValueError``. The default is
       ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``: decorations narrow the roots
       tried, and on an undecorated map it is :data:`ROOTS_HALF_EDGE_FEWEST`
@@ -1352,8 +1369,14 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | R
     Return the canonical form of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
 
-    The result is the one of
-    :func:`combisurf.isomorphism_naive.canonical_form`.
+    The canonical form is the map read in its canonical labels (see
+    :func:`canonical_labelling`): the key of the canonical labelling
+    (:ref:`omap-keys`), split into the face permutation and the
+    decorations. On a connected map this key is the minimal key over the
+    roots of the rule; on a disconnected map it is the key of the labelling
+    of the first leaf reaching the minimal sequence of blocks
+    (:ref:`omap-blocks`). The values of ``data`` are those of the arrays
+    given, so that they keep their Python type.
 
     INPUT:
 
@@ -1960,8 +1983,16 @@ def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | RO
     Return the automorphisms of the map with face permutation ``fp``
     decorated by ``data`` and ``classes``.
 
-    The result is the one of
-    :func:`combisurf.isomorphism_naive.automorphisms`, in the same order.
+    The automorphisms come in the order in which the search meets them. On
+    a connected map, with ``b_0 < b_1 < ...`` the roots of the rule of
+    minimal key (:ref:`omap-keys`), there is one automorphism per root, in
+    increasing order of the roots, the identity (from ``b_0``) first. On a
+    disconnected map, the search component after component
+    (:ref:`omap-blocks`) follows every tied root, and its leaves reaching
+    the minimal sequence of blocks are as many as the automorphisms: with
+    ``r_0`` the first of them, the leaf ``r`` gives the automorphism
+    sending the half-edge of label ``i`` in ``r_0`` to the one of label
+    ``i`` in ``r``, in the order of the leaves, the identity first.
 
     INPUT:
 
@@ -2062,10 +2093,13 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
     Return generators of the automorphism group of the map with face
     permutation ``fp`` decorated by ``data`` and ``classes``.
 
-    The result is the one of
-    :func:`combisurf.isomorphism_naive.automorphism_generators` on a
-    connected map; on a disconnected map the generators come from the
-    structure of the group and generate the same group.
+    On a connected map, the generators are automorphisms of the list of
+    :func:`automorphisms`, kept in its order when they are not in the group
+    generated by those kept before. On a disconnected map, they come from
+    the structure of the group: the generators of the group of a copy of
+    each kind of isomorphic components and the permutations of its copies
+    without ``classes``, the generators found by a subgroup search with
+    ``classes`` (see below).
 
     INPUT:
 
@@ -2107,10 +2141,9 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
       the first two copies if `k \geq 2`, then the cycle of the copies if
       `k \geq 3`. The copies are exchanged by the isomorphism sending the
       half-edge of canonical label `i` of one to the one of label `i` of
-      the other. These generators differ from those of
-      :func:`combisurf.isomorphism_naive.automorphism_generators` (fewer
-      of them) and generate the same group. The components are labelled
-      under :data:`ROOTS_ALL` whatever the rule.
+      the other. There are at most two generators per kind beside those of
+      `\mathrm{Aut}(C)`. The components are labelled under
+      :data:`ROOTS_ALL` whatever the rule.
 
     - On a disconnected map with ``classes`` the group `H` is the subgroup
       of the previous one (for ``data`` alone) of the automorphisms that
@@ -2208,7 +2241,13 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
     Return an isomorphism from the first decorated map to the second, or
     ``None`` if they are not isomorphic.
 
-    The result is the one of :func:`combisurf.isomorphism_naive.isomorphism`.
+    On the active edges, the isomorphism returned sends the half-edge of
+    canonical label ``i`` in the first map to the one of canonical label
+    ``i`` in the second, the canonical labellings being those of
+    :func:`canonical_labelling` under the same rule. The maps are
+    isomorphic when their minimal keys (:ref:`omap-keys`), or on
+    disconnected maps their minimal sequences of blocks
+    (:ref:`omap-blocks`), are equal; ``None`` is returned otherwise.
 
     INPUT:
 

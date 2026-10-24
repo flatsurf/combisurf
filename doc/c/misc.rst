@@ -20,7 +20,7 @@ Union-find
 
 A partition of the points :math:`0, \ldots, n - 1` is kept in a union-find
 forest, given by the array ``parent`` of the points: the root of a tree is
-its own parent, and it is the representative of the part of the tree. Merging
+its own parent, and it is the representative of its part. Merging
 always puts the larger root under the smaller one, so that the representative
 of a part is its smallest point. ``parent`` starts as the identity (for
 instance by :c:func:`_perm_id`), every point in a part of its own.
@@ -38,7 +38,7 @@ the use.
 
    Return the root of the tree of ``h``, with path compression: a first pass
    finds the root, a second pass sets the parent of every point of the path
-   from ``h`` to the root.
+   from ``h`` to the root to the root.
 
 .. c:function:: void uf_link(int *parent, int a, int b)
 
