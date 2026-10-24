@@ -35,6 +35,7 @@ Module Reference
    :caption: C library
 
    c/perm
+   c/misc
    c/omap
    c/omap_algorithms
 

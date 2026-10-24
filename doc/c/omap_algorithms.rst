@@ -1,9 +1,10 @@
 Algorithms of the isomorphism code
 ==================================
 
-The algorithms of the functions of :doc:`omap`. The conventions (maps, keys,
-blocks, rules of the roots) and the contracts of the functions (arguments,
-buffers, return values) are in :doc:`omap`. Below, ``n`` is the number of
+The algorithms of the functions of :doc:`omap`. The definitions (maps and
+their decorations, relabelling from a root, keys, rules of the roots, blocks)
+and the contracts of the functions (arguments, buffers and their sizes,
+return values) are in :doc:`omap`. Below, ``n`` is the number of
 half-edges, ``nd`` the number of data arrays, ``nc`` the number of class
 arrays, and :math:`|\mathrm{Aut}|` the number of automorphisms of the
 decorated map.
@@ -90,8 +91,8 @@ Search over the components
 --------------------------
 
 :c:func:`domap_iso_search` searches the lexicographically minimal sequence of
-blocks over the labellings of the map component after component, exactly as
-``isomorphism_naive._search``.
+blocks (:ref:`omap-blocks`) over the labellings of the map component after
+component.
 
 Blocks and their order
 ^^^^^^^^^^^^^^^^^^^^^^

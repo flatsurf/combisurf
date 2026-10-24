@@ -26,17 +26,7 @@ perm_struct;
 
 typedef perm_struct perm_t[1];
 
-/* Checks ********************************************************************/
-
-/* Size of the work buffer of _perm_check, in ints. */
-#define PERM_CHECK_WORK_SIZE(n) (n)
-
-/* 1 for a permutation of its active points, 0 if one is sent to an inactive
-   point, -1 if not injective or out of range; seen has n ints. */
-int _perm_check(const int *p, int n, int *seen);
-int perm_check(const perm_t p);
-
-/* Cycles ********************************************************************/
+/* Constructors **************************************************************/
 
 /* Set res to the identity. */
 void _perm_id(int *res, int n);
@@ -46,6 +36,18 @@ perm_id(perm_t res)
 {
     _perm_id(res->p, res->n);
 }
+
+/* Checks ********************************************************************/
+
+/* 1 for a permutation of its active points, 0 if one is sent to an inactive
+   point, -1 if not injective or out of range; seen has n ints. */
+int _perm_check(const int *p, int n, int *seen);
+int perm_check(const perm_t p);
+
+/* Size of the work buffer of _perm_check, in ints. */
+#define PERM_CHECK_WORK_SIZE(n) (n)
+
+/* Cycles ********************************************************************/
 
 /* Number the cycles; return their number, or -1 if a walk leaves [0, n). */
 int _perm_dense_cycles(int *id, int *size, const int *p, int n);
