@@ -3,50 +3,6 @@
  * doc/c/omap.rst for the conventions and the sizes of the buffers, and
  * doc/c/omap_algorithms.rst for the algorithms and their costs.
  *
- * On a connected map (_domap_canonical), the roots of the rule are tried in
- * increasing order. The first root is walked and keyed in full; for the
- * others, the walk is compared with the best key so far as it goes and stops
- * at the first entry larger, so that a rejected root costs the labels it
- * gave (they alone are reset afterwards). A tie gives an automorphism, and
- * the orbits of the automorphisms found are kept in a union-find, so that a
- * root of an orbit already met costs one find.
- *
- * On any map (_domap_iso_search), the search goes component after component.
- * Its memory does not grow with the depth beyond a few ints per level: the
- * state of a level is its root, its first label, the position and length
- * of its block in the current sequence and the counts of class values
- * before it. A level is undone by walking the labels it gave, and its next
- * tied root is found again by scanning the roots after the current one for
- * a block equal to the one of the level, which is still in the sequence.
- * With classes and without all_leaves, a tied root found so is skipped when
- * an earlier tied root of the level extends the numbering of the class
- * values alike (see "Extensions of tied roots" in doc/c/omap_algorithms.rst);
- * the earlier roots are found again by the same scan, from the start of the
- * class, so that this needs no memory either.
- *
- * Under a rule other than DOMAP_ISO_ROOTS_ALL, _domap_canonical needs the
- * chosen class only, in increasing order. packed_class packs the entries of
- * the invariant of each active half-edge, shifted by their minimum, into
- * one int in mixed radix over their ranges, whose order is the
- * lexicographic order of the invariants; when the product of the ranges is
- * at most 2 n, it counts the half-edges per packed value, chooses the class
- * from these counts and collects its half-edges by one scan, in
- * O(n (1 + nd)) with one cycle walk for the vertices and one for the faces.
- * Otherwise, and always in _domap_iso_search, which needs every class, the
- * classes are computed by root_classes: a radix sort of the active
- * half-edges by invariant, O(n) per entry. Under DOMAP_ISO_ROOTS_DATA,
- * whose invariants end with data values, arbitrary ints, root_classes first
- * replaces each data array by order-preserving numbers of 0, ..., n - 1
- * (O(n) when its values span fewer than n values, O(n log n) otherwise), so
- * that every entry of the radix sort lies in 0, ..., n - 1. The flag is
- * masked wherever the base rule is tested. _domap_canonical then tries the
- * half-edges of the chosen class only. _domap_iso_search keeps the number of
- * half-edges not labelled yet in each class, updated as components are
- * labelled and undone, and chooses the class at each step from these
- * numbers (O(number of classes)); its scans run over the half-edges of that
- * class. Under DOMAP_ISO_ROOTS_ALL the loops over the roots are those
- * without classes.
- *
  * With OMAP_DEBUG defined, the relabellings and keys are checked as they are
  * computed, and a failed check aborts with a message.
  *
@@ -1787,6 +1743,18 @@ same_extension(const domap_t m, const int *block, int len, const int *next,
  * equal to the best one backjumps to the first level where they differ; the
  * search stays exponential in the worst case.
  * See doc/c/omap_algorithms.rst, section "Search over the components".
+ *
+ * The state of a level is its root, its first label, the position and length
+ * of its block in the current sequence and the counts of class values before
+ * it, a few ints per level. A level is undone by walking the labels it gave,
+ * and its next tied root is found again by scanning the roots after the
+ * current one for a block equal to the one of the level, which is still in
+ * the sequence; the earlier tied roots compared for the extensions are found
+ * by the same scan from the start of the class, so that this needs no memory
+ * either. Under a rule with classes, the number of half-edges not labelled
+ * yet in each class is updated as components are labelled and undone, and
+ * the class is chosen at each step from these numbers in O(number of
+ * classes). DOMAP_ISO_ROOTS_DATA is masked wherever the base rule is tested.
  *
  * The levels of the search store the position of their root in the scan of
  * the roots: the half-edge itself under DOMAP_ISO_ROOTS_ALL, its index in

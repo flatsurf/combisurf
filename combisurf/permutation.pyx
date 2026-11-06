@@ -131,10 +131,11 @@ def perm_check(l, int n=-1, involution=None):
     r"""
     Return whether ``l`` is a partial injection of `\{0, 1, ..., n-1\}`.
 
-    ``l`` must be an ``array('i')`` whose first ``n`` values are ``-1`` or
-    in ``range(n)``, the values other than ``-1`` pairwise distinct, as
-    checked by the C function :c:func:`_perm_check`; an active point may be
-    sent to an inactive one.
+    The result is ``True`` when ``l`` is an ``array('i')`` whose first ``n``
+    values are ``-1`` or in ``range(n)``, the values other than ``-1``
+    pairwise distinct, as checked by the C function :c:func:`_perm_check`,
+    and ``False`` otherwise (an object that is not an ``array('i')``
+    included); an active point may be sent to an inactive one.
 
     INPUT:
 

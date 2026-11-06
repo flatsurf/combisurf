@@ -1152,8 +1152,8 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
       :data:`ROOTS_ALL`, :data:`ROOTS_HALF_EDGE_MAX`,
       :data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and
       :data:`ROOTS_EDGE_FEWEST`, or one of the last four combined with
-      :data:`ROOTS_DATA` by ``|``. The default is ``ROOTS_HALF_EDGE_FEWEST
-      | ROOTS_DATA``, the integer ``10``, which is
+      :data:`ROOTS_DATA` by ``|``. The default is
+      ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``, the integer ``10``, which is
       :data:`ROOTS_HALF_EDGE_FEWEST` on a map without ``data``
 
     OUTPUT: an ``array('i')`` ``r`` that maps each half-edge to its
@@ -1162,12 +1162,16 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
     ``0, ..., 2*ne - 1`` (``ne`` the number of active edges) and the
     inactive edges the following ones, in increasing order.
 
-    A malformed input raises a ``ValueError`` (``fp`` of odd length or not a
-    permutation of its active half-edges, which the C code would read out of
-    bounds, an array of decorations of a wrong length, a ``root_rule`` that
-    is not one of the nine integers above) or a ``TypeError`` (``data`` or
-    ``classes`` not a tuple, a value of ``data`` that is not an integer). A
-    value of ``data`` outside the range of a C ``int``, or a map too large
+    A malformed input raises an exception:
+
+    - a ``ValueError`` for an ``fp`` of odd length or not a permutation of
+      its active half-edges (the C code would read out of bounds), an array
+      of decorations of a wrong length, or a ``root_rule`` that is not one
+      of the nine integers above;
+    - a ``TypeError`` for ``data`` or ``classes`` not a tuple, or a value of
+      ``data`` that is not an integer.
+
+    A value of ``data`` outside the range of a C ``int``, or a map too large
     for the buffers of the C code, which are counted in C ``int``
     (:c:macro:`DOMAP_ISO_SEARCH_WORK_SIZE`), raises an ``OverflowError``.
     The searches can be interrupted: Ctrl-C raises a ``KeyboardInterrupt``,
