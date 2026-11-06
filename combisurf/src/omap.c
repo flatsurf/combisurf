@@ -1,18 +1,15 @@
 /*
  * Canonical keys, canonical labellings and automorphisms of maps. See
- * doc/c/omap.rst for the conventions and the sizes of the buffers.
+ * doc/c/omap.rst for the conventions and the sizes of the buffers, and
+ * doc/c/omap_algorithms.rst for the algorithms and their costs.
  *
- * On a connected map (_domap_canonical), every active half-edge is tried as a
- * root. The first root is walked and keyed in full; for the others, the
- * walk is compared with the best key so far as it goes and stops at the
- * first entry larger, so that a rejected root costs the labels it gave
- * (they alone are reset afterwards), and a root costs O(n) only when it
- * ties with or beats the best one. A tie gives an automorphism, and the
- * orbits of the automorphisms found are kept in a union-find: a root of an
- * orbit already met costs one find, so that ties are only met outside the
- * orbit of the best root, at most log2 |Aut| of them at O(n) each. A map
- * whose roots all tie (a regular map) costs O(n log2 |Aut|) instead of
- * O(n^2) for n half-edges.
+ * On a connected map (_domap_canonical), the roots of the rule are tried in
+ * increasing order. The first root is walked and keyed in full; for the
+ * others, the walk is compared with the best key so far as it goes and stops
+ * at the first entry larger, so that a rejected root costs the labels it
+ * gave (they alone are reset afterwards). A tie gives an automorphism, and
+ * the orbits of the automorphisms found are kept in a union-find, so that a
+ * root of an orbit already met costs one find.
  *
  * On any map (_domap_iso_search), the search goes component after component.
  * Its memory does not grow with the depth beyond a few ints per level: the

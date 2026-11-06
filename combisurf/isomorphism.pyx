@@ -4,138 +4,64 @@ r"""
 Isomorphisms, automorphisms and canonical labels of maps
 
 This module computes canonical labellings, canonical forms, automorphism
-groups and isomorphisms of maps given by their face permutation, possibly
-decorated by integer values on half-edges. The methods of
-:class:`~combisurf.oriented_map.OrientedMap` (such as
-:meth:`~combisurf.oriented_map.OrientedMap.canonical_labelling`) call this
-module.
+groups and isomorphisms of oriented maps, possibly decorated by values on
+their half-edges. It checks and converts its input, then calls the C code
+of :doc:`c/omap`; the methods of :class:`~combisurf.oriented_map.OrientedMap`
+(such as :meth:`~combisurf.oriented_map.OrientedMap.canonical_labelling`)
+call it. Its public functions are:
 
-A map on `n` half-edges is given by its face permutation ``fp``, a list
-or ``array('i')`` of length `n` (even) with ``-1`` on the inactive
-half-edges; the twin of the half-edge ``h`` is ``h ^ 1``, and a folded
-edge, whose twin is inactive, is a fixed point of ``fp``. ``fp`` must be
-a permutation of its active half-edges: otherwise a ``ValueError`` is
-raised, since the C code would read out of bounds on it; other malformed
-input raises a ``TypeError`` or a ``ValueError``. A map may be decorated
-by two tuples of arrays indexed by the half-edges: the values of
-``data`` are kept exactly by an isomorphism, while those of ``classes``
-are kept up to a relabelling of their values, so that only the partition
-of the half-edges by the values of each array matters. The canonical
-labelling of a decorated map is a relabelling of its half-edges, and its
-canonical form is the map read in these labels: the face permutation and
-the decorations in the canonical labels, the values of ``classes``
-renumbered by first appearance. Two decorated maps are isomorphic if and
-only if their canonical forms under the same rule are equal. On a
-connected map, the canonical labelling is the relabelling by the
-breadth-first walk from a root (:ref:`omap-relabelling`) that gives the
-minimal key (:ref:`omap-keys`), the first such root in increasing order.
+- :func:`canonical_labelling` -- the canonical labelling of a map
+- :func:`canonical_form` -- the map read in its canonical labels
+- :func:`automorphisms` -- the list of the automorphisms of a map
+- :func:`automorphism_generators` -- generators of the automorphism group
+- :func:`isomorphism` -- an isomorphism between two maps, if there is one
+- :func:`canonical_key` -- the canonical form flattened as bytes, a compact
+  hashable key for the exploration of large collections of maps up to
+  isomorphism, and on request the canonical labelling and the number of
+  automorphisms
 
-On a connected map, every active half-edge of the class of the rule (see
-below) is tried as a root: the relabelling from it and its key are
-computed in C (``combisurf/src/omap.c``) and the minimal key is
-kept, which costs `O(n^2)` for `n` half-edges. A disconnected map is
-searched in C as well, component after component, for the
-lexicographically minimal sequence of blocks, one block per component
-(:ref:`omap-blocks`). Without
-``classes``, the automorphism group of a disconnected map
-is a product of wreath products `\mathrm{Aut}(C) \wr S_k` over the kinds
-of `k` isomorphic components `C`: :func:`automorphism_generators` and the
-count of :func:`canonical_key` come from this structure, component by
-component, without listing the automorphisms (their number is at least
-`k!`). With ``classes`` the group is the subgroup of this product that
-preserves the partitions of the half-edges by the values of ``classes``:
-its generators and its order come from a backtrack search of this
-subgroup (the subgroup search of Sims, one base point per component),
-which maps the components one after the other to copies of their kinds.
-Once a placement of a component that maps no new value of ``classes`` has
-failed, the later placements of that component mapping no new value are
-skipped: the automorphism of the copy relating the two placements carries
-the values, so it exchanges the two images. Tied copies whose values are
-all mapped after the first components, as `k` isolated edges with one or
-two class values in any pattern, then take a time polynomial in `k`. The
-search stays exponential in the worst case, where it is a search for the
-automorphisms of a structure on the class values: on a graph given by
-its edges as isolated edges (the two values of an edge being its
-endpoints), it is a backtrack search for the automorphisms of the graph,
-which can take far longer than the search of the canonical key, as on a
-random cubic graph or a grid. The search
-of the canonical key itself, when there are ``classes``, follows among
-the roots tied in a component the first one of each way of extending the
-numbering of the class values, since two tied roots extending it alike
-are exchanged by an automorphism fixing the components labelled before;
-it also returns from a leaf equal to the best one to the first level
-where their roots differ, since the subtree left is then the image of
-one already searched. `k` tied copies of a component then cost one path
-per distinct numbering at each level (one for isolated edges all with
-the same value, two for `b + 1` edges with the value 0 beside `b` with
-the value 1) instead of a number of leaves growing as the automorphisms.
-The search stays exponential in the worst case: tied roots with
-different numberings are all followed, and their subtrees may part only
-deep, as for a graph on the class values given by its edges as isolated
-edges, such as a random cubic graph. The buffers of the C code are
-counted in C ``int``: a map
-too large for them (about `2^{31} / (14 + 2 nd + 3.5 nc)` half-edges with
-``nd`` arrays of ``data`` and ``nc`` of ``classes``) raises an
-``OverflowError``.
+A map is given by its face permutation ``fp``, and may be decorated by two
+tuples of arrays indexed by its half-edges (the conventions of the input
+are given in :func:`canonical_labelling`):
 
-The searches can be interrupted: Ctrl-C raises a ``KeyboardInterrupt``,
-and the ``alarm`` of ``cysignals`` an ``AlarmInterrupt``, in the C
-searches as in the search of the automorphism group of a disconnected
-map. On the `8 \times 8` grid given by its edges as isolated edges, whose
-automorphism count takes far longer than the alarm::
+- ``data``, whose integer values are kept exactly by an isomorphism;
+- ``classes``, whose values are kept up to a relabelling of the values, so
+  that only the partition of the half-edges by the values of each array
+  matters.
 
-    sage: from cysignals.alarm import alarm
-    sage: from combisurf.isomorphism import canonical_key
-    sage: g = graphs.Grid2dGraph(8, 8).relabel(inplace=False)
-    sage: edges = list(g.edges(labels=False))
-    sage: fp = list(range(2 * len(edges)))
-    sage: classes = ([x for e in edges for x in e],)
-    sage: alarm(0.5); canonical_key(fp, (), classes, automorphism_count=True)
-    Traceback (most recent call last):
-    ...
-    AlarmInterrupt
+The *canonical labelling* of a decorated map, under a rule of the roots
+(below), is a relabelling of its half-edges such that two decorated maps
+are isomorphic if and only if their *canonical forms*, the maps read in
+their canonical labels, are equal. On a connected map, it is the
+relabelling by a breadth-first walk from a root (:ref:`omap-relabelling`),
+the root being the one of minimal key (:ref:`omap-keys`) among the
+half-edges that the rule allows; a disconnected map is labelled component
+after component (:ref:`omap-blocks`).
 
-The decorations are stored in C ``int`` arrays: a value of ``data``
-outside the range of a C ``int`` raises an ``OverflowError`` (the values
-on inactive half-edges are ignored and never converted). The values of
-``classes`` are renumbered before the conversion, so they may be any
-hashable values.
+The keyword ``root_rule`` of the public functions is the rule of the roots,
+which restricts the half-edges tried as roots. Each active half-edge has an
+invariant, the pair of the degrees of its vertex and of its face, and the
+half-edges of equal invariant form a class (:ref:`omap-root-rules`). The
+rules are the following integers:
 
-Beside :func:`canonical_labelling`, :func:`canonical_form`,
-:func:`automorphisms`, :func:`automorphism_generators` and
-:func:`isomorphism`, :func:`canonical_key` returns the canonical form
-flattened as bytes, a compact hashable key for the exploration of large
-collections of maps up to isomorphism, and on request the canonical
-labelling and the number of automorphisms.
+- :data:`ROOTS_ALL` -- every active half-edge is tried
+- :data:`ROOTS_HALF_EDGE_MAX` -- the class of the largest invariant,
+  compared lexicographically
+- :data:`ROOTS_HALF_EDGE_FEWEST` -- the class with the fewest half-edges,
+  ties broken by the largest invariant
+- :data:`ROOTS_EDGE_MAX`, :data:`ROOTS_EDGE_FEWEST` -- as the two rules
+  above, with the invariant extended by the degrees at the twin of the
+  half-edge and by whether the twin has the same vertex and the same face
+- :data:`ROOTS_DATA` -- a flag, combined by the bitwise or ``|`` with one
+  of the four rules above, that appends to the invariant the values of
+  ``data`` at the half-edge (and at its twin under the edge rules); the
+  values of ``classes`` are never used
 
-The public functions take the keyword ``root_rule``, one of the integers
-:data:`ROOTS_ALL`, :data:`ROOTS_HALF_EDGE_MAX`,
-:data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and
-:data:`ROOTS_EDGE_FEWEST`: the rule of the half-edges tried as roots.
-Under :data:`ROOTS_ALL` every active half-edge is tried; under the other
-rules each active half-edge gets an invariant (the degrees of its vertex
-and of its face, and under the edge rules those of its twin as well), the
-half-edges of equal invariant form a class, and only the half-edges of
-one class are tried: the class of the largest invariant under ``*_MAX``,
-the one with the fewest half-edges under ``*_FEWEST``, ties broken by the
-largest invariant (:ref:`omap-root-rules`). The default is
-``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA`` (the integer ``10``): decorations
-narrow the roots tried, and on an undecorated map it is
-:data:`ROOTS_HALF_EDGE_FEWEST`, which tries fewer roots: against
-:data:`ROOTS_ALL`, this pays on maps with many tied roots, at the price of
-the invariants computed to choose the roots, which costs on maps where few
-roots tie anyway. The flag :data:`ROOTS_DATA`, combined by ``|`` with one
-of the four rules other than :data:`ROOTS_ALL`, appends the values of
-``data`` to the invariants, so that fewer roots are tried on a decorated
-map; the C code sorts each data array once per call to rank its values,
-`O(n \log n)`. Any other value, a string or ``ROOTS_ALL | ROOTS_DATA``
-included, raises a ``ValueError``. The C code computes the invariants of
-the half-edges once per call and tries only the roots of the class of the
-rule, on a disconnected map the class chosen at each step among the
-half-edges not labelled yet. The automorphism group does not depend on the
-rule: on a disconnected map, :func:`automorphism_generators` and the count
-of :func:`canonical_key` come from the structure of the group above under
-every rule.
+The default rule is ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``. The canonical
+labelling, the canonical form and the order in which the automorphisms are
+listed depend on the rule, so that maps are compared under the same rule;
+the automorphism group does not. The algorithms and their costs are in
+:doc:`c/omap_algorithms`.
 
 EXAMPLES::
 
@@ -194,6 +120,23 @@ with those of ``isomorphism_naive``::
     Traceback (most recent call last):
     ...
     ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 8
+
+TESTS:
+
+The searches can be interrupted (see :func:`canonical_labelling`), here by
+an alarm during the count of the automorphisms of the `8 \times 8` grid
+given by its edges as isolated edges, which takes far longer::
+
+    sage: from cysignals.alarm import alarm
+    sage: from combisurf.isomorphism import canonical_key
+    sage: g = graphs.Grid2dGraph(8, 8).relabel(inplace=False)
+    sage: edges = list(g.edges(labels=False))
+    sage: fp = list(range(2 * len(edges)))
+    sage: classes = ([x for e in edges for x in e],)
+    sage: alarm(0.5); canonical_key(fp, (), classes, automorphism_count=True)
+    Traceback (most recent call last):
+    ...
+    AlarmInterrupt
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -989,15 +932,8 @@ cdef int _search(const domap_struct *m, int rule, bint all_leaves, array.array s
     r"""
     Search the minimal sequence of blocks of the map ``m``, connected or
     not, over its labellings component after component, by the C function
-    ``_domap_iso_search``.
-
-    The block of a component labelled from a root is its number of labels,
-    its face permutation in these local labels, then its decorations read
-    in the same order (the values of ``classes`` renumbered by first
-    appearance, continuing the numbering of the components labelled
-    before). At each step the roots of the rule ``rule`` among the
-    half-edges not labelled yet are tried, and only those of minimal block
-    are followed, depth first.
+    ``_domap_iso_search`` (the blocks and the search are specified in
+    ``doc/c/omap.rst``).
 
     INPUT:
 
@@ -1194,31 +1130,50 @@ def canonical_labelling(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWES
 
     INPUT:
 
-    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on
-      inactive half-edges)
+    - ``fp`` -- the face permutation, a list or an ``array('i')`` of even
+      length ``n`` with ``-1`` on the inactive half-edges, which must be a
+      permutation of its active half-edges: the twin of the half-edge ``h``
+      is ``h ^ 1``, and a folded edge, whose twin is inactive, is a fixed
+      point of ``fp``
 
-    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept exactly (default: no decoration); the values on the
-      active half-edges are integers in the range of a C ``int``
+    - ``data`` -- a tuple of arrays of length ``n`` indexed by half-edges,
+      kept exactly (default: no decoration); the values on the active
+      half-edges are integers in the range of a C ``int``, those on the
+      inactive half-edges are ignored
 
-    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by
+    - ``classes`` -- a tuple of arrays of length ``n`` indexed by
       half-edges, kept up to a relabelling of their values (default: no
-      decoration)
+      decoration); the values on the active half-edges are any hashable
+      values, renumbered before the conversion for the C code, those on the
+      inactive half-edges are ignored
 
-    - ``root_rule`` -- one of the integers :data:`ROOTS_ALL`,
-      :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`,
-      :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`, or one of the
-      last four combined with :data:`ROOTS_DATA` by ``|``: the half-edges
-      tried as roots (see :ref:`omap-root-rules`); any other
-      value raises a ``ValueError``. The default is
-      ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``: decorations narrow the roots
-      tried, and on an undecorated map it is :data:`ROOTS_HALF_EDGE_FEWEST`
+    - ``root_rule`` -- the rule of the roots (see
+      :mod:`~combisurf.isomorphism`): one of the integers
+      :data:`ROOTS_ALL`, :data:`ROOTS_HALF_EDGE_MAX`,
+      :data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and
+      :data:`ROOTS_EDGE_FEWEST`, or one of the last four combined with
+      :data:`ROOTS_DATA` by ``|``. The default is ``ROOTS_HALF_EDGE_FEWEST
+      | ROOTS_DATA``, the integer ``10``, which is
+      :data:`ROOTS_HALF_EDGE_FEWEST` on a map without ``data``
 
     OUTPUT: an ``array('i')`` ``r`` that maps each half-edge to its
     canonical label. It is a permutation of ``range(len(fp))`` that
     preserves the pairs ``{2e, 2e+1}``. The active edges get the labels
     ``0, ..., 2*ne - 1`` (``ne`` the number of active edges) and the
     inactive edges the following ones, in increasing order.
+
+    A malformed input raises a ``ValueError`` (``fp`` of odd length or not a
+    permutation of its active half-edges, which the C code would read out of
+    bounds, an array of decorations of a wrong length, a ``root_rule`` that
+    is not one of the nine integers above) or a ``TypeError`` (``data`` or
+    ``classes`` not a tuple, a value of ``data`` that is not an integer). A
+    value of ``data`` outside the range of a C ``int``, or a map too large
+    for the buffers of the C code, which are counted in C ``int``
+    (:c:macro:`DOMAP_ISO_SEARCH_WORK_SIZE`), raises an ``OverflowError``.
+    The searches can be interrupted: Ctrl-C raises a ``KeyboardInterrupt``,
+    and the ``alarm`` of ``cysignals`` an ``AlarmInterrupt``. The other
+    public functions of this module take their input and raise their
+    exceptions likewise.
 
     EXAMPLES::
 
@@ -1380,19 +1335,8 @@ def canonical_form(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | R
 
     INPUT:
 
-    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on
-      inactive half-edges)
-
-    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept exactly (default: no decoration); the values on the
-      active half-edges are integers in the range of a C ``int``
-
-    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept up to a relabelling of their values (default: no
-      decoration)
-
-    - ``root_rule`` -- the half-edges tried as roots, as in
-      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)
+    - ``fp``, ``data``, ``classes``, ``root_rule`` -- a decorated map and
+      the rule of the roots, as in :func:`canonical_labelling`
 
     OUTPUT: a tuple ``(fp_c, d_1, ..., d_k, c_1, ..., c_m)`` of tuples:
     ``fp_c`` is the face permutation in the canonical labels (of length
@@ -1840,18 +1784,11 @@ cdef int _stabiliser_generator(const int *g, void *arg) except -1:
     Return ``0``, or ``-1`` with a Python exception set (a failed
     allocation), which stops the search.
 
-    The callback runs inside the ``sig_on`` of ``_stabiliser``, where an
-    interrupt jumps out at once, and a jump out of the Python code of
-    ``_collect_generator`` (an allocation, a list append) could leave the
-    interpreter in an inconsistent state. ``sig_block`` delays the interrupt
-    to the ``sig_unblock``, reached when ``_collect_generator`` has returned
-    and released its references, so that the jump skips no reference count.
-    A ``sig_check`` in the callback, with no ``sig_on`` on this path, would
-    instead leave the search uninterruptible between two generators, which
-    can be the whole search. The call goes through a pointer without
-    exception check, so that the ``sig_unblock`` also runs when
-    ``_collect_generator`` raises; its ``-1``, with the exception set, is
-    then returned to ``_domap_stabiliser``.
+    The callback runs inside the ``sig_on`` of ``_stabiliser``, and calls
+    ``_collect_generator`` between ``sig_block`` and ``sig_unblock``
+    through a pointer without exception check, for the reasons given in
+    ``_automorphism_leaf``; the ``-1`` of ``_collect_generator``, with the
+    exception set, is returned to ``_domap_stabiliser``.
     """
     cdef int status
     sig_block()
@@ -1891,20 +1828,14 @@ cdef tuple _stabiliser(const domap_struct *m, bint generators):
     disconnected map ``m`` that preserve the partitions defined by its
     arrays of ``classes``.
 
-    The group `H` is the subgroup, preserving the partitions, of the group
-    of ``m`` with its arrays of ``data`` alone, a product over the kinds of
-    isomorphic components of wreath products. The components are laid out
-    for the C function ``_domap_stabiliser`` (their kinds, their half-edges
-    by canonical label, the face permutation, canonical relabelling and
-    labels of the roots of minimal key of the first copy of each kind), in
-    arrays owned here and kept unresized while the C code reads them.
-    ``_domap_stabiliser`` runs a subgroup search of Sims with one base point
-    per component, the half-edge of canonical label ``0``, and writes the
-    size of the orbit of each base point under the stabiliser of the
-    previous ones in `H`: the order of `H` is their product, computed in
-    Python integers since it may exceed every C integer type. With
-    ``generators``, each generator found is copied into the list by the
-    callback ``_stabiliser_generator``.
+    The components, computed by ``_wreath``, are laid out for the C
+    function ``_domap_stabiliser`` as a ``domap_wreath_struct`` (specified
+    in ``doc/c/omap.rst``), in arrays owned here and kept unresized while
+    the C code reads them. ``_domap_stabiliser`` writes the size of the
+    orbit of each base point, and the order of the group is their product,
+    computed in Python integers since it may exceed every C integer type.
+    With ``generators``, each generator found is copied into the list by
+    the callback ``_stabiliser_generator``.
 
     OUTPUT: a pair ``(gens, order)``: ``gens`` a list of new arrays of
     typecode ``'i'`` of ``m.map.n`` entries, the identity on the half-edges
@@ -1986,40 +1917,30 @@ def automorphisms(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_FEWEST | RO
     The automorphisms come in the order in which the search meets them. On
     a connected map, with ``b_0 < b_1 < ...`` the roots of the rule of
     minimal key (:ref:`omap-keys`), there is one automorphism per root, in
-    increasing order of the roots, the identity (from ``b_0``) first. On a
-    disconnected map, the search component after component
-    (:ref:`omap-blocks`) follows every tied root, and its leaves reaching
-    the minimal sequence of blocks are as many as the automorphisms: with
-    ``r_0`` the first of them, the leaf ``r`` gives the automorphism
-    sending the half-edge of label ``i`` in ``r_0`` to the one of label
-    ``i`` in ``r``, in the order of the leaves, the identity first.
+    increasing order of the roots: the automorphism ``j`` sends the
+    half-edge of label ``i`` from ``b_0`` to the half-edge of label ``i``
+    from ``b_j``. On a disconnected map, the search component after
+    component (:ref:`omap-blocks`) follows every tied root, and its leaves
+    reaching the minimal sequence of blocks are as many as the
+    automorphisms: with ``r_0`` the first of them, the leaf ``r`` gives the
+    automorphism sending the half-edge of label ``i`` in ``r_0`` to the one
+    of label ``i`` in ``r``, in the order of the leaves. In both cases the
+    identity comes first.
 
     INPUT:
 
-    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on
-      inactive half-edges)
+    - ``fp``, ``data``, ``classes`` -- a decorated map, as in
+      :func:`canonical_labelling`
 
-    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept exactly (default: no decoration); the values on the
-      active half-edges are integers in the range of a C ``int``
-
-    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept up to a relabelling of their values (default: no
-      decoration)
-
-    - ``root_rule`` -- the half-edges tried as roots, as in
-      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``); the group
-      is the same under every rule, listed in the order of the search of
-      the rule
+    - ``root_rule`` -- the rule of the roots, as in
+      :func:`canonical_labelling`; the group is the same under every rule,
+      listed in the order of the search of the rule
 
     OUTPUT: the list of the automorphisms, each an ``array('i')``
     permutation of ``range(len(fp))`` that commutes with ``fp`` on the
     active half-edges, preserves the pairs ``{2e, 2e+1}``, the arrays of
     ``data`` and the partitions defined by the arrays of ``classes``, and is
-    the identity on the inactive edges. The identity comes first. On a
-    connected map, with ``b_0 < b_1 < ...`` the roots of minimal key, the
-    automorphism ``j`` sends the half-edge of label ``i`` from ``b_0`` to
-    the half-edge of label ``i`` from ``b_j``.
+    the identity on the inactive edges.
 
     EXAMPLES::
 
@@ -2093,79 +2014,45 @@ def automorphism_generators(fp, data=(), classes=(), root_rule=ROOTS_HALF_EDGE_F
     Return generators of the automorphism group of the map with face
     permutation ``fp`` decorated by ``data`` and ``classes``.
 
-    On a connected map, the generators are automorphisms of the list of
-    :func:`automorphisms`, kept in its order when they are not in the group
-    generated by those kept before. On a disconnected map, they come from
-    the structure of the group: the generators of the group of a copy of
-    each kind of isomorphic components and the permutations of its copies
-    without ``classes``, the generators found by a subgroup search with
-    ``classes`` (see below).
-
     INPUT:
 
-    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on
-      inactive half-edges)
+    - ``fp``, ``data``, ``classes`` -- a decorated map, as in
+      :func:`canonical_labelling`
 
-    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept exactly (default: no decoration); the values on the
-      active half-edges are integers in the range of a C ``int``
-
-    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept up to a relabelling of their values (default: no
-      decoration)
-
-    - ``root_rule`` -- the half-edges tried as roots, as in
-      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``): on a
-      connected map the generators may differ from a rule to another, the
-      group generated does not; on a disconnected map the generators do not
-      depend on the rule
+    - ``root_rule`` -- the rule of the roots, as in
+      :func:`canonical_labelling`: on a connected map the generators may
+      differ from a rule to another, the group generated does not; on a
+      disconnected map the generators do not depend on the rule
 
     OUTPUT: a list of automorphisms (as in :func:`automorphisms`) that
     generate the group; empty when the group is trivial. There are three
     cases.
 
-    - On a connected map the automorphisms are scanned in the order of
-      :func:`automorphisms` under the rule, and one is kept when it is not
-      in the group generated by those already kept. The scan runs over the
-      roots of minimal key: the automorphism of root ``b_j`` is built only when
+    - On a connected map, the automorphisms of :func:`automorphisms` under
+      the rule, in its order, each kept when it is not in the group
+      generated by those kept before. The scan runs over the roots of
+      minimal key: the automorphism of the root ``b_j`` is built only when
       ``b_j`` is outside the orbit of ``b_0`` under the generators kept (a
-      union-find over the half-edges), so the list of automorphisms and the
-      group closure are never computed.
+      union-find over the half-edges), so that neither the list of the
+      automorphisms nor the group is computed.
 
-    - On a disconnected map without ``classes`` the group is the product,
-      over the kinds of isomorphic components, of `\mathrm{Aut}(C) \wr
-      S_k` (``data`` links no two components). The kinds are ordered by
-      the smallest half-edge of their first copy `C`, and the copies of a
-      kind likewise; for each kind the generators are those of
-      `\mathrm{Aut}(C)` (by the connected scan), then the transposition of
-      the first two copies if `k \geq 2`, then the cycle of the copies if
-      `k \geq 3`. The copies are exchanged by the isomorphism sending the
-      half-edge of canonical label `i` of one to the one of label `i` of
-      the other. There are at most two generators per kind beside those of
-      `\mathrm{Aut}(C)`. The components are labelled under
-      :data:`ROOTS_ALL` whatever the rule.
+    - On a disconnected map without ``classes``, the group is the product,
+      over the kinds of `k` isomorphic components `C`, of the wreath
+      products `\mathrm{Aut}(C) \wr S_k` (``data`` links no two
+      components). The kinds are ordered by the smallest half-edge of their
+      first copy, and the copies of a kind likewise; for each kind the
+      generators are those of `\mathrm{Aut}(C)` for its first copy (by the
+      connected scan), then the transposition of the first two copies if `k
+      \geq 2`, then the cycle of the copies if `k \geq 3`, a copy going to
+      another by the isomorphism sending the half-edge of canonical label
+      `i` of one to the one of label `i` of the other. The components are
+      labelled under :data:`ROOTS_ALL` whatever the rule.
 
-    - On a disconnected map with ``classes`` the group `H` is the subgroup
-      of the previous one (for ``data`` alone) of the automorphisms that
-      preserve the partitions defined by the arrays of ``classes``. The
-      half-edges of canonical label `0` of the components, in the order
-      above, form a base `b_1, \ldots, b_c`; the levels are processed from
-      the last to the first, and at the level `i` each image of `b_i` under
-      the automorphisms fixing the components of `b_1, \ldots, b_{i-1}`
-      that is outside its orbit under the generators found so far is
-      tried by a depth-first search for an element of `H` sending `b_i`
-      to it, which maps the following components one after the other to
-      copies of their kinds. The first element found is a generator; the
-      generators come in the order found. After a placement of a component
-      mapping no new value of ``classes`` failed, the later placements of
-      that component mapping no new value are skipped, an automorphism of
-      the copy exchanging the two images. Tied copies whose values are all
-      mapped after the first components (`k` isolated edges with one or two
-      class values in any pattern) then take a time polynomial in `k`. The
-      search stays exponential in the worst case, when the placements map
-      new values that the values of ``classes`` reject only deep in the
-      search, as on a graph on the class values given by its edges as
-      isolated edges.
+    - On a disconnected map with ``classes``, the group is the subgroup of
+      the previous one that preserves the partitions defined by the arrays
+      of ``classes``. Its generators come in the order in which a subgroup
+      search of Sims finds them (:ref:`omap-algorithms-stabiliser`), a
+      search that stays exponential in the worst case.
 
     EXAMPLES::
 
@@ -2251,26 +2138,21 @@ def isomorphism(fp1, data1, fp2, data2, classes1=(), classes2=(), root_rule=ROOT
 
     INPUT:
 
-    - ``fp1``, ``fp2`` -- face permutations (lists or ``array('i')``,
-      ``-1`` on inactive half-edges)
+    - ``fp1``, ``data1``, ``classes1`` and ``fp2``, ``data2``,
+      ``classes2`` -- two decorated maps, as ``fp``, ``data`` and
+      ``classes`` in :func:`canonical_labelling` (``classes1`` and
+      ``classes2`` default to no decoration); ``data1`` and ``data2`` must
+      have the same number of arrays, and ``classes1`` and ``classes2``
+      likewise, else a ``ValueError`` is raised
 
-    - ``data1``, ``data2`` -- tuples with the same number of arrays indexed
-      by half-edges, of lengths ``len(fp1)`` and ``len(fp2)``, kept
-      exactly; the values on the active half-edges are integers in the
-      range of a C ``int``
+    - ``root_rule`` -- the rule of the roots in both maps, as in
+      :func:`canonical_labelling`
 
-    - ``classes1``, ``classes2`` -- tuples with the same number of arrays
-      indexed by half-edges, of lengths ``len(fp1)`` and ``len(fp2)``, kept
-      up to a relabelling of their values (default: no decoration)
-
-    - ``root_rule`` -- the half-edges tried as roots in both maps, as in
-      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)
-
-    OUTPUT: ``None`` or an ``array('i')`` ``r`` of length ``len(fp1)`` with
-    ``r[fp1[h]] == fp2[r[h]]`` and ``data2[i][r[h]] == data1[i][h]`` for
-    every active ``h``, such that ``classes1[i][h] -> classes2[i][r[h]]``
-    on the active ``h`` is a well-defined bijection of values for each
-    ``i``, that preserves the pairs ``{2e, 2e+1}``. When
+    OUTPUT: ``None`` or an ``array('i')`` ``r`` of length ``len(fp1)``
+    that preserves the pairs ``{2e, 2e+1}``, with ``r[fp1[h]] ==
+    fp2[r[h]]`` and ``data2[i][r[h]] == data1[i][h]`` for every active
+    ``h``, and such that ``classes1[i][h] -> classes2[i][r[h]]`` on the
+    active ``h`` is a well-defined bijection of values for each ``i``. When
     ``len(fp1) == len(fp2)``, ``r`` is a permutation of ``range(len(fp1))``
     that sends the inactive edges of the first map to those of the second in
     increasing order; otherwise ``r`` is ``-1`` on the half-edges of the
@@ -2390,16 +2272,8 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
 
     INPUT:
 
-    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on
-      inactive half-edges)
-
-    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept exactly (default: no decoration); the values on the
-      active half-edges are integers in the range of a C ``int``
-
-    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by
-      half-edges, kept up to a relabelling of their values (default: no
-      decoration)
+    - ``fp``, ``data``, ``classes`` -- a decorated map, as in
+      :func:`canonical_labelling`
 
     - ``relabelling`` -- boolean (default ``False``); whether to return the
       canonical labelling as well
@@ -2407,10 +2281,9 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     - ``automorphism_count`` -- boolean (default ``False``); whether to
       return the number of automorphisms as well
 
-    - ``root_rule`` -- the half-edges tried as roots, as in
-      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``); the key and
-      the relabelling are those of the rule, the count does not depend on
-      it
+    - ``root_rule`` -- the rule of the roots, as in
+      :func:`canonical_labelling`; the key and the relabelling are those of
+      the rule, the count does not depend on it
 
     OUTPUT: the key, a ``bytes`` object: the entries of the canonical form
     (see :func:`canonical_form`) as C ``int`` in the machine byte order,
@@ -2429,23 +2302,11 @@ def canonical_key(fp, data=(), classes=(), relabelling=False, automorphism_count
     products over the kinds of `k` isomorphic components `C`, computed
     without listing the automorphisms; with ``classes`` it is the order
     of the subgroup that preserves the partitions of ``classes``, computed
-    by the search of :func:`automorphism_generators`. With ``classes`` the
-    search of the key on a disconnected map follows, among the roots tied
-    in a component, the first one of each way of extending the numbering
-    of the class values: two tied roots extending it alike are exchanged
-    by an automorphism fixing the components labelled before, so their
-    subtrees reach the same sequences. A leaf equal to the best one so far
-    differs from it by an automorphism fixing the components where their
-    roots agree, so the search returns at once to the first level where
-    their roots differ and tries its next tied root. On `k` tied copies of
-    a component the search follows one path per distinct numbering at
-    each level: `k` isolated edges with one class value take one path
-    instead of `2^k k!` leaves. Tied roots with different numberings are
-    all followed, so the search remains exponential in the worst case.
-    The count goes through the search of :func:`automorphism_generators`,
-    which has a cut of its own: polynomial on tied copies whose values are
-    all mapped after the first components, such as isolated edges with one
-    or two class values, it stays exponential in the worst case.
+    by the search of :func:`automorphism_generators`. On a disconnected
+    map with ``classes``, the search of the key
+    (:ref:`omap-algorithms-iso-search`) and the one of the count
+    (:ref:`omap-algorithms-stabiliser`) both stay exponential in the worst
+    case.
 
     EXAMPLES::
 

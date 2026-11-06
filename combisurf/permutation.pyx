@@ -129,11 +129,21 @@ def least_rotation(S):
 
 def perm_check(l, int n=-1, involution=None):
     r"""
-    Checks that ``l`` is a partial permutation of `\{0, 1, ..., n-1\}`.
+    Return whether ``l`` is a partial injection of `\{0, 1, ..., n-1\}`.
+
+    ``l`` must be an ``array('i')`` whose first ``n`` values are ``-1`` or
+    in ``range(n)``, the values other than ``-1`` pairwise distinct, as
+    checked by the C function :c:func:`_perm_check`; an active point may be
+    sent to an inactive one.
 
     INPUT:
 
-    - ``n`` - integer (optional)
+    - ``l`` -- an object
+
+    - ``n`` -- integer (default: ``len(l)``)
+
+    - ``involution`` -- an ``array('i')`` or ``None`` (default); if given,
+      ``l`` must also commute with it on ``range(n)``
 
     EXAMPLES::
 

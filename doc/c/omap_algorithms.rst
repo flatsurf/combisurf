@@ -159,6 +159,14 @@ Stabiliser of the classes
 of the map, laid out by a :c:struct:`domap_wreath_struct`, that preserve the
 partitions defined by its class arrays.
 
+Without class arrays, :math:`H` is the group :math:`G` of the map with its
+data alone, the product over the kinds of ``k`` isomorphic components
+:math:`C` of the wreath products :math:`\mathrm{Aut}(C) \wr S_k`: the Cython
+module reads its generators and its order from the kinds, without a search
+and without listing its elements, at least :math:`k!`
+(:func:`~combisurf.isomorphism.automorphism_generators`,
+:func:`~combisurf.isomorphism.canonical_key`).
+
 Subgroup search
 ^^^^^^^^^^^^^^^
 
@@ -208,9 +216,13 @@ when the earlier one is.
 Cost
 ^^^^
 
-On tied copies whose values are all mapped after the first levels, each
+On tied copies whose values are all mapped after the first levels, such as
+``k`` isolated edges with one or two class values in any pattern, each
 level then descends into at most one failed subtree per entry, and the
 search takes a time polynomial in the number of components. It stays
 exponential in the worst case, when the placements map new values and the
 values of classes reject them only deep in the search, as on a graph on the
-class values given by its edges as isolated edges.
+class values given by its edges as isolated edges (the two values of an
+edge being its endpoints): the search is then one for the automorphisms of
+the graph, and can take far longer than the search of the canonical key
+(:ref:`omap-algorithms-iso-search`), as on a random cubic graph or a grid.

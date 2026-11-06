@@ -7,20 +7,6 @@ Files: ``combisurf/src/perm.{h,c}``
 1\}`, given as arrays of ``n`` ints with ``-1`` on the inactive elements of
 the domain.
 
-The functions on a whole permutation come in pairs, as in flint: the raw form
-``_perm_func`` takes the array and its length, and the public form
-``perm_func`` takes a :c:type:`perm_t`. A raw form that needs a work buffer
-takes it from the caller, sized by its ``*_WORK_SIZE`` macro, and allocates
-nothing; its public form allocates the buffer through
-:c:func:`combisurf_malloc` and frees it before returning. The output arrays
-are always handed in by the caller. The pairs without a buffer,
-:c:func:`perm_id` and :c:func:`perm_dense_cycles`, have an inline public
-form. The entry of a pair gives the specification of the public form; the
-raw form adds its buffer and its size.
-
-Types
------
-
 .. c:struct:: perm_struct
 
    A partial permutation: the image ``p[h]`` of each point ``h`` of
@@ -38,6 +24,14 @@ Types
 
    A :c:struct:`perm_struct` as an array of one element, so that a
    ``perm_t`` declared on the stack is passed by pointer.
+
+The functions on a whole permutation come in pairs: the raw form
+``_perm_func`` takes the array and its length, and the public form
+``perm_func`` takes a :c:type:`perm_t`. A raw form that needs a work buffer
+takes it from the caller, sized by its ``*_WORK_SIZE`` macro, and allocates
+nothing; its public form allocates the buffer through
+:c:func:`combisurf_malloc` and frees it before returning. The output arrays
+are always handed in by the caller.
 
 Constructors
 ------------
@@ -74,9 +68,10 @@ Cycles
 .. c:function:: int _perm_dense_cycles(int *id, int *size, const int *p, int n)
 .. c:function:: int perm_dense_cycles(int *id, int *size, const perm_t p)
 
-   Number the cycles of ``p`` ``0, 1, 2, ...`` in the increasing order of
-   their smallest points: ``id[i] = k`` and ``size[i] = s`` when the point
-   ``i`` lies in the cycle of number ``k`` and this cycle has length ``s``.
+   Number the cycles of ``p`` ``0, 1, 2, ...`` in the increasing order of their
+   smallest points and record their lengths: ``id[i] = k`` and ``size[i] = s``
+   when the point ``i`` lies in the cycle of number ``k`` and this cycle has
+   length ``s``.
 
    Write into ``id`` (``n`` ints) the number of the cycle of each active
    point, and into ``size`` (``n`` ints) the length of that cycle; both are

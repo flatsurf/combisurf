@@ -26,16 +26,13 @@ the inactive half-edges are never read. The values of a class array must lie
 in :math:`0, \ldots, n - 1` (renumber them before the call, for instance by
 first appearance).
 
-The functions that need a work buffer come in pairs, as in flint: the raw
-form ``_X(..., work)`` takes its buffer from the caller, sized by its
+The functions that need a work buffer come in pairs, as in :doc:`perm`: the
+raw form ``_X(..., work)`` takes its buffer from the caller, sized by its
 ``*_WORK_SIZE`` macro, and allocates nothing; the public form ``X(...)``
 allocates its buffer through :c:func:`combisurf_malloc` and frees it before
 returning. The output arrays are always handed in by the caller. The Cython
 module calls only the raw forms, under ``sig_on()``, so that an interrupt,
-which jumps out of the C call, leaves no buffer allocated by the C code. The
-entry of a pair gives the specification of the public form; the raw form adds
-its buffer and its size. The pair without a buffer, :c:func:`omap_num_edges`,
-has an inline public form.
+which jumps out of the C call, leaves no buffer allocated by the C code.
 
 The algorithms are described in :doc:`omap_algorithms`.
 
@@ -473,9 +470,10 @@ preceded by ``k``.
    the data values (``nd n``) live in the candidate block, which is not used
    before the classes are computed, so that the flag needs no more room.
 
-   These sizes are computed in ``int`` and overflow for about
-   :math:`2^{31} / (14 + 2 nd + 3.5 nc)` half-edges; the caller checks them
-   first.
+   The sizes of this header are computed in ``int``. This one, the largest,
+   overflows first, for about :math:`2^{31} / (14 + 2 nd + 3.5 nc)`
+   half-edges; the caller checks the sizes first, and the Cython module
+   raises an ``OverflowError`` on a map too large.
 
 .. c:type:: domap_iso_leaf_callback
 

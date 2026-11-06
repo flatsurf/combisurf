@@ -37,8 +37,8 @@ the use.
 .. c:function:: int uf_find_compression(int *parent, int h)
 
    Return the root of the tree of ``h``, with path compression: a first pass
-   finds the root, a second pass sets the parent of every point of the path
-   from ``h`` to the root to the root.
+   finds the root, a second pass sets to the root the parent of every point
+   of the path from ``h``.
 
 .. c:function:: void uf_link(int *parent, int a, int b)
 
