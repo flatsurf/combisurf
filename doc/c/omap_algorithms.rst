@@ -159,22 +159,23 @@ Stabiliser of the classes
 of the map, laid out by a :c:struct:`domap_wreath_struct`, that preserve the
 partitions defined by its class arrays.
 
-Without class arrays, :math:`H` is the group :math:`G` of the map with its
-data alone, the product over the kinds of ``k`` isomorphic components
-:math:`C` of the wreath products :math:`\mathrm{Aut}(C) \wr S_k`: the Cython
-module reads its generators and its order from the kinds, without a search
-and without listing its elements, at least :math:`k!`
+The group :math:`G` of the automorphisms of the map with its data alone is
+the product, over the kinds of ``k`` isomorphic components :math:`C`, of the
+wreath products :math:`\mathrm{Aut}(C) \wr S_k`, each of order at least
+:math:`k!`. Without class arrays :math:`H = G`, and the Cython module reads
+its generators and its order from the kinds, without a search and without
+listing the elements of the group
 (:func:`~combisurf.isomorphism.automorphism_generators`,
 :func:`~combisurf.isomorphism.canonical_key`).
 
 Subgroup search
 ^^^^^^^^^^^^^^^
 
-:math:`H` is the stabiliser of these partitions in the group :math:`G` of
-the map with its data alone, a product over the kinds of wreath products,
-computed by a subgroup search of Sims. The base is
-:math:`b_0, \ldots, b_{ncomp-1}`, the half-edge of canonical label 0 of each
-level (``lab[off[i]]``); the pointwise stabiliser of
+:math:`H` is the stabiliser of these partitions in :math:`G`, computed by a
+subgroup search of Sims. In this search, the base is the sequence
+:math:`b_0, \ldots, b_{ncomp-1}` of the *base points*, one per level: the
+half-edge of canonical label 0 of each level (``lab[off[i]]``); only the
+identity of :math:`G` fixes them all. The pointwise stabiliser of
 :math:`b_0, \ldots, b_{i-1}` in :math:`G` fixes their components and permutes
 the others as the wreath products do, so the orbit of :math:`b_i` in it is
 made of the half-edges whose label is one of ``labels[loff[t]], ...,
@@ -224,5 +225,4 @@ exponential in the worst case, when the placements map new values and the
 values of classes reject them only deep in the search, as on a graph on the
 class values given by its edges as isolated edges (the two values of an
 edge being its endpoints): the search is then one for the automorphisms of
-the graph, and can take far longer than the search of the canonical key
-(:ref:`omap-algorithms-iso-search`), as on a random cubic graph or a grid.
+the graph.

@@ -53,7 +53,7 @@ rules are the following integers:
   above, with the invariant extended by the degrees at the twin of the
   half-edge and by whether the twin has the same vertex and the same face
 - :data:`ROOTS_DATA` -- a flag, combined by the bitwise or ``|`` with one
-  of the four rules above, that appends to the invariant the values of
+  of the four rules other than :data:`ROOTS_ALL`, that appends to the invariant the values of
   ``data`` at the half-edge (and at its twin under the edge rules); the
   values of ``classes`` are never used
 
@@ -1784,11 +1784,15 @@ cdef int _stabiliser_generator(const int *g, void *arg) except -1:
     Return ``0``, or ``-1`` with a Python exception set (a failed
     allocation), which stops the search.
 
-    The callback runs inside the ``sig_on`` of ``_stabiliser``, and calls
-    ``_collect_generator`` between ``sig_block`` and ``sig_unblock``
-    through a pointer without exception check, for the reasons given in
-    ``_automorphism_leaf``; the ``-1`` of ``_collect_generator``, with the
-    exception set, is returned to ``_domap_stabiliser``.
+    The callback runs inside the ``sig_on`` of ``_stabiliser``, where an
+    interrupt jumps out at once, and a jump out of the Python code of
+    ``_collect_generator`` (an allocation, a list append) could leave the
+    interpreter in an inconsistent state. ``sig_block`` delays the interrupt
+    to the ``sig_unblock``, reached when ``_collect_generator`` has returned
+    and released its references, so that the jump skips no reference count.
+    The call goes through a pointer without exception check, so that the
+    ``sig_unblock`` also runs when ``_collect_generator`` raises; its ``-1``,
+    with the exception set, is then returned to ``_domap_stabiliser``.
     """
     cdef int status
     sig_block()
@@ -1831,9 +1835,15 @@ cdef tuple _stabiliser(const domap_struct *m, bint generators):
     The components, computed by ``_wreath``, are laid out for the C
     function ``_domap_stabiliser`` as a ``domap_wreath_struct`` (specified
     in ``doc/c/omap.rst``), in arrays owned here and kept unresized while
-    the C code reads them. ``_domap_stabiliser`` writes the size of the
-    orbit of each base point, and the order of the group is their product,
-    computed in Python integers since it may exceed every C integer type.
+    the C code reads them. ``_domap_stabiliser`` runs a subgroup search of
+    Sims (section ``omap-algorithms-stabiliser`` of
+    ``doc/c/omap_algorithms.rst``). In this search, the base is the
+    sequence of the half-edges of canonical label 0 of the components, the
+    *base points* ``b_0, b_1, ...``, and ``_domap_stabiliser`` writes, for
+    each ``i``, the size of the orbit of ``b_i`` under the elements of the
+    group that fix ``b_0, ..., b_{i-1}``. The order of the group is the
+    product of these sizes, computed in Python integers since it may exceed
+    every C integer type.
     With ``generators``, each generator found is copied into the list by
     the callback ``_stabiliser_generator``.
 
