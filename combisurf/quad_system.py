@@ -699,12 +699,7 @@ class Geodesic:
                 (t, n) = s.popleft()
                 if n != 1:
                     s.appendleft((t, n - 1))
-                (t2, n2) = s.pop()
-                if t2==2:
-                    s.append((2, n2 + 1))
-                else:
-                    s.append((t2, n2))
-                    s.append((2, 1))
+                turn_add(s, 2, 1)
                 first_turn = t
             if first_turn == 1:
                 self.origin_simplification() # the bracket now starts at the origin so we can recursively call origin_simplification
@@ -715,12 +710,7 @@ class Geodesic:
                 (t, n) = s.popleft()
                 if n != 1:
                     s.appendleft((t, n - 1))
-                (t2, n2) = s.pop()
-                if t2==d-2:
-                    s.append((d-2, n2+1))
-                else:
-                    s.append((t2, n2))
-                    s.append((d-2, 1))
+                turn_add(s, d-2, 1)
                 first_turn = t
             if first_turn == d - 1:
                 self.origin_simplification() # the bracket now starts at the origin so we can recursively call origin_simplification
