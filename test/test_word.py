@@ -1,5 +1,6 @@
 import pytest
 
+
 def test_word_is_reduced():
     from array import array
     from combisurf.word import word_is_reduced
@@ -27,6 +28,63 @@ def test_word_reduce():
 
     assert word_reduce(array('i', [1, 0])) == array('i', [])
     assert word_reduce(array('i', [1, 2, 3, 0, 0])) == array('i', [0])
+
+
+def test_word_reduce_random():
+    # exhaustive agreement with a reduction by repeated cancellation of one
+    # pair of adjacent inverse letters, freely and then cyclically
+    from array import array
+    from itertools import product
+    from combisurf.word import word_reduce, word_cyclically_reduce, word_cancel_ends
+
+    def naive_reduce(w, cyclic):
+        w = list(w)
+        while True:
+            for i in range(len(w) - 1):
+                if w[i] ^ 1 == w[i + 1]:
+                    del w[i:i + 2]
+                    break
+            else:
+                if cyclic and len(w) > 1 and w[0] ^ 1 == w[-1]:
+                    del w[-1]
+                    del w[0]
+                else:
+                    return w
+
+    for n in range(8):
+        for ww in product(range(4), repeat=n):
+            w = array('i', ww)
+            assert list(word_reduce(w)) == naive_reduce(w, False), ww
+            assert list(word_cyclically_reduce(w)) == naive_reduce(w, True), ww
+            assert word_cancel_ends(word_reduce(w)) == word_cyclically_reduce(w), ww
+            assert w == array('i', ww)  # the input is untouched
+
+
+def test_word_reduce_typecode():
+    # other typecodes are read too, and the output always has typecode 'i'
+    # (arrays of distinct typecodes compare equal letter by letter, hence the
+    # explicit check of the typecode)
+    from array import array
+    from combisurf.word import word_reduce, word_cyclically_reduce, word_cancel_ends, word_is_cyclically_reduced
+
+    for typecode in 'lqhI':
+        for f, w, ans in [(word_reduce, [], []),
+                          (word_reduce, [4], [4]),
+                          (word_reduce, [4, 2, 3, 0], [4, 0]),
+                          (word_cyclically_reduce, [], []),
+                          (word_cyclically_reduce, [4], [4]),
+                          (word_cyclically_reduce, [0, 2, 3, 0, 1], [0]),
+                          (word_cyclically_reduce, [0, 2, 3, 2, 1], [2]),
+                          (word_cancel_ends, [], []),
+                          (word_cancel_ends, [4], [4]),
+                          (word_cancel_ends, [0, 2], [0, 2]),
+                          (word_cancel_ends, [0, 4, 1], [4])]:
+            v = f(array(typecode, w))
+            assert v.typecode == 'i' and list(v) == ans, (f.__name__, typecode, w)
+
+        assert word_is_cyclically_reduced(array(typecode, [0, 2, 4]))
+        assert not word_is_cyclically_reduced(array(typecode, [0, 2, 3]))
+        assert not word_is_cyclically_reduced(array(typecode, [0, 2, 1]))
 
 
 def test_word_is_cyclically_reduced():

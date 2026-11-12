@@ -3,6 +3,19 @@ Combinatorial maps on oriented surfaces
 
 The main class in this module is :class:`OrientedMap` which describes a
 cell decomposition of an oriented surface.
+
+A *walk* on a map is a word (see :mod:`combisurf.word`) whose letters are
+active half-edges of the map and such that each half-edge ends at the vertex
+where the next one starts. It can be given as a string such as ``"0,~1"``, a
+list of integers or an ``array('i')``. A walk is *closed* if moreover its last
+half-edge ends at the vertex where its first one starts.
+
+A *multiwalk* is a finite collection of walks with non-negative integer
+multiplicities. It can be given as a single walk (with multiplicity one), a
+list of walks ``[w0, w1, ...]`` (each with multiplicity one) or a list of pairs
+``[(w0, m0), (w1, m1), ...]``. It is taken as given: backtracking is not
+simplified, repeated walks are not merged and conjugate closed walks are not
+identified.
 """
 # ****************************************************************************
 #  This file is part of combisurf
@@ -44,7 +57,7 @@ from combisurf.permutation import (perm_init, perm_check, perm_trim, perm_cycles
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
                           perm_orbit, perm_orbit_size,
                           perms_are_transitive, perms_orbits, perm_edge_orbits, edge_relabelling_from)
-
+from combisurf.word import word_init, word_string
 
 def check_relabelling(arg, ne):
     r"""
@@ -433,6 +446,265 @@ class OrientedMap:
         if self._vp[2 * e] == -1:
             raise ValueError(f"inactive edge e={e}")
         return e
+
+    def _check_face_index(self, f):
+        if not isinstance(f, numbers.Integral):
+            raise TypeError(f"invalid face {f}")
+        f = int(f)
+        if f < 0 or f >= self.num_faces():
+            raise ValueError(f"face number out of range f={f}")
+        return f
+
+    def _check_walk(self, w, closed=False):
+        r"""
+        Check that ``w`` is a walk on this map and return it as an ``array('i')``.
+
+        See the module documentation for the definition of a walk.
+
+        INPUT:
+
+        - ``w`` -- a string, a list of integers or an array
+
+        - ``closed`` -- boolean (default: ``False``); whether the walk must be closed
+
+        OUTPUT: the walk as an ``array('i')``. If ``w`` is already an
+        ``array('i')`` then ``w`` itself is returned, not a copy.
+
+        Raise a ``ValueError`` if ``w`` is not a walk on this map, or not a
+        closed one when ``closed=True``.
+
+        TESTS::
+
+            sage: from array import array
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,~0,~1)")
+
+            sage: w = array("i", [0, 2])
+            sage: m._check_walk(w) is w
+            True
+            sage: m._check_walk([0, 2])
+            array('i', [0, 2])
+            sage: m._check_walk("0,~1")
+            array('i', [0, 3])
+            sage: m._check_walk(array("I", [0, 2]))
+            array('i', [0, 2])
+            sage: m._check_walk([0, 3, 5])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid walk [0, 3, 5]: half-edge number out of range (=5) at position 2
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+            sage: m._check_walk([0, 2])
+            array('i', [0, 2])
+            sage: m._check_walk([0, 0])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid walk [0, 0]: 0 at position 0 ends at vertex 1 but 0 at position 1 starts at vertex 0
+            sage: m._check_walk([0, 2], closed=True)
+            Traceback (most recent call last):
+            ...
+            ValueError: non-closed walk [0, 2]: 2 at position 1 ends at vertex 2 but 0 at position 0 starts at vertex 0
+        """
+        w = word_init(w)
+        h2v = self.half_edge_to_vertex()
+
+        hprev = None # previous half-edge
+        for i, h in enumerate(w):
+            try:
+                self._check_half_edge(h)
+            except ValueError as e:
+                raise ValueError(f"invalid walk {word_string(w)}: {e} at position {i}") from None
+            if hprev is not None and h2v[hprev ^ 1] != h2v[h]:
+                raise ValueError(f"invalid walk {word_string(w)}: {hprev} at position {i - 1} ends at vertex {h2v[hprev ^ 1]} but {h} at position {i} starts at vertex {h2v[h]}")
+            hprev = h
+
+        if w and closed and h2v[w[0]] != h2v[w[-1] ^ 1]:
+            raise ValueError(f"non-closed walk {word_string(w)}: {w[-1]} at position {len(w) - 1} ends at vertex {h2v[w[-1] ^ 1]} but {w[0]} at position 0 starts at vertex {h2v[w[0]]}")
+
+        return w
+
+    def _check_multiwalk(self, words, multiplicities=None, closed=False):
+        r"""
+        Return the multiwalk given by ``words`` and ``multiplicities`` in normal form.
+
+        See the module documentation for the definitions of walks and
+        multiwalks. The normal form does minimal work: the walks are checked and
+        converted with :meth:`_check_walk` and the ones with multiplicity zero
+        are dropped, but backtracking is not simplified, repeated walks are not
+        merged and conjugate closed walks are not identified.
+
+        INPUT:
+
+        - ``words`` -- a single walk, a list of walks ``[w0, w1, ...]`` or a list of
+          pairs ``[(w0, m0), (w1, m1), ...]`` where ``m0``, ``m1``, ... are
+          non-negative integers. The items of a list must be either all walks or
+          all pairs.
+
+        - ``multiplicities`` -- (optional) a list of non-negative integers with the
+          same length as ``words``. Only allowed when ``words`` is a list of walks.
+          If not provided, the multiplicities are taken from the pairs, or set to
+          `1` for a list of walks.
+
+        - ``closed`` -- (boolean, default ``False``) whether the walks must be closed
+
+        OUTPUT: a pair ``(words, multiplicities)`` of lists of the same length,
+        where ``words`` contains arrays ``array('i')`` and ``multiplicities``
+        contains positive Python integers. The walks with multiplicity zero in
+        the input are dropped, so the output can be shorter than the input.
+
+        Raise a ``TypeError`` or a ``ValueError`` if the input is not a valid
+        multiwalk.
+
+        TESTS::
+
+            sage: from array import array
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap(fp="(0,1,~0,~1)")
+
+        A single walk::
+
+            sage: m._check_multiwalk(array("i", [0, 2]))
+            ([array('i', [0, 2])], [1])
+            sage: m._check_multiwalk([0, 2])
+            ([array('i', [0, 2])], [1])
+            sage: m._check_multiwalk("0,~0")
+            ([array('i', [0, 1])], [1])
+
+        A list of walks, with or without multiplicities::
+
+            sage: m._check_multiwalk([])
+            ([], [])
+            sage: m._check_multiwalk([[0, 2], [], "0,~1"])
+            ([array('i', [0, 2]), array('i'), array('i', [0, 3])], [1, 1, 1])
+            sage: m._check_multiwalk([[0, 2], [1, 3], [0]], [2, 0, 1])
+            ([array('i', [0, 2]), array('i', [0])], [2, 1])
+            sage: m._check_multiwalk(iter([[0, 2], [1]]), (3, 4))
+            ([array('i', [0, 2]), array('i', [1])], [3, 4])
+
+        A list of pairs (walk, multiplicity)::
+
+            sage: m._check_multiwalk([([0, 2], 1), ([], 3), ("0,1", 2), ([0, 0], 0)])
+            ([array('i', [0, 2]), array('i'), array('i', [0, 2])], [1, 3, 2])
+
+        Closed walks::
+
+            sage: m = OrientedMap(fp="(0,1,2)(~0,3,4)(~1,~4,~5)(~2,5,~3)")
+            sage: m._check_multiwalk([[0, 1], [0, 2]])
+            ([array('i', [0, 1]), array('i', [0, 2])], [1, 1])
+            sage: m._check_multiwalk([[0, 1], [0, 2]], closed=True)
+            Traceback (most recent call last):
+            ...
+            ValueError: non-closed walk [0, 2]: 2 at position 1 ends at vertex 2 but 0 at position 0 starts at vertex 0
+
+        Invalid inputs::
+
+            sage: m = OrientedMap(fp="(0,1,~0,~1)")
+            sage: m._check_multiwalk([0, 2], [1])
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid multiwalk: multiplicities can only be given with a list of walks
+            sage: m._check_multiwalk([([0, 2], 1)], [1])
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid multiwalk: multiplicities can not be given with a list of pairs (walk, multiplicity)
+            sage: m._check_multiwalk([[0, 2], [1]], [1])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid multiwalk: got 2 walks but 1 multiplicities
+            sage: m._check_multiwalk([[0, 2], ([0, 2], 2)])
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid multiwalk: the item ([0, 2], 2) at position 1 is a pair (walk, multiplicity) but the first item is a walk
+            sage: m._check_multiwalk([([0, 2], 2), [0, 2]])
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid multiwalk: the item [0, 2] at position 1 is a walk but the first item is a pair (walk, multiplicity)
+            sage: m._check_multiwalk(([0, 2], 3))
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid multiwalk: the input should either be a walk, a list of walks or a list of pairs (walk, multiplicity)
+            sage: m._check_multiwalk([[0], 3])
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid multiwalk: the input should either be a walk, a list of walks or a list of pairs (walk, multiplicity)
+            sage: m._check_multiwalk([([0], 1), 3])
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid multiwalk: the input should either be a walk, a list of walks or a list of pairs (walk, multiplicity)
+            sage: m._check_multiwalk([([0, 2], "2")])
+            Traceback (most recent call last):
+            ...
+            TypeError: invalid multiwalk: the multiplicity '2' of type str of the walk [0, 2] at position 0 must be an integer
+            sage: m._check_multiwalk([[0, 2], [1]], [1, -1])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid multiwalk: the multiplicity -1 of the walk [1] at position 1 must be non-negative
+            sage: m._check_multiwalk([([0, 3, 1, 7], 2)])
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid walk [0, 3, 1, 7]: half-edge number out of range (=7) at position 3
+        """
+        # a single walk is a string, an array or a sequence of integers
+        if isinstance(words, (str, array)):
+            single = True
+        else:
+            if not isinstance(words, (list, tuple)):
+                words = list(words)
+            single = bool(words) and isinstance(words[0], numbers.Integral)
+
+        if single:
+            if multiplicities is not None:
+                raise TypeError("invalid multiwalk: multiplicities can only be given with a list of walks")
+            return [self._check_walk(words, closed=closed)], [1]
+
+        def is_pair(item):
+            # the letters of a walk are integers, so a sequence of length 2
+            # whose first entry is not an integer is a pair (walk, multiplicity)
+            return (isinstance(item, (tuple, list)) and len(item) == 2 and
+                    not isinstance(item[0], numbers.Integral))
+
+        # the first item decides whether words is a list of walks or of pairs
+        pairs = bool(words) and is_pair(words[0])
+        expected = "a pair (walk, multiplicity)" if pairs else "a walk"
+        unexpected = "a walk" if pairs else "a pair (walk, multiplicity)"
+
+        if multiplicities is None:
+            if not pairs:
+                multiplicities = [1] * len(words)
+        else:
+            if pairs:
+                raise TypeError("invalid multiwalk: multiplicities can not be given with a list of pairs (walk, multiplicity)")
+            if not isinstance(multiplicities, (list, tuple, array)):
+                multiplicities = list(multiplicities)
+            if len(multiplicities) != len(words):
+                raise ValueError(f"invalid multiwalk: got {len(words)} walks but {len(multiplicities)} multiplicities")
+
+        words_clean = []
+        multiplicities_clean = []
+        for i, item in enumerate(words):
+            if isinstance(item, numbers.Integral):
+                raise TypeError("invalid multiwalk: the input should either be a walk, a list of walks or a list of pairs (walk, multiplicity)")
+            if is_pair(item) != pairs:
+                raise TypeError(f"invalid multiwalk: the item {item!r} at position {i} is {unexpected} but the first item is {expected}")
+
+            if pairs:
+                w, m = item
+            else:
+                w, m = item, multiplicities[i]
+
+            w = self._check_walk(w, closed=closed)
+
+            if not isinstance(m, numbers.Integral):
+                raise TypeError(f"invalid multiwalk: the multiplicity {m!r} of type {type(m).__name__} of the walk {word_string(w)} at position {i} must be an integer")
+            m = int(m)
+            if m < 0:
+                raise ValueError(f"invalid multiwalk: the multiplicity {m} of the walk {word_string(w)} at position {i} must be non-negative")
+            if m == 0:
+                continue
+            words_clean.append(w)
+            multiplicities_clean.append(m)
+
+        return words_clean, multiplicities_clean
 
     @staticmethod
     def _subdivide_false(u, v, half_edge_list, h):
@@ -1866,6 +2138,361 @@ class OrientedMap:
             mor[h + 1] = array('i', [2 * self._fp[h], 2 * h + 1])
         return radial, mor
 
+    def reduced_map(self, forest=None, coforest=None, relabel=False, mapping=False, mutable=False, check=True):
+        r"""
+        Return the map obtained by contracting ``forest`` and deleting ``coforest``.
+
+        The vertices of the result are the trees of ``forest`` and its faces
+        are the trees of ``coforest``. Its edges are the complementary edges,
+        which keep their labels unless ``relabel`` is set. If the pair
+        (``forest``, ``coforest``) is a tree-cotree decomposition then the
+        resulting map has a single vertex and a single face.
+
+        INPUT:
+
+        - ``forest``, ``coforest`` -- (default: ``None``) the half-edges of the
+          edges to contract and to delete, in the format returned by
+          :meth:`forest_coforest_decomposition`; entries equal to ``-1`` are
+          ignored. When both are ``None`` a decomposition is computed. Listing
+          the same edge twice raises a ``ValueError``.
+
+        - ``relabel`` -- boolean (default: ``False``); whether to relabel the
+          result on ``0, 1, ..., 2 * ne - 1`` so that it has no inactive
+          half-edge. Contracting and deleting never renumber, so without this
+          the labels of the complementary edges are kept and are sparse. The
+          relabelling goes edge by edge, in increasing order, and preserves
+          the parity of each half-edge inside its edge.
+
+        - ``mapping`` -- boolean (default: ``False``); whether to also return
+          the projection, a list indexed by the half-edges of this map giving
+          for each of them the walk it becomes in the result, as an array of
+          half-edges of the result (``None`` for inactive half-edges). A
+          complementary half-edge is sent to itself, a half-edge of a
+          contracted edge to the empty walk and a half-edge of a deleted edge
+          to a walk homotopic to it, see below. The walk of ``ep(h)`` is the
+          reverse of the walk of ``h``.
+
+        - ``mutable`` -- boolean (default: ``False``); whether the result is
+          mutable
+
+        - ``check`` -- boolean (default: ``True``); whether to check that the
+          half-edges of ``forest`` and ``coforest`` are ones of this map, that
+          neither contains a cycle, and to check the map built. Listing the
+          same edge twice is reported whatever its value.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: m = OrientedMap("(0,5,~4,7,4,~5)(~0,~1,~2,3,2,~6)(1,~3,~7,6)")
+            sage: m
+            OrientedMap("(0,5,~4,7,4,~5)(~0,~1,~2,3,2,~6)(1,~3,~7,6)", "(0,~6,~7,~4,7,~3,~2,3,1,~0,~5)(~1,6,2)(4,5)")
+            sage: print(m.genus(), m.num_vertices(), m.num_faces())
+            2 3 3
+
+            sage: r = m.reduced_map()
+            sage: r
+            OrientedMap("(1,~3,~5,~1,~2,3,2,5)", "(1,~5,2,~1,5,~3,~2,3)")
+            sage: print(r.genus(), r.num_vertices(), r.num_faces())
+            2 1 1
+
+        With a forest and a coforest that are not spanning, the result has one
+        vertex per tree of the forest and one face per tree of the coforest::
+
+            sage: f, c, _ = m.forest_coforest_decomposition(root_vertices=[0, 2], root_faces=[1])
+            sage: r = m.reduced_map(forest=f, coforest=c)
+            sage: print(r.genus(), r.num_vertices(), r.num_faces())
+            2 2 1
+
+        The labels of the complementary edges are kept, and ``relabel`` makes
+        them consecutive::
+
+            sage: f, c, comp = m.forest_coforest_decomposition()
+            sage: comp
+            array('i', [1, 2, 3, 5])
+            sage: m.reduced_map(f, c)
+            OrientedMap("(1,~3,~5,~1,~2,3,2,5)", "(1,~5,2,~1,5,~3,~2,3)")
+            sage: m.reduced_map(f, c, relabel=True)
+            OrientedMap("(0,~2,~3,~0,~1,2,1,3)", "(0,~3,1,~0,3,~2,~1,2)")
+
+        With ``mapping``, the projection is returned as well. A half-edge of a
+        deleted edge lies on the boundary of a disk, made of the faces of the
+        coforest beyond it, and its walk goes around the other side of that
+        disk::
+
+            sage: r, proj = m.reduced_map(f, c, mapping=True)
+            sage: proj
+            [array('i'),
+             array('i'),
+             array('i', [2]),
+             array('i', [3]),
+             array('i', [4]),
+             array('i', [5]),
+             array('i', [6]),
+             array('i', [7]),
+             array('i', [11]),
+             array('i', [10]),
+             array('i', [10]),
+             array('i', [11]),
+             array('i', [2, 5]),
+             array('i', [4, 3]),
+             array('i'),
+             array('i')]
+            sage: all(list(proj[h ^^ 1]) == [r._ep(x) for x in reversed(proj[h])]
+            ....:     for h in m.half_edges())
+            True
+
+        The radial map of the reduced map is the quad system of :meth:`quad_system`
+        for the same forest and coforest. The isomorphism between them can be
+        read on the projections: a complementary half-edge ``h`` becomes the
+        walk ``proj[h]`` of length two in the quad system and the walk of
+        ``h`` in the radial map of the reduced map, which gives the image of
+        the half-edges of these walks::
+
+            sage: rad_map, rad = r.radial_map(mapping=True)
+            sage: q, qproj = m.quad_system(f, c, mapping=True)
+            sage: p = {}
+            sage: for e in comp:
+            ....:     for h in (2 * e, 2 * e + 1):
+            ....:         a, b = rad[h]
+            ....:         p[a], p[b] = qproj[h]
+
+        These walks need not go through every edge of the radial map, as the
+        walk of ``h`` runs through the corners of ``h`` and of
+        ``next_in_face(h)``, which the walks of other edges may use as well.
+        But the map being connected, the relabelling extends uniquely along the
+        face permutation and the edge permutation. It is consistent with the
+        value read on the walks and conjugates the face permutations::
+
+            sage: len(p), rad_map.num_half_edges()
+            (14, 16)
+            sage: rfp = rad_map.face_permutation()
+            sage: qfp = q.face_permutation()
+            sage: todo = list(p)
+            sage: while todo:
+            ....:     x = todo.pop()
+            ....:     for y, z in ((x ^^ 1, p[x] ^^ 1), (rfp[x], qfp[p[x]])):
+            ....:         if y not in p:
+            ....:             p[y] = z
+            ....:             todo.append(y)
+            ....:         elif p[y] != z:
+            ....:             raise AssertionError
+            sage: len(p) == q.num_half_edges()
+            True
+            sage: all(qfp[p[x]] == p[rfp[x]] for x in rad_map.half_edges())
+            True
+
+        The relabelling also matches the projections on the contracted edges,
+        that both send to the empty walk. On the deleted edges the two
+        projections are homotopic walks but differ in general, the quad
+        system keeping a walk of length two where the reduced map has to go
+        around a disk::
+
+            sage: deleted = [h // 2 for h in c if h != -1]
+            sage: all([p[x] for y in proj[h] for x in rad[y]] == list(qproj[h])
+            ....:     for h in m.half_edges() if h // 2 not in deleted)
+            True
+            sage: [(proj[2 * e], qproj[2 * e]) for e in deleted]
+            [(array('i', [2, 5]), array('i', [20, 9])),
+             (array('i', [11]), array('i', [28, 21]))]
+
+        On a sphere the reduced map is empty::
+
+            sage: m = OrientedMap("(0,1,2)(~0,~2,~1)")
+            sage: m.genus()
+            0
+            sage: m.reduced_map(mapping=True)
+            (OrientedMap("", ""),
+             [array('i'), array('i'), array('i'), array('i'), array('i'), array('i')])
+
+        Folded edges are allowed, but may be neither contracted nor deleted::
+
+            sage: m = OrientedMap(vp="(0,2,~2,4)(~4)")
+            sage: m.reduced_map(mapping=True)
+            (OrientedMap("(0)", "(0)"),
+             [array('i', [0]),
+              None,
+              None,
+              None,
+              array('i'),
+              array('i'),
+              None,
+              None,
+              array('i'),
+              array('i')])
+
+        TESTS::
+
+            sage: m = OrientedMap("(0,5,~4,7,4,~5)(~0,~1,~2,3,2,~6)(1,~3,~7,6)")
+            sage: f, c, _ = m.forest_coforest_decomposition()
+            sage: m.reduced_map(f, None)
+            Traceback (most recent call last):
+            ...
+            ValueError: forest and coforest must be given together
+            sage: m.reduced_map(f, [2, 12])
+            Traceback (most recent call last):
+            ...
+            ValueError: coforest contains a cycle
+            sage: m.reduced_map([1, 15, 5], c)
+            Traceback (most recent call last):
+            ...
+            ValueError: forest contains a cycle
+            sage: m.reduced_map(f, [1, 12])
+            Traceback (most recent call last):
+            ...
+            ValueError: the edge of the half-edge 1 is listed twice
+
+        .. SEEALSO::
+
+            :meth:`forest_coforest_decomposition`, :meth:`quad_system`,
+            :meth:`radial_map`, :meth:`contract_edge`, :meth:`delete_edge`
+
+        ALGORITHM:
+
+        The face permutation of the result is obtained by following, from each
+        complementary half-edge, the face permutation composed with the
+        involution that exchanges the two half-edges of each deleted edge,
+        until the next complementary half-edge. Each half-edge is visited once.
+
+        For the projection, the faces are processed children first in the
+        coforest, so that the walk of a deleted half-edge is obtained by
+        concatenating the walks already computed on the boundary of its face.
+        The cost is linear in the size of the output.
+        """
+        if forest is None and coforest is None:
+            forest, coforest, _ = self.forest_coforest_decomposition()
+        elif forest is None or coforest is None:
+            raise ValueError("forest and coforest must be given together")
+
+        vp = self._vp
+        fp = self._fp
+        n = len(vp)
+
+        # kind[e] is 0 for an edge that stays, 1 for a contracted edge and 2
+        # for a deleted one
+        kind = array('i', [0] * (n // 2))
+        contracted = []
+        deleted = []
+        for k, edges, listed in ((1, forest, contracted), (2, coforest, deleted)):
+            for h in edges:
+                if h == -1:
+                    continue
+                if check:
+                    h = self._check_half_edge(h)
+                if kind[h // 2]:
+                    raise ValueError(f"the edge of the half-edge {h} is listed twice")
+                if vp[h ^ 1] == -1:
+                    raise ValueError(f"the half-edge {h} is folded")
+                kind[h // 2] = k
+                listed.append(h)
+
+        if check:
+            # a contracted cycle or a deleted cocycle would not give a map of
+            # the same surface; union-find on the vertices, then on the faces
+            for h2c, listed, name in ((self.half_edge_to_vertex(), contracted, "forest"),
+                                      (self.half_edge_to_face(), deleted, "coforest")):
+                root = list(range(max(h2c, default=-1) + 1))
+                for h in listed:
+                    u = h2c[h]
+                    while root[u] != u:
+                        root[u] = u = root[root[u]]
+                    v = h2c[h ^ 1]
+                    while root[v] != v:
+                        root[v] = v = root[root[v]]
+                    if u == v:
+                        raise ValueError(f"{name} contains a cycle")
+                    root[u] = v
+
+        # contracting an edge removes its two half-edges from their faces and
+        # deleting it glues the face of each half-edge to that of the other.
+        # So the next half-edge in the face of the reduced map is reached by
+        # skipping the contracted half-edges and crossing the deleted ones.
+        # That is following fp composed with the involution swapping the two
+        # half-edges of each deleted edge, a permutation whose orbit from a
+        # kept half-edge gets to the next kept one, and each skipped half-edge
+        # is visited once overall.
+        rfp = array('i', [-1] * n)
+        for h in range(n):
+            if vp[h] == -1 or kind[h // 2]:
+                continue
+            y = fp[h]
+            while kind[y // 2]:
+                y = fp[y] if kind[y // 2] == 1 else fp[y ^ 1]
+            rfp[h] = y
+
+        relabelling = None
+        if relabel:
+            relabelling = array('i', [-1] * n)
+            ne = 0
+            for e in range(n // 2):
+                if vp[2 * e] != -1 and not kind[e]:
+                    relabelling[2 * e] = 2 * ne
+                    relabelling[2 * e + 1] = 2 * ne + 1
+                    ne += 1
+            fp_new = array('i', [-1] * (2 * ne))
+            for h in range(n):
+                if rfp[h] != -1:
+                    fp_new[relabelling[h]] = relabelling[rfp[h]]
+            rfp = fp_new
+        else:
+            perm_trim(rfp)
+        reduced = OrientedMap(fp=rfp, mutable=mutable, check=check)
+
+        if not mapping:
+            return reduced
+
+        # A deleted half-edge c on the face g has its reverse on the parent
+        # face of g, that is it lies on the child side of its edge. Pushing c
+        # across the disk made of g and its descendants in the coforest gives
+        # the walk of ep(c): the boundary of g read after c, in which a deleted
+        # half-edge is itself replaced by the walk around its child. Filling
+        # in the walks children first makes the whole of it linear in the
+        # size of the output.
+        h2f = self.half_edge_to_face()
+        nf = max(h2f, default=-1) + 1
+        child_edge = array('i', [-1] * nf)
+        num_children = array('i', [0] * nf)
+        for c in deleted:
+            g = h2f[c]
+            if child_edge[g] != -1:
+                raise ValueError(f"the face of the half-edge {c} is the child of two edges of coforest")
+            child_edge[g] = c
+            num_children[h2f[c ^ 1]] += 1
+        order = [g for g in range(nf) if child_edge[g] != -1 and not num_children[g]]
+        i = 0
+        while i < len(order):
+            p = h2f[child_edge[order[i]] ^ 1]
+            i += 1
+            num_children[p] -= 1
+            if not num_children[p] and child_edge[p] != -1:
+                order.append(p)
+        if len(order) != len(deleted):
+            raise ValueError("coforest contains a cycle")
+
+        proj = [None] * n
+        for h in range(n):
+            if vp[h] != -1 and kind[h // 2] != 2:
+                proj[h] = array('i', [] if kind[h // 2] else [h])
+        walk = [None] * nf
+        for g in order:
+            c = child_edge[g]
+            w = array('i')
+            y = fp[c]
+            while y != c:
+                k = kind[y // 2]
+                if k == 0:
+                    w.append(y)
+                elif k == 2:
+                    w.extend(walk[h2f[y ^ 1]])
+                y = fp[y]
+            walk[g] = w
+            proj[c ^ 1] = w
+            proj[c] = array('i', [self._ep(x) for x in reversed(w)])
+
+        if relabelling is not None:
+            proj = [None if p is None else array('i', [relabelling[x] for x in p]) for p in proj]
+
+        return reduced, proj
+
     def quad_system(self, forest=None, coforest=None, relabel=False, mapping=False, mutable=False, check=True):
         r"""
         Return the quad system of this map for the given forest and coforest.
@@ -2130,6 +2757,104 @@ class OrientedMap:
             else:
                 proj.append(array('i', [relabelling[a], relabelling[b]]))
         return quad, proj
+
+    def geometric_intersection(self, u, v=None, punctured_faces=False):
+        r"""
+        Return the geometric intersection between two multiwalks or the self-intersection
+        of a single one.
+
+        INPUT:
+
+        - ``u`` -- a multiwalk of closed walks, given in one of the following forms
+          (see the module documentation):
+
+          - a single walk ``w``
+          - a list of walks ``[w0, w1, ...]``
+          - a list of pairs (walk, multiplicity) ``[(w0, m0), (w1, m1), ...]``
+
+        - ``v`` -- (default ``None``) an optional multiwalk of closed walks, in one
+          of the same forms
+
+        - ``punctured_faces`` -- either a boolean (default ``False``) or a list of
+          face indices. If set to ``False`` or ``True`` then respectively no face or
+          all faces are considered as punctured. If a list of integers is provided,
+          then the faces corresponding to them are considered as punctured.
+
+        OUTPUT: integer. Either the self-intersection of ``u`` if ``v`` is not
+        provided or the geometric intersection between ``u`` and ``v``.
+
+        The self-intersection counts each crossing once, while the intersection
+        of ``u`` with itself counts it twice: for a closed curve ``c`` one has
+        `i(c, c) = 2 i(c)`.
+
+        EXAMPLES:
+
+        A sample of curves on a pair of pants::
+
+            sage: from combisurf import OrientedMap
+            sage: P = OrientedMap(fp="(0)(1)(~0,~1)")
+            sage: P.num_vertices(), P.num_faces()
+            (1, 3)
+            sage: w0 = [0, 3]
+            sage: w1 = [0, 2, 0, 0, 2]
+            sage: w2 = [0, 2, 1, 2]
+            sage: P.geometric_intersection(w0, punctured_faces=True)
+            1
+            sage: P.geometric_intersection([w0], [w2], punctured_faces=True)
+            2
+            sage: P.geometric_intersection([(w0, 1), (w1, 3)], [(w2, 2)], punctured_faces=True)
+            28
+
+        The self-intersection against the intersection with itself::
+
+            sage: P.geometric_intersection(w1, punctured_faces=True)
+            2
+            sage: P.geometric_intersection(w1, w1, punctured_faces=True)
+            4
+
+        .. SEEALSO::
+
+            Each call builds a new
+            :class:`~combisurf.geometric_intersection.GeometricIntersectionPairing`,
+            which computes a reduced map. To compute many intersection numbers on
+            the same map, build the pairing once and call it instead, and to
+            compute all the intersection numbers among a fixed list of curves use
+            :meth:`~combisurf.geometric_intersection.GeometricIntersectionPairing.intersection_matrix`.
+        """
+        from combisurf.geometric_intersection import GeometricIntersectionPairing
+        return GeometricIntersectionPairing(self, punctured_faces)(u, v)
+
+    def geometric_intersection_matrix(self, wlist, punctured_faces=False):
+        r"""
+        Return the ``GeometricIntersectionMatrix`` of ``wlist``.
+
+        The :class:`~combisurf.geometric_intersection.GeometricIntersectionMatrix` is a
+        lazy object that can be queried to answer pairwise intersections among the curves
+        represented by the walks in ``wlist``. It is much faster than repeated calls
+        to :meth:`geometric_intersection`.
+
+        EXAMPLES::
+
+            sage: from combisurf import OrientedMap
+            sage: from combisurf.lyndon_word_family import cyclically_reduced_lyndon_words
+            sage: torus = OrientedMap(fp="(0,1,~0,~1)")
+            sage: I = torus.geometric_intersection_matrix(cyclically_reduced_lyndon_words(2, 1, 4, up_to_inverse=True), punctured_faces=True)
+            sage: I
+            GeometricIntersectionMatrix of 8 curves on OrientedMap("(0,1,~0,~1)", "(0,1,~0,~1)")
+            sage: print(I.row(3))
+            [1, 1, 2, 0, 3, 1, 3, 1]
+            sage: print(I.matrix())
+            [0 1 1 1 1 1 2 2]
+            [1 0 1 1 2 2 1 1]
+            [1 1 0 2 1 3 1 3]
+            [1 1 2 0 3 1 3 1]
+            [1 2 1 3 0 4 3 5]
+            [1 2 3 1 4 0 5 3]
+            [2 1 1 3 3 5 0 4]
+            [2 1 3 1 5 3 4 0]
+        """
+        from combisurf.geometric_intersection import GeometricIntersectionPairing
+        return GeometricIntersectionPairing(self, punctured_faces).matrix(wlist)
 
     #############
     # Mutations #

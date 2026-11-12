@@ -25,6 +25,7 @@ as free group element, the letter `i ^ 1` is the inverse of `i`
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
+from libc.string cimport memmove
 from cpython cimport array
 
 from combisurf.misc cimport str_to_int
@@ -50,12 +51,12 @@ def word_check(w):
         sage: word_check("")
         False
     """
-    if not isinstance(w, array.array):
+    if not isinstance(w, array.array) or w.typecode != 'i':
         return False
-    if w.typecode != 'i':
-        return False
-    if any(x < 0 for x in w):
-        return False
+    cdef int x
+    for x in w:
+        if x < 0:
+            return False
     return True
 
 
@@ -63,28 +64,52 @@ def word_init(data=None):
     r"""
     Initialize a word from ``data``.
 
+    Return ``data`` itself if it is already an array of integers.
+
+
     EXAMPLES::
 
         sage: from combisurf.word import word_init
+
+    From a list::
+
         sage: word_init([0, 1, 3, 2, 1])
         array('i', [0, 1, 3, 2, 1])
+
+    From a string of edges (``"i"`` means ``2i`` and ``"~i"`` means ``2i+1``) with
+    optional parentheses or brackets::
+
         sage: word_init("0,1,~2,~0")
         array('i', [0, 2, 5, 1])
+        sage: word_init("[3,~7,0,1]")
+        array('i', [6, 15, 0, 2])
+        sage: word_init("(2)")
+        array('i', [4])
 
     With no argument, returns the empty word::
 
         sage: word_init()
         array('i')
+
+    An array of integers is returned identically (no copy)::
+
+        sage: from array import array
+        sage: w = array("i", [0, 3, 2, 4])
+        sage: word_init(w) is w
+        True
     """
     if data is None:
         return array.array('i')
 
+    if isinstance(data, array.array) and (<array.array> data).typecode == "i":
+        return data
+
     if isinstance(data, str):
         data = data.replace(' ', '')
-        if data.startswith('(') or data.startswith('['):
-            data = data[1:]
-        if data.endswith(')') or data.endswith(')'):
-            data = data[:len(data)-1]
+        wrapped = ((data.startswith('(') and data.endswith(')')) or
+                   (data.startswith('[') and data.endswith(']')))
+        if wrapped:
+            data = data[1:len(data) - 1]
         data = [str_to_int(x) for x in data.split(',')]
         data = [2 * x if x >= 0 else (2 * ~x + 1) for x in data]
 
@@ -555,10 +580,23 @@ def word_is_cyclically_reduced(array.array w):
         False
         sage: word_is_cyclically_reduced(word_init([0, 2, 1]))
         False
+
+    TESTS:
+
+    Arrays of other typecodes are read letter by letter::
+
+        sage: from array import array
+        sage: word_is_cyclically_reduced(array('l', [0, 2, 3]))
+        False
+        sage: word_is_cyclically_reduced(array('l', [0, 2, 1]))
+        False
+        sage: word_is_cyclically_reduced(array('l', [0, 2, 4]))
+        True
     """
     if len(w) <= 1:
         return True
 
+    w = _int_array(w)
     cdef int i
     for i in range(len(w) - 1):
         if w.data.as_ints[i] ^ 1 == w.data.as_ints[i + 1]:
@@ -569,6 +607,8 @@ def word_is_cyclically_reduced(array.array w):
 
 def word_reduce(array.array w):
     r"""
+    Return the free reduction of ``w``.
+
     EXAMPLES::
 
         sage: from combisurf.word import word_init, word_reduce
@@ -592,23 +632,144 @@ def word_reduce(array.array w):
         sage: w = word_init([0, 2, 1, 0, 3, 1])
         sage: word_reduce(w)
         array('i')
+
+    TESTS:
+
+    The output is an array of typecode ``'i'`` whatever the typecode of the
+    input::
+
+        sage: from array import array
+        sage: word_reduce(array('l', [4]))
+        array('i', [4])
+        sage: word_reduce(array('l', [4, 2, 3, 0]))
+        array('i', [4, 0])
     """
     if len(w) <= 1:
+        return _int_array(w)
+    return _word_reduce(w, False)
+
+
+cdef inline array.array _int_array(array.array w):
+    r"""
+    Return ``w`` if it has typecode ``'i'`` and a copy of it with typecode
+    ``'i'`` otherwise.
+    """
+    if w.ob_descr.typecode == c'i':
         return w
-    cdef int i = 1
-    ans = array.array('i', [w[0]])
-    while i < len(w):
-        if ans and w[i] ^ 1 == ans[len(ans) - 1]:
-            ans.pop()
-        else:
-            ans.append(w[i])
+    return array.array('i', w)
+
+
+cdef inline Py_ssize_t _num_cancelling_ends(int *a, Py_ssize_t l):
+    r"""
+    Return the largest ``i`` such that the first ``i`` letters of the word
+    ``a`` of length ``l`` cancel against its last ``i`` letters.
+    """
+    cdef Py_ssize_t i = 0
+    # NOTE: a letter never cancels with itself, so the middle letter of a word
+    # of odd length stops the loop and 2 * i < l is only there for words of
+    # even length such as u u^{-1} that are not freely reduced
+    while 2 * i < l and a[i] ^ 1 == a[l - i - 1]:
         i += 1
+    return i
+
+
+cdef array.array _word_reduce(array.array w, bint cyclic):
+    r"""
+    Return the free reduction of ``w``, or its cyclic reduction if ``cyclic``
+    is true, as a new array.
+
+    ``w`` must have at least two letters.
+    """
+    w = _int_array(w)
+    cdef int l = len(w)
+    cdef array.array ans = array.clone(w, l, False)
+    cdef int *a = ans.data.as_ints
+    cdef int *b = w.data.as_ints
+    cdef int m = 0
+    cdef int i, j
+    # NOTE: a stack in C rather than pops and appends on the array, since
+    # every call of GeometricIntersection.geometric_intersection reduces its
+    # curves: on words of length 8 the cyclic reduction takes 0.05 us, against
+    # 0.83 us with pops and appends.
+    for i in range(l):
+        if m and b[i] ^ 1 == a[m - 1]:
+            m -= 1
+        else:
+            a[m] = b[i]
+            m += 1
+    if cyclic:
+        i = _num_cancelling_ends(a, m)
+        if i:
+            m -= 2 * i
+            for j in range(m):
+                a[j] = a[j + i]
+    array.resize(ans, m)
     return ans
+
+
+def word_cancel_ends(array.array w):
+    r"""
+    Return the word ``w`` with its ends cancelled against each other.
+
+    Write ``w = u v u^{-1}`` with ``u`` as long as possible and return ``v``.
+    Only the letters at both ends are compared, the cancellations inside ``w``
+    are left untouched. If ``w`` is freely reduced then the output is cyclically
+    reduced (see :func:`word_cyclically_reduce` for arbitrary words).
+
+    If nothing cancels, ``w`` itself is returned when it has typecode ``'i'``
+    (no copy).
+
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init, word_cancel_ends
+        sage: word_cancel_ends(word_init([0, 2, 4, 3, 1]))
+        array('i', [4])
+        sage: word_cancel_ends(word_init([0, 2, 1]))
+        array('i', [2])
+        sage: w = word_init([0, 2])
+        sage: word_cancel_ends(w) is w
+        True
+
+    The cancellations inside a word that is not freely reduced are left
+    untouched::
+
+        sage: word_cancel_ends(word_init([3, 2, 0]))
+        array('i', [3, 2, 0])
+        sage: word_cancel_ends(word_init([0, 3, 2, 4, 1]))
+        array('i', [3, 2, 4])
+        sage: word_cancel_ends(word_init([0, 2, 3, 1]))
+        array('i')
+
+    TESTS::
+
+        sage: word_cancel_ends(word_init())
+        array('i')
+        sage: word_cancel_ends(word_init([0]))
+        array('i', [0])
+        sage: word_cancel_ends(word_init([0, 1]))
+        array('i')
+
+    The output is an array of typecode ``'i'`` whatever the typecode of the
+    input::
+
+        sage: from array import array
+        sage: word_cancel_ends(array('l', [4]))
+        array('i', [4])
+        sage: word_cancel_ends(array('l', [0, 4, 1]))
+        array('i', [4])
+    """
+    w = _int_array(w)
+    cdef Py_ssize_t l = len(w)
+    cdef Py_ssize_t i = _num_cancelling_ends(w.data.as_ints, l)
+    return w[i:l - i] if i else w
 
 
 def word_cyclically_reduce(array.array w):
     r"""
     Return a cyclic reduction of ``w`` in the free group.
+
+    This is the free reduction (:func:`word_reduce`) followed by the
+    cancellation of the ends (:func:`word_cancel_ends`), done in a single pass.
 
     EXAMPLES::
 
@@ -624,14 +785,27 @@ def word_cyclically_reduce(array.array w):
         array('i', [0])
         sage: word_cyclically_reduce(word_init())
         array('i')
+
+    The cancellations inside the word matter even when its ends do not
+    cancel::
+
+        sage: word_cyclically_reduce(word_init([3, 2, 0]))
+        array('i', [0])
+
+    TESTS:
+
+    The output is an array of typecode ``'i'`` whatever the typecode of the
+    input::
+
+        sage: from array import array
+        sage: word_cyclically_reduce(array('l', [4]))
+        array('i', [4])
+        sage: word_cyclically_reduce(array('l', [0, 2, 3, 0, 1]))
+        array('i', [0])
     """
     if len(w) <= 1:
-        return w
-    ans = word_reduce(w)
-    i = 0
-    while i < len(ans) and ans[i] ^ 1 == ans[len(ans) - i - 1]:
-        i += 1
-    return ans[i:len(ans) - i]
+        return _int_array(w)
+    return _word_reduce(w, True)
 
 
 def word_free_group_mul(array.array u, array.array v):
@@ -657,6 +831,32 @@ def word_free_group_mul(array.array u, array.array v):
     return u[:i+1] + v[j:]
 
 
+def word_free_group_mul_inplace(array.array u, array.array v):
+    r"""
+    Update ``u`` by adding ``v`` to it and reducing.
+
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init, word_free_group_mul_inplace
+        sage: u = word_init([0, 2, 1])
+        sage: v = word_init([0, 0])
+        sage: word_free_group_mul_inplace(u, v)
+        sage: u
+        array('i', [0, 2, 0])
+
+        sage: u = word_init([0, 2, 1, 2])
+        sage: v = word_init([3, 0, 3, 1, 1])
+        sage: word_free_group_mul_inplace(u, v)
+        sage: u
+        array('i', [1])
+    """
+    cdef Py_ssize_t lu = len(u), lv = len(v), i = 0
+    while i < lu and i < lv and (u.data.as_ints[lu - i - 1] ^ 1) == v.data.as_ints[i]:
+        i += 1
+    array.resize_smart(u, lu + lv - 2 * i)
+    memmove(u.data.as_ints + lu - i, v.data.as_ints + i, (lv - i) * sizeof(int))
+
+
 def word_free_group_inverse(array.array w):
     r"""
     Return the inverse of ``w`` in the free group.
@@ -674,4 +874,38 @@ def word_free_group_inverse(array.array w):
     cdef int i
     for i in range(len(w)):
         ans[i] = w[len(w) - i - 1] ^ 1
+    return ans
+
+
+def word_apply_morphism(array.array w, list mor, bint reduce=True):
+    r"""
+    Apply the free group morphism ``mor`` on the word ``w``.
+
+    EXAMPLES::
+
+        sage: from combisurf.word import word_init, word_apply_morphism
+
+        sage: fib = [word_init([0, 2]), word_init([3, 1]), word_init([0]), word_init([1])]
+        sage: word_apply_morphism(word_init([0, 2, 0, 0, 3, 1, 1, 2]), fib)
+        array('i', [0, 2, 0, 0, 2, 0, 2, 1, 3, 1, 3])
+
+        sage: mor = [word_init([0, 2, 1, 2]), word_init([1]), word_init([3, 0]), word_init([0, 0])]
+        sage: word_apply_morphism(word_init([0, 2, 0, 3, 1, 2, 1, 3]), mor, reduce=False)
+        array('i', [0, 2, 1, 2, 3, 0, 0, 2, 1, 2, 0, 0, 1, 3, 0, 1, 0, 0])
+        sage: word_apply_morphism(word_init([0, 2, 0, 3, 1, 2, 1, 3]), mor, reduce=True)
+        array('i', [0, 2, 0, 2, 1, 2, 0, 3, 0, 0])
+    """
+    cdef array.array ans = array.array('i')
+    for item in mor:
+        if not isinstance(item, array.array) or item.typecode != "i":
+            raise ValueError("invalid morphism")
+
+    for i in w:
+        if i < 0 or i >= len(mor):
+            raise ValueError("invalid morphism")
+        if reduce:
+            word_free_group_mul_inplace(ans, mor[i])
+        else:
+            ans.extend(mor[i])
+
     return ans

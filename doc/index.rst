@@ -24,8 +24,9 @@ Module Reference
    colored_map
    colored_map_builder
    geometric_intersection
+   crossing_arcs
    conjugate_tree
-   partial_sums
+   conjugate_tree_naive
 
 .. toctree::
    :maxdepth: 1

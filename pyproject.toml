@@ -48,6 +48,13 @@ directives = { boundscheck = false, nonecheck = false, wraparound = false, overf
 # Additional keyword arguments passed to setuptools.Extension()
 compile_kwargs = { }
 
+# Hand-written C sources. hatch-cython takes every other .c file of the package
+# for Cython output and deletes it in its clean step. The paths it matches
+# these patterns against are of the form ./combisurf/src/conjugate_tree.c and
+# the match is anchored at the start, hence the leading "*".
+[tool.hatch.build.targets.wheel.hooks.cython.options.files]
+exclude = ["*/combisurf/src/*", "*/test/c/*", "*/extra/c/*"]
+
 ###############
 # PIXI CONFIG #
 ###############
@@ -74,6 +81,12 @@ inputs = [
     "combisurf/word_family.pyx",
     "combisurf/lyndon_word_family.pxd",
     "combisurf/lyndon_word_family.pyx",
+    "combisurf/conjugate_tree.pxd",
+    "combisurf/conjugate_tree.pyx",
+    "combisurf/src/conjugate_tree.c",
+    "combisurf/src/conjugate_tree.h",
+    "combisurf/partial_sums.pxd",
+    "combisurf/crossing_arcs.pyx",
 ]
 
 # Since sagelib 10.8, the conda package no longer ships the bin/sage* scripts,
@@ -99,6 +112,12 @@ depends-on = ["build"]
 [tool.pixi.tasks.test-pytest]
 cmd = "pytest -n auto test/"
 depends-on = ["build"]
+
+# The tests of the C conjugate tree (combisurf/src/conjugate_tree.c) as a
+# standalone C program: optimized, with the debug checks, and under the
+# address and undefined behaviour sanitizers.
+[tool.pixi.tasks.test-c]
+cmd = "make -C test/c check debug asan"
 
 [tool.pixi.feature.dev.tasks]
 # "sage" and "test" are shortcuts that should (together with their
