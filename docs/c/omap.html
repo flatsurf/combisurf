@@ -1,0 +1,1245 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>omap.h: oriented maps in C &#8212; combisurf 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=a1637f0b"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'c/omap';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Algorithms of the isomorphism code" href="omap_algorithms.html" />
+    <link rel="prev" title="misc.h: helpers in C" href="misc.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">combisurf 0.1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://flatsurf.github.io" title="flatsurf" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://flatsurf.github.io/assets/logo.svg" class="icon-link-image" alt="flatsurf"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/flatsurf/combisurf" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://sagemath.zulipchat.com/#narrow/channel/271193-flatsurf" title="Zulip" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-regular fa-comments fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Zulip</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../oriented_map.html"><code class="docutils literal notranslate"><span class="pre">oriented_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../word_family.html"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lyndon_word_family.html"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../isomorphism.html"><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../isomorphism_naive.html"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">C library</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="perm.html"><code class="docutils literal notranslate"><span class="pre">perm.h</span></code>: partial permutations in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="misc.html"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="omap_algorithms.html">Algorithms of the isomorphism code</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../references.html">References</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/flatsurf/combisurf/edit/master/doc/c/omap.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button"
+   title="Suggest edit"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/c/omap.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>omap.h: oriented maps in C</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#types">Types</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-functions">Basic functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#isomorphisms">Isomorphisms</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#relabelling-from-a-root">Relabelling from a root</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#keys">Keys</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rules-of-the-roots">Rules of the roots</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#connected-maps">Connected maps</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#maps-that-may-be-disconnected">Maps that may be disconnected</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#maps-with-classes">Maps with classes</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="omap-h-oriented-maps-in-c">
+<h1><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C<a class="headerlink" href="#omap-h-oriented-maps-in-c" title="Link to this heading">#</a></h1>
+<p>Files: <code class="docutils literal notranslate"><span class="pre">combisurf/src/omap.{h,c}</span></code></p>
+<p>An oriented map on <code class="docutils literal notranslate"><span class="pre">n</span></code> half-edges (<code class="docutils literal notranslate"><span class="pre">n</span></code> even) is given by its vertex and
+face permutations <code class="docutils literal notranslate"><span class="pre">vp</span></code> and <code class="docutils literal notranslate"><span class="pre">fp</span></code>, arrays of <code class="docutils literal notranslate"><span class="pre">n</span></code> ints with <code class="docutils literal notranslate"><span class="pre">-1</span></code> on the
+inactive half-edges. The twin of the half-edge <code class="docutils literal notranslate"><span class="pre">h</span></code> is <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">^</span> <span class="pre">1</span></code>. An edge is
+active when at least one of its half-edges is; a folded edge has one active
+half-edge. <code class="docutils literal notranslate"><span class="pre">vp</span></code> and <code class="docutils literal notranslate"><span class="pre">fp</span></code> must be permutations of the active half-edges,
+related by <code class="docutils literal notranslate"><span class="pre">vp[fp[t]]</span> <span class="pre">=</span> <span class="pre">h</span></code> for every active half-edge <code class="docutils literal notranslate"><span class="pre">h</span></code>, where <code class="docutils literal notranslate"><span class="pre">t</span></code> is
+its twin, or <code class="docutils literal notranslate"><span class="pre">h</span></code> itself on a folded edge. The functions of this header do
+not check them (the Cython layer does).</p>
+<p>A map can be decorated by two kinds of integer arrays on its half-edges,
+<em>data</em> and <em>classes</em>, which behave differently under isomorphism. The values
+of a data array are kept by an isomorphism, while the values of a class array
+are kept up to a relabelling: only the partition
+<span class="math notranslate nohighlight">\(\{h : c[h] = i\}_i\)</span> of the half-edges of a class array <code class="docutils literal notranslate"><span class="pre">c</span></code> matters,
+whatever the order of its parts. A coloring of the half-edges is a typical
+data array; a coloring up to a permutation of the colors is a typical class
+array. A decorated map has <code class="docutils literal notranslate"><span class="pre">nd</span></code> data arrays, given one after the other in
+an array of <code class="docutils literal notranslate"><span class="pre">nd</span> <span class="pre">*</span> <span class="pre">n</span></code> ints (the array <code class="docutils literal notranslate"><span class="pre">i</span></code> at <code class="docutils literal notranslate"><span class="pre">data</span> <span class="pre">+</span> <span class="pre">i</span> <span class="pre">*</span> <span class="pre">n</span></code>), and <code class="docutils literal notranslate"><span class="pre">nc</span></code>
+class arrays, given likewise in an array of <code class="docutils literal notranslate"><span class="pre">nc</span> <span class="pre">*</span> <span class="pre">n</span></code> ints. The values on
+the inactive half-edges are never read. The values of a class array must lie
+in <span class="math notranslate nohighlight">\(0, \ldots, n - 1\)</span> (renumber them before the call, for instance by
+first appearance).</p>
+<p>The functions that need a work buffer come in pairs, as in <a class="reference internal" href="perm.html"><span class="doc">perm.h: partial permutations in C</span></a>: the
+raw form <code class="docutils literal notranslate"><span class="pre">_X(...,</span> <span class="pre">work)</span></code> takes its buffer from the caller, sized by its
+<code class="docutils literal notranslate"><span class="pre">*_WORK_SIZE</span></code> macro, and allocates nothing; the public form <code class="docutils literal notranslate"><span class="pre">X(...)</span></code>
+allocates its buffer through <a class="reference internal" href="misc.html#c.combisurf_malloc" title="combisurf_malloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">combisurf_malloc()</span></code></a> and frees it before
+returning. The output arrays are always handed in by the caller. The Cython
+module calls only the raw forms, under <code class="docutils literal notranslate"><span class="pre">sig_on()</span></code>, so that an interrupt,
+which jumps out of the C call, leaves no buffer allocated by the C code.</p>
+<p>The algorithms are described in <a class="reference internal" href="omap_algorithms.html"><span class="doc">Algorithms of the isomorphism code</span></a>.</p>
+<section id="types">
+<h2>Types<a class="headerlink" href="#types" title="Link to this heading">#</a></h2>
+<dl class="c struct">
+<dt class="sig sig-object c" id="c.omap_struct">
+<span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">omap_struct</span></span></span><a class="headerlink" href="#c.omap_struct" title="Link to this definition">#</a><br /></dt>
+<dd><p>An oriented map on <code class="docutils literal notranslate"><span class="pre">n</span></code> half-edges.</p>
+<dl class="c member">
+<dt class="sig sig-object c" id="c.omap_struct.vp">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">vp</span></span></span><a class="headerlink" href="#c.omap_struct.vp" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.omap_struct.fp">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">fp</span></span></span><a class="headerlink" href="#c.omap_struct.fp" title="Link to this definition">#</a><br /></dt>
+<dd><p>The vertex and face permutations, <code class="docutils literal notranslate"><span class="pre">n</span></code> ints each, <code class="docutils literal notranslate"><span class="pre">-1</span></code> on the
+inactive half-edges.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.omap_struct.n">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">n</span></span></span><a class="headerlink" href="#c.omap_struct.n" title="Link to this definition">#</a><br /></dt>
+<dd><p>The number of half-edges, even.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="c type">
+<dt class="sig sig-object c" id="c.omap_t">
+<span class="k"><span class="pre">typedef</span></span><span class="w"> </span><a class="reference internal" href="#c.omap_struct" title="omap_struct"><span class="n"><span class="pre">omap_struct</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">omap_t</span></span></span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">1</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#c.omap_t" title="Link to this definition">#</a><br /></dt>
+<dd><p>An <a class="reference internal" href="#c.omap_struct" title="omap_struct"><code class="xref c c-struct docutils literal notranslate"><span class="pre">omap_struct</span></code></a> as an array of one element, so that an
+<code class="docutils literal notranslate"><span class="pre">omap_t</span></code> declared on the stack is passed by pointer.</p>
+</dd></dl>
+
+<dl class="c struct">
+<dt class="sig sig-object c" id="c.domap_struct">
+<span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_struct</span></span></span><a class="headerlink" href="#c.domap_struct" title="Link to this definition">#</a><br /></dt>
+<dd><p>An oriented map decorated by <code class="docutils literal notranslate"><span class="pre">nd</span></code> data arrays and <code class="docutils literal notranslate"><span class="pre">nc</span></code> class arrays.
+Its first member is <code class="docutils literal notranslate"><span class="pre">map</span></code>, so that a pointer to a <code class="docutils literal notranslate"><span class="pre">domap_struct</span></code> is
+also a pointer to an <a class="reference internal" href="#c.omap_struct" title="omap_struct"><code class="xref c c-struct docutils literal notranslate"><span class="pre">omap_struct</span></code></a> (C11 6.7.2.1) and the
+<code class="docutils literal notranslate"><span class="pre">omap_*</span></code> functions apply to <code class="docutils literal notranslate"><span class="pre">(const</span> <span class="pre">omap_struct</span> <span class="pre">*)</span> <span class="pre">m</span></code> for a
+<a class="reference internal" href="#c.domap_t" title="domap_t"><code class="xref c c-type docutils literal notranslate"><span class="pre">domap_t</span></code></a> <code class="docutils literal notranslate"><span class="pre">m</span></code>.</p>
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_struct.map">
+<a class="reference internal" href="#c.omap_struct" title="omap_struct"><span class="n"><span class="pre">omap_struct</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">map</span></span></span><a class="headerlink" href="#c.domap_struct.map" title="Link to this definition">#</a><br /></dt>
+<dd><p>The map.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_struct.data">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">data</span></span></span><a class="headerlink" href="#c.domap_struct.data" title="Link to this definition">#</a><br /></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">nd</span></code> data arrays of <code class="docutils literal notranslate"><span class="pre">map.n</span></code> ints, one after the other.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_struct.classes">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">classes</span></span></span><a class="headerlink" href="#c.domap_struct.classes" title="Link to this definition">#</a><br /></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">nc</span></code> class arrays of <code class="docutils literal notranslate"><span class="pre">map.n</span></code> ints, one after the other.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_struct.nd">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">nd</span></span></span><a class="headerlink" href="#c.domap_struct.nd" title="Link to this definition">#</a><br /></dt>
+<dd><p>The number of data arrays.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_struct.nc">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">nc</span></span></span><a class="headerlink" href="#c.domap_struct.nc" title="Link to this definition">#</a><br /></dt>
+<dd><p>The number of class arrays.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="c type">
+<dt class="sig sig-object c" id="c.domap_t">
+<span class="k"><span class="pre">typedef</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_struct" title="domap_struct"><span class="n"><span class="pre">domap_struct</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_t</span></span></span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">1</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#c.domap_t" title="Link to this definition">#</a><br /></dt>
+<dd><p>A <a class="reference internal" href="#c.domap_struct" title="domap_struct"><code class="xref c c-struct docutils literal notranslate"><span class="pre">domap_struct</span></code></a> as an array of one element, so that a
+<code class="docutils literal notranslate"><span class="pre">domap_t</span></code> declared on the stack is passed by pointer.</p>
+</dd></dl>
+
+</section>
+<section id="basic-functions">
+<h2>Basic functions<a class="headerlink" href="#basic-functions" title="Link to this heading">#</a></h2>
+<dl class="c function">
+<dt class="sig sig-object c" id="c._omap_num_edges">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">_omap_num_edges</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">p</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">n</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._omap_num_edges" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.omap_num_edges">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">omap_num_edges</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.omap_t" title="omap_t"><span class="n"><span class="pre">omap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.omap_num_edges" title="Link to this definition">#</a><br /></dt>
+<dd><p>Return the number of active edges of the map <code class="docutils literal notranslate"><span class="pre">m</span></code>: the edges with at least
+one active half-edge.</p>
+<p>The raw form takes a permutation <code class="docutils literal notranslate"><span class="pre">p</span></code> of <code class="docutils literal notranslate"><span class="pre">n</span></code> ints, and accepts either
+<code class="docutils literal notranslate"><span class="pre">vp</span></code> or <code class="docutils literal notranslate"><span class="pre">fp</span></code>, which have the same active half-edges.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c._omap_vp_from_fp">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">_omap_vp_from_fp</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">vp</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">fp</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">n</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._omap_vp_from_fp" title="Link to this definition">#</a><br /></dt>
+<dd><p>Write into <code class="docutils literal notranslate"><span class="pre">vp</span></code> (<code class="docutils literal notranslate"><span class="pre">n</span></code> ints) the vertex permutation of the map of face
+permutation <code class="docutils literal notranslate"><span class="pre">fp</span></code>: <code class="docutils literal notranslate"><span class="pre">vp[fp[t]]</span> <span class="pre">=</span> <span class="pre">h</span></code> for every active half-edge <code class="docutils literal notranslate"><span class="pre">h</span></code>,
+<code class="docutils literal notranslate"><span class="pre">t</span></code> being its twin, or <code class="docutils literal notranslate"><span class="pre">h</span></code> itself on a folded edge, and <code class="docutils literal notranslate"><span class="pre">-1</span></code> on the
+inactive half-edges.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.omap_next_at_vertex">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">omap_next_at_vertex</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.omap_t" title="omap_t"><span class="n"><span class="pre">omap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">h</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.omap_next_at_vertex" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.omap_previous_at_vertex">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">omap_previous_at_vertex</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.omap_t" title="omap_t"><span class="n"><span class="pre">omap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">h</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.omap_previous_at_vertex" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.omap_next_in_face">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">omap_next_in_face</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.omap_t" title="omap_t"><span class="n"><span class="pre">omap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">h</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.omap_next_in_face" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.omap_previous_in_face">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">omap_previous_in_face</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.omap_t" title="omap_t"><span class="n"><span class="pre">omap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">h</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.omap_previous_in_face" title="Link to this definition">#</a><br /></dt>
+<dd><p>Return the half-edge after <code class="docutils literal notranslate"><span class="pre">h</span></code> around its vertex (<code class="docutils literal notranslate"><span class="pre">vp[h]</span></code>), the one
+before <code class="docutils literal notranslate"><span class="pre">h</span></code> around its vertex (the preimage of <code class="docutils literal notranslate"><span class="pre">h</span></code> under <code class="docutils literal notranslate"><span class="pre">vp</span></code>,
+<code class="docutils literal notranslate"><span class="pre">fp[t]</span></code> for the twin <code class="docutils literal notranslate"><span class="pre">t</span></code> of <code class="docutils literal notranslate"><span class="pre">h</span></code>, or <code class="docutils literal notranslate"><span class="pre">h</span></code> itself on a folded edge),
+the one after <code class="docutils literal notranslate"><span class="pre">h</span></code> in its face (<code class="docutils literal notranslate"><span class="pre">fp[h]</span></code>), and the one before <code class="docutils literal notranslate"><span class="pre">h</span></code> in
+its face (the preimage of <code class="docutils literal notranslate"><span class="pre">h</span></code> under <code class="docutils literal notranslate"><span class="pre">fp</span></code>, the twin of <code class="docutils literal notranslate"><span class="pre">vp[h]</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">vp[h]</span></code> itself on a folded edge).</p>
+<p>Return <code class="docutils literal notranslate"><span class="pre">-1</span></code> when <code class="docutils literal notranslate"><span class="pre">h</span></code> is invalid: out of <span class="math notranslate nohighlight">\(0, \ldots, n - 1\)</span> or
+inactive.</p>
+</dd></dl>
+
+</section>
+<section id="isomorphisms">
+<h2>Isomorphisms<a class="headerlink" href="#isomorphisms" title="Link to this heading">#</a></h2>
+<p>The Cython module <a class="reference internal" href="../isomorphism.html#module-combisurf.isomorphism" title="combisurf.isomorphism"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.isomorphism</span></code></a> wraps the functions below.</p>
+<section id="relabelling-from-a-root">
+<span id="omap-relabelling"></span><h3>Relabelling from a root<a class="headerlink" href="#relabelling-from-a-root" title="Link to this heading">#</a></h3>
+<p>The building block of the isomorphism code is the relabelling of a map from
+an active half-edge, its root: a breadth-first walk along the faces. The
+half-edges are taken from a queue that initially holds the root; the face of
+the half-edge taken is walked from it, and each half-edge met on an edge
+without labels gets the next label <code class="docutils literal notranslate"><span class="pre">k</span></code> and its twin the label <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">+</span> <span class="pre">1</span></code>,
+<code class="docutils literal notranslate"><span class="pre">k</span></code> going up by 2 each time (starting at 0); the twin is pushed when it is
+active. The walk reaches the edges of the component of the root.</p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c._omap_relabelling_from">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">_omap_relabelling_from</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">r</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">rinv</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">p</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">n</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">root</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">queue</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._omap_relabelling_from" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.omap_relabelling_from">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">omap_relabelling_from</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">r</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">rinv</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.omap_t" title="omap_t"><span class="n"><span class="pre">omap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">root</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.omap_relabelling_from" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compute the relabelling of <code class="docutils literal notranslate"><span class="pre">m</span></code> from the active half-edge <code class="docutils literal notranslate"><span class="pre">root</span></code>.</p>
+<p>Write into <code class="docutils literal notranslate"><span class="pre">r</span></code> (<code class="docutils literal notranslate"><span class="pre">n</span></code> ints) the label of each half-edge, <code class="docutils literal notranslate"><span class="pre">-1</span></code> on the
+half-edges of the edges not reached. Return the number <code class="docutils literal notranslate"><span class="pre">k</span></code> of labels
+used: the labels are given in pairs to the two half-edges of an edge, so
+that <code class="docutils literal notranslate"><span class="pre">k</span></code> is even, twice the number of edges reached, folded edges
+included, and the labels used are <span class="math notranslate nohighlight">\(0, \ldots, k - 1\)</span>. Write into
+<code class="docutils literal notranslate"><span class="pre">rinv</span></code> (<code class="docutils literal notranslate"><span class="pre">n</span></code> ints) the inverse of <code class="docutils literal notranslate"><span class="pre">r</span></code> on these labels only:
+<code class="docutils literal notranslate"><span class="pre">rinv[i]</span></code> is the half-edge of label <code class="docutils literal notranslate"><span class="pre">i</span></code>, or <code class="docutils literal notranslate"><span class="pre">-1</span></code> when that half-edge
+is inactive (the twin of a folded edge); the entries of <code class="docutils literal notranslate"><span class="pre">rinv</span></code> from
+<code class="docutils literal notranslate"><span class="pre">k</span></code> on are not written. The map is connected if and only if <code class="docutils literal notranslate"><span class="pre">k</span></code> is
+twice its number of active edges.</p>
+<p>The raw form walks the cycles of the permutation <code class="docutils literal notranslate"><span class="pre">p</span></code> of <code class="docutils literal notranslate"><span class="pre">n</span></code> ints it is
+given, and accepts either <code class="docutils literal notranslate"><span class="pre">vp</span></code> or <code class="docutils literal notranslate"><span class="pre">fp</span></code>: with <code class="docutils literal notranslate"><span class="pre">fp</span></code> it walks the faces
+as the public form does, with <code class="docutils literal notranslate"><span class="pre">vp</span></code> the vertices. <code class="docutils literal notranslate"><span class="pre">queue</span></code> is a work
+buffer of <code class="docutils literal notranslate"><span class="pre">OMAP_RELABELLING_WORK_SIZE(n)</span></code> ints.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.OMAP_RELABELLING_WORK_SIZE">
+<span class="sig-name descname"><span class="n"><span class="pre">OMAP_RELABELLING_WORK_SIZE</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">n</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.OMAP_RELABELLING_WORK_SIZE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The size of the work buffer of <a class="reference internal" href="#c._omap_relabelling_from" title="_omap_relabelling_from"><code class="xref c c-func docutils literal notranslate"><span class="pre">_omap_relabelling_from()</span></code></a>, in ints,
+<code class="docutils literal notranslate"><span class="pre">n</span></code>: the queue holds the root and one half-edge per edge reached, at
+most <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">/</span> <span class="pre">2</span> <span class="pre">+</span> <span class="pre">1</span> <span class="pre">&lt;=</span> <span class="pre">n</span></code> entries.</p>
+</dd></dl>
+
+</section>
+<section id="keys">
+<span id="omap-keys"></span><h3>Keys<a class="headerlink" href="#keys" title="Link to this heading">#</a></h3>
+<p>The relabelling <code class="docutils literal notranslate"><span class="pre">(r,</span> <span class="pre">rinv)</span></code> of a decorated map from a root, using <code class="docutils literal notranslate"><span class="pre">k</span></code>
+labels, gives its key: the face permutation, the data and the classes read
+in the new labels, packed into one array. Let <code class="docutils literal notranslate"><span class="pre">na</span></code> be the number of active
+half-edges among the labels used, the labels <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">&lt;</span> <span class="pre">k</span></code> with
+<code class="docutils literal notranslate"><span class="pre">rinv[i]</span> <span class="pre">!=</span> <span class="pre">-1</span></code>, that is <code class="docutils literal notranslate"><span class="pre">k</span></code> minus the number of folded edges reached.
+The key is made of <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">+</span> <span class="pre">(nd</span> <span class="pre">+</span> <span class="pre">nc)</span> <span class="pre">na</span></code> ints:</p>
+<ul class="simple">
+<li><p>the face permutation in the new labels (<code class="docutils literal notranslate"><span class="pre">-1</span></code> at the labels of inactive
+half-edges), <code class="docutils literal notranslate"><span class="pre">k</span></code> ints;</p></li>
+<li><p>then each data array read in the order of the new labels of the active
+half-edges, <code class="docutils literal notranslate"><span class="pre">na</span></code> ints each;</p></li>
+<li><p>then each class array read in the same order and renumbered
+<code class="docutils literal notranslate"><span class="pre">0,</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">...</span></code> by first appearance, <code class="docutils literal notranslate"><span class="pre">na</span></code> ints each.</p></li>
+</ul>
+<p>Keys are compared as sequences of signed ints.</p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c._domap_iso_key">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">_domap_iso_key</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">key</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">r</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">rinv</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">k</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">names</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._domap_iso_key" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.domap_iso_key">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_iso_key</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">key</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">r</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">rinv</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">k</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.domap_iso_key" title="Link to this definition">#</a><br /></dt>
+<dd><p>Write into <code class="docutils literal notranslate"><span class="pre">key</span></code> the key of <code class="docutils literal notranslate"><span class="pre">m</span></code> under the relabelling <code class="docutils literal notranslate"><span class="pre">(r,</span> <span class="pre">rinv)</span></code>
+using <code class="docutils literal notranslate"><span class="pre">k</span></code> labels, as computed by <a class="reference internal" href="#c.omap_relabelling_from" title="omap_relabelling_from"><code class="xref c c-func docutils literal notranslate"><span class="pre">omap_relabelling_from()</span></code></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">key</span></code> has room for <code class="docutils literal notranslate"><span class="pre">DOMAP_ISO_KEY_SIZE(n,</span> <span class="pre">nd,</span> <span class="pre">nc)</span></code> ints.</p>
+<p>Return the length of the key, <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">+</span> <span class="pre">(nd</span> <span class="pre">+</span> <span class="pre">nc)</span> <span class="pre">na</span></code>.</p>
+<p>In the raw form, <code class="docutils literal notranslate"><span class="pre">names</span></code> is a work buffer of
+<code class="docutils literal notranslate"><span class="pre">DOMAP_ISO_KEY_WORK_SIZE(n)</span></code> ints, which must hold <code class="docutils literal notranslate"><span class="pre">-1</span></code> everywhere on
+entry and holds <code class="docutils literal notranslate"><span class="pre">-1</span></code> everywhere again on return, so that it serves
+several calls without being reset; the public form fills its own buffer
+with <code class="docutils literal notranslate"><span class="pre">-1</span></code>.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.DOMAP_ISO_KEY_SIZE">
+<span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_KEY_SIZE</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">n</span></span>, <span class="n"><span class="pre">nd</span></span>, <span class="n"><span class="pre">nc</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DOMAP_ISO_KEY_SIZE" title="Link to this definition">#</a><br /></dt>
+<dd><p>An upper bound on the length of a key, in ints, <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">nd</span> <span class="pre">+</span> <span class="pre">nc)</span></code>: the
+length <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">+</span> <span class="pre">(nd</span> <span class="pre">+</span> <span class="pre">nc)</span> <span class="pre">na</span></code> of a key has <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">&lt;=</span> <span class="pre">n</span></code> (two labels per edge
+reached, at most <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">/</span> <span class="pre">2</span></code> edges) and <code class="docutils literal notranslate"><span class="pre">na</span> <span class="pre">&lt;=</span> <span class="pre">n</span></code>.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.DOMAP_ISO_KEY_WORK_SIZE">
+<span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_KEY_WORK_SIZE</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">n</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DOMAP_ISO_KEY_WORK_SIZE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The size of the work buffer of <a class="reference internal" href="#c._domap_iso_key" title="_domap_iso_key"><code class="xref c c-func docutils literal notranslate"><span class="pre">_domap_iso_key()</span></code></a>, in ints, <code class="docutils literal notranslate"><span class="pre">n</span></code>:
+the new number of each class value, which lies in
+<span class="math notranslate nohighlight">\(0, \ldots, n - 1\)</span>.</p>
+</dd></dl>
+
+</section>
+<section id="rules-of-the-roots">
+<span id="omap-root-rules"></span><h3>Rules of the roots<a class="headerlink" href="#rules-of-the-roots" title="Link to this heading">#</a></h3>
+<p>The roots tried by <a class="reference internal" href="#c.domap_canonical" title="domap_canonical"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_canonical()</span></code></a> and <a class="reference internal" href="#c.domap_iso_search" title="domap_iso_search"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_iso_search()</span></code></a>
+are restricted by a rule (<a class="reference internal" href="#c.domap_iso_root_rule" title="domap_iso_root_rule"><code class="xref c c-enum docutils literal notranslate"><span class="pre">domap_iso_root_rule</span></code></a>), the argument
+<code class="docutils literal notranslate"><span class="pre">root_rule</span></code> of the functions of <a class="reference internal" href="../isomorphism.html#module-combisurf.isomorphism" title="combisurf.isomorphism"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.isomorphism</span></code></a>.</p>
+<p>For an active half-edge <code class="docutils literal notranslate"><span class="pre">h</span></code>, <code class="docutils literal notranslate"><span class="pre">vdeg(h)</span></code> and <code class="docutils literal notranslate"><span class="pre">fdeg(h)</span></code> are the degrees of
+its vertex and of its face, and its twin <code class="docutils literal notranslate"><span class="pre">t</span></code> is <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">^</span> <span class="pre">1</span></code>, or <code class="docutils literal notranslate"><span class="pre">h</span></code> itself
+on a folded edge. A rule gives each active half-edge an invariant:</p>
+<ul class="simple">
+<li><p>the pair <code class="docutils literal notranslate"><span class="pre">(vdeg(h),</span> <span class="pre">fdeg(h))</span></code> under the half-edge rules;</p></li>
+<li><p>the tuple <code class="docutils literal notranslate"><span class="pre">(vdeg(h),</span> <span class="pre">fdeg(h),</span> <span class="pre">vdeg(t),</span> <span class="pre">fdeg(t),</span> <span class="pre">loop,</span> <span class="pre">monogon)</span></code> under the
+edge rules, <code class="docutils literal notranslate"><span class="pre">loop</span></code> (<code class="docutils literal notranslate"><span class="pre">monogon</span></code>) being 1 when <code class="docutils literal notranslate"><span class="pre">h</span></code> and <code class="docutils literal notranslate"><span class="pre">t</span></code> are at the
+same vertex (in the same face) and 0 otherwise.</p></li>
+</ul>
+<p>The half-edges of equal invariant form a class, and only the half-edges of
+one class are tried: under <code class="docutils literal notranslate"><span class="pre">*_MAX</span></code> the class of the largest invariant
+(tuples compared lexicographically), under <code class="docutils literal notranslate"><span class="pre">*_FEWEST</span></code> the class with the
+fewest half-edges, ties broken by the largest invariant. The invariants are
+computed once per call on the whole map. The base rules read <code class="docutils literal notranslate"><span class="pre">vp</span></code> and
+<code class="docutils literal notranslate"><span class="pre">fp</span></code> alone, never the decorations.</p>
+<p>The flag <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA" title="DOMAP_ISO_ROOTS_DATA"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_DATA</span></code></a>, combined with a rule other
+than <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a> by <code class="docutils literal notranslate"><span class="pre">|</span></code>, appends to the invariant
+the values of the data arrays (signed ints, never the class arrays, whose
+values are renumbered and so not invariant): <code class="docutils literal notranslate"><span class="pre">data_0[h],</span> <span class="pre">...,</span>
+<span class="pre">data_{nd-1}[h]</span></code> under the half-edge rules, followed by <code class="docutils literal notranslate"><span class="pre">data_0[t],</span> <span class="pre">...,</span>
+<span class="pre">data_{nd-1}[t]</span></code> under the edge rules; with <code class="docutils literal notranslate"><span class="pre">nd</span> <span class="pre">=</span> <span class="pre">0</span></code> it changes nothing.</p>
+<p>Under <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a> every active half-edge is a root,
+and <code class="docutils literal notranslate"><span class="pre">vp</span></code> is not read.</p>
+<dl class="c enum">
+<dt class="sig sig-object c" id="c.domap_iso_root_rule">
+<span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_iso_root_rule</span></span></span><a class="headerlink" href="#c.domap_iso_root_rule" title="Link to this definition">#</a><br /></dt>
+<dd><p>The rules restricting the roots: a base rule (0 to 4), possibly combined
+with the flag <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA" title="DOMAP_ISO_ROOTS_DATA"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_DATA</span></code></a> by <code class="docutils literal notranslate"><span class="pre">|</span></code>. The values of
+the enumerators below are those of the constants <code class="docutils literal notranslate"><span class="pre">ROOTS_ALL</span></code>, …,
+<code class="docutils literal notranslate"><span class="pre">ROOTS_EDGE_FEWEST</span></code> and <code class="docutils literal notranslate"><span class="pre">ROOTS_DATA</span></code> of <a class="reference internal" href="../isomorphism.html#module-combisurf.isomorphism" title="combisurf.isomorphism"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.isomorphism</span></code></a>.
+The functions of this header read the base rule as
+<code class="docutils literal notranslate"><span class="pre">rule</span> <span class="pre">&amp;</span> <span class="pre">~DOMAP_ISO_ROOTS_DATA</span></code>; another value of the base rule is not
+checked.</p>
+<dl class="c enumerator">
+<dt class="sig sig-object c" id="c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="Link to this definition">#</a><br /></dt>
+<dd><p>Every active half-edge is a root.</p>
+</dd></dl>
+
+<dl class="c enumerator">
+<dt class="sig sig-object c" id="c.domap_iso_root_rule.DOMAP_ISO_ROOTS_HALF_EDGE_MAX">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_ROOTS_HALF_EDGE_MAX</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1</span></span><a class="headerlink" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_HALF_EDGE_MAX" title="Link to this definition">#</a><br /></dt>
+<dd><p>The class of the largest half-edge invariant.</p>
+</dd></dl>
+
+<dl class="c enumerator">
+<dt class="sig sig-object c" id="c.domap_iso_root_rule.DOMAP_ISO_ROOTS_HALF_EDGE_FEWEST">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_ROOTS_HALF_EDGE_FEWEST</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><a class="headerlink" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_HALF_EDGE_FEWEST" title="Link to this definition">#</a><br /></dt>
+<dd><p>The class with the fewest half-edges under the half-edge invariant,
+ties broken by the largest invariant.</p>
+</dd></dl>
+
+<dl class="c enumerator">
+<dt class="sig sig-object c" id="c.domap_iso_root_rule.DOMAP_ISO_ROOTS_EDGE_MAX">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_ROOTS_EDGE_MAX</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><a class="headerlink" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_EDGE_MAX" title="Link to this definition">#</a><br /></dt>
+<dd><p>The class of the largest edge invariant.</p>
+</dd></dl>
+
+<dl class="c enumerator">
+<dt class="sig sig-object c" id="c.domap_iso_root_rule.DOMAP_ISO_ROOTS_EDGE_FEWEST">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_ROOTS_EDGE_FEWEST</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">4</span></span><a class="headerlink" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_EDGE_FEWEST" title="Link to this definition">#</a><br /></dt>
+<dd><p>The class with the fewest half-edges under the edge invariant, ties
+broken by the largest invariant.</p>
+</dd></dl>
+
+<dl class="c enumerator">
+<dt class="sig sig-object c" id="c.domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_ROOTS_DATA</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><a class="headerlink" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA" title="Link to this definition">#</a><br /></dt>
+<dd><p>The flag appending the data values to the invariant of a base rule.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="connected-maps">
+<h3>Connected maps<a class="headerlink" href="#connected-maps" title="Link to this heading">#</a></h3>
+<dl class="c function">
+<dt class="sig sig-object c" id="c._domap_canonical">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">_domap_canonical</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">key</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">relabelling</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">roots</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">nroots</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <a class="reference internal" href="#c.domap_iso_root_rule" title="domap_iso_root_rule"><span class="n"><span class="pre">domap_iso_root_rule</span></span></a><span class="w"> </span><span class="n"><span class="pre">rule</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">work</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._domap_canonical" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.domap_canonical">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_canonical</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">key</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">relabelling</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">roots</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">nroots</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <a class="reference internal" href="#c.domap_iso_root_rule" title="domap_iso_root_rule"><span class="n"><span class="pre">domap_iso_root_rule</span></span></a><span class="w"> </span><span class="n"><span class="pre">rule</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.domap_canonical" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compute the canonical key of the connected decorated map <code class="docutils literal notranslate"><span class="pre">m</span></code>: try every
+active half-edge of <code class="docutils literal notranslate"><span class="pre">m</span></code> of the class of the rule as a root (every active
+half-edge under <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a>), in increasing order,
+and write into <code class="docutils literal notranslate"><span class="pre">key</span></code> (<code class="docutils literal notranslate"><span class="pre">DOMAP_ISO_KEY_SIZE(n,</span> <span class="pre">nd,</span> <span class="pre">nc)</span></code> ints) the
+minimal key.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">relabelling</span></code> is not <code class="docutils literal notranslate"><span class="pre">NULL</span></code> (<code class="docutils literal notranslate"><span class="pre">n</span></code> ints), write there the
+relabelling from the first root of minimal key (<code class="docutils literal notranslate"><span class="pre">-1</span></code> on the half-edges
+of the inactive edges). When <code class="docutils literal notranslate"><span class="pre">roots</span></code> is not <code class="docutils literal notranslate"><span class="pre">NULL</span></code> (<code class="docutils literal notranslate"><span class="pre">n</span></code> ints), write
+there the roots of minimal key in increasing order. When <code class="docutils literal notranslate"><span class="pre">nroots</span></code> is not
+<code class="docutils literal notranslate"><span class="pre">NULL</span></code>, store there their number, which is the number of automorphisms
+of the decorated map under every rule (0 when the map has no active
+half-edge): an automorphism of a connected map is determined by the image
+of one half-edge and preserves the invariants, so the roots of minimal key
+form one orbit of the group.</p>
+<p>Return the length of the key (0 when the map has no active half-edge), or
+<a class="reference internal" href="#c.DOMAP_ISO_DISCONNECTED" title="DOMAP_ISO_DISCONNECTED"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_DISCONNECTED</span></code></a> when the walk from the first root
+tried does not reach every active edge; nothing is written into the output
+buffers in that case. The first root tried is the smallest active
+half-edge under <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a>, and the smallest
+half-edge of the class of the rule under the other rules; connectedness
+does not depend on the root, so that this walk alone decides it.</p>
+<p>In the raw form, <code class="docutils literal notranslate"><span class="pre">work</span></code> is a buffer of
+<code class="docutils literal notranslate"><span class="pre">DOMAP_CANONICAL_WORK_SIZE(n,</span> <span class="pre">nd,</span> <span class="pre">nc)</span></code> ints.</p>
+<p>The rejection of the roots, the skipped roots and the cost are in
+<a class="reference internal" href="omap_algorithms.html#omap-algorithms-canonical"><span class="std std-ref">Canonical key of a connected map</span></a>.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.DOMAP_CANONICAL_WORK_SIZE">
+<span class="sig-name descname"><span class="n"><span class="pre">DOMAP_CANONICAL_WORK_SIZE</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">n</span></span>, <span class="n"><span class="pre">nd</span></span>, <span class="n"><span class="pre">nc</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DOMAP_CANONICAL_WORK_SIZE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The size of the work buffer of <a class="reference internal" href="#c._domap_canonical" title="_domap_canonical"><code class="xref c c-func docutils literal notranslate"><span class="pre">_domap_canonical()</span></code></a>, in ints,
+<code class="docutils literal notranslate"><span class="pre">9</span> <span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span> <span class="pre">+</span> <span class="pre">DOMAP_ISO_KEY_SIZE(n,</span> <span class="pre">nd,</span> <span class="pre">nc)</span></code>:</p>
+<ul class="simple">
+<li><p>the relabelling, its inverse, the queue and the numbering of the class
+values (<code class="docutils literal notranslate"><span class="pre">4</span> <span class="pre">n</span></code>);</p></li>
+<li><p>a candidate key (<a class="reference internal" href="#c.DOMAP_ISO_KEY_SIZE" title="DOMAP_ISO_KEY_SIZE"><code class="xref c c-macro docutils literal notranslate"><span class="pre">DOMAP_ISO_KEY_SIZE</span></code></a>);</p></li>
+<li><p>under a rule other than <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a>, the active
+half-edges sorted by invariant, the class of each half-edge and the
+start of each class in that order (<code class="docutils literal notranslate"><span class="pre">3</span> <span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span></code>);</p></li>
+<li><p>then the relabelling of the best root and the parents of the
+union-find of the orbits of the automorphisms found (<code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">n</span></code>).</p></li>
+</ul>
+<p>Under <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA" title="DOMAP_ISO_ROOTS_DATA"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_DATA</span></code></a> the order-preserving numbers of
+the data values (<code class="docutils literal notranslate"><span class="pre">nd</span> <span class="pre">n</span></code>) live in the candidate key, which is not used
+before the classes are computed, so that the flag needs no more room.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c._domap_invariants_differ">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">_domap_invariants_differ</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m1</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m2</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">work</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._domap_invariants_differ" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.domap_invariants_differ">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_invariants_differ</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m1</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m2</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.domap_invariants_differ" title="Link to this definition">#</a><br /></dt>
+<dd><p>Return 1 when an invariant of the decorated maps <code class="docutils literal notranslate"><span class="pre">m1</span></code> and <code class="docutils literal notranslate"><span class="pre">m2</span></code>
+differs, so that they are not isomorphic, and 0 otherwise.</p>
+<p>The two maps must have as many data arrays (<code class="docutils literal notranslate"><span class="pre">m1-&gt;nd</span> <span class="pre">==</span> <span class="pre">m2-&gt;nd</span></code>), as many
+class arrays (<code class="docutils literal notranslate"><span class="pre">m1-&gt;nc</span> <span class="pre">==</span> <span class="pre">m2-&gt;nc</span></code>) and as many active half-edges. An
+isomorphism is a bijection of the active half-edges that keeps the data
+values, and that relabels the values of each class array, sending a class
+to a class of the same size.</p>
+<p>In the raw form, <code class="docutils literal notranslate"><span class="pre">work</span></code> is a buffer of <code class="docutils literal notranslate"><span class="pre">DOMAP_INVARIANTS_WORK_SIZE(n)</span></code>
+ints, with <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">=</span> <span class="pre">max(m1-&gt;map.n,</span> <span class="pre">m2-&gt;map.n)</span></code>, read only when
+<code class="docutils literal notranslate"><span class="pre">m1-&gt;nc</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> (it may be <code class="docutils literal notranslate"><span class="pre">NULL</span></code> otherwise); the public form allocates
+it only then.</p>
+<p>The invariants compared, and why the degrees are not, are in
+<a class="reference internal" href="omap_algorithms.html#omap-algorithms-invariants"><span class="std std-ref">Invariants of two maps</span></a>.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.DOMAP_INVARIANTS_WORK_SIZE">
+<span class="sig-name descname"><span class="n"><span class="pre">DOMAP_INVARIANTS_WORK_SIZE</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">n</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DOMAP_INVARIANTS_WORK_SIZE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The size of the work buffer of <a class="reference internal" href="#c._domap_invariants_differ" title="_domap_invariants_differ"><code class="xref c c-func docutils literal notranslate"><span class="pre">_domap_invariants_differ()</span></code></a>, in
+ints, <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span></code>: the size of each class and the number of classes of
+each size.</p>
+</dd></dl>
+
+<dl class="c enumerator">
+<dt class="sig sig-object c" id="c.DOMAP_ISO_DISCONNECTED">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_DISCONNECTED</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="o"><span class="pre">-</span></span><span class="m"><span class="pre">1</span></span><a class="headerlink" href="#c.DOMAP_ISO_DISCONNECTED" title="Link to this definition">#</a><br /></dt>
+<dd><p>The return value of <a class="reference internal" href="#c.domap_canonical" title="domap_canonical"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_canonical()</span></code></a> on a map that is not
+connected.</p>
+</dd></dl>
+
+</section>
+<section id="maps-that-may-be-disconnected">
+<span id="omap-blocks"></span><h3>Maps that may be disconnected<a class="headerlink" href="#maps-that-may-be-disconnected" title="Link to this heading">#</a></h3>
+<p>A map that may be disconnected is labelled component after component: each
+component is relabelled from a root as above, its labels following those of
+the components labelled before, and gives a block. The block of a component
+labelled from a root, with <code class="docutils literal notranslate"><span class="pre">k</span></code> labels, is made of:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">k</span></code>, its number of labels;</p></li>
+<li><p>its face permutation in its local labels <span class="math notranslate nohighlight">\(0, \ldots, k - 1\)</span> (<code class="docutils literal notranslate"><span class="pre">-1</span></code>
+at the labels of inactive half-edges);</p></li>
+<li><p>each data array read in the order of the local labels of its active
+half-edges;</p></li>
+<li><p>then each class array read in the same order and renumbered by first
+appearance, continuing the numbering of the components labelled before.</p></li>
+</ul>
+<p>A sequence of blocks is stored flat, the blocks one after the other; since
+equal <code class="docutils literal notranslate"><span class="pre">k</span></code> and equal face permutations give blocks of equal lengths, the
+lexicographic order of the flat sequences of ints is the order of the
+sequences of blocks. A connected map gives a single block, which is its key
+preceded by <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c._domap_iso_search">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">_domap_iso_search</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">sequence</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">length</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">relabelling</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <a class="reference internal" href="#c.domap_iso_root_rule" title="domap_iso_root_rule"><span class="n"><span class="pre">domap_iso_root_rule</span></span></a><span class="w"> </span><span class="n"><span class="pre">rule</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">all_leaves</span></span>, <a class="reference internal" href="#c.domap_iso_leaf_callback" title="domap_iso_leaf_callback"><span class="n"><span class="pre">domap_iso_leaf_callback</span></span></a><span class="w"> </span><span class="n"><span class="pre">callback</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">arg</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">work</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._domap_iso_search" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.domap_iso_search">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_iso_search</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">sequence</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">length</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">relabelling</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <a class="reference internal" href="#c.domap_iso_root_rule" title="domap_iso_root_rule"><span class="n"><span class="pre">domap_iso_root_rule</span></span></a><span class="w"> </span><span class="n"><span class="pre">rule</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">all_leaves</span></span>, <a class="reference internal" href="#c.domap_iso_leaf_callback" title="domap_iso_leaf_callback"><span class="n"><span class="pre">domap_iso_leaf_callback</span></span></a><span class="w"> </span><span class="n"><span class="pre">callback</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">arg</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.domap_iso_search" title="Link to this definition">#</a><br /></dt>
+<dd><p>Search the lexicographically minimal sequence of blocks over the
+labellings of <code class="docutils literal notranslate"><span class="pre">m</span></code> component after component: from the components
+labelled so far, the roots of the next component are the half-edges not
+labelled yet of the class of the rule (every active half-edge not labelled
+yet under <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a>), and the component gets the
+labels following those used. When several roots give the minimal block,
+every one of them is followed if <code class="docutils literal notranslate"><span class="pre">all_leaves</span></code> is nonzero; otherwise only
+the first one if <code class="docutils literal notranslate"><span class="pre">nc</span> <span class="pre">==</span> <span class="pre">0</span></code>, and the first one of each extension of the
+numbering of the class values if <code class="docutils literal notranslate"><span class="pre">nc</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>. Tied roots of different
+extensions are all followed, even when their subtrees are images of each
+other. The search and its cuts are in <a class="reference internal" href="omap_algorithms.html#omap-algorithms-iso-search"><span class="std std-ref">Search over the components</span></a>.</p>
+<p>Any map is accepted, connected or not. The empty map gives the empty
+sequence and one leaf.</p>
+<p>The minimal sequence is written into <code class="docutils literal notranslate"><span class="pre">sequence</span></code>
+(<code class="docutils literal notranslate"><span class="pre">DOMAP_ISO_SEQUENCE_SIZE(n,</span> <span class="pre">nd,</span> <span class="pre">nc)</span></code> ints) and its length into
+<code class="docutils literal notranslate"><span class="pre">*length</span></code>. When <code class="docutils literal notranslate"><span class="pre">relabelling</span></code> is not <code class="docutils literal notranslate"><span class="pre">NULL</span></code> (<code class="docutils literal notranslate"><span class="pre">n</span></code> ints), the
+relabelling of the first leaf reaching the minimal sequence is written
+there (<code class="docutils literal notranslate"><span class="pre">-1</span></code> on the half-edges of the inactive edges). When <code class="docutils literal notranslate"><span class="pre">callback</span></code>
+is not <code class="docutils literal notranslate"><span class="pre">NULL</span></code>, it is called with <code class="docutils literal notranslate"><span class="pre">arg</span></code> on every leaf that is smaller
+than the best one so far (<code class="docutils literal notranslate"><span class="pre">first</span> <span class="pre">=</span> <span class="pre">1</span></code>) and, when <code class="docutils literal notranslate"><span class="pre">all_leaves</span></code> is
+nonzero, on every leaf equal to the best one so far (<code class="docutils literal notranslate"><span class="pre">first</span> <span class="pre">=</span> <span class="pre">0</span></code>). The
+leaves reported since the last call with <code class="docutils literal notranslate"><span class="pre">first</span> <span class="pre">=</span> <span class="pre">1</span></code> are then the leaves
+reaching the minimal sequence, in the order of the search, as many as the
+automorphisms when <code class="docutils literal notranslate"><span class="pre">all_leaves</span></code> is nonzero.</p>
+<p>Return 0, or the nonzero value returned by the callback, which stops the
+search and leaves the outputs undefined.</p>
+<p>In the raw form, <code class="docutils literal notranslate"><span class="pre">work</span></code> is a buffer of
+<code class="docutils literal notranslate"><span class="pre">DOMAP_ISO_SEARCH_WORK_SIZE(n,</span> <span class="pre">nd,</span> <span class="pre">nc)</span></code> ints.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.DOMAP_ISO_SEQUENCE_SIZE">
+<span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_SEQUENCE_SIZE</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">n</span></span>, <span class="n"><span class="pre">nd</span></span>, <span class="n"><span class="pre">nc</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DOMAP_ISO_SEQUENCE_SIZE" title="Link to this definition">#</a><br /></dt>
+<dd><p>An upper bound on the length of a sequence of blocks, in ints,
+<code class="docutils literal notranslate"><span class="pre">DOMAP_ISO_KEY_SIZE(n,</span> <span class="pre">nd,</span> <span class="pre">nc)</span> <span class="pre">+</span> <span class="pre">n</span> <span class="pre">/</span> <span class="pre">2</span></code>. Let <code class="docutils literal notranslate"><span class="pre">ne</span></code> be the number of
+active edges of the map and <code class="docutils literal notranslate"><span class="pre">na</span></code> its number of active half-edges. A
+component of <code class="docutils literal notranslate"><span class="pre">k</span></code> labels, <code class="docutils literal notranslate"><span class="pre">na_c</span></code> of which are on active half-edges,
+gives a block of <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">k</span> <span class="pre">+</span> <span class="pre">(nd</span> <span class="pre">+</span> <span class="pre">nc)</span> <span class="pre">na_c</span></code> ints; the <code class="docutils literal notranslate"><span class="pre">k</span></code> of the
+components add up to <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">ne</span></code>, their <code class="docutils literal notranslate"><span class="pre">na_c</span></code> to <code class="docutils literal notranslate"><span class="pre">na</span></code>, and there are at
+most <code class="docutils literal notranslate"><span class="pre">ne</span></code> components, each having an active edge. A sequence thus has at
+most <code class="docutils literal notranslate"><span class="pre">ne</span> <span class="pre">+</span> <span class="pre">2</span> <span class="pre">ne</span> <span class="pre">+</span> <span class="pre">(nd</span> <span class="pre">+</span> <span class="pre">nc)</span> <span class="pre">na</span></code> ints, which <code class="docutils literal notranslate"><span class="pre">ne</span> <span class="pre">&lt;=</span> <span class="pre">n</span> <span class="pre">/</span> <span class="pre">2</span></code> and
+<code class="docutils literal notranslate"><span class="pre">na</span> <span class="pre">&lt;=</span> <span class="pre">n</span></code> bound by <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">nd</span> <span class="pre">+</span> <span class="pre">nc)</span> <span class="pre">+</span> <span class="pre">n</span> <span class="pre">/</span> <span class="pre">2</span></code>.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.DOMAP_ISO_SEARCH_WORK_SIZE">
+<span class="sig-name descname"><span class="n"><span class="pre">DOMAP_ISO_SEARCH_WORK_SIZE</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">n</span></span>, <span class="n"><span class="pre">nd</span></span>, <span class="n"><span class="pre">nc</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DOMAP_ISO_SEARCH_WORK_SIZE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The size of the work buffer of <a class="reference internal" href="#c._domap_iso_search" title="_domap_iso_search"><code class="xref c c-func docutils literal notranslate"><span class="pre">_domap_iso_search()</span></code></a>, in ints:</p>
+<ul class="simple">
+<li><p>the global and local relabellings with their inverses and the queue
+(<code class="docutils literal notranslate"><span class="pre">5</span> <span class="pre">n</span></code>);</p></li>
+<li><p>the numberings of the class values (<code class="docutils literal notranslate"><span class="pre">nc</span> <span class="pre">n</span></code>);</p></li>
+<li><p>the state of each of the at most <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">/</span> <span class="pre">2</span> <span class="pre">+</span> <span class="pre">1</span></code> levels of the search
+(its root, the root of the best leaf at that level, its first label, the
+position and the length of its block, and the counts of class values
+before it: <code class="docutils literal notranslate"><span class="pre">(5</span> <span class="pre">+</span> <span class="pre">nc)</span> <span class="pre">(n</span> <span class="pre">/</span> <span class="pre">2</span> <span class="pre">+</span> <span class="pre">1)</span></code>);</p></li>
+<li><p>the counts of class values (<code class="docutils literal notranslate"><span class="pre">nc</span></code>);</p></li>
+<li><p>the current sequence (<a class="reference internal" href="#c.DOMAP_ISO_SEQUENCE_SIZE" title="DOMAP_ISO_SEQUENCE_SIZE"><code class="xref c c-macro docutils literal notranslate"><span class="pre">DOMAP_ISO_SEQUENCE_SIZE</span></code></a>);</p></li>
+<li><p>one candidate block (<code class="docutils literal notranslate"><span class="pre">DOMAP_ISO_KEY_SIZE</span> <span class="pre">+</span> <span class="pre">1</span></code>);</p></li>
+<li><p>for the rules other than <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a>, the active
+half-edges sorted by invariant, the class of each half-edge, the start
+of each class in that order and the number of half-edges not labelled
+yet in each class (<code class="docutils literal notranslate"><span class="pre">4</span> <span class="pre">n</span> <span class="pre">+</span> <span class="pre">1</span></code>).</p></li>
+</ul>
+<p>Under <a class="reference internal" href="#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA" title="DOMAP_ISO_ROOTS_DATA"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_DATA</span></code></a> the order-preserving numbers of
+the data values (<code class="docutils literal notranslate"><span class="pre">nd</span> <span class="pre">n</span></code>) live in the candidate block, which is not used
+before the classes are computed, so that the flag needs no more room.</p>
+<p>The sizes of this header are computed in <code class="docutils literal notranslate"><span class="pre">int</span></code>. This one, the largest,
+overflows first, for about <span class="math notranslate nohighlight">\(2^{31} / (14 + 2 nd + 3.5 nc)\)</span>
+half-edges; the caller checks the sizes first, and the Cython module
+raises an <code class="docutils literal notranslate"><span class="pre">OverflowError</span></code> on a map too large.</p>
+</dd></dl>
+
+<dl class="c type">
+<dt class="sig sig-object c" id="c.domap_iso_leaf_callback">
+<span class="k"><span class="pre">type</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_iso_leaf_callback</span></span></span><a class="headerlink" href="#c.domap_iso_leaf_callback" title="Link to this definition">#</a><br /></dt>
+<dd><p>The callback of <a class="reference internal" href="#c.domap_iso_search" title="domap_iso_search"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_iso_search()</span></code></a>, called on a leaf:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">domap_iso_leaf_callback</span><span class="p">)(</span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="o">*</span><span class="n">leaf</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">first</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">arg</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">leaf</span></code> is the relabelling of the leaf (<code class="docutils literal notranslate"><span class="pre">n</span></code> ints, <code class="docutils literal notranslate"><span class="pre">-1</span></code> on the
+half-edges of the inactive edges), valid during the call only. <code class="docutils literal notranslate"><span class="pre">first</span></code>
+is 1 when the leaf is smaller than every leaf reported before, which the
+caller discards, and 0 when it is equal to the last leaf reported with
+<code class="docutils literal notranslate"><span class="pre">first</span> <span class="pre">=</span> <span class="pre">1</span></code>. <code class="docutils literal notranslate"><span class="pre">arg</span></code> is the argument given to
+<a class="reference internal" href="#c.domap_iso_search" title="domap_iso_search"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_iso_search()</span></code></a>.</p>
+<p>A nonzero return value stops the search, which returns it; the Cython
+layer returns -1 with a Python exception set.</p>
+</dd></dl>
+
+</section>
+<section id="maps-with-classes">
+<h3>Maps with classes<a class="headerlink" href="#maps-with-classes" title="Link to this heading">#</a></h3>
+<p>Maps that may be disconnected, with classes: the automorphisms of <code class="docutils literal notranslate"><span class="pre">fp</span></code> and
+<code class="docutils literal notranslate"><span class="pre">data</span></code> that preserve the partitions of the half-edges by the values of each
+class array.</p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c._domap_stabiliser">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">_domap_stabiliser</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">orbits</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_wreath_t" title="domap_wreath_t"><span class="n"><span class="pre">domap_wreath_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">w</span></span>, <a class="reference internal" href="#c.domap_stabiliser_callback" title="domap_stabiliser_callback"><span class="n"><span class="pre">domap_stabiliser_callback</span></span></a><span class="w"> </span><span class="n"><span class="pre">callback</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">arg</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">work</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._domap_stabiliser" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.domap_stabiliser">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_stabiliser</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">orbits</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_t" title="domap_t"><span class="n"><span class="pre">domap_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">m</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_wreath_t" title="domap_wreath_t"><span class="n"><span class="pre">domap_wreath_t</span></span></a><span class="w"> </span><span class="n"><span class="pre">w</span></span>, <a class="reference internal" href="#c.domap_stabiliser_callback" title="domap_stabiliser_callback"><span class="n"><span class="pre">domap_stabiliser_callback</span></span></a><span class="w"> </span><span class="n"><span class="pre">callback</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">arg</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.domap_stabiliser" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compute the group <span class="math notranslate nohighlight">\(H\)</span> of the automorphisms of the map <code class="docutils literal notranslate"><span class="pre">m</span></code>, laid
+out by <code class="docutils literal notranslate"><span class="pre">w</span></code> (a <a class="reference internal" href="#c.domap_wreath_struct" title="domap_wreath_struct"><code class="xref c c-struct docutils literal notranslate"><span class="pre">domap_wreath_struct</span></code></a>), that preserve the
+partitions defined by its class arrays.</p>
+<p>The base is <span class="math notranslate nohighlight">\(b_0, \ldots, b_{ncomp-1}\)</span>, the half-edge of canonical
+label 0 of each level (<code class="docutils literal notranslate"><span class="pre">lab[off[i]]</span></code>). Write into <code class="docutils literal notranslate"><span class="pre">orbits</span></code>
+(<code class="docutils literal notranslate"><span class="pre">w-&gt;ncomp</span></code> ints) the size of the orbit of <span class="math notranslate nohighlight">\(b_i\)</span> right after its
+level <code class="docutils literal notranslate"><span class="pre">i</span></code> (1 at a skipped level), so that the order of <span class="math notranslate nohighlight">\(H\)</span> is
+their product: it can exceed every C integer type (<code class="docutils literal notranslate"><span class="pre">k</span></code> isolated edges of
+equal values have <span class="math notranslate nohighlight">\(2^k k!\)</span> automorphisms), and the caller multiplies
+the sizes in its own integers.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">callback</span></code> is not <code class="docutils literal notranslate"><span class="pre">NULL</span></code>, call it with <code class="docutils literal notranslate"><span class="pre">arg</span></code> on each generator,
+from the last level to the first and, at a level <code class="docutils literal notranslate"><span class="pre">i</span></code>, in the order of
+the candidates <span class="math notranslate nohighlight">\(x\)</span>, the points tried as images of <span class="math notranslate nohighlight">\(b_i\)</span>
+(<a class="reference internal" href="omap_algorithms.html#omap-algorithms-stabiliser"><span class="std std-ref">Stabiliser of the classes</span></a>): there are up to <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">-</span> <span class="pre">1</span></code> generators
+of <code class="docutils literal notranslate"><span class="pre">n</span></code> ints each, which no buffer of the caller holds. The generators
+are the identity on the half-edges of the inactive edges.</p>
+<p>Return 0, or the nonzero value returned by the callback, which stops the
+search and leaves <code class="docutils literal notranslate"><span class="pre">orbits</span></code> undefined.</p>
+<p>In the raw form, <code class="docutils literal notranslate"><span class="pre">work</span></code> is a buffer of
+<code class="docutils literal notranslate"><span class="pre">DOMAP_STABILISER_WORK_SIZE(n,</span> <span class="pre">nc)</span></code> ints.</p>
+<p>The subgroup search, the levels skipped and the placements cut are in
+<a class="reference internal" href="omap_algorithms.html#omap-algorithms-stabiliser"><span class="std std-ref">Stabiliser of the classes</span></a>.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.DOMAP_STABILISER_WORK_SIZE">
+<span class="sig-name descname"><span class="n"><span class="pre">DOMAP_STABILISER_WORK_SIZE</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">n</span></span>, <span class="n"><span class="pre">nc</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DOMAP_STABILISER_WORK_SIZE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The size of the work buffer of <a class="reference internal" href="#c._domap_stabiliser" title="_domap_stabiliser"><code class="xref c c-func docutils literal notranslate"><span class="pre">_domap_stabiliser()</span></code></a>, in ints, for
+at most <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">/</span> <span class="pre">2</span></code> components of at most <code class="docutils literal notranslate"><span class="pre">n</span></code> half-edges each,
+<code class="docutils literal notranslate"><span class="pre">3</span> <span class="pre">nc</span> <span class="pre">n</span> <span class="pre">+</span> <span class="pre">5</span> <span class="pre">(n</span> <span class="pre">/</span> <span class="pre">2)</span> <span class="pre">+</span> <span class="pre">8</span> <span class="pre">n</span></code>:</p>
+<ul class="simple">
+<li><p>the forward and backward maps of the values of each class array and the
+trail of the entries set (<code class="docutils literal notranslate"><span class="pre">3</span> <span class="pre">nc</span> <span class="pre">n</span></code>);</p></li>
+<li><p>the arrays of the levels used, <code class="docutils literal notranslate"><span class="pre">target</span></code>, <code class="docutils literal notranslate"><span class="pre">choice</span></code>, <code class="docutils literal notranslate"><span class="pre">mark</span></code> and
+<code class="docutils literal notranslate"><span class="pre">dead</span></code> (<code class="docutils literal notranslate"><span class="pre">5</span> <span class="pre">(n</span> <span class="pre">/</span> <span class="pre">2)</span></code>);</p></li>
+<li><p>the buffers of the size of the largest component <code class="docutils literal notranslate"><span class="pre">rb</span></code>, <code class="docutils literal notranslate"><span class="pre">rbinv</span></code>,
+<code class="docutils literal notranslate"><span class="pre">queue</span></code>, <code class="docutils literal notranslate"><span class="pre">perm</span></code> and <code class="docutils literal notranslate"><span class="pre">ident</span></code> (<code class="docutils literal notranslate"><span class="pre">5</span> <span class="pre">n</span></code>);</p></li>
+<li><p>the parents and the sizes of the union-find of the orbits (<code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">n</span></code>);</p></li>
+<li><p>and the generator being built (<code class="docutils literal notranslate"><span class="pre">n</span></code>).</p></li>
+</ul>
+<p>This size is computed in <code class="docutils literal notranslate"><span class="pre">int</span></code>; the caller checks it first.</p>
+</dd></dl>
+
+<dl class="c type">
+<dt class="sig sig-object c" id="c.domap_stabiliser_callback">
+<span class="k"><span class="pre">type</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_stabiliser_callback</span></span></span><a class="headerlink" href="#c.domap_stabiliser_callback" title="Link to this definition">#</a><br /></dt>
+<dd><p>The callback of <a class="reference internal" href="#c.domap_stabiliser" title="domap_stabiliser"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_stabiliser()</span></code></a>, called on each generator:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">domap_stabiliser_callback</span><span class="p">)(</span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="o">*</span><span class="n">g</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">arg</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">g</span></code> is the generator (<code class="docutils literal notranslate"><span class="pre">n</span></code> ints, <code class="docutils literal notranslate"><span class="pre">g[h]</span></code> the image of <code class="docutils literal notranslate"><span class="pre">h</span></code>), valid
+during the call only. <code class="docutils literal notranslate"><span class="pre">arg</span></code> is the argument given to
+<a class="reference internal" href="#c.domap_stabiliser" title="domap_stabiliser"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_stabiliser()</span></code></a>.</p>
+<p>A nonzero return value stops the search, which returns it; the Cython
+layer returns -1 with a Python exception set.</p>
+</dd></dl>
+
+<dl class="c struct">
+<dt class="sig sig-object c" id="c.domap_wreath_struct">
+<span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_wreath_struct</span></span></span><a class="headerlink" href="#c.domap_wreath_struct" title="Link to this definition">#</a><br /></dt>
+<dd><p>The components of the map, grouped into kinds of isomorphic components
+(<code class="docutils literal notranslate"><span class="pre">fp</span></code> and <code class="docutils literal notranslate"><span class="pre">data</span></code> alone), an input of <a class="reference internal" href="#c.domap_stabiliser" title="domap_stabiliser"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_stabiliser()</span></code></a>. The
+arrays it points into are owned by the caller. The levels are the
+<code class="docutils literal notranslate"><span class="pre">ncomp</span></code> components, kinds in order, copies in order. The isomorphism
+from a copy to another sends the half-edge of label <code class="docutils literal notranslate"><span class="pre">i</span></code> to the one of
+label <code class="docutils literal notranslate"><span class="pre">i</span></code>.</p>
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.kind">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">kind</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.kind" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per level <code class="docutils literal notranslate"><span class="pre">j</span></code>: <code class="docutils literal notranslate"><span class="pre">kind[j]</span></code> its kind.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.off">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">off</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.off" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per level <code class="docutils literal notranslate"><span class="pre">j</span></code>: <code class="docutils literal notranslate"><span class="pre">off[j]</span></code> the offset of its half-edges in <code class="docutils literal notranslate"><span class="pre">lab</span></code>.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.lab">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">lab</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.lab" title="Link to this definition">#</a><br /></dt>
+<dd><p>The half-edges of each level by canonical label: <code class="docutils literal notranslate"><span class="pre">lab[off[j]</span> <span class="pre">+</span> <span class="pre">i]</span></code> is
+the half-edge of label <code class="docutils literal notranslate"><span class="pre">i</span></code> of the level <code class="docutils literal notranslate"><span class="pre">j</span></code>.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.start">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">start</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.start" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per kind <code class="docutils literal notranslate"><span class="pre">t</span></code>: its copies are the levels <code class="docutils literal notranslate"><span class="pre">start[t],</span> <span class="pre">...,</span>
+<span class="pre">start[t</span> <span class="pre">+</span> <span class="pre">1]</span> <span class="pre">-</span> <span class="pre">1</span></code>.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.coff">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">coff</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.coff" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per kind <code class="docutils literal notranslate"><span class="pre">t</span></code>: the offset <code class="docutils literal notranslate"><span class="pre">coff[t]</span></code> of its entries in <code class="docutils literal notranslate"><span class="pre">cfp</span></code>,
+<code class="docutils literal notranslate"><span class="pre">cra</span></code> and <code class="docutils literal notranslate"><span class="pre">crainv</span></code>.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.csize">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">csize</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.csize" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per kind <code class="docutils literal notranslate"><span class="pre">t</span></code>: the number <code class="docutils literal notranslate"><span class="pre">csize[t]</span></code> of half-edges of a copy.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.cfp">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">cfp</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.cfp" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per kind <code class="docutils literal notranslate"><span class="pre">t</span></code>: the face permutation of its first copy as a map of its
+own, <code class="docutils literal notranslate"><span class="pre">csize[t]</span></code> entries at the offset <code class="docutils literal notranslate"><span class="pre">coff[t]</span></code>.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.cra">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">cra</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.cra" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per kind <code class="docutils literal notranslate"><span class="pre">t</span></code>: the canonical relabelling of its first copy (local
+index to label), <code class="docutils literal notranslate"><span class="pre">csize[t]</span></code> entries at the offset <code class="docutils literal notranslate"><span class="pre">coff[t]</span></code>.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.crainv">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">crainv</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.crainv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per kind <code class="docutils literal notranslate"><span class="pre">t</span></code>: the inverse of <code class="docutils literal notranslate"><span class="pre">cra</span></code>, <code class="docutils literal notranslate"><span class="pre">csize[t]</span></code> entries at the
+offset <code class="docutils literal notranslate"><span class="pre">coff[t]</span></code>.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.loff">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">loff</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.loff" title="Link to this definition">#</a><br /></dt>
+<dd><p>Per kind <code class="docutils literal notranslate"><span class="pre">t</span></code>: the labels of its roots of minimal key are
+<code class="docutils literal notranslate"><span class="pre">labels[loff[t]],</span> <span class="pre">...,</span> <span class="pre">labels[loff[t</span> <span class="pre">+</span> <span class="pre">1]</span> <span class="pre">-</span> <span class="pre">1]</span></code>.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.labels">
+<span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">labels</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.labels" title="Link to this definition">#</a><br /></dt>
+<dd><p>The labels of the roots of minimal key of each kind, in increasing
+order.</p>
+</dd></dl>
+
+<dl class="c member">
+<dt class="sig sig-object c" id="c.domap_wreath_struct.ncomp">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ncomp</span></span></span><a class="headerlink" href="#c.domap_wreath_struct.ncomp" title="Link to this definition">#</a><br /></dt>
+<dd><p>The number of components, which are the levels.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="c type">
+<dt class="sig sig-object c" id="c.domap_wreath_t">
+<span class="k"><span class="pre">typedef</span></span><span class="w"> </span><a class="reference internal" href="#c.domap_wreath_struct" title="domap_wreath_struct"><span class="n"><span class="pre">domap_wreath_struct</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">domap_wreath_t</span></span></span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">1</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#c.domap_wreath_t" title="Link to this definition">#</a><br /></dt>
+<dd><p>A <a class="reference internal" href="#c.domap_wreath_struct" title="domap_wreath_struct"><code class="xref c c-struct docutils literal notranslate"><span class="pre">domap_wreath_struct</span></code></a> as an array of one element.</p>
+</dd></dl>
+
+<dl class="c macro">
+<dt class="sig sig-object c" id="c.OMAP_INLINE">
+<span class="sig-name descname"><span class="n"><span class="pre">OMAP_INLINE</span></span></span><a class="headerlink" href="#c.OMAP_INLINE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The storage class of the functions defined in the header,
+<code class="docutils literal notranslate"><span class="pre">static</span> <span class="pre">inline</span></code>.</p>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="misc.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="omap_algorithms.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Algorithms of the isomorphism code</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#types">Types</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-functions">Basic functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#isomorphisms">Isomorphisms</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#relabelling-from-a-root">Relabelling from a root</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#keys">Keys</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rules-of-the-roots">Rules of the roots</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#connected-maps">Connected maps</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#maps-that-may-be-disconnected">Maps that may be disconnected</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#maps-with-classes">Maps with classes</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the combisurf authors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, the combisurf authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

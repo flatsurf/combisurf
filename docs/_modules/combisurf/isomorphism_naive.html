@@ -1,0 +1,1793 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>combisurf.isomorphism_naive &#8212; combisurf 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=a1637f0b"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../../_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/combisurf/isomorphism_naive';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">combisurf 0.1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://flatsurf.github.io" title="flatsurf" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://flatsurf.github.io/assets/logo.svg" class="icon-link-image" alt="flatsurf"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/flatsurf/combisurf" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://sagemath.zulipchat.com/#narrow/channel/271193-flatsurf" title="Zulip" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-regular fa-comments fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Zulip</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../oriented_map.html"><code class="docutils literal notranslate"><span class="pre">oriented_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../word_family.html"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../lyndon_word_family.html"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../isomorphism.html"><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../isomorphism_naive.html"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">C library</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../c/perm.html"><code class="docutils literal notranslate"><span class="pre">perm.h</span></code>: partial permutations in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../c/misc.html"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../c/omap.html"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../c/omap_algorithms.html">Algorithms of the isomorphism code</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../references.html">References</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for combisurf.isomorphism_naive</h1><div class="highlight"><pre>
+<span></span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">Isomorphisms, automorphisms and canonical labels of maps, reference implementation</span>
+
+<span class="sd">This module computes canonical labellings, canonical forms, automorphism</span>
+<span class="sd">groups and isomorphisms of maps, connected or not, given by their face</span>
+<span class="sd">permutation, possibly decorated by values on half-edges. It works on plain</span>
+<span class="sd">arrays and is written for readability: the roots of one class of</span>
+<span class="sd">half-edges are tried (all the active half-edges under :data:`ROOTS_ALL`,</span>
+<span class="sd">which costs `O(n^2)` for `n` half-edges on a connected map), and nothing is</span>
+<span class="sd">pruned beyond the choice of that class: no early abort and no pruning by</span>
+<span class="sd">automorphisms, except the tied roots of a disconnected map described below.</span>
+<span class="sd">It is the reference of</span>
+<span class="sd">:mod:`combisurf.isomorphism`, which computes the same results in C and</span>
+<span class="sd">which the methods of :class:`~combisurf.oriented_map.OrientedMap` (such as</span>
+<span class="sd">:meth:`~combisurf.oriented_map.OrientedMap.canonical_labelling`) call.</span>
+
+<span class="sd">A map is given by its face permutation ``fp``, a list or ``array('i')`` of</span>
+<span class="sd">length ``n`` with ``-1`` on the inactive half-edges. The twin of the</span>
+<span class="sd">half-edge ``h`` is ``h ^ 1``; a folded edge has one active half-edge whose</span>
+<span class="sd">twin is inactive. An edge may be entirely inactive (a gap in the labels).</span>
+
+<span class="sd">Decorations come in two tuples of arrays of length ``n`` indexed by</span>
+<span class="sd">half-edges (the values on inactive half-edges are ignored). The values are</span>
+<span class="sd">only compared, so any totally ordered values are accepted here (compared</span>
+<span class="sd">with ``&lt;``); the fast module and the methods of</span>
+<span class="sd">:class:`~combisurf.oriented_map.OrientedMap` take integers in the range of a</span>
+<span class="sd">C ``int``:</span>
+
+<span class="sd">- ``data``: an isomorphism must preserve each array exactly;</span>
+
+<span class="sd">- ``classes``: an isomorphism must preserve each array up to a relabelling</span>
+<span class="sd">  of its values, that is, an isomorphism ``r`` from a map with the array</span>
+<span class="sd">  ``c`` to a map with the array ``c'`` must come with a bijection ``s`` of</span>
+<span class="sd">  values such that ``c'[r[h]] == s(c[h])`` for every active half-edge</span>
+<span class="sd">  ``h``. Only the partition of the half-edges into classes of equal values</span>
+<span class="sd">  matters.</span>
+
+<span class="sd">The canonical labelling is obtained from a breadth-first walk on</span>
+<span class="sd">half-edges started at a root: the face of the half-edge taken from the</span>
+<span class="sd">queue is walked, and each half-edge met on an edge not labelled yet gets</span>
+<span class="sd">the next even label, its twin the next odd label. The *key* of a root is</span>
+<span class="sd">the face permutation in the new labels, followed by each array of</span>
+<span class="sd">``data`` read in the order of the new labels, followed by each array of</span>
+<span class="sd">``classes`` read in the same order and renumbered ``0, 1, 2, ...`` by first</span>
+<span class="sd">appearance in that order. The renumbering makes the key independent of the</span>
+<span class="sd">names of the values, and costs `O(n)` per root like the rest of the key.</span>
+<span class="sd">The canonical labelling of a connected map is the one of a root of minimal</span>
+<span class="sd">key.</span>
+
+<span class="sd">A disconnected map is labelled component after component, the labels of a</span>
+<span class="sd">component following those of the components labelled before it. The</span>
+<span class="sd">*block* of a component labelled from a root is its number of labels, its</span>
+<span class="sd">face permutation in its local labels ``0, ..., k-1``, each array of</span>
+<span class="sd">``data`` read in the order of the local labels of its active half-edges,</span>
+<span class="sd">then each array of ``classes`` read in the same order and renumbered by</span>
+<span class="sd">first appearance, continuing the numbering of the components labelled</span>
+<span class="sd">before (a value met in an earlier component keeps its number). The</span>
+<span class="sd">canonical labelling is the one whose sequence of blocks is</span>
+<span class="sd">lexicographically minimal. It is found by a search: at each step, every</span>
+<span class="sd">active half-edge not labelled yet is tried as a root and the roots of</span>
+<span class="sd">minimal block are kept. When several roots tie:</span>
+
+<span class="sd">- with ``classes``, the first one of each numbering of the class values is</span>
+<span class="sd">  followed: the numberings left by two tied components may differ, and so</span>
+<span class="sd">  may the minimal continuations, but two tied roots that extend the</span>
+<span class="sd">  numbering in the same way put the same values at the same local labels.</span>
+<span class="sd">  Exchanging their two components (or relabelling the component from one</span>
+<span class="sd">  root to the other when they are the same) is then an automorphism fixing</span>
+<span class="sd">  the components labelled before, and the later root reaches nothing the</span>
+<span class="sd">  earlier one does not. On `k` copies of a component with one class value</span>
+<span class="sd">  a single path is followed;</span>
+
+<span class="sd">- without ``classes``, only the first one is followed: two tied blocks are</span>
+<span class="sd">  isomorphic decorated components, and either choice leaves isomorphic</span>
+<span class="sd">  remainders, hence the same minimal continuation. This keeps the</span>
+<span class="sd">  canonical labelling of `k` isomorphic components from costing `k!`.</span>
+
+<span class="sd">The automorphisms are the compositions ``ra^{-1} o rb`` of the first</span>
+<span class="sd">labelling ``ra`` reaching the minimal sequence with each labelling ``rb``</span>
+<span class="sd">reaching it, so :func:`automorphisms` follows every tied root, with or</span>
+<span class="sd">without classes; on `k` isomorphic components the list has at least `k!`</span>
+<span class="sd">elements. On a connected map the sequence has a single block, whose</span>
+<span class="sd">labelling is the one of a root of minimal key.</span>
+
+<span class="sd">The keyword ``root_rule`` of the public functions restricts the half-edges</span>
+<span class="sd">tried as roots to a class of half-edges that every isomorphism preserves.</span>
+<span class="sd">For an active half-edge ``h``, let ``vdeg(h)`` and ``fdeg(h)`` be the</span>
+<span class="sd">degrees of its vertex and of its face, and ``t`` its twin ``h ^ 1``, or</span>
+<span class="sd">``h`` itself on a folded edge. A rule gives each active half-edge an</span>
+<span class="sd">invariant:</span>
+
+<span class="sd">- :data:`ROOTS_ALL`: the same invariant for all, so that every active</span>
+<span class="sd">  half-edge is a root;</span>
+
+<span class="sd">- :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`: the pair ``(vdeg(h), fdeg(h))``;</span>
+
+<span class="sd">- :data:`ROOTS_EDGE_MAX`, :data:`ROOTS_EDGE_FEWEST`: the tuple ``(vdeg(h),</span>
+<span class="sd">  fdeg(h), vdeg(t), fdeg(t), loop, monogon)``, with ``loop`` equal to</span>
+<span class="sd">  ``1`` when ``h`` and ``t`` are at the same vertex and ``monogon`` equal</span>
+<span class="sd">  to ``1`` when they are in the same face (``0`` otherwise; both are ``1``</span>
+<span class="sd">  on a folded edge). It extends the invariant of the good starts of the fat</span>
+<span class="sd">  graphs of surface-dynamics.</span>
+
+<span class="sd">The flag :data:`ROOTS_DATA`, combined by ``|`` with one of the four rules</span>
+<span class="sd">other than :data:`ROOTS_ALL` (``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``,</span>
+<span class="sd">...), appends to the invariant of ``h`` the values of the arrays of</span>
+<span class="sd">``data`` at ``h``, in order, followed under the edge rules by their values</span>
+<span class="sd">at ``t``. Every isomorphism preserves ``data`` exactly, hence these</span>
+<span class="sd">invariants as well, and the classes are finer: fewer roots are tried on a</span>
+<span class="sd">decorated map. Without ``data`` the flag changes nothing. The values of</span>
+<span class="sd">``classes`` are never used, since they are only defined up to a</span>
+<span class="sd">relabelling. ``ROOTS_ALL | ROOTS_DATA`` and every other value raise a</span>
+<span class="sd">``ValueError``.</span>
+
+<span class="sd">The half-edges are grouped into classes of equal invariant, and only the</span>
+<span class="sd">half-edges of one class are tried as roots: with ``*_MAX`` the class of the</span>
+<span class="sd">largest invariant (tuples compared lexicographically), with ``*_FEWEST``</span>
+<span class="sd">the class with the fewest half-edges, ties broken by the largest invariant.</span>
+<span class="sd">The invariants of the base rules depend on the map only, not on ``data``</span>
+<span class="sd">nor ``classes``. They are computed once on the whole map; the degrees are local to a</span>
+<span class="sd">component. On a disconnected map the class is chosen at each step of the</span>
+<span class="sd">search among the active half-edges not labelled yet, and the roots tried</span>
+<span class="sd">are the half-edges of that class not labelled yet; the rest of the search</span>
+<span class="sd">is unchanged. Since an isomorphism preserves the invariants, the result</span>
+<span class="sd">under a rule has the properties above, but the canonical labelling and the</span>
+<span class="sd">canonical form may differ from one rule to another: two of them compare</span>
+<span class="sd">only under the same rule. The default is ``ROOTS_HALF_EDGE_FEWEST |</span>
+<span class="sd">ROOTS_DATA`` (the integer ``10``): decorations narrow the roots tried, and</span>
+<span class="sd">on an undecorated map it is :data:`ROOTS_HALF_EDGE_FEWEST`, which tries</span>
+<span class="sd">fewer roots than :data:`ROOTS_ALL`. The automorphisms are the same under</span>
+<span class="sd">every rule, listed in the order of the search of the rule.</span>
+
+<span class="sd">EXAMPLES::</span>
+
+<span class="sd">    sage: from combisurf.isomorphism_naive import canonical_labelling, automorphisms, isomorphism</span>
+<span class="sd">    sage: fp = [2, 5, 4, 1, 0, 3]  # the faces (0,1,2)(~0,~2,~1)</span>
+<span class="sd">    sage: canonical_labelling(fp)</span>
+<span class="sd">    array('i', [0, 1, 2, 3, 4, 5])</span>
+<span class="sd">    sage: len(automorphisms(fp))</span>
+<span class="sd">    6</span>
+<span class="sd">    sage: isomorphism(fp, (), [4, 3, 0, 5, 2, 1], ())</span>
+<span class="sd">    array('i', [0, 1, 4, 5, 2, 3])</span>
+
+<span class="sd">A decoration of the two faces of ``(0,1,2)(~0,~1,~2)``, kept exactly or up</span>
+<span class="sd">to relabelling::</span>
+
+<span class="sd">    sage: fp = [2, 3, 4, 5, 0, 1]  # the faces (0,1,2)(~0,~1,~2)</span>
+<span class="sd">    sage: c = [0, 1, 0, 1, 0, 1]</span>
+<span class="sd">    sage: len(automorphisms(fp, (c,)))</span>
+<span class="sd">    3</span>
+<span class="sd">    sage: len(automorphisms(fp, classes=(c,)))</span>
+<span class="sd">    6</span>
+
+<span class="sd">Two components ``(0)(~0)`` and ``(1)(~1)``, each an edge with two faces of</span>
+<span class="sd">degree one: the automorphisms swap the halves of each edge and the two</span>
+<span class="sd">edges. Classes shared by the two components tie them together::</span>
+
+<span class="sd">    sage: fp = [0, 1, 2, 3]</span>
+<span class="sd">    sage: len(automorphisms(fp))</span>
+<span class="sd">    8</span>
+<span class="sd">    sage: len(automorphisms(fp, classes=([0, 1, 0, 1],)))</span>
+<span class="sd">    4</span>
+<span class="sd">    sage: len(automorphisms(fp, classes=([0, 1, 1, 2],)))</span>
+<span class="sd">    2</span>
+
+<span class="sd">The triangle ``(0,1,2)(~0,~2,~1)`` beside the folded edge ``(3)``: every</span>
+<span class="sd">active half-edge is a root under ``ROOTS_ALL``, the half-edges of the</span>
+<span class="sd">triangle (at a vertex of degree 2 and a face of degree 3) under ``ROOTS_HALF_EDGE_MAX``</span>
+<span class="sd">and the folded edge (the class with one half-edge) under</span>
+<span class="sd">``ROOTS_HALF_EDGE_FEWEST``, which is the default rule on a map without</span>
+<span class="sd">``data``::</span>
+
+<span class="sd">    sage: from combisurf.isomorphism_naive import canonical_form, ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST</span>
+<span class="sd">    sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]</span>
+<span class="sd">    sage: canonical_form(fp, root_rule=ROOTS_ALL)</span>
+<span class="sd">    ((0, -1, 4, 7, 6, 3, 2, 5),)</span>
+<span class="sd">    sage: canonical_form(fp, root_rule=ROOTS_HALF_EDGE_MAX)</span>
+<span class="sd">    ((2, 5, 4, 1, 0, 3, 6, -1),)</span>
+<span class="sd">    sage: canonical_form(fp)</span>
+<span class="sd">    ((0, -1, 4, 7, 6, 3, 2, 5),)</span>
+
+<span class="sd">With the faces of the triangle decorated by ``0`` and ``1``, the rule</span>
+<span class="sd">``ROOTS_HALF_EDGE_MAX | ROOTS_DATA`` tries the three half-edges of the face</span>
+<span class="sd">of value ``1`` instead of the six of the triangle::</span>
+
+<span class="sd">    sage: from combisurf.isomorphism_naive import _roots, _root_invariants, ROOTS_ALL, ROOTS_DATA</span>
+<span class="sd">    sage: d = [0, 1, 0, 1, 0, 1, 0, 0]</span>
+<span class="sd">    sage: r = [-1] * 8</span>
+<span class="sd">    sage: rule = ROOTS_HALF_EDGE_MAX | ROOTS_DATA</span>
+<span class="sd">    sage: len(_roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_MAX, (d,)), ROOTS_HALF_EDGE_MAX))</span>
+<span class="sd">    6</span>
+<span class="sd">    sage: len(_roots(fp, r, _root_invariants(fp, rule, (d,)), rule))</span>
+<span class="sd">    3</span>
+<span class="sd">    sage: canonical_form(fp, (d,), root_rule=rule)</span>
+<span class="sd">    ((2, 5, 4, 1, 0, 3, 6, -1), (1, 0, 1, 0, 1, 0, 0))</span>
+<span class="sd">    sage: canonical_form(fp, (d,), root_rule=ROOTS_ALL | ROOTS_DATA)</span>
+<span class="sd">    Traceback (most recent call last):</span>
+<span class="sd">    ...</span>
+<span class="sd">    ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 8</span>
+<span class="sd">"""</span>
+<span class="c1"># ****************************************************************************</span>
+<span class="c1">#  This file is part of combisurf</span>
+<span class="c1">#</span>
+<span class="c1">#       Copyright (C) 2026 Vincent Delecroix</span>
+<span class="c1">#</span>
+<span class="c1">#  This program is free software; you can redistribute it and/or</span>
+<span class="c1">#  modify it under the terms of the GNU General Public License</span>
+<span class="c1">#  as published by the Free Software Foundation; either version 2</span>
+<span class="c1">#  of the License, or (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#  This program is distributed in the hope that it will be useful,</span>
+<span class="c1">#  but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#  GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#  You should have received a copy of the GNU General Public License</span>
+<span class="c1">#  along with this program; if not, write to the Free Software</span>
+<span class="c1">#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.</span>
+<span class="c1"># ****************************************************************************</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">array</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numbers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Integral</span>
+
+
+<span class="n">ROOTS_ALL</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">ROOTS_HALF_EDGE_MAX</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">ROOTS_HALF_EDGE_FEWEST</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">ROOTS_EDGE_MAX</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">ROOTS_EDGE_FEWEST</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">ROOTS_DATA</span> <span class="o">=</span> <span class="mi">8</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_root_rule</span><span class="p">(</span><span class="n">root_rule</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return ``root_rule`` as a Python ``int`` after checking that it is one</span>
+<span class="sd">    of the integers :data:`ROOTS_ALL`, :data:`ROOTS_HALF_EDGE_MAX`,</span>
+<span class="sd">    :data:`ROOTS_HALF_EDGE_FEWEST`, :data:`ROOTS_EDGE_MAX` and</span>
+<span class="sd">    :data:`ROOTS_EDGE_FEWEST`, or one of the last four combined with</span>
+<span class="sd">    :data:`ROOTS_DATA` by ``|``.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import _check_root_rule, ROOTS_ALL, ROOTS_EDGE_FEWEST, ROOTS_HALF_EDGE_MAX, ROOTS_DATA</span>
+<span class="sd">        sage: ROOTS_ALL, ROOTS_EDGE_FEWEST, ROOTS_DATA</span>
+<span class="sd">        (0, 4, 8)</span>
+<span class="sd">        sage: _check_root_rule(ROOTS_EDGE_FEWEST)</span>
+<span class="sd">        4</span>
+<span class="sd">        sage: _check_root_rule(3)</span>
+<span class="sd">        3</span>
+<span class="sd">        sage: _check_root_rule(ROOTS_HALF_EDGE_MAX | ROOTS_DATA)</span>
+<span class="sd">        9</span>
+
+<span class="sd">    TESTS::</span>
+
+<span class="sd">        sage: _check_root_rule(5)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 5</span>
+<span class="sd">        sage: _check_root_rule(ROOTS_ALL | ROOTS_DATA)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 8</span>
+<span class="sd">        sage: _check_root_rule(13)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 13</span>
+<span class="sd">        sage: _check_root_rule("all")</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 'all'</span>
+<span class="sd">        sage: _check_root_rule(1.0r)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 1.0</span>
+<span class="sd">        sage: _check_root_rule(True)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got True</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">root_rule</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">root_rule</span><span class="p">,</span> <span class="n">Integral</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="n">ROOTS_ALL</span> <span class="o">&lt;=</span> <span class="n">root_rule</span> <span class="o">&lt;=</span> <span class="n">ROOTS_EDGE_FEWEST</span>
+                    <span class="ow">or</span> <span class="n">ROOTS_HALF_EDGE_MAX</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span> <span class="o">&lt;=</span> <span class="n">root_rule</span> <span class="o">&lt;=</span> <span class="n">ROOTS_EDGE_FEWEST</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, "</span>
+                         <span class="s2">"ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 "</span>
+                         <span class="s2">"(the last four | ROOTS_DATA), got </span><span class="si">{!r}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">root_rule</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">root_rule</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cells</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return ``(cell, size)``: for each active half-edge of the permutation</span>
+<span class="sd">    ``p`` (``-1`` on the inactive half-edges), the index of its cycle and</span>
+<span class="sd">    the length of that cycle (``-1`` on the inactive half-edges).</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import _cells</span>
+<span class="sd">        sage: _cells([1, 0, 2, -1])</span>
+<span class="sd">        ([0, 0, 1, -1], [2, 2, 1, -1])</span>
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="n">cell</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">cell</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">cycle</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span><span class="p">]</span>
+        <span class="n">cell</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+        <span class="k">while</span> <span class="n">x</span> <span class="o">!=</span> <span class="n">h</span><span class="p">:</span>
+            <span class="n">cycle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">cell</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">cycle</span><span class="p">:</span>
+            <span class="n">size</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cycle</span><span class="p">)</span>
+        <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">cell</span><span class="p">,</span> <span class="n">size</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_root_invariants</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root_rule</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">()):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return the list of the invariants of the half-edges of ``fp`` under the</span>
+<span class="sd">    rule ``root_rule`` (``None`` on the inactive half-edges).</span>
+
+<span class="sd">    The invariant of an active half-edge ``h`` is ``()`` under</span>
+<span class="sd">    :data:`ROOTS_ALL`, ``(vdeg(h), fdeg(h))`` under the ``ROOTS_HALF_EDGE_*``</span>
+<span class="sd">    rules and ``(vdeg(h), fdeg(h), vdeg(t), fdeg(t), loop, monogon)`` under</span>
+<span class="sd">    the ``ROOTS_EDGE_*`` rules (see the module documentation). Under</span>
+<span class="sd">    :data:`ROOTS_DATA` it is followed by the values of the arrays of</span>
+<span class="sd">    ``data`` at ``h``, then under the edge rules by those at ``t``. The</span>
+<span class="sd">    vertex permutation is built from ``fp`` as</span>
+<span class="sd">    :class:`~combisurf.oriented_map.OrientedMap` builds it: ``vp[fp[t]] =</span>
+<span class="sd">    h`` with ``t`` the twin of ``h``.</span>
+
+<span class="sd">    EXAMPLES:</span>
+
+<span class="sd">    The map ``(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)``, whose edges ``0, 1, 3, 6,</span>
+<span class="sd">    7, 8`` are folded::</span>
+
+<span class="sd">        sage: from combisurf import OrientedMap</span>
+<span class="sd">        sage: from combisurf.isomorphism_naive import _root_invariants, ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_EDGE_MAX</span>
+<span class="sd">        sage: fp = list(OrientedMap(fp="(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)").face_permutation())</span>
+<span class="sd">        sage: _root_invariants(fp, ROOTS_ALL)[:6]</span>
+<span class="sd">        [(), None, (), None, (), ()]</span>
+<span class="sd">        sage: inv = _root_invariants(fp, ROOTS_HALF_EDGE_MAX)</span>
+<span class="sd">        sage: inv[0], inv[4], inv[8], inv[9], inv[12]</span>
+<span class="sd">        ((3, 3), (4, 3), (4, 3), (1, 3), (3, 3))</span>
+<span class="sd">        sage: inv = _root_invariants(fp, ROOTS_EDGE_MAX)</span>
+<span class="sd">        sage: inv[0], inv[4], inv[8], inv[9], inv[12]</span>
+<span class="sd">        ((3, 3, 3, 3, 1, 1),</span>
+<span class="sd">         (4, 3, 4, 3, 1, 0),</span>
+<span class="sd">         (4, 3, 1, 3, 0, 1),</span>
+<span class="sd">         (1, 3, 4, 3, 0, 1),</span>
+<span class="sd">         (3, 3, 3, 3, 1, 1))</span>
+
+<span class="sd">    The vertex of the half-edge ``0`` is ``(0,6,2)`` and the vertex</span>
+<span class="sd">    ``(4,8,5,10)`` holds both halves of the edge ``2`` (a loop) and the</span>
+<span class="sd">    half-edge ``8`` of the edge ``4``, whose other half ``9`` is alone at</span>
+<span class="sd">    its vertex and in the face ``(4,8,9)`` of ``8`` (a monogon edge).</span>
+
+<span class="sd">    Under :data:`ROOTS_DATA`, the values of ``data`` follow, at ``8`` then</span>
+<span class="sd">    at its twin ``9`` under the edge rules::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import ROOTS_DATA</span>
+<span class="sd">        sage: d = list(range(18))</span>
+<span class="sd">        sage: inv = _root_invariants(fp, ROOTS_HALF_EDGE_MAX | ROOTS_DATA, (d,))</span>
+<span class="sd">        sage: inv[8]</span>
+<span class="sd">        (4, 3, 8)</span>
+<span class="sd">        sage: inv = _root_invariants(fp, ROOTS_EDGE_MAX | ROOTS_DATA, (d, [-x for x in d]))</span>
+<span class="sd">        sage: inv[8]</span>
+<span class="sd">        (4, 3, 1, 3, 0, 1, 8, -8, 9, -9)</span>
+<span class="sd">    """</span>
+    <span class="n">root_rule</span> <span class="o">=</span> <span class="n">_check_root_rule</span><span class="p">(</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">root_rule</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">ROOTS_DATA</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="n">ROOTS_ALL</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="kc">None</span> <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">fp</span><span class="p">]</span>
+    <span class="n">vp</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">fp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">h</span> <span class="o">^</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">fp</span><span class="p">[</span><span class="n">h</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="n">h</span>
+            <span class="n">vp</span><span class="p">[</span><span class="n">fp</span><span class="p">[</span><span class="n">t</span><span class="p">]]</span> <span class="o">=</span> <span class="n">h</span>
+    <span class="n">vertex</span><span class="p">,</span> <span class="n">vdeg</span> <span class="o">=</span> <span class="n">_cells</span><span class="p">(</span><span class="n">vp</span><span class="p">)</span>
+    <span class="n">face</span><span class="p">,</span> <span class="n">fdeg</span> <span class="o">=</span> <span class="n">_cells</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">root_rule</span> <span class="o">&amp;</span> <span class="n">ROOTS_DATA</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">()</span>
+    <span class="n">invariants</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">fp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">(</span><span class="n">ROOTS_HALF_EDGE_MAX</span><span class="p">,</span> <span class="n">ROOTS_HALF_EDGE_FEWEST</span><span class="p">):</span>
+            <span class="n">invariants</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">vdeg</span><span class="p">[</span><span class="n">h</span><span class="p">],</span> <span class="n">fdeg</span><span class="p">[</span><span class="n">h</span><span class="p">])</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">h</span> <span class="o">^</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">fp</span><span class="p">[</span><span class="n">h</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="n">h</span>
+            <span class="n">invariants</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="p">((</span><span class="n">vdeg</span><span class="p">[</span><span class="n">h</span><span class="p">],</span> <span class="n">fdeg</span><span class="p">[</span><span class="n">h</span><span class="p">],</span> <span class="n">vdeg</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">fdeg</span><span class="p">[</span><span class="n">t</span><span class="p">],</span>
+                              <span class="nb">int</span><span class="p">(</span><span class="n">vertex</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="n">vertex</span><span class="p">[</span><span class="n">t</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">face</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="n">face</span><span class="p">[</span><span class="n">t</span><span class="p">]))</span>
+                             <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">invariants</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_roots</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">invariants</span><span class="p">,</span> <span class="n">root_rule</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return the roots to try, in increasing order, among the active</span>
+<span class="sd">    half-edges of ``fp`` not labelled by ``r`` (``-1`` on the half-edges not</span>
+<span class="sd">    labelled): the class of the rule ``root_rule`` among them for the</span>
+<span class="sd">    ``invariants`` of :func:`_root_invariants`.</span>
+
+<span class="sd">    EXAMPLES:</span>
+
+<span class="sd">    The triangle ``(0,1,2)(~0,~2,~1)`` beside the folded edge ``(3)``::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import _roots, _root_invariants, ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST</span>
+<span class="sd">        sage: fp = [2, 5, 4, 1, 0, 3, 6, -1]</span>
+<span class="sd">        sage: r = [-1] * 8</span>
+<span class="sd">        sage: _roots(fp, r, _root_invariants(fp, ROOTS_ALL), ROOTS_ALL)</span>
+<span class="sd">        [0, 1, 2, 3, 4, 5, 6]</span>
+<span class="sd">        sage: _roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_MAX), ROOTS_HALF_EDGE_MAX)</span>
+<span class="sd">        [0, 1, 2, 3, 4, 5]</span>
+<span class="sd">        sage: _roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_FEWEST), ROOTS_HALF_EDGE_FEWEST)</span>
+<span class="sd">        [6]</span>
+
+<span class="sd">    Once the folded edge is labelled, the class is chosen among the</span>
+<span class="sd">    half-edges of the triangle::</span>
+
+<span class="sd">        sage: r = [-1] * 6 + [0, 1]</span>
+<span class="sd">        sage: _roots(fp, r, _root_invariants(fp, ROOTS_HALF_EDGE_FEWEST), ROOTS_HALF_EDGE_FEWEST)</span>
+<span class="sd">        [0, 1, 2, 3, 4, 5]</span>
+
+<span class="sd">    Under ``ROOTS_HALF_EDGE_MAX | ROOTS_DATA``, a decoration of the faces of</span>
+<span class="sd">    the triangle splits its class, and the class of the larger value is</span>
+<span class="sd">    tried::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import ROOTS_DATA</span>
+<span class="sd">        sage: rule = ROOTS_HALF_EDGE_MAX | ROOTS_DATA</span>
+<span class="sd">        sage: d = [0, 1, 0, 1, 0, 1, 0, 0]</span>
+<span class="sd">        sage: _roots(fp, r, _root_invariants(fp, rule, (d,)), rule)</span>
+<span class="sd">        [1, 3, 5]</span>
+<span class="sd">    """</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fp</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">fp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">r</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">invariants</span><span class="p">[</span><span class="n">h</span><span class="p">],</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">groups</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">root_rule</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">ROOTS_DATA</span> <span class="ow">in</span> <span class="p">(</span><span class="n">ROOTS_HALF_EDGE_FEWEST</span><span class="p">,</span> <span class="n">ROOTS_EDGE_FEWEST</span><span class="p">):</span>
+        <span class="n">chosen</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">i</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">chosen</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">groups</span><span class="p">[</span><span class="n">chosen</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_input</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="o">=</span><span class="p">()):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return ``(n, ne)``, the length of ``fp`` and its number of active edges,</span>
+<span class="sd">    after checking that ``fp`` has even length, that each array of ``data``</span>
+<span class="sd">    and of ``classes`` has length ``n`` and that ``fp`` is a permutation of</span>
+<span class="sd">    its active half-edges.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import _check_input</span>
+<span class="sd">        sage: _check_input([2, 5, 4, 1, 0, 3], ())</span>
+<span class="sd">        (6, 3)</span>
+<span class="sd">        sage: _check_input([2, 5, 4, 1, 0, 3], ([0, 1, 0, 1, 0, 1],), ([0] * 6,))</span>
+<span class="sd">        (6, 3)</span>
+
+<span class="sd">    TESTS::</span>
+
+<span class="sd">        sage: _check_input([0, -1, 2], ())</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: fp must have even length</span>
+<span class="sd">        sage: _check_input([0, -1], ([0],))</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: data arrays must have length 2</span>
+<span class="sd">        sage: _check_input([0, -1], (), [[0, 0]])</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        TypeError: classes must be a tuple</span>
+<span class="sd">        sage: _check_input([0, -1], (), ([0],))</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: classes arrays must have length 2</span>
+<span class="sd">        sage: for fp in ([1, -1], [1, 1], [0, 0], [-2, 0], [0, 5], [2, 0]):</span>
+<span class="sd">        ....:     try:</span>
+<span class="sd">        ....:         _check_input(fp, ())</span>
+<span class="sd">        ....:     except ValueError as err:</span>
+<span class="sd">        ....:         print(err)</span>
+<span class="sd">        fp must be a permutation of its active half-edges</span>
+<span class="sd">        fp must be a permutation of its active half-edges</span>
+<span class="sd">        fp must be a permutation of its active half-edges</span>
+<span class="sd">        fp must be a permutation of its active half-edges</span>
+<span class="sd">        fp must be a permutation of its active half-edges</span>
+<span class="sd">        fp must be a permutation of its active half-edges</span>
+<span class="sd">        sage: _check_input([-1, -1, 2, -1], ())</span>
+<span class="sd">        (4, 1)</span>
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"fp must have even length"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"data must be a tuple"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"data arrays must have length </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">classes</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"classes must be a tuple"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">classes</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"classes arrays must have length </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+    <span class="c1"># a map from the active half-edges to themselves that is one-to-one is a</span>
+    <span class="c1"># permutation of them; any other fp sends the walks of the searches out</span>
+    <span class="c1"># of range or around a cycle that never closes</span>
+    <span class="n">seen</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">fp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="n">n</span> <span class="ow">or</span> <span class="n">fp</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">seen</span><span class="p">[</span><span class="n">x</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"fp must be a permutation of its active half-edges"</span><span class="p">)</span>
+        <span class="n">seen</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">ne</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="k">if</span> <span class="n">fp</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">fp</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n</span><span class="p">,</span> <span class="n">ne</span>
+
+
+<div class="viewcode-block" id="relabelling_from">
+<a class="viewcode-back" href="../../isomorphism_naive.html#combisurf.isomorphism_naive.relabelling_from">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">relabelling_from</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return ``(r, k)`` where ``r`` is the relabelling of the half-edges of</span>
+<span class="sd">    ``fp`` obtained by the breadth-first walk from ``root`` and ``k`` the</span>
+<span class="sd">    number of labels used.</span>
+
+<span class="sd">    The half-edges are taken from a queue that initially holds ``root``.</span>
+<span class="sd">    For a half-edge ``h`` taken from the queue, its face ``h, fp[h],</span>
+<span class="sd">    fp[fp[h]], ...`` is walked; each half-edge ``x`` met whose edge has no</span>
+<span class="sd">    label yet gets the next even label ``2i``, its twin ``x ^ 1`` the label</span>
+<span class="sd">    ``2i + 1``, and the twin is pushed on the queue when it is active. The</span>
+<span class="sd">    active half-edge of a folded edge therefore gets an even label and its</span>
+<span class="sd">    inactive twin the odd one.</span>
+
+<span class="sd">    INPUT:</span>
+
+<span class="sd">    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on</span>
+<span class="sd">      inactive half-edges)</span>
+
+<span class="sd">    - ``root`` -- an active half-edge</span>
+
+<span class="sd">    OUTPUT: a pair ``(r, k)`` with ``r`` an ``array('i')`` of length</span>
+<span class="sd">    ``len(fp)`` (``-1`` on the half-edges of the edges that are not</span>
+<span class="sd">    reached) and ``k`` the number of labels used. The map is connected if</span>
+<span class="sd">    and only if ``k`` is twice its number of active edges.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import relabelling_from</span>
+<span class="sd">        sage: fp = [2, 5, 4, 1, 0, 3]  # the faces (0,1,2)(~0,~2,~1)</span>
+<span class="sd">        sage: relabelling_from(fp, 0)</span>
+<span class="sd">        (array('i', [0, 1, 2, 3, 4, 5]), 6)</span>
+<span class="sd">        sage: relabelling_from(fp, 3)</span>
+<span class="sd">        (array('i', [3, 2, 1, 0, 5, 4]), 6)</span>
+
+<span class="sd">    A folded edge and a label gap (the edge ``1`` is inactive)::</span>
+
+<span class="sd">        sage: fp = [4, -1, -1, -1, 5, 0]  # the face (0,2,~2)</span>
+<span class="sd">        sage: relabelling_from(fp, 5)</span>
+<span class="sd">        (array('i', [2, 3, -1, -1, 1, 0]), 4)</span>
+
+<span class="sd">    TESTS:</span>
+
+<span class="sd">    A disconnected map::</span>
+
+<span class="sd">        sage: relabelling_from([0, 1, 2, 3], 0)</span>
+<span class="sd">        (array('i', [0, 1, -1, -1]), 2)</span>
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">root</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="ow">or</span> <span class="n">fp</span><span class="p">[</span><span class="n">root</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"root must be an active half-edge"</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">([</span><span class="n">root</span><span class="p">])</span>
+    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">h</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">r</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
+                <span class="n">r</span><span class="p">[</span><span class="n">x</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="n">k</span> <span class="o">+=</span> <span class="mi">2</span>
+                <span class="k">if</span> <span class="n">fp</span><span class="p">[</span><span class="n">x</span> <span class="o">^</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span> <span class="o">^</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">fp</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="n">h</span><span class="p">:</span>
+                <span class="k">break</span>
+    <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">k</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_key</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">classes</span><span class="o">=</span><span class="p">()):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return the key of the relabelling ``r`` using ``k`` labels: the face</span>
+<span class="sd">    permutation in the new labels, then each array of ``data`` read in the</span>
+<span class="sd">    increasing order of the new labels of the active half-edges, then each</span>
+<span class="sd">    array of ``classes`` read in the same order and renumbered ``0, 1, 2,</span>
+<span class="sd">    ...`` by first appearance.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import relabelling_from, _key</span>
+<span class="sd">        sage: fp = [4, -1, -1, -1, 5, 0]</span>
+<span class="sd">        sage: r, k = relabelling_from(fp, 5)</span>
+<span class="sd">        sage: _key(fp, (['a', 'b', 'c', 'd', 'e', 'f'],), r, k)</span>
+<span class="sd">        ((2, 0, 1, -1), ('f', 'e', 'a'))</span>
+
+<span class="sd">    The half-edges ``5, 4, 0`` get the new labels ``0, 1, 2``; the values</span>
+<span class="sd">    ``7, 3, 7`` of a class array on them become ``0, 1, 0``::</span>
+
+<span class="sd">        sage: _key(fp, (), r, k, ([7, 9, 9, 9, 3, 7],))</span>
+<span class="sd">        ((2, 0, 1, -1), (0, 1, 0))</span>
+<span class="sd">    """</span>
+    <span class="n">fp_new</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">k</span>
+    <span class="n">rinv</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">k</span>
+    <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fp</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">fp_new</span><span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="n">h</span><span class="p">]]</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+            <span class="n">rinv</span><span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="n">h</span><span class="p">]]</span> <span class="o">=</span> <span class="n">h</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">fp_new</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="n">key</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">rinv</span> <span class="k">if</span> <span class="n">h</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">classes</span><span class="p">:</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">renumbered</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">rinv</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">h</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">i</span> <span class="o">=</span> <span class="n">names</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+                <span class="n">renumbered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">key</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">renumbered</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_block</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">names</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return ``(block, new_names)``: the block of the component labelled by</span>
+<span class="sd">    ``r`` with ``k`` local labels ``0, ..., k-1`` (``-1`` outside the</span>
+<span class="sd">    component), and the numberings of the class values extended by it.</span>
+
+<span class="sd">    The block is the tuple of ``k``, the face permutation of the component</span>
+<span class="sd">    in its local labels, each array of ``data`` read in the order of the</span>
+<span class="sd">    local labels of its active half-edges, and each array of ``classes``</span>
+<span class="sd">    read in the same order and renumbered by first appearance, starting</span>
+<span class="sd">    from the numbering ``names`` (one dictionary per array, values to</span>
+<span class="sd">    numbers) of the components labelled before. ``names`` is not modified.</span>
+
+<span class="sd">    EXAMPLES:</span>
+
+<span class="sd">    The second component of ``(0)(~0)(1)(~1)`` meets a value of the first</span>
+<span class="sd">    one, which keeps its number, and a new value::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import relabelling_from, _block</span>
+<span class="sd">        sage: fp = [0, 1, 2, 3]</span>
+<span class="sd">        sage: r, k = relabelling_from(fp, 2)</span>
+<span class="sd">        sage: _block(fp, (), ([5, 6, 6, 7],), r, k, [{5: 0, 6: 1}])</span>
+<span class="sd">        ((2, (0, 1), (1, 2)), [{5: 0, 6: 1, 7: 2}])</span>
+<span class="sd">    """</span>
+    <span class="n">rinv</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">k</span>
+    <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">fp</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">rinv</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">h</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="n">r</span><span class="p">[</span><span class="n">fp</span><span class="p">[</span><span class="n">h</span><span class="p">]]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">rinv</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="n">block</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">rinv</span> <span class="k">if</span> <span class="n">h</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">new_names</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">nm</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">classes</span><span class="p">,</span> <span class="n">names</span><span class="p">):</span>
+        <span class="n">nm</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">nm</span><span class="p">)</span>
+        <span class="n">renumbered</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">rinv</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">h</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">nm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">i</span> <span class="o">=</span> <span class="n">nm</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nm</span><span class="p">)</span>
+                <span class="n">renumbered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">block</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">renumbered</span><span class="p">))</span>
+        <span class="n">new_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nm</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">block</span><span class="p">),</span> <span class="n">new_names</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_search</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="o">=</span><span class="p">(),</span> <span class="n">all_leaves</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_FEWEST</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return ``(key, leaves)``: the lexicographically minimal sequence of</span>
+<span class="sd">    blocks over the labellings component after component, and the</span>
+<span class="sd">    relabellings that reach it, in the order of the search.</span>
+
+<span class="sd">    Each leaf is an ``array('i')`` of length ``len(fp)``, ``-1`` on the</span>
+<span class="sd">    half-edges of the inactive edges. The search is a depth-first walk</span>
+<span class="sd">    whose state is the relabelling of the components labelled so far: the</span>
+<span class="sd">    half-edges of the class of ``root_rule`` among the active half-edges</span>
+<span class="sd">    not labelled yet (all of them under :data:`ROOTS_ALL`) are tried as the</span>
+<span class="sd">    root of the next component and only the roots of minimal block are</span>
+<span class="sd">    followed, in increasing order. A branch whose sequence of blocks</span>
+<span class="sd">    exceeds the best one found is cut. With ``all_leaves=False`` the first</span>
+<span class="sd">    leaf reaching the minimum is returned and, among the roots of minimal</span>
+<span class="sd">    block, only the first one is followed when ``classes`` is empty, and</span>
+<span class="sd">    only the first one of each numbering of the class values they extend</span>
+<span class="sd">    otherwise: two tied roots with the same numbering are exchanged by an</span>
+<span class="sd">    automorphism fixing the components labelled before, so their subtrees</span>
+<span class="sd">    reach the same blocks. With ``all_leaves=True`` every root of minimal</span>
+<span class="sd">    block is followed, and every leaf reaching the minimum is returned.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import _search</span>
+<span class="sd">        sage: key, leaves = _search([0, 1, 2, 3], ())</span>
+<span class="sd">        sage: key</span>
+<span class="sd">        ((2, (0, 1)), (2, (0, 1)))</span>
+<span class="sd">        sage: leaves</span>
+<span class="sd">        [array('i', [0, 1, 2, 3])]</span>
+<span class="sd">        sage: len(_search([0, 1, 2, 3], (), all_leaves=True)[1])</span>
+<span class="sd">        8</span>
+
+<span class="sd">    Three isolated edges whose six half-edges share one class value: every</span>
+<span class="sd">    root ties and extends the numbering in the same way, so one path is</span>
+<span class="sd">    followed, and its leaf is the first of the full search::</span>
+
+<span class="sd">        sage: fp = list(range(6))</span>
+<span class="sd">        sage: c = ([0] * 6,)</span>
+<span class="sd">        sage: key, leaves = _search(fp, (), c)</span>
+<span class="sd">        sage: key</span>
+<span class="sd">        ((2, (0, 1), (0, 0)), (2, (0, 1), (0, 0)), (2, (0, 1), (0, 0)))</span>
+<span class="sd">        sage: leaves</span>
+<span class="sd">        [array('i', [0, 1, 2, 3, 4, 5])]</span>
+<span class="sd">        sage: key2, leaves2 = _search(fp, (), c, all_leaves=True)</span>
+<span class="sd">        sage: key2 == key, leaves2[0] == leaves[0], len(leaves2)</span>
+<span class="sd">        (True, True, 48)</span>
+<span class="sd">    """</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">ne</span> <span class="o">=</span> <span class="n">_check_input</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">)</span>
+    <span class="n">invariants</span> <span class="o">=</span> <span class="n">_root_invariants</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root_rule</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+    <span class="n">best</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">leaves</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># a state is (blocks, relabelling, number of labels used, numberings</span>
+    <span class="c1"># of the class values); the stack holds the states still to expand</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="p">[((),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">classes</span><span class="p">])]</span>
+    <span class="k">while</span> <span class="n">stack</span><span class="p">:</span>
+        <span class="n">blocks</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">used</span><span class="p">,</span> <span class="n">names</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">blocks</span> <span class="o">&gt;</span> <span class="n">best</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)]:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">used</span> <span class="o">==</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">ne</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">blocks</span> <span class="o">&lt;</span> <span class="n">best</span><span class="p">:</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">blocks</span>
+                <span class="n">leaves</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">all_leaves</span><span class="p">:</span>
+                <span class="n">leaves</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">minimum</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">tied</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">root</span> <span class="ow">in</span> <span class="n">_roots</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">invariants</span><span class="p">,</span> <span class="n">root_rule</span><span class="p">):</span>
+            <span class="n">rc</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">relabelling_from</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
+            <span class="n">block</span><span class="p">,</span> <span class="n">new_names</span> <span class="o">=</span> <span class="n">_block</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">rc</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">minimum</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">block</span> <span class="o">&lt;</span> <span class="n">minimum</span><span class="p">:</span>
+                <span class="n">minimum</span> <span class="o">=</span> <span class="n">block</span>
+                <span class="n">tied</span> <span class="o">=</span> <span class="p">[(</span><span class="n">rc</span><span class="p">,</span> <span class="n">new_names</span><span class="p">)]</span>
+            <span class="k">elif</span> <span class="n">block</span> <span class="o">==</span> <span class="n">minimum</span><span class="p">:</span>
+                <span class="n">tied</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">rc</span><span class="p">,</span> <span class="n">new_names</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">classes</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">all_leaves</span><span class="p">:</span>
+            <span class="c1"># two roots of equal block give isomorphic decorated components</span>
+            <span class="c1"># and isomorphic remainders, hence the same minimal continuation</span>
+            <span class="k">del</span> <span class="n">tied</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">all_leaves</span><span class="p">:</span>
+            <span class="c1"># two tied roots with equal numberings put the same actual class</span>
+            <span class="c1"># values at the same local labels of their components; exchanging</span>
+            <span class="c1"># the two components (or relabelling the component from one root</span>
+            <span class="c1"># to the other when they are the same), the identity elsewhere,</span>
+            <span class="c1"># is an automorphism that fixes the components labelled before</span>
+            <span class="c1"># and sends the subtree of the later root onto the subtree of the</span>
+            <span class="c1"># earlier one, which comes first and reaches the same minimum</span>
+            <span class="n">kept</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">rc</span><span class="p">,</span> <span class="n">new_names</span> <span class="ow">in</span> <span class="n">tied</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">new_names</span> <span class="o">!=</span> <span class="n">nm</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">nm</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">):</span>
+                    <span class="n">kept</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">rc</span><span class="p">,</span> <span class="n">new_names</span><span class="p">))</span>
+            <span class="n">tied</span> <span class="o">=</span> <span class="n">kept</span>
+        <span class="n">children</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">rc</span><span class="p">,</span> <span class="n">new_names</span> <span class="ow">in</span> <span class="n">tied</span><span class="p">:</span>
+            <span class="n">r2</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">r2</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">used</span> <span class="o">+</span> <span class="n">x</span>
+            <span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">blocks</span> <span class="o">+</span> <span class="p">(</span><span class="n">minimum</span><span class="p">,),</span> <span class="n">r2</span><span class="p">,</span> <span class="n">used</span> <span class="o">+</span> <span class="n">minimum</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">new_names</span><span class="p">))</span>
+        <span class="c1"># pushed in reverse so that the roots are expanded in increasing order</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">children</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">best</span><span class="p">,</span> <span class="n">leaves</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_complete</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">ne</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Complete in place the relabelling ``r`` (``-1`` on the half-edges of the</span>
+<span class="sd">    inactive edges) by the labels ``2*ne, 2*ne + 1, ...`` given to the</span>
+<span class="sd">    inactive edges in increasing order.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import _complete</span>
+<span class="sd">        sage: _complete([2, 3, -1, -1, 0, 1], 6, 2)</span>
+<span class="sd">        [2, 3, 4, 5, 0, 1]</span>
+<span class="sd">    """</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">ne</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">r</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
+            <span class="n">r</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">k</span> <span class="o">+=</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">r</span>
+
+
+<div class="viewcode-block" id="canonical_labelling">
+<a class="viewcode-back" href="../../isomorphism_naive.html#combisurf.isomorphism_naive.canonical_labelling">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">canonical_labelling</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">(),</span> <span class="n">classes</span><span class="o">=</span><span class="p">(),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_FEWEST</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return the canonical labelling of the map with face permutation ``fp``</span>
+<span class="sd">    decorated by ``data`` and ``classes``.</span>
+
+<span class="sd">    A disconnected map is labelled component after component (see the</span>
+<span class="sd">    module documentation).</span>
+
+<span class="sd">    INPUT:</span>
+
+<span class="sd">    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on</span>
+<span class="sd">      inactive half-edges)</span>
+
+<span class="sd">    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by</span>
+<span class="sd">      half-edges, kept exactly (default: no decoration)</span>
+
+<span class="sd">    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by</span>
+<span class="sd">      half-edges, kept up to a relabelling of their values (default: no</span>
+<span class="sd">      decoration)</span>
+
+<span class="sd">    - ``root_rule`` -- one of the integers :data:`ROOTS_ALL`,</span>
+<span class="sd">      :data:`ROOTS_HALF_EDGE_MAX`, :data:`ROOTS_HALF_EDGE_FEWEST`,</span>
+<span class="sd">      :data:`ROOTS_EDGE_MAX` and :data:`ROOTS_EDGE_FEWEST`, or one of the</span>
+<span class="sd">      last four combined with :data:`ROOTS_DATA` by ``|``: the half-edges</span>
+<span class="sd">      tried as roots (see the module documentation); any other value raises</span>
+<span class="sd">      a ``ValueError``. The default is ``ROOTS_HALF_EDGE_FEWEST |</span>
+<span class="sd">      ROOTS_DATA``: decorations narrow the roots tried, and on an</span>
+<span class="sd">      undecorated map it is :data:`ROOTS_HALF_EDGE_FEWEST`</span>
+
+<span class="sd">    OUTPUT: an ``array('i')`` ``r`` that maps each half-edge to its</span>
+<span class="sd">    canonical label. It is a permutation of ``range(len(fp))`` that</span>
+<span class="sd">    preserves the pairs ``{2e, 2e+1}``. The active edges get the labels</span>
+<span class="sd">    ``0, ..., 2*ne - 1`` (``ne`` the number of active edges) and the</span>
+<span class="sd">    inactive edges the following ones, in increasing order.</span>
+
+<span class="sd">    Two decorated maps are isomorphic if and only if, once relabelled by</span>
+<span class="sd">    their canonical labellings under the same rule, they are equal on their</span>
+<span class="sd">    active half-edges (the face permutation and the values of ``data``, and</span>
+<span class="sd">    of ``classes`` up to a relabelling of their values). The lengths of the</span>
+<span class="sd">    maps and the values on inactive half-edges are not compared:</span>
+<span class="sd">    :func:`canonical_form` is the invariant.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import canonical_labelling</span>
+<span class="sd">        sage: canonical_labelling([2, 5, 4, 1, 0, 3])</span>
+<span class="sd">        array('i', [0, 1, 2, 3, 4, 5])</span>
+<span class="sd">        sage: canonical_labelling([2, 5, 4, 1, 0, 3], ([0, 0, 1, 0, 0, 0],))</span>
+<span class="sd">        array('i', [4, 5, 0, 1, 2, 3])</span>
+
+<span class="sd">    The same labelling when the marked half-edge is given as a class::</span>
+
+<span class="sd">        sage: canonical_labelling([2, 5, 4, 1, 0, 3], classes=([5, 5, 2, 5, 5, 5],))</span>
+<span class="sd">        array('i', [1, 0, 5, 4, 3, 2])</span>
+
+<span class="sd">    TESTS:</span>
+
+<span class="sd">    A folded edge (the faces ``(0,1)(~1)``)::</span>
+
+<span class="sd">        sage: canonical_labelling([2, -1, 0, 3])</span>
+<span class="sd">        array('i', [2, 3, 1, 0])</span>
+
+<span class="sd">    A label gap (the edge ``1`` is inactive)::</span>
+
+<span class="sd">        sage: canonical_labelling([4, -1, -1, -1, 5, 0])</span>
+<span class="sd">        array('i', [2, 3, 4, 5, 1, 0])</span>
+
+<span class="sd">    A single half-edge and the empty map::</span>
+
+<span class="sd">        sage: canonical_labelling([0, -1])</span>
+<span class="sd">        array('i', [0, 1])</span>
+<span class="sd">        sage: canonical_labelling([])</span>
+<span class="sd">        array('i')</span>
+
+<span class="sd">    Disconnected maps: the triangle ``(0,1,2)(~0,~2,~1)`` beside the</span>
+<span class="sd">    folded edge ``(3)`` is labelled from the folded edge, whose block is</span>
+<span class="sd">    smaller; the same map with the components in the other order gets the</span>
+<span class="sd">    identity::</span>
+
+<span class="sd">        sage: canonical_labelling([2, 5, 4, 1, 0, 3, 6, -1])</span>
+<span class="sd">        array('i', [2, 3, 4, 5, 6, 7, 0, 1])</span>
+<span class="sd">        sage: canonical_labelling([0, -1, 4, 7, 6, 3, 2, 5])</span>
+<span class="sd">        array('i', [0, 1, 2, 3, 4, 5, 6, 7])</span>
+
+<span class="sd">    The two edges of ``(0)(~0)(1)(~1)``, with classes that pair the</span>
+<span class="sd">    half-edge ``0`` with ``3``::</span>
+
+<span class="sd">        sage: canonical_labelling([0, 1, 2, 3])</span>
+<span class="sd">        array('i', [0, 1, 2, 3])</span>
+<span class="sd">        sage: canonical_labelling([0, 1, 2, 3], classes=([0, 1, 1, 0],))</span>
+<span class="sd">        array('i', [0, 1, 3, 2])</span>
+
+<span class="sd">    Under each rule, the map ``(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)``, whose</span>
+<span class="sd">    edges ``0, 1, 3, 6, 7, 8`` are folded::</span>
+
+<span class="sd">        sage: from combisurf import OrientedMap</span>
+<span class="sd">        sage: from combisurf.isomorphism_naive import ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST</span>
+<span class="sd">        sage: fp = list(OrientedMap(fp="(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)").face_permutation())</span>
+<span class="sd">        sage: for rule in [ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST]:</span>
+<span class="sd">        ....:     print(canonical_labelling(fp, root_rule=rule))</span>
+<span class="sd">        array('i', [6, 7, 8, 9, 2, 3, 10, 11, 0, 1, 4, 5, 12, 13, 14, 15, 16, 17])</span>
+<span class="sd">        array('i', [6, 7, 8, 9, 2, 3, 10, 11, 0, 1, 4, 5, 12, 13, 14, 15, 16, 17])</span>
+<span class="sd">        array('i', [6, 7, 8, 9, 2, 3, 10, 11, 1, 0, 4, 5, 12, 13, 14, 15, 16, 17])</span>
+<span class="sd">        array('i', [6, 7, 8, 9, 0, 1, 10, 11, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17])</span>
+<span class="sd">        array('i', [6, 7, 8, 9, 0, 1, 10, 11, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17])</span>
+<span class="sd">        sage: canonical_labelling(fp, root_rule="all")</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got 'all'</span>
+<span class="sd">    """</span>
+    <span class="n">root_rule</span> <span class="o">=</span> <span class="n">_check_root_rule</span><span class="p">(</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">ne</span> <span class="o">=</span> <span class="n">_check_input</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">)</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">leaves</span> <span class="o">=</span> <span class="n">_search</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_complete</span><span class="p">(</span><span class="n">leaves</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">n</span><span class="p">,</span> <span class="n">ne</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="canonical_form">
+<a class="viewcode-back" href="../../isomorphism_naive.html#combisurf.isomorphism_naive.canonical_form">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">(),</span> <span class="n">classes</span><span class="o">=</span><span class="p">(),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_FEWEST</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return the canonical form of the map with face permutation ``fp``</span>
+<span class="sd">    decorated by ``data`` and ``classes``.</span>
+
+<span class="sd">    INPUT:</span>
+
+<span class="sd">    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on</span>
+<span class="sd">      inactive half-edges)</span>
+
+<span class="sd">    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by</span>
+<span class="sd">      half-edges, kept exactly (default: no decoration)</span>
+
+<span class="sd">    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by</span>
+<span class="sd">      half-edges, kept up to a relabelling of their values (default: no</span>
+<span class="sd">      decoration)</span>
+
+<span class="sd">    - ``root_rule`` -- the half-edges tried as roots, as in</span>
+<span class="sd">      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)</span>
+
+<span class="sd">    OUTPUT: a tuple ``(fp_c, d_1, ..., d_k, c_1, ..., c_m)`` of tuples:</span>
+<span class="sd">    ``fp_c`` is the face permutation in the canonical labels (of length</span>
+<span class="sd">    ``2*ne``, ``-1`` on the inactive half-edges of folded edges), ``d_i``</span>
+<span class="sd">    the values of the ``i``-th array of ``data`` read in the increasing</span>
+<span class="sd">    order of the canonical labels of the active half-edges, and ``c_i`` the</span>
+<span class="sd">    values of the ``i``-th array of ``classes`` read in the same order and</span>
+<span class="sd">    renumbered ``0, 1, 2, ...`` by first appearance, all components</span>
+<span class="sd">    together. The labelling is the one of :func:`canonical_labelling`. Two</span>
+<span class="sd">    decorated maps are isomorphic if and only if their canonical forms</span>
+<span class="sd">    under the same rule are equal.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import canonical_form</span>
+<span class="sd">        sage: canonical_form([2, 5, 4, 1, 0, 3])</span>
+<span class="sd">        ((2, 5, 4, 1, 0, 3),)</span>
+<span class="sd">        sage: canonical_form([4, 3, 0, 5, 2, 1])</span>
+<span class="sd">        ((2, 5, 4, 1, 0, 3),)</span>
+<span class="sd">        sage: canonical_form([2, 3, 4, 5, 0, 1])</span>
+<span class="sd">        ((2, 3, 4, 5, 0, 1),)</span>
+<span class="sd">        sage: canonical_form([2, 5, 4, 1, 0, 3], ([0, 0, 1, 0, 0, 0],))</span>
+<span class="sd">        ((2, 5, 4, 1, 0, 3), (1, 0, 0, 0, 0, 0))</span>
+
+<span class="sd">    A class array is renumbered, so renaming its values leaves the canonical</span>
+<span class="sd">    form unchanged::</span>
+
+<span class="sd">        sage: canonical_form([2, 3, 4, 5, 0, 1], classes=([0, 1, 0, 1, 0, 1],))</span>
+<span class="sd">        ((2, 3, 4, 5, 0, 1), (0, 1, 0, 1, 0, 1))</span>
+<span class="sd">        sage: canonical_form([2, 3, 4, 5, 0, 1], classes=([7, 3, 7, 3, 7, 3],))</span>
+<span class="sd">        ((2, 3, 4, 5, 0, 1), (0, 1, 0, 1, 0, 1))</span>
+<span class="sd">        sage: canonical_form([2, 3, 4, 5, 0, 1], ([1, 0, 1, 0, 1, 0],), ([7, 3, 7, 3, 7, 3],))</span>
+<span class="sd">        ((2, 3, 4, 5, 0, 1), (1, 0, 1, 0, 1, 0), (0, 1, 0, 1, 0, 1))</span>
+
+<span class="sd">    TESTS:</span>
+
+<span class="sd">    A folded edge, a label gap and the empty map::</span>
+
+<span class="sd">        sage: canonical_form([2, -1, 0, 3])</span>
+<span class="sd">        ((0, 2, 1, -1),)</span>
+<span class="sd">        sage: canonical_form([4, -1, -1, -1, 5, 0])</span>
+<span class="sd">        ((2, 0, 1, -1),)</span>
+<span class="sd">        sage: canonical_form([], ([],))</span>
+<span class="sd">        ((), ())</span>
+<span class="sd">        sage: canonical_form([], ([],), ([], []))</span>
+<span class="sd">        ((), (), (), ())</span>
+
+<span class="sd">    Disconnected maps: a triangle and a folded edge, in either order, and</span>
+<span class="sd">    two edges ``(0)(~0)(1)(~1)`` whose classes are equal up to relabelling</span>
+<span class="sd">    across the components, or not::</span>
+
+<span class="sd">        sage: canonical_form([2, 5, 4, 1, 0, 3, 6, -1])</span>
+<span class="sd">        ((0, -1, 4, 7, 6, 3, 2, 5),)</span>
+<span class="sd">        sage: canonical_form([0, -1, 4, 7, 6, 3, 2, 5])</span>
+<span class="sd">        ((0, -1, 4, 7, 6, 3, 2, 5),)</span>
+<span class="sd">        sage: canonical_form([0, 1, 2, 3], classes=([0, 1, 0, 1],))</span>
+<span class="sd">        ((0, 1, 2, 3), (0, 1, 0, 1))</span>
+<span class="sd">        sage: canonical_form([0, 1, 2, 3], classes=([0, 1, 1, 0],))</span>
+<span class="sd">        ((0, 1, 2, 3), (0, 1, 0, 1))</span>
+<span class="sd">        sage: canonical_form([0, 1, 2, 3], classes=([0, 1, 2, 2],))</span>
+<span class="sd">        ((0, 1, 2, 3), (0, 0, 1, 2))</span>
+
+<span class="sd">    Under the rule ``ROOTS_EDGE_MAX``, the form of the map</span>
+<span class="sd">    ``(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)`` and of a relabelling of it::</span>
+
+<span class="sd">        sage: from combisurf import OrientedMap</span>
+<span class="sd">        sage: from combisurf.isomorphism_naive import ROOTS_ALL, ROOTS_EDGE_MAX</span>
+<span class="sd">        sage: fp = list(OrientedMap(fp="(0,1,3)(2,4,~4)(~2,5,~5)(6,7,8)").face_permutation())</span>
+<span class="sd">        sage: canonical_form(fp, root_rule=ROOTS_EDGE_MAX)</span>
+<span class="sd">        ((2, 4, 3, 0, 5, 1, 8, -1, 10, -1, 6, -1, 14, -1, 16, -1, 12, -1),)</span>
+<span class="sd">        sage: canonical_form(fp, root_rule=ROOTS_ALL)</span>
+<span class="sd">        ((1, 2, 0, 4, 5, 3, 8, -1, 10, -1, 6, -1, 14, -1, 16, -1, 12, -1),)</span>
+<span class="sd">        sage: fp2 = list(OrientedMap(fp="(8,7,5)(6,4,~4)(~6,3,~3)(2,1,0)").face_permutation())</span>
+<span class="sd">        sage: canonical_form(fp2, root_rule=ROOTS_EDGE_MAX) == canonical_form(fp, root_rule=ROOTS_EDGE_MAX)</span>
+<span class="sd">        True</span>
+<span class="sd">        sage: canonical_form(fp, root_rule=-1)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: root_rule must be one of the integers 0 to 4 (ROOTS_ALL, ROOTS_HALF_EDGE_MAX, ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX, ROOTS_EDGE_FEWEST) or 9 to 12 (the last four | ROOTS_DATA), got -1</span>
+<span class="sd">    """</span>
+    <span class="n">root_rule</span> <span class="o">=</span> <span class="n">_check_root_rule</span><span class="p">(</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">ne</span> <span class="o">=</span> <span class="n">_check_input</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">)</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">leaves</span> <span class="o">=</span> <span class="n">_search</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_key</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">leaves</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">ne</span><span class="p">,</span> <span class="n">classes</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="automorphisms">
+<a class="viewcode-back" href="../../isomorphism_naive.html#combisurf.isomorphism_naive.automorphisms">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">automorphisms</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">(),</span> <span class="n">classes</span><span class="o">=</span><span class="p">(),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_FEWEST</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return the automorphisms of the map with face permutation ``fp``</span>
+<span class="sd">    decorated by ``data`` and ``classes``.</span>
+
+<span class="sd">    INPUT:</span>
+
+<span class="sd">    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on</span>
+<span class="sd">      inactive half-edges)</span>
+
+<span class="sd">    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by</span>
+<span class="sd">      half-edges, kept exactly (default: no decoration)</span>
+
+<span class="sd">    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by</span>
+<span class="sd">      half-edges, kept up to a relabelling of their values (default: no</span>
+<span class="sd">      decoration)</span>
+
+<span class="sd">    - ``root_rule`` -- the half-edges tried as roots, as in</span>
+<span class="sd">      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)</span>
+
+<span class="sd">    OUTPUT: the list of the automorphisms, each an ``array('i')``</span>
+<span class="sd">    permutation ``g`` of ``range(len(fp))`` with ``g[fp[h]] == fp[g[h]]``</span>
+<span class="sd">    and ``d[g[h]] == d[h]`` for every active ``h`` and every ``d`` of</span>
+<span class="sd">    ``data``, such that for every ``c`` of ``classes`` the map ``c[h] -&gt;</span>
+<span class="sd">    c[g[h]]`` on the active ``h`` is a well-defined bijection of values,</span>
+<span class="sd">    that preserves the pairs ``{2e, 2e+1}`` and is the identity</span>
+<span class="sd">    on the inactive edges. The identity comes first. On a connected map an</span>
+<span class="sd">    automorphism is determined by the image of one active half-edge, and</span>
+<span class="sd">    there are at most as many automorphisms as active half-edges. On a</span>
+<span class="sd">    disconnected map there is no such bound: the automorphisms may permute</span>
+<span class="sd">    isomorphic components, and the list of `k` isomorphic components has at</span>
+<span class="sd">    least `k!` elements. The list is the same group under every rule, in</span>
+<span class="sd">    the order of the search of the rule.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import automorphisms</span>
+<span class="sd">        sage: A = automorphisms([2, 5, 4, 1, 0, 3])</span>
+<span class="sd">        sage: len(A)</span>
+<span class="sd">        6</span>
+<span class="sd">        sage: A[:2]</span>
+<span class="sd">        [array('i', [0, 1, 2, 3, 4, 5]), array('i', [1, 0, 5, 4, 3, 2])]</span>
+
+<span class="sd">    A decoration that marks one half-edge kills every automorphism::</span>
+
+<span class="sd">        sage: automorphisms([2, 5, 4, 1, 0, 3], ([0, 0, 1, 0, 0, 0],))</span>
+<span class="sd">        [array('i', [0, 1, 2, 3, 4, 5])]</span>
+
+<span class="sd">    The two faces of ``(0,1,2)(~0,~1,~2)`` marked by different values: kept</span>
+<span class="sd">    exactly, only the rotations remain; up to relabelling, the automorphisms</span>
+<span class="sd">    that swap the two faces (and the two values) remain as well::</span>
+
+<span class="sd">        sage: fp = [2, 3, 4, 5, 0, 1]</span>
+<span class="sd">        sage: c = [0, 1, 0, 1, 0, 1]</span>
+<span class="sd">        sage: len(automorphisms(fp)), len(automorphisms(fp, (c,))), len(automorphisms(fp, classes=(c,)))</span>
+<span class="sd">        (6, 3, 6)</span>
+
+<span class="sd">    TESTS:</span>
+
+<span class="sd">    A folded edge, a label gap, a single half-edge and the empty map::</span>
+
+<span class="sd">        sage: automorphisms([2, -1, 0, 3])</span>
+<span class="sd">        [array('i', [0, 1, 2, 3])]</span>
+<span class="sd">        sage: automorphisms([4, -1, -1, -1, 5, 0])</span>
+<span class="sd">        [array('i', [0, 1, 2, 3, 4, 5])]</span>
+<span class="sd">        sage: automorphisms([0, -1])</span>
+<span class="sd">        [array('i', [0, 1])]</span>
+<span class="sd">        sage: automorphisms([])</span>
+<span class="sd">        [array('i')]</span>
+
+<span class="sd">    Disconnected maps: the two edges of ``(0)(~0)(1)(~1)``, which may be</span>
+<span class="sd">    flipped and swapped, with classes tying the components together, and a</span>
+<span class="sd">    triangle beside a folded edge::</span>
+
+<span class="sd">        sage: automorphisms([0, 1, 2, 3])</span>
+<span class="sd">        [array('i', [0, 1, 2, 3]),</span>
+<span class="sd">         array('i', [0, 1, 3, 2]),</span>
+<span class="sd">         array('i', [1, 0, 2, 3]),</span>
+<span class="sd">         array('i', [1, 0, 3, 2]),</span>
+<span class="sd">         array('i', [2, 3, 0, 1]),</span>
+<span class="sd">         array('i', [2, 3, 1, 0]),</span>
+<span class="sd">         array('i', [3, 2, 0, 1]),</span>
+<span class="sd">         array('i', [3, 2, 1, 0])]</span>
+<span class="sd">        sage: len(automorphisms([0, 1, 2, 3], classes=([0, 1, 0, 1],)))</span>
+<span class="sd">        4</span>
+<span class="sd">        sage: automorphisms([0, 1, 2, 3], classes=([0, 1, 1, 2],))</span>
+<span class="sd">        [array('i', [0, 1, 2, 3]), array('i', [3, 2, 1, 0])]</span>
+<span class="sd">        sage: len(automorphisms([2, 5, 4, 1, 0, 3, 6, -1]))</span>
+<span class="sd">        6</span>
+
+<span class="sd">    The same group under every rule::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import ROOTS_HALF_EDGE_FEWEST, ROOTS_EDGE_MAX</span>
+<span class="sd">        sage: fp = [2, 3, 4, 5, 0, 1, 6, -1]</span>
+<span class="sd">        sage: A = automorphisms(fp)</span>
+<span class="sd">        sage: B = automorphisms(fp, root_rule=ROOTS_HALF_EDGE_FEWEST)</span>
+<span class="sd">        sage: C = automorphisms(fp, root_rule=ROOTS_EDGE_MAX)</span>
+<span class="sd">        sage: len(A), sorted(A) == sorted(B) == sorted(C)</span>
+<span class="sd">        (6, True)</span>
+<span class="sd">    """</span>
+    <span class="n">root_rule</span> <span class="o">=</span> <span class="n">_check_root_rule</span><span class="p">(</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">ne</span> <span class="o">=</span> <span class="n">_check_input</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">)</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">leaves</span> <span class="o">=</span> <span class="n">_search</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">all_leaves</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="n">ra</span> <span class="o">=</span> <span class="n">leaves</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">rb</span> <span class="ow">in</span> <span class="n">leaves</span><span class="p">:</span>
+        <span class="n">rbinv</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">ne</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rb</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">rbinv</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ra</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">g</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">rbinv</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_group_closure</span><span class="p">(</span><span class="n">gens</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return the set of the elements (as tuples) of the group generated by the</span>
+<span class="sd">    permutations ``gens`` of ``range(n)``.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import _group_closure</span>
+<span class="sd">        sage: sorted(_group_closure([(1, 2, 0)], 3))</span>
+<span class="sd">        [(0, 1, 2), (1, 2, 0), (2, 0, 1)]</span>
+<span class="sd">    """</span>
+    <span class="n">identity</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="p">{</span><span class="n">identity</span><span class="p">}</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">([</span><span class="n">identity</span><span class="p">])</span>
+    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gens</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">y</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+                <span class="n">elements</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">elements</span>
+
+
+<div class="viewcode-block" id="automorphism_generators">
+<a class="viewcode-back" href="../../isomorphism_naive.html#combisurf.isomorphism_naive.automorphism_generators">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">automorphism_generators</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">(),</span> <span class="n">classes</span><span class="o">=</span><span class="p">(),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_FEWEST</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return generators of the automorphism group of the map with face</span>
+<span class="sd">    permutation ``fp`` decorated by ``data`` and ``classes``.</span>
+
+<span class="sd">    INPUT:</span>
+
+<span class="sd">    - ``fp`` -- a face permutation (list or ``array('i')``, ``-1`` on</span>
+<span class="sd">      inactive half-edges)</span>
+
+<span class="sd">    - ``data`` -- a tuple of arrays of length ``len(fp)`` indexed by</span>
+<span class="sd">      half-edges, kept exactly (default: no decoration)</span>
+
+<span class="sd">    - ``classes`` -- a tuple of arrays of length ``len(fp)`` indexed by</span>
+<span class="sd">      half-edges, kept up to a relabelling of their values (default: no</span>
+<span class="sd">      decoration)</span>
+
+<span class="sd">    - ``root_rule`` -- the half-edges tried as roots, as in</span>
+<span class="sd">      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)</span>
+
+<span class="sd">    OUTPUT: a list of automorphisms (as in :func:`automorphisms`) that</span>
+<span class="sd">    generate the group; empty when the group is trivial. The automorphisms</span>
+<span class="sd">    are scanned in the order of :func:`automorphisms` under the rule (so</span>
+<span class="sd">    the generators may differ from a rule to another, the group generated</span>
+<span class="sd">    does not) and one is kept when</span>
+<span class="sd">    it is not in the group generated by those already kept. The list of</span>
+<span class="sd">    :func:`automorphisms` is computed in full, which costs at least `k!`</span>
+<span class="sd">    on a map with `k` isomorphic components.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import automorphism_generators</span>
+<span class="sd">        sage: automorphism_generators([2, 5, 4, 1, 0, 3])</span>
+<span class="sd">        [array('i', [1, 0, 5, 4, 3, 2]), array('i', [2, 3, 4, 5, 0, 1])]</span>
+<span class="sd">        sage: automorphism_generators([2, 3, 4, 5, 0, 1])</span>
+<span class="sd">        [array('i', [1, 0, 3, 2, 5, 4]), array('i', [2, 3, 4, 5, 0, 1])]</span>
+
+<span class="sd">    The faces of the last map marked by different values, kept exactly or up</span>
+<span class="sd">    to relabelling::</span>
+
+<span class="sd">        sage: c = [0, 1, 0, 1, 0, 1]</span>
+<span class="sd">        sage: automorphism_generators([2, 3, 4, 5, 0, 1], (c,))</span>
+<span class="sd">        [array('i', [2, 3, 4, 5, 0, 1])]</span>
+<span class="sd">        sage: automorphism_generators([2, 3, 4, 5, 0, 1], classes=(c,))</span>
+<span class="sd">        [array('i', [1, 0, 3, 2, 5, 4]), array('i', [2, 3, 4, 5, 0, 1])]</span>
+
+<span class="sd">    The two edges of ``(0)(~0)(1)(~1)``: a flip of each edge and the swap</span>
+<span class="sd">    of the edges::</span>
+
+<span class="sd">        sage: automorphism_generators([0, 1, 2, 3])</span>
+<span class="sd">        [array('i', [0, 1, 3, 2]), array('i', [1, 0, 2, 3]), array('i', [2, 3, 0, 1])]</span>
+
+<span class="sd">    TESTS::</span>
+
+<span class="sd">        sage: automorphism_generators([2, -1, 0, 3])</span>
+<span class="sd">        []</span>
+<span class="sd">        sage: automorphism_generators([0, -1])</span>
+<span class="sd">        []</span>
+
+<span class="sd">    Under a rule::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import ROOTS_HALF_EDGE_FEWEST</span>
+<span class="sd">        sage: automorphism_generators([2, 3, 4, 5, 0, 1, 6, -1], root_rule=ROOTS_HALF_EDGE_FEWEST)</span>
+<span class="sd">        [array('i', [1, 0, 3, 2, 5, 4, 6, 7]), array('i', [2, 3, 4, 5, 0, 1, 6, 7])]</span>
+<span class="sd">    """</span>
+    <span class="n">root_rule</span> <span class="o">=</span> <span class="n">_check_root_rule</span><span class="p">(</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+    <span class="n">gens</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="p">{</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">))}</span>
+    <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">automorphisms</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">root_rule</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">group</span><span class="p">:</span>
+            <span class="n">gens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">_group_closure</span><span class="p">(</span><span class="n">gens</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gens</span></div>
+
+
+
+<div class="viewcode-block" id="isomorphism">
+<a class="viewcode-back" href="../../isomorphism_naive.html#combisurf.isomorphism_naive.isomorphism">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">isomorphism</span><span class="p">(</span><span class="n">fp1</span><span class="p">,</span> <span class="n">data1</span><span class="p">,</span> <span class="n">fp2</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">classes1</span><span class="o">=</span><span class="p">(),</span> <span class="n">classes2</span><span class="o">=</span><span class="p">(),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_FEWEST</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">    Return an isomorphism from the first decorated map to the second, or</span>
+<span class="sd">    ``None`` if they are not isomorphic.</span>
+
+<span class="sd">    The maps may be disconnected; the components are then matched with each</span>
+<span class="sd">    other, and the classes up to one bijection of values for all the</span>
+<span class="sd">    components together.</span>
+
+<span class="sd">    INPUT:</span>
+
+<span class="sd">    - ``fp1``, ``fp2`` -- face permutations (lists or ``array('i')``,</span>
+<span class="sd">      ``-1`` on inactive half-edges)</span>
+
+<span class="sd">    - ``data1``, ``data2`` -- tuples with the same number of arrays indexed</span>
+<span class="sd">      by half-edges, of lengths ``len(fp1)`` and ``len(fp2)``, kept exactly</span>
+
+<span class="sd">    - ``classes1``, ``classes2`` -- tuples with the same number of arrays</span>
+<span class="sd">      indexed by half-edges, of lengths ``len(fp1)`` and ``len(fp2)``, kept</span>
+<span class="sd">      up to a relabelling of their values (default: no decoration)</span>
+
+<span class="sd">    - ``root_rule`` -- the half-edges tried as roots in both maps, as in</span>
+<span class="sd">      :func:`canonical_labelling` (default: ``ROOTS_HALF_EDGE_FEWEST | ROOTS_DATA``)</span>
+
+<span class="sd">    OUTPUT: ``None`` or an ``array('i')`` ``r`` of length ``len(fp1)`` with</span>
+<span class="sd">    ``r[fp1[h]] == fp2[r[h]]`` and ``data2[i][r[h]] == data1[i][h]`` for</span>
+<span class="sd">    every active ``h``, such that ``classes1[i][h] -&gt; classes2[i][r[h]]``</span>
+<span class="sd">    on the active ``h`` is a well-defined bijection of values for each</span>
+<span class="sd">    ``i``, that preserves the pairs ``{2e, 2e+1}``. When</span>
+<span class="sd">    ``len(fp1) == len(fp2)``, ``r`` is a permutation of ``range(len(fp1))``</span>
+<span class="sd">    that sends the inactive edges of the first map to those of the second in</span>
+<span class="sd">    increasing order; otherwise ``r`` is ``-1`` on the half-edges of the</span>
+<span class="sd">    inactive edges of the first map.</span>
+
+<span class="sd">    EXAMPLES::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import isomorphism</span>
+<span class="sd">        sage: fp1 = [2, 5, 4, 1, 0, 3]  # the faces (0,1,2)(~0,~2,~1)</span>
+<span class="sd">        sage: fp2 = [4, 3, 0, 5, 2, 1]  # the faces (0,2,1)(~0,~1,~2)</span>
+<span class="sd">        sage: fp3 = [2, 3, 4, 5, 0, 1]  # the faces (0,1,2)(~0,~1,~2)</span>
+<span class="sd">        sage: r = isomorphism(fp1, (), fp2, ())</span>
+<span class="sd">        sage: r</span>
+<span class="sd">        array('i', [0, 1, 4, 5, 2, 3])</span>
+<span class="sd">        sage: all(r[fp1[h]] == fp2[r[h]] for h in range(6))</span>
+<span class="sd">        True</span>
+<span class="sd">        sage: isomorphism(fp1, (), fp3, ()) is None</span>
+<span class="sd">        True</span>
+
+<span class="sd">    With decorations::</span>
+
+<span class="sd">        sage: isomorphism(fp1, ([0, 0, 1, 0, 0, 0],), fp2, ([0, 0, 0, 0, 1, 0],))</span>
+<span class="sd">        array('i', [0, 1, 4, 5, 2, 3])</span>
+<span class="sd">        sage: isomorphism(fp1, ([0, 0, 1, 0, 0, 0],), fp2, ([0, 0, 0, 0, 0, 1],))</span>
+<span class="sd">        array('i', [3, 2, 5, 4, 1, 0])</span>
+<span class="sd">        sage: isomorphism(fp1, ([0, 0, 1, 0, 0, 0],), fp2, ([0, 0, 0, 0, 0, 2],)) is None</span>
+<span class="sd">        True</span>
+
+<span class="sd">    With classes, the values need not match, only the partitions they</span>
+<span class="sd">    define::</span>
+
+<span class="sd">        sage: c = [0, 1, 0, 1, 0, 1]</span>
+<span class="sd">        sage: isomorphism(fp3, (c,), fp3, ([5, 2, 5, 2, 5, 2],)) is None</span>
+<span class="sd">        True</span>
+<span class="sd">        sage: isomorphism(fp3, (), fp3, (), (c,), ([5, 2, 5, 2, 5, 2],))</span>
+<span class="sd">        array('i', [0, 1, 2, 3, 4, 5])</span>
+<span class="sd">        sage: isomorphism(fp3, (), fp3, (), (c,), ([0, 0, 1, 1, 0, 1],)) is None</span>
+<span class="sd">        True</span>
+
+<span class="sd">    TESTS:</span>
+
+<span class="sd">    Different numbers of arrays::</span>
+
+<span class="sd">        sage: isomorphism(fp1, ((0,) * 6,), fp2, ())</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: data1 and data2 must have the same number of arrays</span>
+<span class="sd">        sage: isomorphism(fp1, (), fp2, (), ((0,) * 6,), ())</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">        ValueError: classes1 and classes2 must have the same number of arrays</span>
+
+<span class="sd">    A folded edge and label gaps, with arrays of the same length or not::</span>
+
+<span class="sd">        sage: isomorphism([2, -1, 0, 3], (), [-1, -1, 4, -1, 2, 5], ())</span>
+<span class="sd">        array('i', [2, 3, 4, 5])</span>
+<span class="sd">        sage: isomorphism([2, -1, 0, 3, -1, -1], (), [-1, -1, 4, -1, 2, 5], ())</span>
+<span class="sd">        array('i', [2, 3, 4, 5, 0, 1])</span>
+<span class="sd">        sage: isomorphism([-1, -1, 4, -1, 2, 5, -1, -1], (), [2, -1, 0, 3], ())</span>
+<span class="sd">        array('i', [-1, -1, 0, 1, 2, 3, -1, -1])</span>
+
+<span class="sd">    Disconnected maps: a triangle beside a folded edge, in either order::</span>
+
+<span class="sd">        sage: isomorphism([2, 5, 4, 1, 0, 3, 6, -1], (), [0, -1, 4, 7, 6, 3, 2, 5], ())</span>
+<span class="sd">        array('i', [2, 3, 4, 5, 6, 7, 0, 1])</span>
+
+<span class="sd">    The two edges of ``(0)(~0)(1)(~1)`` are isomorphic with classes that</span>
+<span class="sd">    pair the half-edge ``0`` with ``2`` and with classes that pair it with</span>
+<span class="sd">    ``3``, which the isomorphism swaps, but not with classes that pair</span>
+<span class="sd">    ``2`` with ``3``::</span>
+
+<span class="sd">        sage: fp = [0, 1, 2, 3]</span>
+<span class="sd">        sage: isomorphism(fp, (), fp, (), ([0, 1, 0, 1],), ([0, 1, 1, 0],))</span>
+<span class="sd">        array('i', [0, 1, 3, 2])</span>
+<span class="sd">        sage: isomorphism(fp, (), fp, (), ([0, 1, 0, 1],), ([0, 1, 2, 2],)) is None</span>
+<span class="sd">        True</span>
+
+<span class="sd">    Under a rule, the same verdicts::</span>
+
+<span class="sd">        sage: from combisurf.isomorphism_naive import ROOTS_EDGE_FEWEST</span>
+<span class="sd">        sage: isomorphism([2, 5, 4, 1, 0, 3, 6, -1], (), [0, -1, 4, 7, 6, 3, 2, 5], (), root_rule=ROOTS_EDGE_FEWEST)</span>
+<span class="sd">        array('i', [2, 3, 4, 5, 6, 7, 0, 1])</span>
+<span class="sd">        sage: isomorphism(fp1, (), fp3, (), root_rule=ROOTS_EDGE_FEWEST) is None</span>
+<span class="sd">        True</span>
+<span class="sd">    """</span>
+    <span class="n">root_rule</span> <span class="o">=</span> <span class="n">_check_root_rule</span><span class="p">(</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="n">n1</span><span class="p">,</span> <span class="n">ne1</span> <span class="o">=</span> <span class="n">_check_input</span><span class="p">(</span><span class="n">fp1</span><span class="p">,</span> <span class="n">data1</span><span class="p">,</span> <span class="n">classes1</span><span class="p">)</span>
+    <span class="n">n2</span><span class="p">,</span> <span class="n">ne2</span> <span class="o">=</span> <span class="n">_check_input</span><span class="p">(</span><span class="n">fp2</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">classes2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data2</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"data1 and data2 must have the same number of arrays"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">classes1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">classes2</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"classes1 and classes2 must have the same number of arrays"</span><span class="p">)</span>
+    <span class="n">key1</span><span class="p">,</span> <span class="n">leaves1</span> <span class="o">=</span> <span class="n">_search</span><span class="p">(</span><span class="n">fp1</span><span class="p">,</span> <span class="n">data1</span><span class="p">,</span> <span class="n">classes1</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="n">key2</span><span class="p">,</span> <span class="n">leaves2</span> <span class="o">=</span> <span class="n">_search</span><span class="p">(</span><span class="n">fp2</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">classes2</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">root_rule</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">key1</span> <span class="o">!=</span> <span class="n">key2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n1</span><span class="p">)</span>
+    <span class="n">r2inv</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">ne2</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">leaves2</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">r2inv</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span>
+    <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">leaves1</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">r</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">r2inv</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">n1</span> <span class="o">==</span> <span class="n">n2</span><span class="p">:</span>
+        <span class="n">inactive2</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n2</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="k">if</span> <span class="n">fp2</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">fp2</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n1</span> <span class="o">//</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">r</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">inactive2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">r</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">e</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">inactive2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">r</span></div>
+
+</pre></div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the combisurf authors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, the combisurf authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

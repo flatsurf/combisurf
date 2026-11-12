@@ -195,6 +195,15 @@
 <li class="toctree-l1"><a class="reference internal" href="../../crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../isomorphism.html"><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../isomorphism_naive.html"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">C library</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../c/perm.html"><code class="docutils literal notranslate"><span class="pre">perm.h</span></code>: partial permutations in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../c/misc.html"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../c/omap.html"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../c/omap_algorithms.html">Algorithms of the isomorphism code</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../references.html">References</a></li>
@@ -864,6 +873,169 @@
 <a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.smoothing">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">smoothing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.canonical_labelling">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.canonical_labelling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">canonical_labelling</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the canonical labelling of this coloured map.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.canonical_labelling()</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.canonical_form">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.canonical_form">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">canonical_form</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the canonical form of this coloured map.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.canonical_form()</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.automorphisms">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.automorphisms">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">automorphisms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the automorphisms of this coloured map.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.automorphisms()</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.is_isomorphic">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.is_isomorphic">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_isomorphic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return whether this coloured map is isomorphic to another.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.is_isomorphic(m)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.num_automorphisms">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.num_automorphisms">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">num_automorphisms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the order of the automorphism group of this coloured map.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.num_automorphisms()</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.automorphism_vertex_action">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.automorphism_vertex_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">automorphism_vertex_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the permutation of the vertices induced by an automorphism.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.automorphism_vertex_action([0, 1, 2, 3, 4, 5])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.automorphism_face_action">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.automorphism_face_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">automorphism_face_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the permutation of the faces induced by an automorphism.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.automorphism_face_action([0, 1, 2, 3, 4, 5])</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.automorphism_generators">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.automorphism_generators">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">automorphism_generators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return generators of the automorphism group of this coloured map.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.automorphism_generators()</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColoredOrientedMap.canonical_roots">
+<a class="viewcode-back" href="../../colored_map.html#combisurf.colored_map.ColoredOrientedMap.canonical_roots">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">canonical_roots</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Return the half-edges that some minimiser of the canonical key</span>
+<span class="sd">        labels ``0``.</span>
+
+<span class="sd">        EXAMPLES::</span>
+
+<span class="sd">            sage: from combisurf import ColoredOrientedMap</span>
+<span class="sd">            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])</span>
+<span class="sd">            sage: m.canonical_roots()</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">            NotImplementedError: colours are not supported yet</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"colours are not supported yet"</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

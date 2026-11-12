@@ -1,0 +1,727 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Algorithms of the isomorphism code &#8212; combisurf 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=a1637f0b"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'c/omap_algorithms';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="References" href="../references.html" />
+    <link rel="prev" title="omap.h: oriented maps in C" href="omap.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">combisurf 0.1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://flatsurf.github.io" title="flatsurf" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://flatsurf.github.io/assets/logo.svg" class="icon-link-image" alt="flatsurf"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/flatsurf/combisurf" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://sagemath.zulipchat.com/#narrow/channel/271193-flatsurf" title="Zulip" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-regular fa-comments fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Zulip</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../oriented_map.html"><code class="docutils literal notranslate"><span class="pre">oriented_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../word_family.html"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lyndon_word_family.html"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../isomorphism.html"><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../isomorphism_naive.html"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">C library</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="perm.html"><code class="docutils literal notranslate"><span class="pre">perm.h</span></code>: partial permutations in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="misc.html"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="omap.html"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Algorithms of the isomorphism code</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../references.html">References</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/flatsurf/combisurf/edit/master/doc/c/omap_algorithms.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button"
+   title="Suggest edit"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/c/omap_algorithms.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Algorithms of the isomorphism code</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#invariants-of-two-maps">Invariants of two maps</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#canonical-key-of-a-connected-map">Canonical key of a connected map</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rejection-of-the-roots">Rejection of the roots</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#orbits-of-the-automorphisms-found">Orbits of the automorphisms found</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#class-of-the-roots">Class of the roots</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#search-over-the-components">Search over the components</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#blocks-and-their-order">Blocks and their order</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#extensions-of-tied-roots">Extensions of tied roots</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#backjumps">Backjumps</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cost">Cost</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stabiliser-of-the-classes">Stabiliser of the classes</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#subgroup-search">Subgroup search</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#orbit-sizes">Orbit sizes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#skipped-placements">Skipped placements</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Cost</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="algorithms-of-the-isomorphism-code">
+<h1>Algorithms of the isomorphism code<a class="headerlink" href="#algorithms-of-the-isomorphism-code" title="Link to this heading">#</a></h1>
+<p>The algorithms of the functions of <a class="reference internal" href="omap.html"><span class="doc">omap.h: oriented maps in C</span></a>. The definitions (maps and
+their decorations, relabelling from a root, keys, rules of the roots, blocks)
+and the contracts of the functions (arguments, buffers and their sizes,
+return values) are in <a class="reference internal" href="omap.html"><span class="doc">omap.h: oriented maps in C</span></a>. Below, <code class="docutils literal notranslate"><span class="pre">n</span></code> is the number of
+half-edges, <code class="docutils literal notranslate"><span class="pre">nd</span></code> the number of data arrays, <code class="docutils literal notranslate"><span class="pre">nc</span></code> the number of class
+arrays, and <span class="math notranslate nohighlight">\(|\mathrm{Aut}|\)</span> the number of automorphisms of the
+decorated map.</p>
+<section id="invariants-of-two-maps">
+<span id="omap-algorithms-invariants"></span><h2>Invariants of two maps<a class="headerlink" href="#invariants-of-two-maps" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="omap.html#c.domap_invariants_differ" title="domap_invariants_differ"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_invariants_differ()</span></code></a> compares, in this order, stopping at the
+first difference:</p>
+<ul class="simple">
+<li><p>for each data array, a hash of the multiset of its values on the active
+half-edges (one pass, <span class="math notranslate nohighlight">\(O(n)\)</span>);</p></li>
+<li><p>then for each class array, the multiset of the sizes of its classes
+(counted, <span class="math notranslate nohighlight">\(O(n)\)</span>).</p></li>
+</ul>
+<p>The multisets of the face degrees and of the vertex degrees are not compared:
+walking the cycles of the two maps is one more pass over each map, on top of
+those the search makes anyway, and it rejects few pairs that the other
+invariants accept.</p>
+</section>
+<section id="canonical-key-of-a-connected-map">
+<span id="omap-algorithms-canonical"></span><h2>Canonical key of a connected map<a class="headerlink" href="#canonical-key-of-a-connected-map" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="omap.html#c.domap_canonical" title="domap_canonical"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_canonical()</span></code></a> tries the roots of the class of the rule in
+increasing order and keeps the minimal key.</p>
+<section id="rejection-of-the-roots">
+<h3>Rejection of the roots<a class="headerlink" href="#rejection-of-the-roots" title="Link to this heading">#</a></h3>
+<p>The first root is walked and keyed in full. Every other root is walked with
+its key compared with the best one as the entries of its face permutation
+part become final (those below the label of the next half-edge to walk), in
+passes of doubling length: the root is rejected at the first entry larger
+than the one of the best key, which costs about twice the labels it needed to
+differ, not <code class="docutils literal notranslate"><span class="pre">n</span></code>. At the first entry smaller, it becomes the best root and is
+walked and keyed in full. When the face permutation parts are equal, the data
+then the class parts are compared as they are built, with the same rejection.
+A root that ties with or beats the best one costs <span class="math notranslate nohighlight">\(O(n (1 + nd + nc))\)</span>.</p>
+</section>
+<section id="orbits-of-the-automorphisms-found">
+<h3>Orbits of the automorphisms found<a class="headerlink" href="#orbits-of-the-automorphisms-found" title="Link to this heading">#</a></h3>
+<p>A root that ties with the best one gives an automorphism of the decorated
+map, which sends the best root to it; the orbits of the group generated by
+the automorphisms found are kept in a union-find over the half-edges
+(<span class="math notranslate nohighlight">\(O(n)\)</span> to initialise), represented by their smallest half-edge. Every
+half-edge of an orbit has the same key, so a root whose representative is
+smaller than itself has the key of an earlier root and is skipped at the cost
+of one find: either that key was rejected, or the root is in the orbit of the
+best root.</p>
+<p>A tie is thus only met outside the orbit of the best root and strictly
+enlarges the group found: there are at most <span class="math notranslate nohighlight">\(\log_2 |\mathrm{Aut}|\)</span> of
+them, each costing <span class="math notranslate nohighlight">\(O(n (1 + nd + nc))\)</span> for the key and the
+automorphism. A map whose roots all tie (a regular map) costs
+<span class="math notranslate nohighlight">\(O(n \log_2 |\mathrm{Aut}| (1 + nd + nc))\)</span> for them instead of
+<span class="math notranslate nohighlight">\(O(n^2 (1 + nd + nc))\)</span>. The roots of minimal key are the orbit of the
+best root, written by a final scan.</p>
+</section>
+<section id="class-of-the-roots">
+<h3>Class of the roots<a class="headerlink" href="#class-of-the-roots" title="Link to this heading">#</a></h3>
+<p>Under a rule other than <a class="reference internal" href="omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a>, the class costs
+<span class="math notranslate nohighlight">\(O(n)\)</span> more. The entries of the invariant, shifted by their minimum,
+are packed into one int in mixed radix over their ranges; when the product of
+the ranges is at most <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">n</span></code>, the half-edges are counted per packed value
+and the class is collected by one scan, in <span class="math notranslate nohighlight">\(O(n (1 + nd))\)</span>. Otherwise
+the half-edges are sorted by invariant by counting sorts on its 2 or 6
+entries.</p>
+<p>Under <a class="reference internal" href="omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA" title="DOMAP_ISO_ROOTS_DATA"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_DATA</span></code></a> each data array is then first
+replaced by order-preserving numbers of <span class="math notranslate nohighlight">\(0, \ldots, n - 1\)</span>: the values
+minus their minimum when they span fewer than <code class="docutils literal notranslate"><span class="pre">n</span></code> values (<span class="math notranslate nohighlight">\(O(n)\)</span>),
+else their ranks among the active half-edges (a heap sort,
+<span class="math notranslate nohighlight">\(O(n \log n)\)</span> per array). They add <code class="docutils literal notranslate"><span class="pre">nd</span></code> or <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">nd</span></code> entries.</p>
+</section>
+</section>
+<section id="search-over-the-components">
+<span id="omap-algorithms-iso-search"></span><h2>Search over the components<a class="headerlink" href="#search-over-the-components" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="omap.html#c.domap_iso_search" title="domap_iso_search"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_iso_search()</span></code></a> searches the lexicographically minimal sequence of
+blocks (<a class="reference internal" href="omap.html#omap-blocks"><span class="std std-ref">Maps that may be disconnected</span></a>) over the labellings of the map component after
+component.</p>
+<section id="blocks-and-their-order">
+<h3>Blocks and their order<a class="headerlink" href="#blocks-and-their-order" title="Link to this heading">#</a></h3>
+<p>From a state (the components labelled so far), the class of the rule is
+chosen among the active half-edges not labelled yet (by the invariants of the
+whole map, and by the numbers of half-edges not labelled yet in each class
+under <code class="docutils literal notranslate"><span class="pre">*_FEWEST</span></code>). The half-edges of that class not labelled yet are tried
+as roots (every active half-edge not labelled yet under
+<a class="reference internal" href="omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL" title="DOMAP_ISO_ROOTS_ALL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">DOMAP_ISO_ROOTS_ALL</span></code></a>), in increasing order, and only the roots
+of minimal block are followed, depth first in increasing root order; the
+component gets the labels following those used. A state whose sequence
+exceeds the prefix of the best sequence found is cut.</p>
+</section>
+<section id="extensions-of-tied-roots">
+<h3>Extensions of tied roots<a class="headerlink" href="#extensions-of-tied-roots" title="Link to this heading">#</a></h3>
+<p>When several roots tie, every one of them is followed if <code class="docutils literal notranslate"><span class="pre">all_leaves</span></code> is
+nonzero; otherwise only the first one if <code class="docutils literal notranslate"><span class="pre">nc</span> <span class="pre">==</span> <span class="pre">0</span></code>, and the first one of
+each extension of the numbering of the class values if <code class="docutils literal notranslate"><span class="pre">nc</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>. The
+extension of a tied root is, per class array, the values its component
+numbers first, in the order of their numbers.</p>
+<p>Two tied roots of equal extensions put the same values at the same local
+labels, so that exchanging their components (or relabelling the component
+from one root to the other when it is the same one), the identity elsewhere,
+is an automorphism fixing the components labelled before; the subtree of the
+later root is the image of the one of the earlier root, searched first. A
+later tied root is compared with the earlier ones of equal block by three
+walks of their components, and the first match stops the comparison; when
+the block of the level numbers no new value, every extension is empty and no
+further tied root is tried.</p>
+</section>
+<section id="backjumps">
+<h3>Backjumps<a class="headerlink" href="#backjumps" title="Link to this heading">#</a></h3>
+<p>When <code class="docutils literal notranslate"><span class="pre">all_leaves</span></code> is 0, a leaf equal to the best one gives a backjump: the
+map from the best leaf to it is an automorphism (of the classes up to a
+relabelling of their values) fixing the components of the levels where the
+two leaves have the same roots, so the subtree of its root at the first level
+where they differ is the image of the one of the best leaf, already searched,
+and the search returns at once to that level and its next tied root.</p>
+</section>
+<section id="cost">
+<h3>Cost<a class="headerlink" href="#cost" title="Link to this heading">#</a></h3>
+<p>With the cut of equal extensions, <code class="docutils literal notranslate"><span class="pre">k</span></code> tied copies of a component cost one
+path per distinct extension at each level: one path for <code class="docutils literal notranslate"><span class="pre">k</span></code> isolated edges
+with one class value, whose automorphisms are <span class="math notranslate nohighlight">\(2^k k!\)</span>, and two for
+<span class="math notranslate nohighlight">\(b + 1\)</span> edges with the value 0 beside <code class="docutils literal notranslate"><span class="pre">b</span></code> with the value 1. Tied
+roots of different extensions are all followed, and their subtrees may part
+only deep, so that the search stays exponential in the worst case, as for a
+graph on the class values given by its edges as isolated edges.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">all_leaves</span></code> nonzero neither of these cuts applies: every leaf
+reaching the minimum is reported, as many as the automorphisms.</p>
+</section>
+</section>
+<section id="stabiliser-of-the-classes">
+<span id="omap-algorithms-stabiliser"></span><h2>Stabiliser of the classes<a class="headerlink" href="#stabiliser-of-the-classes" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="omap.html#c.domap_stabiliser" title="domap_stabiliser"><code class="xref c c-func docutils literal notranslate"><span class="pre">domap_stabiliser()</span></code></a> computes the group <span class="math notranslate nohighlight">\(H\)</span> of the automorphisms
+of the map, laid out by a <a class="reference internal" href="omap.html#c.domap_wreath_struct" title="domap_wreath_struct"><code class="xref c c-struct docutils literal notranslate"><span class="pre">domap_wreath_struct</span></code></a>, that preserve the
+partitions defined by its class arrays.</p>
+<p>The group <span class="math notranslate nohighlight">\(G\)</span> of the automorphisms of the map with its data alone is
+the product, over the kinds of <code class="docutils literal notranslate"><span class="pre">k</span></code> isomorphic components <span class="math notranslate nohighlight">\(C\)</span>, of the
+wreath products <span class="math notranslate nohighlight">\(\mathrm{Aut}(C) \wr S_k\)</span>, each of order at least
+<span class="math notranslate nohighlight">\(k!\)</span>. Without class arrays <span class="math notranslate nohighlight">\(H = G\)</span>, and the Cython module reads
+its generators and its order from the kinds, without a search and without
+listing the elements of the group
+(<a class="reference internal" href="../isomorphism.html#combisurf.isomorphism.automorphism_generators" title="combisurf.isomorphism.automorphism_generators"><code class="xref py py-func docutils literal notranslate"><span class="pre">automorphism_generators()</span></code></a>,
+<a class="reference internal" href="../isomorphism.html#combisurf.isomorphism.canonical_key" title="combisurf.isomorphism.canonical_key"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_key()</span></code></a>).</p>
+<section id="subgroup-search">
+<h3>Subgroup search<a class="headerlink" href="#subgroup-search" title="Link to this heading">#</a></h3>
+<p><span class="math notranslate nohighlight">\(H\)</span> is the stabiliser of these partitions in <span class="math notranslate nohighlight">\(G\)</span>, computed by a
+subgroup search of Sims. In this search, the base is the sequence
+<span class="math notranslate nohighlight">\(b_0, \ldots, b_{ncomp-1}\)</span> of the <em>base points</em>, one per level: the
+half-edge of canonical label 0 of each level (<code class="docutils literal notranslate"><span class="pre">lab[off[i]]</span></code>); only the
+identity of <span class="math notranslate nohighlight">\(G\)</span> fixes them all. The pointwise stabiliser of
+<span class="math notranslate nohighlight">\(b_0, \ldots, b_{i-1}\)</span> in <span class="math notranslate nohighlight">\(G\)</span> fixes their components and permutes
+the others as the wreath products do, so the orbit of <span class="math notranslate nohighlight">\(b_i\)</span> in it is
+made of the half-edges whose label is one of <code class="docutils literal notranslate"><span class="pre">labels[loff[t]],</span> <span class="pre">...,</span>
+<span class="pre">labels[loff[t</span> <span class="pre">+</span> <span class="pre">1]</span> <span class="pre">-</span> <span class="pre">1]</span></code> in the copies of the kind <code class="docutils literal notranslate"><span class="pre">t</span></code> of <span class="math notranslate nohighlight">\(b_i\)</span> at
+the levels <span class="math notranslate nohighlight">\(\geq i\)</span>.</p>
+<p>The levels are processed from the last to the first: each point <span class="math notranslate nohighlight">\(x\)</span> of
+that orbit outside the orbit of <span class="math notranslate nohighlight">\(b_i\)</span> under the generators found so far
+(a union-find over the half-edges) is tried by a depth-first search for an
+element of <span class="math notranslate nohighlight">\(H\)</span>, the identity on the levels <span class="math notranslate nohighlight">\(&lt; i\)</span>, sending
+<span class="math notranslate nohighlight">\(b_i\)</span> to <span class="math notranslate nohighlight">\(x\)</span>, which maps the following levels one after the other
+to unused copies of their kinds and rejects a step whose values contradict
+the bijections of values built so far. The first element found is a
+generator.</p>
+</section>
+<section id="orbit-sizes">
+<h3>Orbit sizes<a class="headerlink" href="#orbit-sizes" title="Link to this heading">#</a></h3>
+<p>The generators found at the levels <span class="math notranslate nohighlight">\(\geq i\)</span> generate the stabiliser of
+<span class="math notranslate nohighlight">\(b_0, \ldots, b_{i-1}\)</span> in <span class="math notranslate nohighlight">\(H\)</span>, so the order of <span class="math notranslate nohighlight">\(H\)</span> is the
+product over the levels of the size of the orbit of <span class="math notranslate nohighlight">\(b_i\)</span> right after
+its level. A level that is the only copy of its kind and has a single root
+label has an orbit of size 1 and is skipped.</p>
+</section>
+<section id="skipped-placements">
+<h3>Skipped placements<a class="headerlink" href="#skipped-placements" title="Link to this heading">#</a></h3>
+<p>Two placements of a level adding no entry to the bijections of values, onto
+the copies <span class="math notranslate nohighlight">\(c_1\)</span> and <span class="math notranslate nohighlight">\(c_2\)</span> (or twice onto one copy), put equal
+values at the labels they match: the automorphism of the copy relating their
+labels is an isomorphism from <span class="math notranslate nohighlight">\(c_1\)</span> to <span class="math notranslate nohighlight">\(c_2\)</span> carrying the values,
+and exchanging <span class="math notranslate nohighlight">\(c_1\)</span> and <span class="math notranslate nohighlight">\(c_2\)</span> through it, the identity on the
+levels placed before, is an element of <span class="math notranslate nohighlight">\(H\)</span> that sends a completion of
+either placement onto one of the other. After one of them failed, the others
+are skipped, at the levels of the depth-first search and among the
+candidates <span class="math notranslate nohighlight">\(x\)</span>, which are then outside the orbit of <span class="math notranslate nohighlight">\(b_i\)</span> exactly
+when the earlier one is.</p>
+</section>
+<section id="id1">
+<h3>Cost<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<p>On tied copies whose values are all mapped after the first levels, such as
+<code class="docutils literal notranslate"><span class="pre">k</span></code> isolated edges with one or two class values in any pattern, each
+level then descends into at most one failed subtree per entry, and the
+search takes a time polynomial in the number of components. It stays
+exponential in the worst case, when the placements map new values and the
+values of classes reject them only deep in the search, as on a graph on the
+class values given by its edges as isolated edges (the two values of an
+edge being its endpoints): the search is then one for the automorphisms of
+the graph.</p>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="omap.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../references.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">References</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#invariants-of-two-maps">Invariants of two maps</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#canonical-key-of-a-connected-map">Canonical key of a connected map</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rejection-of-the-roots">Rejection of the roots</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#orbits-of-the-automorphisms-found">Orbits of the automorphisms found</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#class-of-the-roots">Class of the roots</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#search-over-the-components">Search over the components</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#blocks-and-their-order">Blocks and their order</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#extensions-of-tied-roots">Extensions of tied roots</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#backjumps">Backjumps</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cost">Cost</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stabiliser-of-the-classes">Stabiliser of the classes</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#subgroup-search">Subgroup search</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#orbit-sizes">Orbit sizes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#skipped-placements">Skipped placements</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Cost</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the combisurf authors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, the combisurf authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

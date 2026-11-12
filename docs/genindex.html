@@ -195,6 +195,15 @@
 <li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="isomorphism.html"><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="isomorphism_naive.html"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">C library</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="c/perm.html"><code class="docutils literal notranslate"><span class="pre">perm.h</span></code>: partial permutations in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/misc.html"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/omap.html"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/omap_algorithms.html">Algorithms of the isomorphism code</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
@@ -301,7 +310,8 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#A"><strong>A</strong></a>
+ <a href="#_"><strong>_</strong></a>
+ | <a href="#A"><strong>A</strong></a>
  | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
@@ -324,6 +334,36 @@
  | <a href="#W"><strong>W</strong></a>
  
 </div>
+<h2 id="_">_</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="c/omap.html#c._domap_canonical">_domap_canonical (C function)</a>
+</li>
+      <li><a href="c/omap.html#c._domap_invariants_differ">_domap_invariants_differ (C function)</a>
+</li>
+      <li><a href="c/omap.html#c._domap_iso_key">_domap_iso_key (C function)</a>
+</li>
+      <li><a href="c/omap.html#c._domap_iso_search">_domap_iso_search (C function)</a>
+</li>
+      <li><a href="c/omap.html#c._domap_stabiliser">_domap_stabiliser (C function)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="c/omap.html#c._omap_num_edges">_omap_num_edges (C function)</a>
+</li>
+      <li><a href="c/omap.html#c._omap_relabelling_from">_omap_relabelling_from (C function)</a>
+</li>
+      <li><a href="c/omap.html#c._omap_vp_from_fp">_omap_vp_from_fp (C function)</a>
+</li>
+      <li><a href="c/perm.html#c._perm_check">_perm_check (C function)</a>
+</li>
+      <li><a href="c/perm.html#c._perm_dense_cycles">_perm_dense_cycles (C function)</a>
+</li>
+      <li><a href="c/perm.html#c._perm_id">_perm_id (C function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -345,8 +385,6 @@
         <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.alphabet">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.argmin">argmin() (in module combisurf.permutation)</a>
 </li>
       <li><a href="misc.html#combisurf.misc.array_hash">array_hash() (in module combisurf.misc)</a>
@@ -355,20 +393,46 @@
 </li>
       <li><a href="colored_map_builder.html#combisurf.colored_map_builder.atomic_3colmap">atomic_3colmap() (in module combisurf.colored_map_builder)</a>
 </li>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.automorphism_gens">automorphism_gens() (combisurf.oriented_map.OrientedMap method)</a>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.automorphism_face_action">automorphism_face_action() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.automorphism_face_action">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.automorphism_quotient">automorphism_quotient() (combisurf.oriented_map.OrientedMap method)</a>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.automorphism_generators">automorphism_generators() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.automorphism_generators">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.automorphisms">automorphisms() (combisurf.oriented_map.OrientedMap method)</a>
+        <li><a href="isomorphism.html#combisurf.isomorphism.automorphism_generators">(in module combisurf.isomorphism)</a>
 </li>
+        <li><a href="isomorphism_naive.html#combisurf.isomorphism_naive.automorphism_generators">(in module combisurf.isomorphism_naive)</a>
+</li>
+      </ul></li>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.automorphism_vertex_action">automorphism_vertex_action() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.automorphism_vertex_action">(combisurf.oriented_map.OrientedMap method)</a>
+</li>
+      </ul></li>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.automorphisms">automorphisms() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.automorphisms">(combisurf.oriented_map.OrientedMap method)</a>
+</li>
+        <li><a href="isomorphism.html#combisurf.isomorphism.automorphisms">(in module combisurf.isomorphism)</a>
+</li>
+        <li><a href="isomorphism_naive.html#combisurf.isomorphism_naive.automorphisms">(in module combisurf.isomorphism_naive)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.best_relabelling">best_relabelling() (combisurf.oriented_map.OrientedMap method)</a>
-</li>
       <li><a href="oriented_map_builder.html#combisurf.oriented_map_builder.bridge">bridge() (in module combisurf.oriented_map_builder)</a>
 </li>
   </ul></td>
@@ -383,7 +447,39 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.canonical_form">canonical_form() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.canonical_form">(combisurf.oriented_map.OrientedMap method)</a>
+</li>
+        <li><a href="isomorphism.html#combisurf.isomorphism.canonical_form">(in module combisurf.isomorphism)</a>
+</li>
+        <li><a href="isomorphism_naive.html#combisurf.isomorphism_naive.canonical_form">(in module combisurf.isomorphism_naive)</a>
+</li>
+      </ul></li>
+      <li><a href="isomorphism.html#combisurf.isomorphism.canonical_key">canonical_key() (in module combisurf.isomorphism)</a>
+</li>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.canonical_labelling">canonical_labelling() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.canonical_labelling">(combisurf.oriented_map.OrientedMap method)</a>
+</li>
+        <li><a href="isomorphism.html#combisurf.isomorphism.canonical_labelling">(in module combisurf.isomorphism)</a>
+</li>
+        <li><a href="isomorphism_naive.html#combisurf.isomorphism_naive.canonical_labelling">(in module combisurf.isomorphism_naive)</a>
+</li>
+      </ul></li>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.canonical_roots">canonical_roots() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.canonical_roots">(combisurf.oriented_map.OrientedMap method)</a>
+</li>
+      </ul></li>
+      <li><a href="isomorphism.html#combisurf.isomorphism.check_decorated_oriented_map">check_decorated_oriented_map() (in module combisurf.isomorphism)</a>
+</li>
       <li><a href="oriented_map.html#combisurf.oriented_map.check_relabelling">check_relabelling() (in module combisurf.oriented_map)</a>
+</li>
+      <li><a href="isomorphism.html#combisurf.isomorphism.check_root_rule">check_root_rule() (in module combisurf.isomorphism)</a>
 </li>
       <li><a href="oriented_map_builder.html#combisurf.oriented_map_builder.close_face">close_face() (in module combisurf.oriented_map_builder)</a>
 </li>
@@ -432,6 +528,22 @@
 </li>
       </ul></li>
       <li>
+    combisurf.isomorphism
+
+      <ul>
+        <li><a href="isomorphism.html#module-combisurf.isomorphism">module</a>
+</li>
+      </ul></li>
+      <li>
+    combisurf.isomorphism_naive
+
+      <ul>
+        <li><a href="isomorphism_naive.html#module-combisurf.isomorphism_naive">module</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li>
     combisurf.lyndon_word_family
 
       <ul>
@@ -459,8 +571,6 @@
         <li><a href="oriented_map_builder.html#module-combisurf.oriented_map_builder">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     combisurf.permutation
 
@@ -482,6 +592,10 @@
         <li><a href="word_family.html#module-combisurf.word_family">module</a>
 </li>
       </ul></li>
+      <li><a href="c/misc.html#c.combisurf_malloc">combisurf_malloc (C function)</a>
+</li>
+      <li><a href="isomorphism.html#combisurf.isomorphism.complete_relabelling">complete_relabelling() (in module combisurf.isomorphism)</a>
+</li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree">ConjugateTree (class in combisurf.conjugate_tree)</a>
 </li>
       <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive">ConjugateTreeNaive (class in combisurf.conjugate_tree_naive)</a>
@@ -536,8 +650,94 @@
         <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.disjoint_union">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
       </ul></li>
+      <li><a href="c/omap.html#c.domap_canonical">domap_canonical (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.DOMAP_CANONICAL_WORK_SIZE">DOMAP_CANONICAL_WORK_SIZE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_invariants_differ">domap_invariants_differ (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.DOMAP_INVARIANTS_WORK_SIZE">DOMAP_INVARIANTS_WORK_SIZE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.DOMAP_ISO_DISCONNECTED">DOMAP_ISO_DISCONNECTED (C enumerator)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_key">domap_iso_key (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.DOMAP_ISO_KEY_SIZE">DOMAP_ISO_KEY_SIZE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.DOMAP_ISO_KEY_WORK_SIZE">DOMAP_ISO_KEY_WORK_SIZE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_leaf_callback">domap_iso_leaf_callback (C type)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_root_rule">domap_iso_root_rule (C enum)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL">domap_iso_root_rule.DOMAP_ISO_ROOTS_ALL (C enumerator)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA">domap_iso_root_rule.DOMAP_ISO_ROOTS_DATA (C enumerator)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_EDGE_FEWEST">domap_iso_root_rule.DOMAP_ISO_ROOTS_EDGE_FEWEST (C enumerator)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_EDGE_MAX">domap_iso_root_rule.DOMAP_ISO_ROOTS_EDGE_MAX (C enumerator)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_HALF_EDGE_FEWEST">domap_iso_root_rule.DOMAP_ISO_ROOTS_HALF_EDGE_FEWEST (C enumerator)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_root_rule.DOMAP_ISO_ROOTS_HALF_EDGE_MAX">domap_iso_root_rule.DOMAP_ISO_ROOTS_HALF_EDGE_MAX (C enumerator)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_iso_search">domap_iso_search (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.DOMAP_ISO_SEARCH_WORK_SIZE">DOMAP_ISO_SEARCH_WORK_SIZE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.DOMAP_ISO_SEQUENCE_SIZE">DOMAP_ISO_SEQUENCE_SIZE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_stabiliser">domap_stabiliser (C function)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="c/omap.html#c.domap_stabiliser_callback">domap_stabiliser_callback (C type)</a>
+</li>
+      <li><a href="c/omap.html#c.DOMAP_STABILISER_WORK_SIZE">DOMAP_STABILISER_WORK_SIZE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_struct">domap_struct (C struct)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_struct.classes">domap_struct.classes (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_struct.data">domap_struct.data (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_struct.map">domap_struct.map (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_struct.nc">domap_struct.nc (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_struct.nd">domap_struct.nd (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_t">domap_t (C type)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct">domap_wreath_struct (C struct)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.cfp">domap_wreath_struct.cfp (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.coff">domap_wreath_struct.coff (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.cra">domap_wreath_struct.cra (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.crainv">domap_wreath_struct.crainv (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.csize">domap_wreath_struct.csize (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.kind">domap_wreath_struct.kind (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.lab">domap_wreath_struct.lab (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.labels">domap_wreath_struct.labels (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.loff">domap_wreath_struct.loff (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.ncomp">domap_wreath_struct.ncomp (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.off">domap_wreath_struct.off (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_struct.start">domap_wreath_struct.start (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.domap_wreath_t">domap_wreath_t (C type)</a>
+</li>
       <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.dual">dual() (combisurf.colored_map.ColoredOrientedMap method)</a>
 
       <ul>
@@ -558,8 +758,6 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="permutation.html#combisurf.permutation.edge_relabelling_from">edge_relabelling_from() (in module combisurf.permutation)</a>
-</li>
       <li><a href="geometric_intersection.html#combisurf.geometric_intersection.GeometricIntersectionMatrix.entry">entry() (combisurf.geometric_intersection.GeometricIntersectionMatrix method)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.euler_characteristic">euler_characteristic() (combisurf.oriented_map.OrientedMap method)</a>
@@ -654,20 +852,30 @@
         <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_state_word">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.internal_states">internal_states() (combisurf.conjugate_tree.ConjugateTree method)</a>
 
       <ul>
         <li><a href="conjugate_tree_naive.html#combisurf.conjugate_tree_naive.ConjugateTreeNaive.internal_states">(combisurf.conjugate_tree_naive.ConjugateTreeNaive method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.is_connected">is_connected() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.is_isomorphic">is_isomorphic() (combisurf.oriented_map.OrientedMap method)</a>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.is_isomorphic">is_isomorphic() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.is_isomorphic">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
+      </ul></li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.is_mutable">is_mutable() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
+      <li><a href="isomorphism.html#combisurf.isomorphism.isomorphism">isomorphism() (in module combisurf.isomorphism)</a>
+
+      <ul>
+        <li><a href="isomorphism_naive.html#combisurf.isomorphism_naive.isomorphism">(in module combisurf.isomorphism_naive)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -720,6 +928,8 @@
         <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.merge_vertices">(combisurf.oriented_map.OrientedMap method)</a>
 </li>
       </ul></li>
+      <li><a href="c/misc.html#c.MISC_INLINE">MISC_INLINE (C macro)</a>
+</li>
       <li>
     module
 
@@ -735,6 +945,10 @@
         <li><a href="crossing_arcs.html#module-combisurf.crossing_arcs">combisurf.crossing_arcs</a>
 </li>
         <li><a href="geometric_intersection.html#module-combisurf.geometric_intersection">combisurf.geometric_intersection</a>
+</li>
+        <li><a href="isomorphism.html#module-combisurf.isomorphism">combisurf.isomorphism</a>
+</li>
+        <li><a href="isomorphism_naive.html#module-combisurf.isomorphism_naive">combisurf.isomorphism_naive</a>
 </li>
         <li><a href="lyndon_word_family.html#module-combisurf.lyndon_word_family">combisurf.lyndon_word_family</a>
 </li>
@@ -771,14 +985,20 @@
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.next_in_face">next_in_face() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
+      <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.num_automorphisms">num_automorphisms() (combisurf.colored_map.ColoredOrientedMap method)</a>
+
+      <ul>
+        <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_automorphisms">(combisurf.oriented_map.OrientedMap method)</a>
+</li>
+      </ul></li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_edges">num_edges() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_faces">num_faces() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_folded_edges">num_folded_edges() (combisurf.oriented_map.OrientedMap method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_folded_edges">num_folded_edges() (combisurf.oriented_map.OrientedMap method)</a>
+</li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.num_half_edges">num_half_edges() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
       <li><a href="conjugate_tree.html#combisurf.conjugate_tree.ConjugateTree.num_states">num_states() (combisurf.conjugate_tree.ConjugateTree method)</a>
@@ -801,6 +1021,34 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="c/omap.html#c.OMAP_INLINE">OMAP_INLINE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_next_at_vertex">omap_next_at_vertex (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_next_in_face">omap_next_in_face (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_num_edges">omap_num_edges (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_previous_at_vertex">omap_previous_at_vertex (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_previous_in_face">omap_previous_in_face (C function)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_relabelling_from">omap_relabelling_from (C function)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="c/omap.html#c.OMAP_RELABELLING_WORK_SIZE">OMAP_RELABELLING_WORK_SIZE (C macro)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_struct">omap_struct (C struct)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_struct.fp">omap_struct.fp (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_struct.n">omap_struct.n (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_struct.vp">omap_struct.vp (C member)</a>
+</li>
+      <li><a href="c/omap.html#c.omap_t">omap_t (C type)</a>
+</li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap">OrientedMap (class in combisurf.oriented_map)</a>
 </li>
   </ul></td>
@@ -817,7 +1065,11 @@
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_base64_str">perm_base64_str() (in module combisurf.permutation)</a>
 </li>
+      <li><a href="c/perm.html#c.perm_check">perm_check (C function)</a>
+</li>
       <li><a href="permutation.html#combisurf.permutation.perm_check">perm_check() (in module combisurf.permutation)</a>
+</li>
+      <li><a href="c/perm.html#c.PERM_CHECK_WORK_SIZE">PERM_CHECK_WORK_SIZE (C macro)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_compose">perm_compose() (in module combisurf.permutation)</a>
 </li>
@@ -845,6 +1097,8 @@
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_dense_cycle_positions">perm_dense_cycle_positions() (in module combisurf.permutation)</a>
 </li>
+      <li><a href="c/perm.html#c.perm_dense_cycles">perm_dense_cycles (C function)</a>
+</li>
       <li><a href="permutation.html#combisurf.permutation.perm_dense_cycles">perm_dense_cycles() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_edge_orbits">perm_edge_orbits() (in module combisurf.permutation)</a>
@@ -853,22 +1107,26 @@
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_from_cycles">perm_from_cycles() (in module combisurf.permutation)</a>
 </li>
+      <li><a href="c/perm.html#c.perm_id">perm_id (C function)</a>
+</li>
       <li><a href="permutation.html#combisurf.permutation.perm_id">perm_id() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_init">perm_init() (in module combisurf.permutation)</a>
+</li>
+      <li><a href="c/perm.html#c.PERM_INLINE">PERM_INLINE (C macro)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_invert">perm_invert() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_is_involution">perm_is_involution() (in module combisurf.permutation)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.perm_is_one">perm_is_one() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_num_cycles">perm_num_cycles() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_on_array">perm_on_array() (in module combisurf.permutation)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="permutation.html#combisurf.permutation.perm_on_edge_array">perm_on_edge_array() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_on_edge_list">perm_on_edge_list() (in module combisurf.permutation)</a>
@@ -891,19 +1149,17 @@
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_random_conjugacy_class">perm_random_conjugacy_class() (in module combisurf.permutation)</a>
 </li>
-      <li><a href="permutation.html#combisurf.permutation.perm_relabel_on_edges">perm_relabel_on_edges() (in module combisurf.permutation)</a>
+      <li><a href="c/perm.html#c.perm_struct">perm_struct (C struct)</a>
+</li>
+      <li><a href="c/perm.html#c.perm_struct.n">perm_struct.n (C member)</a>
+</li>
+      <li><a href="c/perm.html#c.perm_struct.p">perm_struct.p (C member)</a>
+</li>
+      <li><a href="c/perm.html#c.perm_t">perm_t (C type)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perm_trim">perm_trim() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perms_are_transitive">perms_are_transitive() (in module combisurf.permutation)</a>
-</li>
-      <li><a href="permutation.html#combisurf.permutation.perms_canonical_labels">perms_canonical_labels() (in module combisurf.permutation)</a>
-</li>
-      <li><a href="permutation.html#combisurf.permutation.perms_canonical_labels_from">perms_canonical_labels_from() (in module combisurf.permutation)</a>
-</li>
-      <li><a href="permutation.html#combisurf.permutation.perms_orbits">perms_orbits() (in module combisurf.permutation)</a>
-</li>
-      <li><a href="permutation.html#combisurf.permutation.perms_relabel">perms_relabel() (in module combisurf.permutation)</a>
 </li>
       <li><a href="permutation.html#combisurf.permutation.perms_transitive_components">perms_transitive_components() (in module combisurf.permutation)</a>
 </li>
@@ -940,10 +1196,6 @@
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.quad_system">quad_system() (combisurf.oriented_map.OrientedMap method)</a>
 </li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.quotient">quotient() (combisurf.oriented_map.OrientedMap method)</a>
-</li>
-  </ul></td>
 </tr></table>
 
 <h2 id="R">R</h2>
@@ -961,6 +1213,8 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="isomorphism_naive.html#combisurf.isomorphism_naive.relabelling_from">relabelling_from() (in module combisurf.isomorphism_naive)</a>
+</li>
       <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.reverse_orientation">reverse_orientation() (combisurf.colored_map.ColoredOrientedMap method)</a>
 
       <ul>
@@ -975,8 +1229,6 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.set_canonical_labels">set_canonical_labels() (combisurf.oriented_map.OrientedMap method)</a>
-</li>
       <li><a href="colored_map.html#combisurf.colored_map.ColoredOrientedMap.set_edge_color">set_edge_color() (combisurf.colored_map.ColoredOrientedMap method)</a>
 </li>
       <li><a href="oriented_map.html#combisurf.oriented_map.OrientedMap.set_immutable">set_immutable() (combisurf.oriented_map.OrientedMap method)</a>
@@ -1051,10 +1303,16 @@
 <h2 id="U">U</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="permutation.html#combisurf.permutation.uint_base64_str">uint_base64_str() (in module combisurf.permutation)</a>
+      <li><a href="c/misc.html#c.uf_find_compression">uf_find_compression (C function)</a>
+</li>
+      <li><a href="c/misc.html#c.uf_find_halving">uf_find_halving (C function)</a>
+</li>
+      <li><a href="c/misc.html#c.uf_link">uf_link (C function)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="permutation.html#combisurf.permutation.uint_base64_str">uint_base64_str() (in module combisurf.permutation)</a>
+</li>
       <li><a href="permutation.html#combisurf.permutation.uint_from_base64_str">uint_from_base64_str() (in module combisurf.permutation)</a>
 </li>
       <li><a href="lyndon_word_family.html#combisurf.lyndon_word_family.UpToInverseWordFamily">UpToInverseWordFamily (class in combisurf.lyndon_word_family)</a>

@@ -196,6 +196,15 @@
 <li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="isomorphism.html"><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="isomorphism_naive.html"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">C library</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="c/perm.html"><code class="docutils literal notranslate"><span class="pre">perm.h</span></code>: partial permutations in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/misc.html"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/omap.html"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/omap_algorithms.html">Algorithms of the isomorphism code</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
@@ -361,6 +370,13 @@
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.add_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.add_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_face_action"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.automorphism_face_action()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_generators"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.automorphism_generators()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_vertex_action"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.automorphism_vertex_action()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.automorphisms"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.automorphisms()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.canonical_form"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.canonical_form()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.canonical_labelling"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.canonical_labelling()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.canonical_roots"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.canonical_roots()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.contract_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.contract_edge()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.copy"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.copy()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.delete_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.delete_edge()</span></code></a></li>
@@ -368,8 +384,10 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.dual"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.dual()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.edge_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.edge_color()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.insert_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.insert_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.is_isomorphic"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.is_isomorphic()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.merge_vertices"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.merge_vertices()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.move_half_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.move_half_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.num_automorphisms"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.num_automorphisms()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.plot"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.plot()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.relabel"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.relabel()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.reverse_orientation"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.reverse_orientation()</span></code></a></li>
@@ -425,6 +443,112 @@ If self is atomic and <code class="docutils literal notranslate"><span class="pr
 <span class="n">sage</span><span class="p">:</span> <span class="n">E</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">v1_color</span><span class="o">=</span><span class="s1">'b'</span><span class="p">)</span>
 <span class="n">sage</span><span class="p">:</span> <span class="n">E</span>
 <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0)(~0)"</span><span class="p">,</span> <span class="s2">"(0,~0)"</span><span class="p">,</span> <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s1">'a'</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">'b'</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.automorphism_face_action">
+<span class="sig-name descname"><span class="pre">automorphism_face_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.automorphism_face_action"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_face_action" title="Link to this definition">#</a></dt>
+<dd><p>Return the permutation of the faces induced by an automorphism.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">automorphism_face_action</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.automorphism_generators">
+<span class="sig-name descname"><span class="pre">automorphism_generators</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.automorphism_generators"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_generators" title="Link to this definition">#</a></dt>
+<dd><p>Return generators of the automorphism group of this coloured map.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">automorphism_generators</span><span class="p">()</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.automorphism_vertex_action">
+<span class="sig-name descname"><span class="pre">automorphism_vertex_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.automorphism_vertex_action"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_vertex_action" title="Link to this definition">#</a></dt>
+<dd><p>Return the permutation of the vertices induced by an automorphism.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">automorphism_vertex_action</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.automorphisms">
+<span class="sig-name descname"><span class="pre">automorphisms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.automorphisms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.automorphisms" title="Link to this definition">#</a></dt>
+<dd><p>Return the automorphisms of this coloured map.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">automorphisms</span><span class="p">()</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.canonical_form">
+<span class="sig-name descname"><span class="pre">canonical_form</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.canonical_form"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.canonical_form" title="Link to this definition">#</a></dt>
+<dd><p>Return the canonical form of this coloured map.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">canonical_form</span><span class="p">()</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.canonical_labelling">
+<span class="sig-name descname"><span class="pre">canonical_labelling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.canonical_labelling"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.canonical_labelling" title="Link to this definition">#</a></dt>
+<dd><p>Return the canonical labelling of this coloured map.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">canonical_labelling</span><span class="p">()</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.canonical_roots">
+<span class="sig-name descname"><span class="pre">canonical_roots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.canonical_roots"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.canonical_roots" title="Link to this definition">#</a></dt>
+<dd><p>Return the half-edges that some minimiser of the canonical key
+labels <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">canonical_roots</span><span class="p">()</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -518,6 +642,21 @@ If both end point have the same color they keep it, if one is <code class="docut
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.is_isomorphic">
+<span class="sig-name descname"><span class="pre">is_isomorphic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.is_isomorphic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.is_isomorphic" title="Link to this definition">#</a></dt>
+<dd><p>Return whether this coloured map is isomorphic to another.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">is_isomorphic</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.merge_vertices">
 <span class="sig-name descname"><span class="pre">merge_vertices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">corners</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.merge_vertices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.merge_vertices" title="Link to this definition">#</a></dt>
 <dd><p>Merges the corners in corners. If color is given then the new vertex takes this color. Otherwise if exactly one color is present among the corners then it keeps it.</p>
@@ -555,6 +694,21 @@ If both end point have the same color they keep it, if one is <code class="docut
 <span class="n">sage</span><span class="p">:</span> <span class="n">M</span>
  <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="s2">"(0,1,2)(~0,~1,~3,~4,5)(~2,~5)(3,4)(6)(~6,7,~7)"</span><span class="p">,</span> <span class="s2">"(0,5,~2,1,~0,2,~5,~4,3,~1)(~3,4)(6,~7,~6)(7)"</span><span class="p">,</span>
  <span class="n">edge</span> <span class="n">colors</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">vertex</span> <span class="n">colors</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">13</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12</span><span class="p">:</span> <span class="mi">42</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="combisurf.colored_map.ColoredOrientedMap.num_automorphisms">
+<span class="sig-name descname"><span class="pre">num_automorphisms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/combisurf/colored_map.html#ColoredOrientedMap.num_automorphisms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#combisurf.colored_map.ColoredOrientedMap.num_automorphisms" title="Link to this definition">#</a></dt>
+<dd><p>Return the order of the automorphism group of this coloured map.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColoredOrientedMap</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">ColoredOrientedMap</span><span class="p">(</span><span class="n">fp</span><span class="o">=</span><span class="s2">"(0,1,2)(~0,~2,~1)"</span><span class="p">,</span> <span class="n">ecolors</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">num_automorphisms</span><span class="p">()</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">NotImplementedError</span><span class="p">:</span> <span class="n">colours</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span> <span class="n">yet</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -682,6 +836,13 @@ If both end point have the same color they keep it, if one is <code class="docut
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.add_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.add_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_face_action"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.automorphism_face_action()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_generators"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.automorphism_generators()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.automorphism_vertex_action"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.automorphism_vertex_action()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.automorphisms"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.automorphisms()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.canonical_form"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.canonical_form()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.canonical_labelling"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.canonical_labelling()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.canonical_roots"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.canonical_roots()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.contract_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.contract_edge()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.copy"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.copy()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.delete_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.delete_edge()</span></code></a></li>
@@ -689,8 +850,10 @@ If both end point have the same color they keep it, if one is <code class="docut
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.dual"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.dual()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.edge_color"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.edge_color()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.insert_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.insert_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.is_isomorphic"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.is_isomorphic()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.merge_vertices"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.merge_vertices()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.move_half_edge"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.move_half_edge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.num_automorphisms"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.num_automorphisms()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.plot"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.plot()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.relabel"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.relabel()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.colored_map.ColoredOrientedMap.reverse_orientation"><code class="docutils literal notranslate"><span class="pre">ColoredOrientedMap.reverse_orientation()</span></code></a></li>

@@ -1,0 +1,1045 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>isomorphism &#8212; combisurf 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=a1637f0b"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'isomorphism';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="isomorphism_naive" href="isomorphism_naive.html" />
+    <link rel="prev" title="conjugate_tree_naive" href="conjugate_tree_naive.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">combisurf 0.1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://flatsurf.github.io" title="flatsurf" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="https://flatsurf.github.io/assets/logo.svg" class="icon-link-image" alt="flatsurf"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/flatsurf/combisurf" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://sagemath.zulipchat.com/#narrow/channel/271193-flatsurf" title="Zulip" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-regular fa-comments fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Zulip</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Core</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="oriented_map.html"><code class="docutils literal notranslate"><span class="pre">oriented_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="oriented_map_builder.html"><code class="docutils literal notranslate"><span class="pre">oriented_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="permutation.html"><code class="docutils literal notranslate"><span class="pre">permutation</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word.html"><code class="docutils literal notranslate"><span class="pre">word</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="word_family.html"><code class="docutils literal notranslate"><span class="pre">word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="lyndon_word_family.html"><code class="docutils literal notranslate"><span class="pre">lyndon_word_family</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="misc.html"><code class="docutils literal notranslate"><span class="pre">misc</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map.html"><code class="docutils literal notranslate"><span class="pre">colored_map</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="colored_map_builder.html"><code class="docutils literal notranslate"><span class="pre">colored_map_builder</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="geometric_intersection.html"><code class="docutils literal notranslate"><span class="pre">geometric_intersection</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="isomorphism_naive.html"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">C library</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="c/perm.html"><code class="docutils literal notranslate"><span class="pre">perm.h</span></code>: partial permutations in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/misc.html"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/omap.html"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/omap_algorithms.html">Algorithms of the isomorphism code</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/flatsurf/combisurf/edit/master/doc/isomorphism.rst" target="_blank"
+   class="btn btn-sm btn-source-edit-button"
+   title="Suggest edit"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/isomorphism.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>isomorphism</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.automorphism_generators"><code class="docutils literal notranslate"><span class="pre">automorphism_generators()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.automorphisms"><code class="docutils literal notranslate"><span class="pre">automorphisms()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.canonical_form"><code class="docutils literal notranslate"><span class="pre">canonical_form()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.canonical_key"><code class="docutils literal notranslate"><span class="pre">canonical_key()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.canonical_labelling"><code class="docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.check_decorated_oriented_map"><code class="docutils literal notranslate"><span class="pre">check_decorated_oriented_map()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.check_root_rule"><code class="docutils literal notranslate"><span class="pre">check_root_rule()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.complete_relabelling"><code class="docutils literal notranslate"><span class="pre">complete_relabelling()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.isomorphism"><code class="docutils literal notranslate"><span class="pre">isomorphism()</span></code></a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-combisurf.isomorphism">
+<span id="isomorphism"></span><h1><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code><a class="headerlink" href="#module-combisurf.isomorphism" title="Link to this heading">#</a></h1>
+<p>Isomorphisms, automorphisms and canonical labels of maps</p>
+<p>This module computes canonical labellings, canonical forms, automorphism
+groups and isomorphisms of oriented maps, possibly decorated by values on
+their half-edges. It checks and converts its input, then calls the C code
+of <a class="reference internal" href="c/omap.html"><span class="doc">omap.h: oriented maps in C</span></a>; the methods of <a class="reference internal" href="oriented_map.html#combisurf.oriented_map.OrientedMap" title="combisurf.oriented_map.OrientedMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">OrientedMap</span></code></a>
+(such as <a class="reference internal" href="oriented_map.html#combisurf.oriented_map.OrientedMap.canonical_labelling" title="combisurf.oriented_map.OrientedMap.canonical_labelling"><code class="xref py py-meth docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a>)
+call it. Its public functions are:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a> – the canonical labelling of a map</p></li>
+<li><p><a class="reference internal" href="#combisurf.isomorphism.canonical_form" title="combisurf.isomorphism.canonical_form"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_form()</span></code></a> – the map read in its canonical labels</p></li>
+<li><p><a class="reference internal" href="#combisurf.isomorphism.automorphisms" title="combisurf.isomorphism.automorphisms"><code class="xref py py-func docutils literal notranslate"><span class="pre">automorphisms()</span></code></a> – the list of the automorphisms of a map</p></li>
+<li><p><a class="reference internal" href="#combisurf.isomorphism.automorphism_generators" title="combisurf.isomorphism.automorphism_generators"><code class="xref py py-func docutils literal notranslate"><span class="pre">automorphism_generators()</span></code></a> – generators of the automorphism group</p></li>
+<li><p><a class="reference internal" href="#combisurf.isomorphism.isomorphism" title="combisurf.isomorphism.isomorphism"><code class="xref py py-func docutils literal notranslate"><span class="pre">isomorphism()</span></code></a> – an isomorphism between two maps, if there is one</p></li>
+<li><p><a class="reference internal" href="#combisurf.isomorphism.canonical_key" title="combisurf.isomorphism.canonical_key"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_key()</span></code></a> – the canonical form flattened as bytes, a compact
+hashable key for the exploration of large collections of maps up to
+isomorphism, and on request the canonical labelling and the number of
+automorphisms</p></li>
+</ul>
+<p>A map is given by its face permutation <code class="docutils literal notranslate"><span class="pre">fp</span></code>, and may be decorated by two
+tuples of arrays indexed by its half-edges (the conventions of the input
+are given in <a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code>, whose integer values are kept exactly by an isomorphism;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">classes</span></code>, whose values are kept up to a relabelling of the values, so
+that only the partition of the half-edges by the values of each array
+matters.</p></li>
+</ul>
+<p>The <em>canonical labelling</em> of a decorated map, under a rule of the roots
+(below), is a relabelling of its half-edges such that two decorated maps
+are isomorphic if and only if their <em>canonical forms</em>, the maps read in
+their canonical labels, are equal. On a connected map, it is the
+relabelling by a breadth-first walk from a root (<a class="reference internal" href="c/omap.html#omap-relabelling"><span class="std std-ref">Relabelling from a root</span></a>),
+the root being the one of minimal key (<a class="reference internal" href="c/omap.html#omap-keys"><span class="std std-ref">Keys</span></a>) among the
+half-edges that the rule allows; a disconnected map is labelled component
+after component (<a class="reference internal" href="c/omap.html#omap-blocks"><span class="std std-ref">Maps that may be disconnected</span></a>).</p>
+<p>The keyword <code class="docutils literal notranslate"><span class="pre">root_rule</span></code> of the public functions is the rule of the roots,
+which restricts the half-edges tried as roots. Each active half-edge has an
+invariant, the pair of the degrees of its vertex and of its face, and the
+half-edges of equal invariant form a class (<a class="reference internal" href="c/omap.html#omap-root-rules"><span class="std std-ref">Rules of the roots</span></a>). The
+rules are the following integers:</p>
+<ul class="simple">
+<li><p><code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_ALL</span></code> – every active half-edge is tried</p></li>
+<li><p><code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_MAX</span></code> – the class of the largest invariant,
+compared lexicographically</p></li>
+<li><p><code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_FEWEST</span></code> – the class with the fewest half-edges,
+ties broken by the largest invariant</p></li>
+<li><p><code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_EDGE_MAX</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_EDGE_FEWEST</span></code> – as the two rules
+above, with the invariant extended by the degrees at the twin of the
+half-edge and by whether the twin has the same vertex and the same face</p></li>
+<li><p><code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_DATA</span></code> – a flag, combined by the bitwise or <code class="docutils literal notranslate"><span class="pre">|</span></code> with one
+of the four rules other than <code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_ALL</span></code>, that appends to the invariant the values of
+<code class="docutils literal notranslate"><span class="pre">data</span></code> at the half-edge (and at its twin under the edge rules); the
+values of <code class="docutils literal notranslate"><span class="pre">classes</span></code> are never used</p></li>
+</ul>
+<p>The default rule is <code class="docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_FEWEST</span> <span class="pre">|</span> <span class="pre">ROOTS_DATA</span></code>. The canonical
+labelling, the canonical form and the order in which the automorphisms are
+listed depend on the rule, so that maps are compared under the same rule;
+the automorphism group does not. The algorithms and their costs are in
+<a class="reference internal" href="c/omap_algorithms.html"><span class="doc">Algorithms of the isomorphism code</span></a>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_labelling</span><span class="p">,</span> <span class="n">automorphisms</span><span class="p">,</span> <span class="n">isomorphism</span><span class="p">,</span> <span class="n">canonical_key</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">fp</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>  <span class="c1"># the faces (0,1,2)(~0,~2,~1)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_labelling</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">automorphisms</span><span class="p">(</span><span class="n">fp</span><span class="p">))</span>
+<span class="mi">6</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">isomorphism</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">(),</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">())</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_key</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span> <span class="o">==</span> <span class="n">canonical_key</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+<p>The results agree with those of <a class="reference internal" href="isomorphism_naive.html#module-combisurf.isomorphism_naive" title="combisurf.isomorphism_naive"><code class="xref py py-mod docutils literal notranslate"><span class="pre">combisurf.isomorphism_naive</span></code></a>, a pure
+Python implementation they are compared with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf</span><span class="w"> </span><span class="kn">import</span> <span class="n">isomorphism_naive</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">fp</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">c</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">automorphisms</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">classes</span><span class="o">=</span><span class="p">(</span><span class="n">c</span><span class="p">,))</span> <span class="o">==</span> <span class="n">isomorphism_naive</span><span class="o">.</span><span class="n">automorphisms</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">classes</span><span class="o">=</span><span class="p">(</span><span class="n">c</span><span class="p">,))</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+<p>Under every rule, the results, computed in C, agree with those of
+<code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code> under the same rule:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_form</span><span class="p">,</span> <span class="n">ROOTS_ALL</span><span class="p">,</span> <span class="n">ROOTS_HALF_EDGE_FEWEST</span><span class="p">,</span> <span class="n">ROOTS_HALF_EDGE_MAX</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">fp</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+<span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">),)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_FEWEST</span><span class="p">)</span> <span class="o">==</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_ALL</span><span class="p">)</span> <span class="o">==</span> <span class="n">isomorphism_naive</span><span class="o">.</span><span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">isomorphism_naive</span><span class="o">.</span><span class="n">ROOTS_ALL</span><span class="p">)</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_MAX</span><span class="p">)</span>
+<span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_HALF_EDGE_MAX</span><span class="p">)</span> <span class="o">==</span> <span class="n">isomorphism_naive</span><span class="o">.</span><span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">isomorphism_naive</span><span class="o">.</span><span class="n">ROOTS_HALF_EDGE_MAX</span><span class="p">)</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+<p>With the faces of the triangle decorated by <code class="docutils literal notranslate"><span class="pre">0</span></code> and <code class="docutils literal notranslate"><span class="pre">1</span></code>, the rule
+<code class="docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_MAX</span> <span class="pre">|</span> <span class="pre">ROOTS_DATA</span></code> tries three roots instead of six, counted
+by the private helpers of <code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code>, and its results agree
+with those of <code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">ROOTS_DATA</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">d</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">rule</span> <span class="o">=</span> <span class="n">ROOTS_HALF_EDGE_MAX</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">r</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mi">8</span>
+<span class="n">sage</span><span class="p">:</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">isomorphism_naive</span><span class="o">.</span><span class="n">_roots</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">isomorphism_naive</span><span class="o">.</span><span class="n">_root_invariants</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span><span class="p">,)),</span> <span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="n">ROOTS_HALF_EDGE_MAX</span><span class="p">,</span> <span class="n">rule</span><span class="p">)]</span>
+<span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span><span class="p">,),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">rule</span><span class="p">)</span>
+<span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span><span class="p">,),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">rule</span><span class="p">)</span> <span class="o">==</span> <span class="n">isomorphism_naive</span><span class="o">.</span><span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span><span class="p">,),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">rule</span><span class="p">)</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span><span class="p">,),</span> <span class="n">root_rule</span><span class="o">=</span><span class="n">ROOTS_ALL</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">)</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="o">...</span>
+<span class="ne">ValueError</span><span class="p">:</span> <span class="n">root_rule</span> <span class="n">must</span> <span class="n">be</span> <span class="n">one</span> <span class="n">of</span> <span class="n">the</span> <span class="n">integers</span> <span class="mi">0</span> <span class="n">to</span> <span class="mi">4</span> <span class="p">(</span><span class="n">ROOTS_ALL</span><span class="p">,</span> <span class="n">ROOTS_HALF_EDGE_MAX</span><span class="p">,</span> <span class="n">ROOTS_HALF_EDGE_FEWEST</span><span class="p">,</span> <span class="n">ROOTS_EDGE_MAX</span><span class="p">,</span> <span class="n">ROOTS_EDGE_FEWEST</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">9</span> <span class="n">to</span> <span class="mi">12</span> <span class="p">(</span><span class="n">the</span> <span class="n">last</span> <span class="n">four</span> <span class="o">|</span> <span class="n">ROOTS_DATA</span><span class="p">),</span> <span class="n">got</span> <span class="mi">8</span>
+</pre></div>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.automorphism_generators">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">automorphism_generators</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_rule</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.automorphism_generators" title="Link to this definition">#</a></dt>
+<dd><p>Return generators of the automorphism group of the map with face
+permutation <code class="docutils literal notranslate"><span class="pre">fp</span></code> decorated by <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">classes</span></code>.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fp</span></code>, <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">classes</span></code> – a decorated map, as in
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">root_rule</span></code> – the rule of the roots, as in
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a>: on a connected map the generators may
+differ from a rule to another, the group generated does not; on a
+disconnected map the generators do not depend on the rule</p></li>
+</ul>
+<p>OUTPUT: a list of automorphisms (as in <a class="reference internal" href="#combisurf.isomorphism.automorphisms" title="combisurf.isomorphism.automorphisms"><code class="xref py py-func docutils literal notranslate"><span class="pre">automorphisms()</span></code></a>) that
+generate the group; empty when the group is trivial. There are three
+cases.</p>
+<ul class="simple">
+<li><p>On a connected map, the automorphisms of <a class="reference internal" href="#combisurf.isomorphism.automorphisms" title="combisurf.isomorphism.automorphisms"><code class="xref py py-func docutils literal notranslate"><span class="pre">automorphisms()</span></code></a> under
+the rule, in its order, each kept when it is not in the group
+generated by those kept before. The scan runs over the roots of
+minimal key: the automorphism of the root <code class="docutils literal notranslate"><span class="pre">b_j</span></code> is built only when
+<code class="docutils literal notranslate"><span class="pre">b_j</span></code> is outside the orbit of <code class="docutils literal notranslate"><span class="pre">b_0</span></code> under the generators kept (a
+union-find over the half-edges), so that neither the list of the
+automorphisms nor the group is computed.</p></li>
+<li><p>On a disconnected map without <code class="docutils literal notranslate"><span class="pre">classes</span></code>, the group is the product,
+over the kinds of <cite>k</cite> isomorphic components <cite>C</cite>, of the wreath
+products <cite>mathrm{Aut}(C) wr S_k</cite> (<code class="docutils literal notranslate"><span class="pre">data</span></code> links no two
+components). The kinds are ordered by the smallest half-edge of their
+first copy, and the copies of a kind likewise; for each kind the
+generators are those of <cite>mathrm{Aut}(C)</cite> for its first copy (by the
+connected scan), then the transposition of the first two copies if <cite>k
+geq 2</cite>, then the cycle of the copies if <cite>k geq 3</cite>, a copy going to
+another by the isomorphism sending the half-edge of canonical label
+<cite>i</cite> of one to the one of label <cite>i</cite> of the other. The components are
+labelled under <code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_ALL</span></code> whatever the rule.</p></li>
+<li><p>On a disconnected map with <code class="docutils literal notranslate"><span class="pre">classes</span></code>, the group is the subgroup of
+the previous one that preserves the partitions defined by the arrays
+of <code class="docutils literal notranslate"><span class="pre">classes</span></code>. Its generators come in the order in which a subgroup
+search of Sims finds them (<a class="reference internal" href="c/omap_algorithms.html#omap-algorithms-stabiliser"><span class="std std-ref">Stabiliser of the classes</span></a>), a
+search that stays exponential in the worst case.</p></li>
+</ul>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">automorphism_generators</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">automorphism_generators</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">c</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">automorphism_generators</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">(</span><span class="n">c</span><span class="p">,))</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">automorphism_generators</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">classes</span><span class="o">=</span><span class="p">(</span><span class="n">c</span><span class="p">,))</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.automorphisms">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">automorphisms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_rule</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.automorphisms" title="Link to this definition">#</a></dt>
+<dd><p>Return the automorphisms of the map with face permutation <code class="docutils literal notranslate"><span class="pre">fp</span></code>
+decorated by <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">classes</span></code>.</p>
+<p>The automorphisms come in the order in which the search meets them. On
+a connected map, with <code class="docutils literal notranslate"><span class="pre">b_0</span> <span class="pre">&lt;</span> <span class="pre">b_1</span> <span class="pre">&lt;</span> <span class="pre">...</span></code> the roots of the rule of
+minimal key (<a class="reference internal" href="c/omap.html#omap-keys"><span class="std std-ref">Keys</span></a>), there is one automorphism per root, in
+increasing order of the roots: the automorphism <code class="docutils literal notranslate"><span class="pre">j</span></code> sends the
+half-edge of label <code class="docutils literal notranslate"><span class="pre">i</span></code> from <code class="docutils literal notranslate"><span class="pre">b_0</span></code> to the half-edge of label <code class="docutils literal notranslate"><span class="pre">i</span></code>
+from <code class="docutils literal notranslate"><span class="pre">b_j</span></code>. On a disconnected map, the search component after
+component (<a class="reference internal" href="c/omap.html#omap-blocks"><span class="std std-ref">Maps that may be disconnected</span></a>) follows every tied root, and its leaves
+reaching the minimal sequence of blocks are as many as the
+automorphisms: with <code class="docutils literal notranslate"><span class="pre">r_0</span></code> the first of them, the leaf <code class="docutils literal notranslate"><span class="pre">r</span></code> gives the
+automorphism sending the half-edge of label <code class="docutils literal notranslate"><span class="pre">i</span></code> in <code class="docutils literal notranslate"><span class="pre">r_0</span></code> to the one
+of label <code class="docutils literal notranslate"><span class="pre">i</span></code> in <code class="docutils literal notranslate"><span class="pre">r</span></code>, in the order of the leaves. In both cases the
+identity comes first.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fp</span></code>, <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">classes</span></code> – a decorated map, as in
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">root_rule</span></code> – the rule of the roots, as in
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a>; the group is the same under every rule,
+listed in the order of the search of the rule</p></li>
+</ul>
+<p>OUTPUT: the list of the automorphisms, each an <code class="docutils literal notranslate"><span class="pre">array('i')</span></code>
+permutation of <code class="docutils literal notranslate"><span class="pre">range(len(fp))</span></code> that commutes with <code class="docutils literal notranslate"><span class="pre">fp</span></code> on the
+active half-edges, preserves the pairs <code class="docutils literal notranslate"><span class="pre">{2e,</span> <span class="pre">2e+1}</span></code>, the arrays of
+<code class="docutils literal notranslate"><span class="pre">data</span></code> and the partitions defined by the arrays of <code class="docutils literal notranslate"><span class="pre">classes</span></code>, and is
+the identity on the inactive edges.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">automorphisms</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">A</span> <span class="o">=</span> <span class="n">automorphisms</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+<span class="mi">6</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">A</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">automorphisms</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],))</span>
+<span class="p">[</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">fp</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">c</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">automorphisms</span><span class="p">(</span><span class="n">fp</span><span class="p">)),</span> <span class="nb">len</span><span class="p">(</span><span class="n">automorphisms</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">(</span><span class="n">c</span><span class="p">,))),</span> <span class="nb">len</span><span class="p">(</span><span class="n">automorphisms</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">classes</span><span class="o">=</span><span class="p">(</span><span class="n">c</span><span class="p">,)))</span>
+<span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.canonical_form">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">canonical_form</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_rule</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.canonical_form" title="Link to this definition">#</a></dt>
+<dd><p>Return the canonical form of the map with face permutation <code class="docutils literal notranslate"><span class="pre">fp</span></code>
+decorated by <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">classes</span></code>.</p>
+<p>The canonical form is the map read in its canonical labels (see
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a>): the key of the canonical labelling
+(<a class="reference internal" href="c/omap.html#omap-keys"><span class="std std-ref">Keys</span></a>), split into the face permutation and the
+decorations. On a connected map this key is the minimal key over the
+roots of the rule; on a disconnected map it is the key of the labelling
+of the first leaf reaching the minimal sequence of blocks
+(<a class="reference internal" href="c/omap.html#omap-blocks"><span class="std std-ref">Maps that may be disconnected</span></a>). The values of <code class="docutils literal notranslate"><span class="pre">data</span></code> are those of the arrays
+given, so that they keep their Python type.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fp</span></code>, <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">classes</span></code>, <code class="docutils literal notranslate"><span class="pre">root_rule</span></code> – a decorated map and
+the rule of the roots, as in <a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a></p></li>
+</ul>
+<p>OUTPUT: a tuple <code class="docutils literal notranslate"><span class="pre">(fp_c,</span> <span class="pre">d_1,</span> <span class="pre">...,</span> <span class="pre">d_k,</span> <span class="pre">c_1,</span> <span class="pre">...,</span> <span class="pre">c_m)</span></code> of tuples:
+<code class="docutils literal notranslate"><span class="pre">fp_c</span></code> is the face permutation in the canonical labels (of length
+<code class="docutils literal notranslate"><span class="pre">2*ne</span></code>, <code class="docutils literal notranslate"><span class="pre">-1</span></code> on the inactive half-edges of folded edges), <code class="docutils literal notranslate"><span class="pre">d_i</span></code>
+the values of the <code class="docutils literal notranslate"><span class="pre">i</span></code>-th array of <code class="docutils literal notranslate"><span class="pre">data</span></code> read in the increasing
+order of the canonical labels of the active half-edges, and <code class="docutils literal notranslate"><span class="pre">c_i</span></code> the
+values of the <code class="docutils literal notranslate"><span class="pre">i</span></code>-th array of <code class="docutils literal notranslate"><span class="pre">classes</span></code> read in the same order and
+renumbered <code class="docutils literal notranslate"><span class="pre">0,</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">...</span></code> by first appearance. Two decorated maps are
+isomorphic if and only if their canonical forms under the same rule are
+equal.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_form</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],))</span>
+<span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],),</span> <span class="p">([</span><span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">],))</span>
+<span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.canonical_key">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">canonical_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relabelling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">automorphism_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_rule</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.canonical_key" title="Link to this definition">#</a></dt>
+<dd><p>Return the canonical form of the map with face permutation <code class="docutils literal notranslate"><span class="pre">fp</span></code>
+decorated by <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">classes</span></code>, flattened as bytes, and on
+request its canonical labelling and its number of automorphisms.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fp</span></code>, <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">classes</span></code> – a decorated map, as in
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">relabelling</span></code> – boolean (default <code class="docutils literal notranslate"><span class="pre">False</span></code>); whether to return the
+canonical labelling as well</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">automorphism_count</span></code> – boolean (default <code class="docutils literal notranslate"><span class="pre">False</span></code>); whether to
+return the number of automorphisms as well</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">root_rule</span></code> – the rule of the roots, as in
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a>; the key and the relabelling are those of
+the rule, the count does not depend on it</p></li>
+</ul>
+<p>OUTPUT: the key, a <code class="docutils literal notranslate"><span class="pre">bytes</span></code> object: the entries of the canonical form
+(see <a class="reference internal" href="#combisurf.isomorphism.canonical_form" title="combisurf.isomorphism.canonical_form"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_form()</span></code></a>) as C <code class="docutils literal notranslate"><span class="pre">int</span></code> in the machine byte order,
+the face permutation first, then each array of <code class="docutils literal notranslate"><span class="pre">data</span></code>, then each
+array of <code class="docutils literal notranslate"><span class="pre">classes</span></code>. Two maps with the same numbers of arrays of
+<code class="docutils literal notranslate"><span class="pre">data</span></code> and of <code class="docutils literal notranslate"><span class="pre">classes</span></code> have equal keys under the same rule if and
+only if their canonical forms are equal, that is, if and only if they
+are isomorphic.
+With <code class="docutils literal notranslate"><span class="pre">relabelling=True</span></code> or <code class="docutils literal notranslate"><span class="pre">automorphism_count=True</span></code>, a tuple
+<code class="docutils literal notranslate"><span class="pre">(key,</span> <span class="pre">relabelling)</span></code>, <code class="docutils literal notranslate"><span class="pre">(key,</span> <span class="pre">count)</span></code> or <code class="docutils literal notranslate"><span class="pre">(key,</span> <span class="pre">relabelling,</span>
+<span class="pre">count)</span></code>, where the relabelling is the one of
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a> and <code class="docutils literal notranslate"><span class="pre">count</span></code> the number of automorphisms
+(the length of the list of <a class="reference internal" href="#combisurf.isomorphism.automorphisms" title="combisurf.isomorphism.automorphisms"><code class="xref py py-func docutils literal notranslate"><span class="pre">automorphisms()</span></code></a>), a Python integer
+that may exceed 64 bits. On a disconnected map without <code class="docutils literal notranslate"><span class="pre">classes</span></code> it
+is the order <cite>prod |mathrm{Aut}(C)|^k k!</cite> of the product of wreath
+products over the kinds of <cite>k</cite> isomorphic components <cite>C</cite>, computed
+without listing the automorphisms; with <code class="docutils literal notranslate"><span class="pre">classes</span></code> it is the order
+of the subgroup that preserves the partitions of <code class="docutils literal notranslate"><span class="pre">classes</span></code>, computed
+by the search of <a class="reference internal" href="#combisurf.isomorphism.automorphism_generators" title="combisurf.isomorphism.automorphism_generators"><code class="xref py py-func docutils literal notranslate"><span class="pre">automorphism_generators()</span></code></a>. On a disconnected
+map with <code class="docutils literal notranslate"><span class="pre">classes</span></code>, the search of the key
+(<a class="reference internal" href="c/omap_algorithms.html#omap-algorithms-iso-search"><span class="std std-ref">Search over the components</span></a>) and the one of the count
+(<a class="reference internal" href="c/omap_algorithms.html#omap-algorithms-stabiliser"><span class="std std-ref">Stabiliser of the classes</span></a>) both stay exponential in the worst
+case.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">array</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_key</span><span class="p">,</span> <span class="n">canonical_form</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">fp</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">key</span> <span class="o">=</span> <span class="n">canonical_key</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_key</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">key</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_key</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">key</span>
+<span class="kc">False</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_key</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">relabelling</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">automorphism_count</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">(</span><span class="sa">b</span><span class="s1">'...'</span><span class="p">,</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span> <span class="mi">6</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With decorations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="n">canonical_key</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],),</span> <span class="n">relabelling</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">r</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">canonical_key</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">classes</span><span class="o">=</span><span class="p">([</span><span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">],),</span> <span class="n">automorphism_count</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span> <span class="n">count</span>
+<span class="p">(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="mi">6</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The key is the canonical form flattened:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">fp</span> <span class="o">=</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_form</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],))</span>
+<span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="n">canonical_key</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],)))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.canonical_labelling">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">canonical_labelling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_rule</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.canonical_labelling" title="Link to this definition">#</a></dt>
+<dd><p>Return the canonical labelling of the map with face permutation <code class="docutils literal notranslate"><span class="pre">fp</span></code>
+decorated by <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">classes</span></code>.</p>
+<p>On a connected map, the canonical labelling is the relabelling by the
+breadth-first walk (<a class="reference internal" href="c/omap.html#omap-relabelling"><span class="std std-ref">Relabelling from a root</span></a>) from the first root, in
+increasing order among the roots of the rule, whose key is minimal
+(<a class="reference internal" href="c/omap.html#omap-keys"><span class="std std-ref">Keys</span></a>). On a disconnected map, it is the labelling of the
+first leaf of the search, component after component, that reaches the
+minimal sequence of blocks (<a class="reference internal" href="c/omap.html#omap-blocks"><span class="std std-ref">Maps that may be disconnected</span></a>). The inactive edges then
+get the labels left, in increasing order.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fp</span></code> – the face permutation, a list or an <code class="docutils literal notranslate"><span class="pre">array('i')</span></code> of even
+length <code class="docutils literal notranslate"><span class="pre">n</span></code> with <code class="docutils literal notranslate"><span class="pre">-1</span></code> on the inactive half-edges, which must be a
+permutation of its active half-edges: the twin of the half-edge <code class="docutils literal notranslate"><span class="pre">h</span></code>
+is <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">^</span> <span class="pre">1</span></code>, and a folded edge, whose twin is inactive, is a fixed
+point of <code class="docutils literal notranslate"><span class="pre">fp</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> – a tuple of arrays of length <code class="docutils literal notranslate"><span class="pre">n</span></code> indexed by half-edges,
+kept exactly (default: no decoration); the values on the active
+half-edges are integers in the range of a C <code class="docutils literal notranslate"><span class="pre">int</span></code>, those on the
+inactive half-edges are ignored</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">classes</span></code> – a tuple of arrays of length <code class="docutils literal notranslate"><span class="pre">n</span></code> indexed by
+half-edges, kept up to a relabelling of their values (default: no
+decoration); the values on the active half-edges are any hashable
+values, renumbered before the conversion for the C code, those on the
+inactive half-edges are ignored</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">root_rule</span></code> – the rule of the roots (see
+<a class="reference internal" href="#module-combisurf.isomorphism" title="combisurf.isomorphism"><code class="xref py py-mod docutils literal notranslate"><span class="pre">isomorphism</span></code></a>): one of the integers
+<code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_ALL</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_MAX</span></code>,
+<code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_FEWEST</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_EDGE_MAX</span></code> and
+<code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_EDGE_FEWEST</span></code>, or one of the last four combined with
+<code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_DATA</span></code> by <code class="docutils literal notranslate"><span class="pre">|</span></code>. The default is
+<code class="docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_FEWEST</span> <span class="pre">|</span> <span class="pre">ROOTS_DATA</span></code>, the integer <code class="docutils literal notranslate"><span class="pre">10</span></code>, which is
+<code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_FEWEST</span></code> on a map without <code class="docutils literal notranslate"><span class="pre">data</span></code></p></li>
+</ul>
+<p>OUTPUT: an <code class="docutils literal notranslate"><span class="pre">array('i')</span></code> <code class="docutils literal notranslate"><span class="pre">r</span></code> that maps each half-edge to its
+canonical label. It is a permutation of <code class="docutils literal notranslate"><span class="pre">range(len(fp))</span></code> that
+preserves the pairs <code class="docutils literal notranslate"><span class="pre">{2e,</span> <span class="pre">2e+1}</span></code>. The active edges get the labels
+<code class="docutils literal notranslate"><span class="pre">0,</span> <span class="pre">...,</span> <span class="pre">2*ne</span> <span class="pre">-</span> <span class="pre">1</span></code> (<code class="docutils literal notranslate"><span class="pre">ne</span></code> the number of active edges) and the
+inactive edges the following ones, in increasing order.</p>
+<p>A malformed input raises an exception:</p>
+<ul class="simple">
+<li><p>a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for an <code class="docutils literal notranslate"><span class="pre">fp</span></code> of odd length or not a permutation of
+its active half-edges (the C code would read out of bounds), an array
+of decorations of a wrong length, or a <code class="docutils literal notranslate"><span class="pre">root_rule</span></code> that is not one
+of the nine integers above;</p></li>
+<li><p>a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> for <code class="docutils literal notranslate"><span class="pre">data</span></code> or <code class="docutils literal notranslate"><span class="pre">classes</span></code> not a tuple, or a value of
+<code class="docutils literal notranslate"><span class="pre">data</span></code> that is not an integer.</p></li>
+</ul>
+<p>A value of <code class="docutils literal notranslate"><span class="pre">data</span></code> outside the range of a C <code class="docutils literal notranslate"><span class="pre">int</span></code>, or a map too large
+for the buffers of the C code, which are counted in C <code class="docutils literal notranslate"><span class="pre">int</span></code>
+(<a class="reference internal" href="c/omap.html#c.DOMAP_ISO_SEARCH_WORK_SIZE" title="DOMAP_ISO_SEARCH_WORK_SIZE"><code class="xref c c-macro docutils literal notranslate"><span class="pre">DOMAP_ISO_SEARCH_WORK_SIZE</span></code></a>), raises an <code class="docutils literal notranslate"><span class="pre">OverflowError</span></code>.
+The searches can be interrupted: Ctrl-C raises a <code class="docutils literal notranslate"><span class="pre">KeyboardInterrupt</span></code>,
+and the <code class="docutils literal notranslate"><span class="pre">alarm</span></code> of <code class="docutils literal notranslate"><span class="pre">cysignals</span></code> an <code class="docutils literal notranslate"><span class="pre">AlarmInterrupt</span></code>. The other
+public functions of this module take their input and raise their
+exceptions likewise.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_labelling</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_labelling</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_labelling</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">canonical_labelling</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">classes</span><span class="o">=</span><span class="p">([</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">],))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.check_decorated_oriented_map">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">check_decorated_oriented_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.check_decorated_oriented_map" title="Link to this definition">#</a></dt>
+<dd><p>Check the length of the face permutation <code class="docutils literal notranslate"><span class="pre">fp</span></code> and the types and
+lengths of the decorations <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">classes</span></code>.</p>
+<p>The values are not read: a face permutation that is not a permutation
+of its active half-edges, or a value of <code class="docutils literal notranslate"><span class="pre">data</span></code> outside the range of a
+C <code class="docutils literal notranslate"><span class="pre">int</span></code>, passes this check. The public functions of this module, such
+as <a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a>, raise those errors when they convert the
+map for the C code.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fp</span></code> – a face permutation (a sequence of even length)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> – a tuple of arrays of length <code class="docutils literal notranslate"><span class="pre">len(fp)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">classes</span></code> – a tuple of arrays of length <code class="docutils literal notranslate"><span class="pre">len(fp)</span></code></p></li>
+</ul>
+<p>OUTPUT: <code class="docutils literal notranslate"><span class="pre">None</span></code>, or a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> or <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> on the first
+check that fails.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_decorated_oriented_map</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">check_decorated_oriented_map</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">([</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">6</span><span class="p">,),</span> <span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.check_root_rule">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">check_root_rule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_rule</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.check_root_rule" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">root_rule</span></code> as a Python <code class="docutils literal notranslate"><span class="pre">int</span></code> after checking that it is a
+valid rule of the roots.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">root_rule</span></code> – an object</p></li>
+</ul>
+<p>OUTPUT: <code class="docutils literal notranslate"><span class="pre">root_rule</span></code> as a Python <code class="docutils literal notranslate"><span class="pre">int</span></code> if it is one of the integers
+<code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_ALL</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_MAX</span></code>,
+<code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_HALF_EDGE_FEWEST</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_EDGE_MAX</span></code> and
+<code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_EDGE_FEWEST</span></code> (<code class="docutils literal notranslate"><span class="pre">0</span></code> to <code class="docutils literal notranslate"><span class="pre">4</span></code>), or one of the last four
+combined with <code class="xref py py-data docutils literal notranslate"><span class="pre">ROOTS_DATA</span></code> by <code class="docutils literal notranslate"><span class="pre">|</span></code> (<code class="docutils literal notranslate"><span class="pre">9</span></code> to <code class="docutils literal notranslate"><span class="pre">12</span></code>); any
+integer type is accepted except <code class="docutils literal notranslate"><span class="pre">bool</span></code>. Any other value raises a
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>sage: from combisurf.isomorphism import check_root_rule, ROOTS_ALL, ROOTS_EDGE_FEWEST, ROOTS_HALF_EDGE_MAX, ROOTS_DATA
+sage: check_root_rule(ROOTS_EDGE_FEWEST)
+4
+sage: type(check_root_rule(3)), check_root_rule(3)
+(&lt;class 'int'&gt;, 3)
+sage: type(check_root_rule(int(3))), check_root_rule(int(3))
+(&lt;class 'int'&gt;, 3)
+sage: type(check_root_rule(ROOTS_HALF_EDGE_MAX | ROOTS_DATA)), check_root_rule(ROOTS_HALF_EDGE_MAX | ROOTS_DATA)
+(&lt;class 'int'&gt;, 9)
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.complete_relabelling">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">complete_relabelling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ne</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.complete_relabelling" title="Link to this definition">#</a></dt>
+<dd><p>Complete in place the relabelling <code class="docutils literal notranslate"><span class="pre">r</span></code> of a map with <code class="docutils literal notranslate"><span class="pre">ne</span></code> active
+edges into a permutation, by labelling its inactive edges in increasing
+order.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> – an array of typecode <code class="docutils literal notranslate"><span class="pre">'i'</span></code> of even length: a relabelling
+that gives the labels <code class="docutils literal notranslate"><span class="pre">0,</span> <span class="pre">...,</span> <span class="pre">2*ne</span> <span class="pre">-</span> <span class="pre">1</span></code> to the half-edges of the
+active edges and <code class="docutils literal notranslate"><span class="pre">-1</span></code> to both half-edges of each inactive edge (not
+checked)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ne</span></code> – the number of active edges</p></li>
+</ul>
+<p>OUTPUT: <code class="docutils literal notranslate"><span class="pre">r</span></code> itself, where the edges <code class="docutils literal notranslate"><span class="pre">e</span></code> with <code class="docutils literal notranslate"><span class="pre">r[2*e]</span> <span class="pre">==</span> <span class="pre">-1</span></code>, in
+increasing order, get the labels <code class="docutils literal notranslate"><span class="pre">2*ne,</span> <span class="pre">2*ne</span> <span class="pre">+</span> <span class="pre">1</span></code>, then <code class="docutils literal notranslate"><span class="pre">2*ne</span> <span class="pre">+</span> <span class="pre">2,</span>
+<span class="pre">2*ne</span> <span class="pre">+</span> <span class="pre">3</span></code>, and so on.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">array</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
+<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">complete_relabelling</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">r</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">complete_relabelling</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">complete_relabelling</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="ow">is</span> <span class="n">r</span>
+<span class="kc">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="combisurf.isomorphism.isomorphism">
+<span class="sig-prename descclassname"><span class="pre">combisurf.isomorphism.</span></span><span class="sig-name descname"><span class="pre">isomorphism</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fp2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classes2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_rule</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.isomorphism.isomorphism" title="Link to this definition">#</a></dt>
+<dd><p>Return an isomorphism from the first decorated map to the second, or
+<code class="docutils literal notranslate"><span class="pre">None</span></code> if they are not isomorphic.</p>
+<p>On the active edges, the isomorphism returned sends the half-edge of
+canonical label <code class="docutils literal notranslate"><span class="pre">i</span></code> in the first map to the one of canonical label
+<code class="docutils literal notranslate"><span class="pre">i</span></code> in the second, the canonical labellings being those of
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a> under the same rule. The maps are
+isomorphic when their minimal keys (<a class="reference internal" href="c/omap.html#omap-keys"><span class="std std-ref">Keys</span></a>), or on
+disconnected maps their minimal sequences of blocks
+(<a class="reference internal" href="c/omap.html#omap-blocks"><span class="std std-ref">Maps that may be disconnected</span></a>), are equal; <code class="docutils literal notranslate"><span class="pre">None</span></code> is returned otherwise.</p>
+<p>INPUT:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fp1</span></code>, <code class="docutils literal notranslate"><span class="pre">data1</span></code>, <code class="docutils literal notranslate"><span class="pre">classes1</span></code> and <code class="docutils literal notranslate"><span class="pre">fp2</span></code>, <code class="docutils literal notranslate"><span class="pre">data2</span></code>,
+<code class="docutils literal notranslate"><span class="pre">classes2</span></code> – two decorated maps, as <code class="docutils literal notranslate"><span class="pre">fp</span></code>, <code class="docutils literal notranslate"><span class="pre">data</span></code> and
+<code class="docutils literal notranslate"><span class="pre">classes</span></code> in <a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a> (<code class="docutils literal notranslate"><span class="pre">classes1</span></code> and
+<code class="docutils literal notranslate"><span class="pre">classes2</span></code> default to no decoration); <code class="docutils literal notranslate"><span class="pre">data1</span></code> and <code class="docutils literal notranslate"><span class="pre">data2</span></code> must
+have the same number of arrays, and <code class="docutils literal notranslate"><span class="pre">classes1</span></code> and <code class="docutils literal notranslate"><span class="pre">classes2</span></code>
+likewise, else a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> is raised</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">root_rule</span></code> – the rule of the roots in both maps, as in
+<a class="reference internal" href="#combisurf.isomorphism.canonical_labelling" title="combisurf.isomorphism.canonical_labelling"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a></p></li>
+</ul>
+<p>OUTPUT: <code class="docutils literal notranslate"><span class="pre">None</span></code> or an <code class="docutils literal notranslate"><span class="pre">array('i')</span></code> <code class="docutils literal notranslate"><span class="pre">r</span></code> of length <code class="docutils literal notranslate"><span class="pre">len(fp1)</span></code>
+that preserves the pairs <code class="docutils literal notranslate"><span class="pre">{2e,</span> <span class="pre">2e+1}</span></code>, with <code class="docutils literal notranslate"><span class="pre">r[fp1[h]]</span> <span class="pre">==</span>
+<span class="pre">fp2[r[h]]</span></code> and <code class="docutils literal notranslate"><span class="pre">data2[i][r[h]]</span> <span class="pre">==</span> <span class="pre">data1[i][h]</span></code> for every active
+<code class="docutils literal notranslate"><span class="pre">h</span></code>, and such that <code class="docutils literal notranslate"><span class="pre">classes1[i][h]</span> <span class="pre">-&gt;</span> <span class="pre">classes2[i][r[h]]</span></code> on the
+active <code class="docutils literal notranslate"><span class="pre">h</span></code> is a well-defined bijection of values for each <code class="docutils literal notranslate"><span class="pre">i</span></code>. When
+<code class="docutils literal notranslate"><span class="pre">len(fp1)</span> <span class="pre">==</span> <span class="pre">len(fp2)</span></code>, <code class="docutils literal notranslate"><span class="pre">r</span></code> is a permutation of <code class="docutils literal notranslate"><span class="pre">range(len(fp1))</span></code>
+that sends the inactive edges of the first map to those of the second in
+increasing order; otherwise <code class="docutils literal notranslate"><span class="pre">r</span></code> is <code class="docutils literal notranslate"><span class="pre">-1</span></code> on the half-edges of the
+inactive edges of the first map.</p>
+<p>EXAMPLES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.isomorphism</span><span class="w"> </span><span class="kn">import</span> <span class="n">isomorphism</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">fp1</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>  <span class="c1"># the faces (0,1,2)(~0,~2,~1)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">fp2</span> <span class="o">=</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># the faces (0,2,1)(~0,~1,~2)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">fp3</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># the faces (0,1,2)(~0,~1,~2)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">isomorphism</span><span class="p">(</span><span class="n">fp1</span><span class="p">,</span> <span class="p">(),</span> <span class="n">fp2</span><span class="p">,</span> <span class="p">())</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">isomorphism</span><span class="p">(</span><span class="n">fp1</span><span class="p">,</span> <span class="p">(),</span> <span class="n">fp3</span><span class="p">,</span> <span class="p">())</span> <span class="ow">is</span> <span class="kc">None</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">isomorphism</span><span class="p">(</span><span class="n">fp1</span><span class="p">,</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],),</span> <span class="n">fp2</span><span class="p">,</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">c</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">isomorphism</span><span class="p">(</span><span class="n">fp3</span><span class="p">,</span> <span class="p">(),</span> <span class="n">fp3</span><span class="p">,</span> <span class="p">(),</span> <span class="p">(</span><span class="n">c</span><span class="p">,),</span> <span class="p">([</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">],))</span>
+<span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="conjugate_tree_naive.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="isomorphism_naive.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.automorphism_generators"><code class="docutils literal notranslate"><span class="pre">automorphism_generators()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.automorphisms"><code class="docutils literal notranslate"><span class="pre">automorphisms()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.canonical_form"><code class="docutils literal notranslate"><span class="pre">canonical_form()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.canonical_key"><code class="docutils literal notranslate"><span class="pre">canonical_key()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.canonical_labelling"><code class="docutils literal notranslate"><span class="pre">canonical_labelling()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.check_decorated_oriented_map"><code class="docutils literal notranslate"><span class="pre">check_decorated_oriented_map()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.check_root_rule"><code class="docutils literal notranslate"><span class="pre">check_root_rule()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.complete_relabelling"><code class="docutils literal notranslate"><span class="pre">complete_relabelling()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.isomorphism.isomorphism"><code class="docutils literal notranslate"><span class="pre">isomorphism()</span></code></a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By the combisurf authors
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, the combisurf authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

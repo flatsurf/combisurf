@@ -27,6 +27,17 @@ Module Reference
    crossing_arcs
    conjugate_tree
    conjugate_tree_naive
+   isomorphism
+   isomorphism_naive
+
+.. toctree::
+   :maxdepth: 1
+   :caption: C library
+
+   c/perm
+   c/misc
+   c/omap
+   c/omap_algorithms
 
 .. toctree::
    :maxdepth: 1

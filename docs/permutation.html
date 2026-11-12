@@ -196,6 +196,15 @@
 <li class="toctree-l1"><a class="reference internal" href="crossing_arcs.html"><code class="docutils literal notranslate"><span class="pre">crossing_arcs</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree</span></code></a></li>
 <li class="toctree-l1"><a class="reference internal" href="conjugate_tree_naive.html"><code class="docutils literal notranslate"><span class="pre">conjugate_tree_naive</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="isomorphism.html"><code class="docutils literal notranslate"><span class="pre">isomorphism</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="isomorphism_naive.html"><code class="docutils literal notranslate"><span class="pre">isomorphism_naive</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">C library</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="c/perm.html"><code class="docutils literal notranslate"><span class="pre">perm.h</span></code>: partial permutations in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/misc.html"><code class="docutils literal notranslate"><span class="pre">misc.h</span></code>: helpers in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/omap.html"><code class="docutils literal notranslate"><span class="pre">omap.h</span></code>: oriented maps in C</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c/omap_algorithms.html">Algorithms of the isomorphism code</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
@@ -360,7 +369,6 @@
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.argmin"><code class="docutils literal notranslate"><span class="pre">argmin()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.edge_relabelling_from"><code class="docutils literal notranslate"><span class="pre">edge_relabelling_from()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.least_rotation"><code class="docutils literal notranslate"><span class="pre">least_rotation()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_are_in_same_orbit"><code class="docutils literal notranslate"><span class="pre">perm_are_in_same_orbit()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_base64_str"><code class="docutils literal notranslate"><span class="pre">perm_base64_str()</span></code></a></li>
@@ -400,13 +408,8 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_random"><code class="docutils literal notranslate"><span class="pre">perm_random()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_random_centralizer"><code class="docutils literal notranslate"><span class="pre">perm_random_centralizer()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_random_conjugacy_class"><code class="docutils literal notranslate"><span class="pre">perm_random_conjugacy_class()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_relabel_on_edges"><code class="docutils literal notranslate"><span class="pre">perm_relabel_on_edges()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_trim"><code class="docutils literal notranslate"><span class="pre">perm_trim()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_are_transitive"><code class="docutils literal notranslate"><span class="pre">perms_are_transitive()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_canonical_labels"><code class="docutils literal notranslate"><span class="pre">perms_canonical_labels()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_canonical_labels_from"><code class="docutils literal notranslate"><span class="pre">perms_canonical_labels_from()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_orbits"><code class="docutils literal notranslate"><span class="pre">perms_orbits()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_relabel"><code class="docutils literal notranslate"><span class="pre">perms_relabel()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_transitive_components"><code class="docutils literal notranslate"><span class="pre">perms_transitive_components()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.str_to_cycles"><code class="docutils literal notranslate"><span class="pre">str_to_cycles()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.str_to_cycles_and_data"><code class="docutils literal notranslate"><span class="pre">str_to_cycles_and_data()</span></code></a></li>
@@ -449,12 +452,6 @@ where each list is a slice content[bounds[i]:bounds[i+1]].</p></li>
 <span class="mi">3</span>
 </pre></div>
 </div>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="combisurf.permutation.edge_relabelling_from">
-<span class="sig-prename descclassname"><span class="pre">combisurf.permutation.</span></span><span class="sig-name descname"><span class="pre">edge_relabelling_from</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relabelling</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pnew</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.permutation.edge_relabelling_from" title="Link to this definition">#</a></dt>
-<dd><p>We go along cycles of <code class="docutils literal notranslate"><span class="pre">p</span></code></p>
 </dd></dl>
 
 <dl class="py function">
@@ -536,10 +533,18 @@ where each list is a slice content[bounds[i]:bounds[i+1]].</p></li>
 <dl class="py function">
 <dt class="sig sig-object py" id="combisurf.permutation.perm_check">
 <span class="sig-prename descclassname"><span class="pre">combisurf.permutation.</span></span><span class="sig-name descname"><span class="pre">perm_check</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">involution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.permutation.perm_check" title="Link to this definition">#</a></dt>
-<dd><p>Checks that <code class="docutils literal notranslate"><span class="pre">l</span></code> is a partial permutation of <cite>{0, 1, …, n-1}</cite>.</p>
+<dd><p>Return whether <code class="docutils literal notranslate"><span class="pre">l</span></code> is a partial injection of <cite>{0, 1, …, n-1}</cite>.</p>
+<p>The result is <code class="docutils literal notranslate"><span class="pre">True</span></code> when <code class="docutils literal notranslate"><span class="pre">l</span></code> is an <code class="docutils literal notranslate"><span class="pre">array('i')</span></code> whose first <code class="docutils literal notranslate"><span class="pre">n</span></code>
+values are <code class="docutils literal notranslate"><span class="pre">-1</span></code> or in <code class="docutils literal notranslate"><span class="pre">range(n)</span></code>, the values other than <code class="docutils literal notranslate"><span class="pre">-1</span></code>
+pairwise distinct, as checked by the C function <a class="reference internal" href="c/perm.html#c._perm_check" title="_perm_check"><code class="xref c c-func docutils literal notranslate"><span class="pre">_perm_check()</span></code></a>,
+and <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise (an object that is not an <code class="docutils literal notranslate"><span class="pre">array('i')</span></code>
+included); an active point may be sent to an inactive one.</p>
 <p>INPUT:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> - integer (optional)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">l</span></code> – an object</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> – integer (default: <code class="docutils literal notranslate"><span class="pre">len(l)</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">involution</span></code> – an <code class="docutils literal notranslate"><span class="pre">array('i')</span></code> or <code class="docutils literal notranslate"><span class="pre">None</span></code> (default); if given,
+<code class="docutils literal notranslate"><span class="pre">l</span></code> must also commute with it on <code class="docutils literal notranslate"><span class="pre">range(n)</span></code></p></li>
 </ul>
 <p>EXAMPLES:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.permutation</span><span class="w"> </span><span class="kn">import</span> <span class="n">perm_check</span>
@@ -555,6 +560,8 @@ where each list is a slice content[bounds[i]:bounds[i+1]].</p></li>
 <span class="kc">True</span>
 
 <span class="n">sage</span><span class="p">:</span> <span class="n">perm_check</span><span class="p">(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="mi">2</span><span class="p">)</span>
+<span class="kc">True</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">perm_check</span><span class="p">(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
 <span class="kc">True</span>
 </pre></div>
 </div>
@@ -1382,26 +1389,6 @@ case the operation is done inplace)</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="combisurf.permutation.perm_relabel_on_edges">
-<span class="sig-prename descclassname"><span class="pre">combisurf.permutation.</span></span><span class="sig-name descname"><span class="pre">perm_relabel_on_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ne</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.permutation.perm_relabel_on_edges" title="Link to this definition">#</a></dt>
-<dd><p>INPUT:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> - relabelling permutation on half edges (list of length n)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ne</span></code> - number of edges</p></li>
-</ul>
-<p>OUTPUT: two lists of length m</p>
-<p>EXAMPLES:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">array</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
-<span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.permutation</span><span class="w"> </span><span class="kn">import</span> <span class="n">perm_relabel_on_edges</span>
-
-<span class="n">sage</span><span class="p">:</span> <span class="n">r</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">perm_relabel_on_edges</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
-<span class="p">(</span><span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">array</span><span class="p">(</span><span class="s1">'i'</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="combisurf.permutation.perm_trim">
 <span class="sig-prename descclassname"><span class="pre">combisurf.permutation.</span></span><span class="sig-name descname"><span class="pre">perm_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.permutation.perm_trim" title="Link to this definition">#</a></dt>
 <dd><p>Clear trailing <cite>-1</cite> from the array <code class="docutils literal notranslate"><span class="pre">p</span></code> inplace.</p>
@@ -1453,78 +1440,6 @@ the same domain (ie the -1 occur at the same positions).</p>
 <span class="kc">True</span>
 <span class="n">sage</span><span class="p">:</span> <span class="n">perms_are_transitive</span><span class="p">([</span><span class="n">p0</span><span class="p">,</span> <span class="n">p1</span><span class="p">])</span>
 <span class="kc">False</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="combisurf.permutation.perms_canonical_labels">
-<span class="sig-prename descclassname"><span class="pre">combisurf.permutation.</span></span><span class="sig-name descname"><span class="pre">perms_canonical_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.permutation.perms_canonical_labels" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="combisurf.permutation.perms_canonical_labels_from">
-<span class="sig-prename descclassname"><span class="pre">combisurf.permutation.</span></span><span class="sig-name descname"><span class="pre">perms_canonical_labels_from</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.permutation.perms_canonical_labels_from" title="Link to this definition">#</a></dt>
-<dd><p>Return canonical labels for <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> that starts at <code class="docutils literal notranslate"><span class="pre">j0</span></code>.</p>
-<p>INPUT:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">x</span></code> – list - a permutation of <cite>[0, …, n]</cite> as a list</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">y</span></code> – list of permutations of <cite>[0, …, n]</cite> as a list of lists</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">j0</span></code> – an index in [0, …, n]</p></li>
-</ul>
-<p>OUTPUT:</p>
-<p>mapping: a permutation that specify the new labels</p>
-<p>EXAMPLES:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.permutation</span><span class="w"> </span><span class="kn">import</span> <span class="n">perms_canonical_labels_from</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">perms_canonical_labels_from</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span><span class="mi">0</span><span class="p">)</span>
-<span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">perms_canonical_labels_from</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],[[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]],</span><span class="mi">0</span><span class="p">)</span>
-<span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">perms_canonical_labels_from</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],[[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]],</span><span class="mi">1</span><span class="p">)</span>
-<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">perms_canonical_labels_from</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],[[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]],</span><span class="mi">2</span><span class="p">)</span>
-<span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="combisurf.permutation.perms_orbits">
-<span class="sig-prename descclassname"><span class="pre">combisurf.permutation.</span></span><span class="sig-name descname"><span class="pre">perms_orbits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.permutation.perms_orbits" title="Link to this definition">#</a></dt>
-<dd><p>Return the list of orbits of the permutation group generated by <code class="docutils literal notranslate"><span class="pre">p</span></code>.</p>
-<p>The function assumes that the list of partial permutations act on
-the same domain (ie the -1 occur at the same positions).</p>
-<p>EXAMPLES:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.permutation</span><span class="w"> </span><span class="kn">import</span> <span class="n">perm_init</span><span class="p">,</span> <span class="n">perms_orbits</span>
-
-<span class="n">sage</span><span class="p">:</span> <span class="n">p0</span> <span class="o">=</span> <span class="n">perm_init</span><span class="p">(</span><span class="s2">"(0,1)(2,3)(4,5)(6,7)"</span><span class="p">)</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">perm_init</span><span class="p">(</span><span class="s2">"(0,4)(1,5)(2,6)(3,7)"</span><span class="p">)</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">perms_orbits</span><span class="p">((</span><span class="n">p0</span><span class="p">,</span> <span class="n">p1</span><span class="p">))</span>
-<span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">]]</span>
-</pre></div>
-</div>
-<p>An example with partial permutations:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">p0</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">p1</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">perms_orbits</span><span class="p">((</span><span class="n">p0</span><span class="p">,</span> <span class="n">p1</span><span class="p">))</span>
-<span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]]</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="combisurf.permutation.perms_relabel">
-<span class="sig-prename descclassname"><span class="pre">combisurf.permutation.</span></span><span class="sig-name descname"><span class="pre">perms_relabel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#combisurf.permutation.perms_relabel" title="Link to this definition">#</a></dt>
-<dd><p>Relabel the list of permutations <code class="docutils literal notranslate"><span class="pre">p</span></code> according to <code class="docutils literal notranslate"><span class="pre">m</span></code>.</p>
-<p>INPUT:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">p</span></code> - a list of permutations</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">m</span></code> - the relabeling permutation</p></li>
-</ul>
-<p>EXAMPLES:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">combisurf.permutation</span><span class="w"> </span><span class="kn">import</span> <span class="n">perms_relabel</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">perms_relabel</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]],[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
-<span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1671,7 +1586,6 @@ permutations <code class="docutils literal notranslate"><span class="pre">p</spa
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.argmin"><code class="docutils literal notranslate"><span class="pre">argmin()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.edge_relabelling_from"><code class="docutils literal notranslate"><span class="pre">edge_relabelling_from()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.least_rotation"><code class="docutils literal notranslate"><span class="pre">least_rotation()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_are_in_same_orbit"><code class="docutils literal notranslate"><span class="pre">perm_are_in_same_orbit()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_base64_str"><code class="docutils literal notranslate"><span class="pre">perm_base64_str()</span></code></a></li>
@@ -1711,13 +1625,8 @@ permutations <code class="docutils literal notranslate"><span class="pre">p</spa
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_random"><code class="docutils literal notranslate"><span class="pre">perm_random()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_random_centralizer"><code class="docutils literal notranslate"><span class="pre">perm_random_centralizer()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_random_conjugacy_class"><code class="docutils literal notranslate"><span class="pre">perm_random_conjugacy_class()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_relabel_on_edges"><code class="docutils literal notranslate"><span class="pre">perm_relabel_on_edges()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perm_trim"><code class="docutils literal notranslate"><span class="pre">perm_trim()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_are_transitive"><code class="docutils literal notranslate"><span class="pre">perms_are_transitive()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_canonical_labels"><code class="docutils literal notranslate"><span class="pre">perms_canonical_labels()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_canonical_labels_from"><code class="docutils literal notranslate"><span class="pre">perms_canonical_labels_from()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_orbits"><code class="docutils literal notranslate"><span class="pre">perms_orbits()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_relabel"><code class="docutils literal notranslate"><span class="pre">perms_relabel()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.perms_transitive_components"><code class="docutils literal notranslate"><span class="pre">perms_transitive_components()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.str_to_cycles"><code class="docutils literal notranslate"><span class="pre">str_to_cycles()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#combisurf.permutation.str_to_cycles_and_data"><code class="docutils literal notranslate"><span class="pre">str_to_cycles_and_data()</span></code></a></li>
