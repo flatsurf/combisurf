@@ -1119,7 +1119,7 @@ class StarShapedSpace:
     
     def add_vertex(self, vertex):
         r"""
-        Add a vertex to the star shaped space with no edges.
+        Add a vertex to the star shaped space with no edges. Return the index of this vertex.
         """
         
         self._vertices.append(vertex)
@@ -1130,8 +1130,9 @@ class StarShapedSpace:
     
     def add_edge(self, vertex1, vertex2, edge):
         r"""
-        Add an edge from vertex1 to vertex2 that project to ``edge``
+        Add an edge from vertex1 to vertex2 that project to ``edge``.
         """
+        
         Q = self._quadsystem
         if not self.contains_edge(vertex1, edge):
             self._outedges[vertex1].append((edge, vertex2))
@@ -1143,7 +1144,8 @@ class StarShapedSpace:
         r"""
         Test whether the star shaped space contains the edge ``edge`` at vertex ``vertex``.
         """
-        
+        if vertex >= len(self._vertices):
+            raise ValueError(f"There is no vertex {vertex} in the StarShapedSpace.")
         result = False
         for elt in self._outedges[vertex]:
             if elt[0] == edge:
@@ -1166,7 +1168,7 @@ class StarShapedSpace:
         
     def rotate(self, vertex, edge, turn):
         r"""
-        Rotate around ``vertex`` starting from ``edge`` and starting from ``edge``
+        Rotate around ``vertex`` starting from ``edge`` and starting from ``edge``.
         """
         if self.contains_edge(vertex, edge):
             return self._rotate_list[edge][turn]
@@ -1195,7 +1197,6 @@ class StarShapedSpace:
         r"""
         Insert an edge in the star shaped space and add vertices and edges to maintain it star shaped.
         """
-        
         if self.contains_edge(vertex, edge):
             return self.opposite_vertex(vertex, edge)
         turn, out_edge = self.turn(vertex, edge)
@@ -1203,10 +1204,10 @@ class StarShapedSpace:
         new_vertex = self.add_vertex(opposite_edge%2)
         if turn != None and abs(turn) == 1:
             old_vertex = self.opposite_vertex(vertex, out_edge)
-            new_edge = self._rotate_list[out_edge][-turn]
+            new_edge = self._rotate_list[self._quadsystem._quad._ep(out_edge)][turn]
             self.insert_edge(old_vertex, new_edge)
             square_vertex = self.opposite_vertex(old_vertex, new_edge)
-            square_edge = self.rotate(square_vertex, self._quadsystem._quad._ep(new_edge), -turn)
+            square_edge = self.rotate(square_vertex, self._quadsystem._quad._ep(new_edge), turn)
             self.add_edge(new_vertex, square_vertex, self._quadsystem._quad._ep(square_edge))
-        self.add_edge(vertex, new_vertex, edge)
+        self.add_edge(new_vertex, vertex, opposite_edge)
         return new_vertex

@@ -54,3 +54,30 @@ def test_is_homotopy():
     assert w9.is_homotopic(w8)
     assert w8.is_homotopic(w9)
     assert w8.is_homotopic(w8)
+
+
+def test_simplicity():
+    from combisurf import OrientedMap
+    from combisurf import Walk
+
+    m = OrientedMap(vp = [2, 12, 4, 5, 6, 11, 0, 8, 10, 13, 1, 18, 14, 20, 7, 16, 15, 3, 17, 9, 21, 19], mutable=False)
+
+    w1 = Walk(m, [])
+    w2 = Walk(m, [7, 6])
+    w3 = Walk(m, [16])
+    w4 = Walk(m, [18, 13, 14, 16, 11, 7, 2])
+    w5 = Walk(m, [8, 21, 19, 17, 15])
+    w6 = Walk(m, [2, 17, 15, 12, 9, 7])
+    w7 = Walk(m, [2, 17, 15, 12, 9, 7, 4, 3, 0, 10, 5])
+    w8 = Walk(m, [2, 17, 15, 12, 9, 7, 4, 3, 0, 10, 5, 0])
+    w9 = Walk(m, [15, 7, 2, 17, 15, 12, 9, 7, 4, 3, 0, 10, 5, 0, 12, 19, 17])
+
+    assert w1.simplicity()
+    assert not w2.simplicity()
+    assert w3.simplicity()
+    assert w4.simplicity()
+    assert not w5.simplicity()
+    assert w6.simplicity()
+    assert w7.simplicity()
+    assert not w8.simplicity()
+    assert not w9.simplicity()

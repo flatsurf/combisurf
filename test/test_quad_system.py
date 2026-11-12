@@ -226,3 +226,45 @@ def test_quad_system_relabel():
         for h in m.half_edges():
             if proj2[h]:
                 assert list(proj2[h ^ 1]) == [proj2[h][1] ^ 1, proj2[h][0] ^ 1], (m, h)
+
+
+def test_star_shaped_space():
+    m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+    q = Quad_system(m)
+    s0 = StarShapedSpace(q, 0)
+    s1 = StarShapedSpace(q, 1)
+
+    assert s0._vertices == [0]
+    assert s0._quadsystem == s1._quadsystem == q
+    assert s1._vertices == [1]
+
+    assert s0.insert_edge(0, 8) == 1
+    assert s0.insert_edge(0, 6) == 2
+    assert s0.insert_edge(1, 7) == 3
+
+    assert s0.contains_edge(1, 7)
+    assert s0.contains_edge(1, 9)
+    assert not s0.contains_edge(1, 11)
+    assert not s0.contains_edge(3, 8)
+    with pytest.raises(ValueError, match="There is no vertex 4 in the StarShapedSpace."):
+        s0.contains_edge(4, 3)
+
+    assert s0.insert_edge(1, 13) == 4
+    assert s0._vertices == [0, 1, 1, 0, 0, 1]
+    assert s0._inedges[0] == {8: 1, 6: 2, 10: 5}
+    assert s0._outedges[4] == [(4, 5), (12, 1)]
+
+    assert s1.insert_edge(0, 1) == 1
+    assert s1.insert_edge(1, 10) == 2
+    assert s1.insert_edge(2, 1) == 3
+    assert s1.insert_edge(3, 8) == 4
+    assert s1.insert_edge(0, 7) == 8
+    assert s1.insert_edge(0, 5) == 7
+    assert s1._vertices == [1, 0, 1, 0, 1, 0, 1, 0, 0]
+    assert s1._inedges[0] == {1: 1, 5: 7, 7: 8}
+    assert s1._outedges[0] == []
+    assert s1._out_edges[4] == [(3, 5), (9, 3)]
+    assert s1._inedges[4] == {}
+    
+
+    
