@@ -1,33 +1,6 @@
 import pytest
 
-from test_fold import find_isomorphism, sample_maps
-
-
-def all_isomorphisms(A, B):
-    avp, afp = A.vertex_permutation(copy=False), A.face_permutation(copy=False)
-    bvp, bfp = B.vertex_permutation(copy=False), B.face_permutation(copy=False)
-    AH, BH = list(A.half_edges()), list(B.half_edges())
-    out = []
-    if len(AH) != len(BH):
-        return out
-    for k0 in BH:
-        h0 = AH[0]
-        f = {h0: k0}
-        todo = [h0]
-        ok = True
-        while todo and ok:
-            x = todo.pop()
-            for xx, kk in ((avp[x], bvp[f[x]]), (afp[x], bfp[f[x]]), (x ^ 1, f[x] ^ 1)):
-                if xx in f:
-                    if f[xx] != kk:
-                        ok = False
-                        break
-                else:
-                    f[xx] = kk
-                    todo.append(xx)
-        if ok and len(f) == len(AH) and len(set(f.values())) == len(AH):
-            out.append(f)
-    return out
+from test_fold import sample_maps
 
 
 def degenerate_maps():
@@ -128,7 +101,11 @@ def test_quad_system_matches_QuadSystem():
         # QuadSystem._proj is not orientation consistent: _proj[ep(h)] is not
         # the reverse of _proj[h]. The two agree on the even half-edges, which
         # already pins the quadrangulation and the projection.
-        carried = [f for f in all_isomorphisms(q, Q._quad)
+        # every isomorphism from q to Q._quad is one of them composed with an
+        # automorphism of q
+        ok, r = q.is_isomorphic(Q._quad, certificate=True)
+        isomorphisms = [[r[a[x]] for x in range(len(r))] for a in q.automorphisms()] if ok else []
+        carried = [f for f in isomorphisms
                    if all((not proj[h] and not Q._proj[h])
                           or [f[x] for x in proj[h]] == list(Q._proj[h])
                           for h in m.half_edges() if h % 2 == 0)]
@@ -205,7 +182,7 @@ def test_quad_system_relabel():
         assert list(compact.half_edges()) == list(range(2 * compact.num_edges())), m
 
         # the two describe the same quadrangulation
-        assert find_isomorphism(plain, compact) is not None, m
+        assert plain.is_isomorphic(compact), m
 
         # the two projections differ exactly by the compaction, which goes
         # edge by edge and keeps the parity inside each edge

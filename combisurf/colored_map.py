@@ -506,3 +506,139 @@ class ColoredOrientedMap(OrientedMap):
 
     def smoothing(self, h, check=True):
         raise NotImplementedError
+
+    def canonical_labelling(self, *args, **kwds):
+        r"""
+        Return the canonical labelling of this coloured map.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.canonical_labelling()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def canonical_form(self, *args, **kwds):
+        r"""
+        Return the canonical form of this coloured map.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.canonical_form()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def automorphisms(self, *args, **kwds):
+        r"""
+        Return the automorphisms of this coloured map.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.automorphisms()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def is_isomorphic(self, *args, **kwds):
+        r"""
+        Return whether this coloured map is isomorphic to another.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.is_isomorphic(m)
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def num_automorphisms(self, *args, **kwds):
+        r"""
+        Return the order of the automorphism group of this coloured map.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.num_automorphisms()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def automorphism_vertex_action(self, *args, **kwds):
+        r"""
+        Return the permutation of the vertices induced by an automorphism.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.automorphism_vertex_action([0, 1, 2, 3, 4, 5])
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def automorphism_face_action(self, *args, **kwds):
+        r"""
+        Return the permutation of the faces induced by an automorphism.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.automorphism_face_action([0, 1, 2, 3, 4, 5])
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def automorphism_generators(self, *args, **kwds):
+        r"""
+        Return generators of the automorphism group of this coloured map.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.automorphism_generators()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
+
+    def canonical_roots(self, *args, **kwds):
+        r"""
+        Return the half-edges that some minimiser of the canonical key
+        labels ``0``.
+
+        EXAMPLES::
+
+            sage: from combisurf import ColoredOrientedMap
+            sage: m = ColoredOrientedMap(fp="(0,1,2)(~0,~2,~1)", ecolors=[0, 1, 1])
+            sage: m.canonical_roots()
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: colours are not supported yet
+        """
+        raise NotImplementedError("colours are not supported yet")
