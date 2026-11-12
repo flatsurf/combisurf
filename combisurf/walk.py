@@ -91,12 +91,15 @@ class Walk:
                 raise ValueError(f"edge {elt} does not belong to the oriented map {self._oriented_map}.")
             elif not previous is None:
                 current = self._oriented_map._ep(previous)
-                while current != self._oriented_map._ep(previous) or current != elt:
+                current = self._oriented_map._vp[current]
+                while current != self._oriented_map._ep(previous) and current != elt:
                     current = self._oriented_map._vp[current]
                 if current != elt:
                     raise ValueError(f"edge {elt} does not follow edge {previous}.")
             previous = elt
 
+    def __repr__(self):
+        return f"Walk on map {self._oriented_map} with edge sequence {self._walk}."
     
     def __eq__(self, other):
         return (self._oriented_map == other._oriented_map) and (self._walk == other._walk)
