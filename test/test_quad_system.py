@@ -203,3 +203,124 @@ def test_quad_system_relabel():
         for h in m.half_edges():
             if proj2[h]:
                 assert list(proj2[h ^ 1]) == [proj2[h][1] ^ 1, proj2[h][0] ^ 1], (m, h)
+
+
+
+def test_origin_simplification():
+    m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12, 14], [3, 11, 13, 7, 1, 9, 15]])
+    forest = array('i', [-1, 1, 5])
+    coforest = array('i', [-1])
+    q = QuadSystem(m, forest=forest, coforest=coforest)
+
+    #spur removal
+    g0 = Geodesic(q, [8, 5, 2, 1, 4, 9])
+    g0.origin_simplification()
+    g1 = Geodesic(q, [2, 1])
+    assert g0 == g1 
+
+    # whole geodesic bracket with firsrturn = 1
+    g2 = Geodesic(q, [4, 7, 12, 23])
+    g2.origin_simplification()
+    g3 = Geodesic(q, [20, 11])
+    assert g2 == g3
+
+    # whole geodesic bracket with firstturn = d-1
+    g4 = Geodesic(q, [1, 16, 23, 2, 17, 22, 13, 6])
+    g4.origin_simplification()
+    g5 = Geodesic(q, [15, 6, 9, 14, 1, 10])
+    assert g4 == g5
+
+    # bracket starting at the origin
+    g6 = Geodesic(q, [7, 2, 17, 0])
+    g6.origin_simplification()
+    g7 = Geodesic(q, [20, 17])
+    assert g6 == g7
+    g8 = Geodesic(q, [14, 1, 10, 3, 18, 21, 18, 11])
+    g8.origin_simplification()
+    g9 = Geodesic(q, [17, 22, 13, 18, 21, 18])
+    assert g8 == g9
+    g10 = Geodesic(q, [20, 11, 8, 1])
+    g10.origin_simplification()
+    g11 = Geodesic(q, [7, 12])
+    assert g10 == g11
+    g12 = Geodesic(q, [23, 12, 17, 10, 3, 18])
+    g12.origin_simplification()
+    g13 = Geodesic(q, [6, 17, 10, 3])
+    assert g12 == g13
+
+    # bracket ending at the origin
+    g14 = Geodesic(q, [5, 18, 11, 14])
+    g14.origin_simplification()
+    g15 = Geodesic(q, [18, 17])
+    assert g14 == g15
+    g16 = Geodesic(q, [10, 7, 12, 19, 6, 9])
+    g16.origin_simplification()
+    g17 = Geodesic(q, [7, 12, 23, 2])
+    assert g16 == g17
+    g18 = Geodesic(q, [1, 16, 3, 6])
+    g18.origin_simplification()
+    g19 = Geodesic(q, [16, 21])
+    assert g18 == g19
+    g20 = Geodesic(q, [10, 19, 20, 19, 2, 11, 0, 15])
+    g20.origin_simplification()
+    g21 = Geodesic(q, [19, 20, 19, 12, 23, 16])
+    assert g20 == g21
+
+    # double bracket at the origin
+    g22 = Geodesic(q, [9, 14, 5, 18, 3, 12])
+    g22.origin_simplification()
+    g23 = Geodesic(q, [17, 18])
+    assert g22 == g23
+
+    # bracket containing the origin
+    g24 = Geodesic(q, [9, 14, 5, 10, 23, 4, 19, 6])
+    g24.origin_simplification()
+    g25 = Geodesic(q, [10, 23, 4, 23, 2, 17])
+    assert g24 == g25
+    g26 = Geodesic(q, [22, 9, 14, 1, 10, 17])
+    g26.origin_simplification()
+    g27 = Geodesic(q, [14, 1, 14, 1])
+    assert g26 == g27
+
+
+
+def test_star_shaped_space():
+    m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
+    q = QuadSystem(m)
+    s0 = StarShapedSpace(q, 0)
+    s1 = StarShapedSpace(q, 1)
+
+    assert s0._vertices == [0]
+    assert s0._quadsystem == s1._quadsystem == q
+    assert s1._vertices == [1]
+
+    assert s0.insert_edge(0, 8) == 1
+    assert s0.insert_edge(0, 6) == 2
+    assert s0.insert_edge(1, 7) == 3
+
+    assert s0.contains_edge(1, 7)
+    assert s0.contains_edge(1, 9)
+    assert not s0.contains_edge(1, 11)
+    assert not s0.contains_edge(3, 8)
+    with pytest.raises(ValueError, match="There is no vertex 4 in the StarShapedSpace."):
+        s0.contains_edge(4, 3)
+
+    assert s0.insert_edge(1, 13) == 4
+    assert s0._vertices == [0, 1, 1, 0, 0, 1]
+    assert s0._inedges[0] == {8: 1, 6: 2, 10: 5}
+    assert s0._outedges[4] == [(4, 5), (12, 1)]
+
+    assert s1.insert_edge(0, 1) == 1
+    assert s1.insert_edge(1, 10) == 2
+    assert s1.insert_edge(2, 1) == 3
+    assert s1.insert_edge(3, 8) == 4
+    assert s1.insert_edge(0, 7) == 8
+    assert s1.insert_edge(0, 5) == 7
+    assert s1._vertices == [1, 0, 1, 0, 1, 0, 1, 0, 0]
+    assert s1._inedges[0] == {1: 1, 5: 7, 7: 8}
+    assert s1._outedges[0] == []
+    assert s1._out_edges[4] == [(3, 5), (9, 3)]
+    assert s1._inedges[4] == {}
+    
+
+    
