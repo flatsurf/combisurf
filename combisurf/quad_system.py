@@ -313,6 +313,7 @@ class QuadSystem:
 
 
 class Geodesic:
+    #TODO: add a check function
     r"""
     A geodesic in a quadsystem
 
@@ -553,8 +554,6 @@ class Geodesic:
             sage: p.origin_simplification()
             sage: p
             Geodesic "deque([12, 1])" with turns "deque([(6, 1)])"
-
-            TODO: Make new examples and tests.
         """
 
         Q = self._quadsystem._quad
@@ -590,8 +589,8 @@ class Geodesic:
             geo.popleft()
             l = deque([])
             for e in geo:
-                e1 = Q._ep(e)
-                l.append(fp[fp[e1]])
+                e1 = fp[fp[e]]
+                l.append(Q._ep(e1))
             geo.clear()
             geo.extend(l)
             s.append((2, s[0][1] - 2))
@@ -608,6 +607,7 @@ class Geodesic:
                     geo.popleft()
                     turn_remove(s)
                     turn_remove_left(s)
+            self.origin_simplification() # there may now be a bracket starting at the origin
 
         elif first_turn == 1 and len(s) >= 2 and s[-1][0] == 2 and s[-2][0] == 1: # bracket ending at the origin
             geo.popleft()
@@ -620,6 +620,7 @@ class Geodesic:
                     geo.popleft()
                     turn_remove(s)
                     turn_remove_left(s)
+            self.origin_simplification() # there may now be a bracket starting at the origin
 
         elif first_turn == d - 1 and len(s) >= 1 and s[-1][0] == d - 1: # bracket ending at the origin
             geo.popleft()
@@ -632,6 +633,7 @@ class Geodesic:
                     geo.popleft()
                     turn_remove(s)
                     turn_remove_left(s)
+            self.origin_simplification() # there may now be a bracket starting at the origin
                     
         elif first_turn == d - 1 and len(s) >= 2 and s[-1][0] == d - 2 and s[-2][0] == d - 1: # bracket ending at the origin
             geo.popleft()
@@ -763,10 +765,15 @@ class Geodesic:
             
         else:
             i = 0
-            finish = False
             while i <= len(geo):
                 if first_turn == 1: # left L
-                    if s[0][0] == 2 and s[-1][0] == 2:
+                    if len(s) == 0:
+                        n1 = 0
+                        n2 = 0
+                    elif len(s) == 1 and s[0][0] == 2:
+                        (t1, n1) = s.pop()
+                        n2 = 0
+                    elif s[0][0] == 2 and s[-1][0] == 2:
                         (t1, n1) = s.pop()
                         (t2, n2) = s.popleft()
                     elif s[0][0] == 2:
@@ -790,7 +797,6 @@ class Geodesic:
                         raise ValueError("The path was not geodesic")
                     elif len(s) == 1 and s[0][1] == 1: # whole geodesic is a L
                         (t3, n3) = s.pop()
-                        finish = True
                         if t3 == 3:
                             turn_add(s, d - 2, n2)
                             turn_add(s, d - 1, 1)

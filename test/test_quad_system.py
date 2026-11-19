@@ -228,9 +228,88 @@ def test_quad_system_relabel():
                 assert list(proj2[h ^ 1]) == [proj2[h][1] ^ 1, proj2[h][0] ^ 1], (m, h)
 
 
+
+def test_origin_simplification():
+    m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12, 14], [3, 11, 13, 7, 1, 9, 15]])
+    forest = array('i', [-1, 1, 5])
+    coforest = array('i', [-1])
+    q = QuadSystem(m, forest=forest, coforest=coforest)
+
+    #spur removal
+    g0 = Geodesic(q, [8, 5, 2, 1, 4, 9])
+    g0.origin_simplification()
+    g1 = Geodesic(q, [2, 1])
+    assert g0 == g1 
+
+    # whole geodesic bracket with firsrturn = 1
+    g2 = Geodesic(q, [4, 7, 12, 23])
+    g2.origin_simplification()
+    g3 = Geodesic(q, [20, 11])
+    assert g2 == g3
+
+    # whole geodesic bracket with firstturn = d-1
+    g4 = Geodesic(q, [1, 16, 23, 2, 17, 22, 13, 6])
+    g4.origin_simplification()
+    g5 = Geodesic(q, [15, 6, 9, 14, 1, 10])
+    assert g4 == g5
+
+    # bracket starting at the origin
+    g6 = Geodesic(q, [7, 2, 17, 0])
+    g6.origin_simplification()
+    g7 = Geodesic(q, [20, 17])
+    assert g6 == g7
+    g8 = Geodesic(q, [14, 1, 10, 3, 18, 21, 18, 11])
+    g8.origin_simplification()
+    g9 = Geodesic(q, [17, 22, 13, 18, 21, 18])
+    assert g8 == g9
+    g10 = Geodesic(q, [20, 11, 8, 1])
+    g10.origin_simplification()
+    g11 = Geodesic(q, [7, 12])
+    assert g10 == g11
+    g12 = Geodesic(q, [23, 12, 17, 10, 3, 18])
+    g12.origin_simplification()
+    g13 = Geodesic(q, [6, 17, 10, 3])
+    assert g12 == g13
+
+    # bracket ending at the origin
+    g14 = Geodesic(q, [5, 18, 11, 14])
+    g14.origin_simplification()
+    g15 = Geodesic(q, [18, 17])
+    assert g14 == g15
+    g16 = Geodesic(q, [10, 7, 12, 19, 6, 9])
+    g16.origin_simplification()
+    g17 = Geodesic(q, [7, 12, 23, 2])
+    assert g16 == g17
+    g18 = Geodesic(q, [1, 16, 3, 6])
+    g18.origin_simplification()
+    g19 = Geodesic(q, [16, 21])
+    assert g18 == g19
+    g20 = Geodesic(q, [10, 19, 20, 19, 2, 11, 0, 15])
+    g20.origin_simplification()
+    g21 = Geodesic(q, [19, 20, 19, 12, 23, 16])
+    assert g20 == g21
+
+    # double bracket at the origin
+    g22 = Geodesic(q, [9, 14, 5, 18, 3, 12])
+    g22.origin_simplification()
+    g23 = Geodesic(q, [17, 18])
+    assert g22 == g23
+
+    # bracket containing the origin
+    g24 = Geodesic(q, [9, 14, 5, 10, 23, 4, 19, 6])
+    g24.origin_simplification()
+    g25 = Geodesic(q, [10, 23, 4, 23, 2, 17])
+    assert g24 == g25
+    g26 = Geodesic(q, [22, 9, 14, 1, 10, 17])
+    g26.origin_simplification()
+    g27 = Geodesic(q, [14, 1, 14, 1])
+    assert g26 == g27
+
+
+
 def test_star_shaped_space():
     m = OrientedMap(vp=[[0, 2, 4, 6], [5, 8, 10, 12], [3, 11, 13, 7, 1, 9]])
-    q = Quad_system(m)
+    q = QuadSystem(m)
     s0 = StarShapedSpace(q, 0)
     s1 = StarShapedSpace(q, 1)
 

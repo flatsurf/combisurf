@@ -57,6 +57,10 @@ def test_is_homotopy():
 
 
 def test_simplicity():
+    r"""
+    .. TODO:: 
+        
+    """
     from combisurf import OrientedMap
     from combisurf import Walk
 
